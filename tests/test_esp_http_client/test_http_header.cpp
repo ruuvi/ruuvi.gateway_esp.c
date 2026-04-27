@@ -9,7 +9,7 @@
 #include "gtest/gtest.h"
 #include <string>
 #include <cassert>
-#include <complex>
+#include "esp_http_client_stream.h"
 
 using namespace std;
 
@@ -61,25 +61,37 @@ TEST_F(TestHttpHeader, test_empty_list) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     ASSERT_EQ(0, http_header_count(this->m_header));
     char buffer[64];
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]   = '\0';
-    int          buffer_len      = sizeof(buffer);
+    const size_t buffer_len      = sizeof(buffer);
     const string expected_header = "\r\n";
 
-    const size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header, string(buffer));
-    ASSERT_EQ(ret, expected_header.length());
+    ASSERT_EQ(expected_header.length(), buf_ofs);
 
+    // Test writing '\0' to end of the buffer when buf_ofs is not zero
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
-    ASSERT_EQ(string(""), string(buffer));
+    buf_ofs                    = 2;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
+    ASSERT_EQ(string("aa"), string(buffer));
+    ASSERT_EQ(2, buf_ofs);
+
+    // Test that buffer is not modified when buf_ofs is already at the end of the buffer
+    memset(buffer, 'a', sizeof(buffer));
+    buffer[sizeof(buffer) - 1] = '\0';
+    buf_ofs                    = 2;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buf_ofs, &buf_ofs));
+    ASSERT_EQ(string("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), string(buffer));
+    ASSERT_EQ(2, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item) // NOLINT
@@ -89,7 +101,6 @@ TEST_F(TestHttpHeader, test_one_item) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[64];
@@ -100,18 +111,22 @@ TEST_F(TestHttpHeader, test_one_item) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]   = '\0';
-    int          buffer_len      = sizeof(buffer);
+    const size_t buffer_len      = sizeof(buffer);
     const string expected_header = "key1: value1\r\n\r\n";
 
-    const size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header, string(buffer));
-    ASSERT_EQ(ret, expected_header.length());
+    ASSERT_EQ(expected_header.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_empty_buffer) // NOLINT
@@ -121,7 +136,6 @@ TEST_F(TestHttpHeader, test_one_item_empty_buffer) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[16];
@@ -132,10 +146,14 @@ TEST_F(TestHttpHeader, test_one_item_empty_buffer) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    int buffer_len             = 0;
+    const size_t buffer_len    = sizeof(buffer);
+    size_t       buf_ofs       = buffer_len;
 
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("aaaaaaaaaaaaaaa", string(buffer));
+    ASSERT_EQ(buffer_len, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_buffer_overflow) // NOLINT
@@ -145,7 +163,6 @@ TEST_F(TestHttpHeader, test_one_item_buffer_overflow) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[16];
@@ -156,27 +173,32 @@ TEST_F(TestHttpHeader, test_one_item_buffer_overflow) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key1: value1\r\n\r";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = "\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(ret, expected_header2.length());
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_split_key) // NOLINT
@@ -186,7 +208,6 @@ TEST_F(TestHttpHeader, test_one_item_split_key) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[10];
@@ -197,27 +218,31 @@ TEST_F(TestHttpHeader, test_one_item_split_key) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key_abcde";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = "f: v1\r\n\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(ret, expected_header2.length());
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_split_after_key) // NOLINT
@@ -227,7 +252,6 @@ TEST_F(TestHttpHeader, test_one_item_split_after_key) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[11];
@@ -238,27 +262,31 @@ TEST_F(TestHttpHeader, test_one_item_split_after_key) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key_abcdef";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = ": v1\r\n\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(ret, expected_header2.length());
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_split_separator) // NOLINT
@@ -268,7 +296,6 @@ TEST_F(TestHttpHeader, test_one_item_split_separator) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[12];
@@ -279,27 +306,31 @@ TEST_F(TestHttpHeader, test_one_item_split_separator) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key_abcdef:";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = " v1\r\n\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(ret, expected_header2.length());
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_split_after_separator) // NOLINT
@@ -309,7 +340,6 @@ TEST_F(TestHttpHeader, test_one_item_split_after_separator) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[13];
@@ -320,27 +350,31 @@ TEST_F(TestHttpHeader, test_one_item_split_after_separator) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key_abcdef: ";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = "v1\r\n\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(ret, expected_header2.length());
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_split_val) // NOLINT
@@ -350,7 +384,6 @@ TEST_F(TestHttpHeader, test_one_item_split_val) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[14];
@@ -361,27 +394,31 @@ TEST_F(TestHttpHeader, test_one_item_split_val) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key_abcdef: v";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = "1\r\n\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(ret, expected_header2.length());
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_split_after_val) // NOLINT
@@ -391,7 +428,6 @@ TEST_F(TestHttpHeader, test_one_item_split_after_val) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[15];
@@ -402,27 +438,31 @@ TEST_F(TestHttpHeader, test_one_item_split_after_val) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key_abcdef: v1";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = "\r\n\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(ret, expected_header2.length());
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_split_eol) // NOLINT
@@ -432,7 +472,6 @@ TEST_F(TestHttpHeader, test_one_item_split_eol) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[16];
@@ -443,27 +482,31 @@ TEST_F(TestHttpHeader, test_one_item_split_eol) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key_abcdef: v1\r";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = "\n\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(ret, expected_header2.length());
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_split_after_eol) // NOLINT
@@ -473,7 +516,6 @@ TEST_F(TestHttpHeader, test_one_item_split_after_eol) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[17];
@@ -484,27 +526,31 @@ TEST_F(TestHttpHeader, test_one_item_split_after_eol) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key_abcdef: v1\r\n";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = "\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(ret, expected_header2.length());
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_split_final_eol) // NOLINT
@@ -514,7 +560,6 @@ TEST_F(TestHttpHeader, test_one_item_split_final_eol) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[18];
@@ -525,27 +570,31 @@ TEST_F(TestHttpHeader, test_one_item_split_final_eol) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key_abcdef: v1\r\n\r";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = "\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(ret, expected_header2.length());
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_one_item_no_split_after_final_eol) // NOLINT
@@ -555,7 +604,6 @@ TEST_F(TestHttpHeader, test_one_item_no_split_after_final_eol) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[19];
@@ -566,18 +614,22 @@ TEST_F(TestHttpHeader, test_one_item_no_split_after_final_eol) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key_abcdef: v1\r\n\r\n";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(ret, expected_header1.length());
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_two_items) // NOLINT
@@ -587,7 +639,6 @@ TEST_F(TestHttpHeader, test_two_items) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[64];
@@ -599,18 +650,22 @@ TEST_F(TestHttpHeader, test_two_items) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]   = '\0';
-    int          buffer_len      = sizeof(buffer);
+    const size_t buffer_len      = sizeof(buffer);
     const string expected_header = "key1: value1\r\nkey2: value2\r\n\r\n";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header, string(buffer));
-    ASSERT_EQ(expected_header.length(), ret);
+    ASSERT_EQ(expected_header.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_two_items_split) // NOLINT
@@ -619,7 +674,6 @@ TEST_F(TestHttpHeader, test_two_items_split) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[15];
@@ -631,36 +685,40 @@ TEST_F(TestHttpHeader, test_two_items_split) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key1: value1\r\n";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(expected_header1.length(), ret);
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = "key2: value2\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(expected_header2.length(), ret);
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header3 = "\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header3, string(buffer));
-    ASSERT_EQ(expected_header3.length(), ret);
+    ASSERT_EQ(expected_header3.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }
 
 TEST_F(TestHttpHeader, test_two_items_split_2) // NOLINT
@@ -669,7 +727,6 @@ TEST_F(TestHttpHeader, test_two_items_split_2) // NOLINT
         .item_idx = 0,
         .item_state = {
             .stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT,
-            .offset = 0,
         },
     };
     char buffer[14];
@@ -681,34 +738,38 @@ TEST_F(TestHttpHeader, test_two_items_split_2) // NOLINT
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    int          buffer_len       = sizeof(buffer);
+    const size_t buffer_len       = sizeof(buffer);
     const string expected_header1 = "key1: value1\r";
 
-    size_t ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    http_stream_reader_string_ctx_t ctx { .p_str = nullptr, .data_offset = 0 };
+    http_stream_last_call_t         last_call = { .cb_stream_reader = nullptr, .p_ctx = nullptr };
+    size_t                          buf_ofs   = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header1, string(buffer));
-    ASSERT_EQ(expected_header1.length(), ret);
+    ASSERT_EQ(expected_header1.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header2 = "\nkey2: value2";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header2, string(buffer));
-    ASSERT_EQ(expected_header2.length(), ret);
+    ASSERT_EQ(expected_header2.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1]    = '\0';
-    buffer_len                    = sizeof(buffer);
     const string expected_header3 = "34\r\n\r\n";
 
-    ret = http_header_generate_string(this->m_header, &state, buffer, buffer_len);
+    buf_ofs = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ(expected_header3, string(buffer));
-    ASSERT_EQ(expected_header3.length(), ret);
+    ASSERT_EQ(expected_header3.length(), buf_ofs);
 
     memset(buffer, 'a', sizeof(buffer));
     buffer[sizeof(buffer) - 1] = '\0';
-    buffer_len                 = sizeof(buffer);
-    ASSERT_EQ(0, http_header_generate_string(this->m_header, &state, buffer, buffer_len));
+    buf_ofs                    = 0;
+    ASSERT_TRUE(http_header_generate_string(&ctx, &last_call, this->m_header, &state, buffer, buffer_len, &buf_ofs));
     ASSERT_EQ("", string(buffer));
+    ASSERT_EQ(0, buf_ofs);
 }

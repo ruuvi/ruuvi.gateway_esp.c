@@ -11,8 +11,10 @@ add_executable(${ProjectId}
         http_event.hpp
         ${COMPONENTS}/esp_http_client/esp_http_client.c
         ${COMPONENTS}/esp_http_client/include/esp_http_client.h
+        ${COMPONENTS}/esp_http_client/include/esp_http_client_stream.h
         ${COMPONENTS}/esp_http_client/lib/http_auth.c
         ${COMPONENTS}/esp_http_client/lib/http_header.c
+        ${COMPONENTS}/esp_http_client/lib/http_stream.c
         ${COMPONENTS}/esp_http_client/lib/http_utils.c
         ${COMPONENTS}/esp_http_client/lib/include/http_auth.h
         ${COMPONENTS}/esp_http_client/lib/include/http_header.h

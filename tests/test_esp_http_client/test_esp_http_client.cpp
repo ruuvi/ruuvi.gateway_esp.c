@@ -15,6 +15,7 @@
 #include "tcp_transport_stub.h"
 #include "TQueue.hpp"
 #include "http_event.hpp"
+#include "esp_http_client_stream.h"
 
 using namespace std;
 
@@ -106,6 +107,8 @@ public:
     std::queue<TcpWriteRecord>             m_tcp_write_queue;
     std::queue<TcpReadRecord>              m_tcp_read_queue;
     std::queue<std::shared_ptr<HttpEvent>> m_http_event_queue;
+    string                                 m_custom_stream_reader_path;
+    string                                 m_custom_stream_reader_query;
 
     string
     addHttpReqHeader(
@@ -134,6 +137,8 @@ TestEspHttpClient::TestEspHttpClient()
     , m_tcp_write_queue {}
     , m_tcp_read_queue {}
     , m_http_event_queue {}
+    , m_custom_stream_reader_path {}
+    , m_custom_stream_reader_query {}
     , Test()
 {
     std::srand(0);
@@ -355,6 +360,62 @@ event_handler(esp_http_client_event_t* p_evt)
             break;
     }
     return ESP_OK;
+}
+
+ssize_t
+cb_custom_stream_reader(const http_stream_reader_cmd_e cmd, const http_stream_reader_arg_t arg, void* const p_ctx)
+{
+    http_stream_reader_string_ctx_t* const p_context = static_cast<http_stream_reader_string_ctx_t*>(p_ctx);
+    switch (cmd)
+    {
+        case HTTP_STREAM_READER_CMD_OPEN:
+            if (strcmp(static_cast<const char*>(arg.open.p_param), "path") == 0)
+            {
+                p_context->p_str = g_pTestClass->m_custom_stream_reader_path.c_str();
+            }
+            else if (strcmp(static_cast<const char*>(arg.open.p_param), "query") == 0)
+            {
+                p_context->p_str = g_pTestClass->m_custom_stream_reader_query.c_str();
+            }
+            else
+            {
+                assert(0);
+            }
+            p_context->data_offset = 0;
+            p_context->p_last_call = arg.open.p_last_call;
+            if (nullptr != p_context->p_last_call)
+            {
+                p_context->p_last_call->cb_stream_reader = &http_stream_reader_string;
+                p_context->p_last_call->p_ctx            = p_ctx;
+            }
+            return 0;
+        case HTTP_STREAM_READER_CMD_READ:
+        {
+            const size_t len = strlen(&p_context->p_str[p_context->data_offset]);
+            if (len >= arg.read.buf_len)
+            {
+                memcpy(arg.read.p_buf, &p_context->p_str[p_context->data_offset], arg.read.buf_len - 1);
+                p_context->data_offset += (arg.read.buf_len - 1);
+                arg.read.p_buf[arg.read.buf_len - 1] = '\0';
+                return static_cast<ssize_t>(arg.read.buf_len - 1);
+            }
+            strcpy(arg.read.p_buf, &p_context->p_str[p_context->data_offset]);
+            p_context->data_offset += len;
+            return static_cast<ssize_t>(len);
+        }
+        case HTTP_STREAM_READER_CMD_CLOSE:
+            p_context->p_str       = nullptr;
+            p_context->data_offset = 0;
+            if (nullptr != p_context->p_last_call)
+            {
+                p_context->p_last_call->cb_stream_reader = nullptr;
+                p_context->p_last_call->p_ctx            = nullptr;
+                p_context->p_last_call                   = nullptr;
+            }
+            return 0;
+    }
+    assert(0);
+    return -1;
 }
 
 } // extern "C"
@@ -602,6 +663,45 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path) // NOLINT
     esp_http_client_cleanup(client);
 }
 
+TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_with_custom_path_reader) // NOLINT
+{
+    this->m_custom_stream_reader_path = "/api2?cmd2=QWE&cmd3=ASD#zzz";
+
+    esp_http_client_config_t config    = {};
+    config.event_handler               = &event_handler;
+    config.host                        = "myhost.com";
+    config.path                        = nullptr;
+    config.cb_path_stream_reader       = &cb_custom_stream_reader;
+    config.cb_path_stream_reader_param = const_cast<void*>(static_cast<const void*>("path"));
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+    const string req_header
+        = "GET /api2?cmd2=QWE&cmd3=ASD#zzz HTTP/1.1\r\n"
+          "User-Agent: Ruuvi Gateway HTTP Client/1.0\r\n"
+          "Host: myhost.com\r\n"
+          "Content-Length: 0\r\n"
+          "\r\n";
+
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    TEST_TCP_WRITE_RECORD(req_header);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+}
+
 TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_and_query) // NOLINT
 {
     esp_http_client_config_t config = {};
@@ -633,6 +733,49 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_and_query) // NOLINT
         "Content-Length: 0\r\n"
         "\r\n",
         req_header);
+    TEST_TCP_WRITE_RECORD(req_header);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+}
+
+TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_and_query_with_custom_readers) // NOLINT
+{
+    this->m_custom_stream_reader_path  = "/api3";
+    this->m_custom_stream_reader_query = "cmd3=ZXC&cmd4=fgh";
+
+    esp_http_client_config_t config     = {};
+    config.event_handler                = &event_handler;
+    config.host                         = "myhost.com";
+    config.path                         = nullptr;
+    config.cb_path_stream_reader        = &cb_custom_stream_reader;
+    config.cb_path_stream_reader_param  = const_cast<void*>(static_cast<const void*>("path"));
+    config.query                        = nullptr;
+    config.cb_query_stream_reader       = &cb_custom_stream_reader;
+    config.cb_query_stream_reader_param = const_cast<void*>(static_cast<const void*>("query"));
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+    const string req_header
+        = "GET /api3?cmd3=ZXC&cmd4=fgh HTTP/1.1\r\n"
+          "User-Agent: Ruuvi Gateway HTTP Client/1.0\r\n"
+          "Host: myhost.com\r\n"
+          "Content-Length: 0\r\n"
+          "\r\n";
+
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
     TEST_TCP_WRITE_RECORD(req_header);
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
@@ -1183,6 +1326,114 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_split_req_heade
     TEST_TCP_WRITE_RECORD(req_header);
     TEST_TCP_WRITE_RECORD(req_header2);
     TEST_TCP_WRITE_RECORD(req_header3);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+}
+
+TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_using_custom_readers) // NOLINT
+{
+    this->m_custom_stream_reader_path
+        = "/topics/gateway/environment/data/sensors/v1/room101/very_long_path"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    this->m_custom_stream_reader_query
+        = "X-Amz-Algorithm=AWS4-HMAC-SHA256&"
+          "X-Amz-Credential=ASIAUTORANDOMID12345%2F20260419%2Fus-west-2%2Fiotdata%2Faws4_request&"
+          "X-Amz-Date=20260419T010434Z&"
+          "X-Amz-Expires=3600&"
+          "X-Amz-SignedHeaders=content-type%3Bhost%3Bx-amz-client-id%3Bx-amz-date%3Bx-amz-meta-gateway-id%3Bx-amz-meta-"
+          "location&"
+          "X-Amz-Signature=b5e6f8d9a0c1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7"
+          "3pTLuMCYEeLAVt3g+xXXVQuPcc3w9i9HOb0OZxC6rP684ZWOClhU34evfC1Gm8dRXDV0m1vYJssN"
+          "H/7aw1bdtGECWvP9Omk8EQqouumRalKNpQ0YFat0fDE3oEa/vsCnrXZ2QUu2KkUVuCWoJf93etsmsGEH"
+          "pV0LbusqY0328pdXUlGHqZ6irrTAYj20UOVGocT8A+HsGj285dYAcyP8YAuc133VKItFlzlmKz2gUJ31"
+          "1EeDL11j57ZvG8B0gbuUgDhwaMnw5TMNvfIzUoEnhdruGFyq+LDk6zvw5sOcq3+w3FZDfz3UrmJ8wVDR"
+          "6wn4gxBGoBB79fz8u72W7RP0lW3bDuhkS9UP0t5gPbeWnkPS5/P4q5gzXMOD1bX2rCMCKgmqzl+mArl3"
+          "T+79h68hLDo93LgzvFIKWDxmJdUCzGAqDL7uXyJrS8wlp7Mf9n5NZHfEZaFk5I/TxgJHHd6JML7KgTen"
+          "rANPiikpXEzK/bBvPso9z0hJY6vfK62KviwJobnhkbgrztcjQcz+EwhhFROTTEc72J5l5iuedI7pnIg6";
+
+    esp_http_client_config_t config = {};
+    config.event_handler            = &event_handler;
+
+    config.host                         = "a31415926535897-ats.iot.us-west-2.amazonaws.com";
+    config.path                         = nullptr;
+    config.cb_path_stream_reader        = &cb_custom_stream_reader;
+    config.cb_path_stream_reader_param  = const_cast<void*>(static_cast<const void*>("path"));
+    config.query                        = nullptr;
+    config.cb_query_stream_reader       = &cb_custom_stream_reader;
+    config.cb_query_stream_reader_param = const_cast<void*>(static_cast<const void*>("query"));
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+
+    const string req_header
+        = "GET "
+          "/topics/gateway/environment/data/sensors/v1/room101/very_long_path"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef012345678";
+    const string req_header2
+        = "9abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "?"
+          "X-Amz-Algorithm=AWS4-HMAC-SHA256&"
+          "X-Amz-Credential=ASIAUTORANDOMID12345%2F20260419%2Fus-west-2%2Fiotdata%2Faws4_request&"
+          "X-Amz-Date=20260419T010434Z&"
+          "X-Amz-Expires=3600&"
+          "X-Amz-SignedHeaders=content-type%3Bhost%3Bx-amz-client-id%3Bx-amz-date%3Bx-amz-meta-gateway-id%3Bx-amz-meta-"
+          "location&"
+          "X-Amz-Signature=b5e6f8d9a0c1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7"
+          "3pTLuMCYEeLAVt3g+xXXVQuPcc3w9i9HOb0OZxC6rP684ZWOClhU34evfC1Gm8dRXDV0m1vYJssN";
+    const string req_header3
+        = "H/7aw1bdtGECWvP9Omk8EQqouumRalKNpQ0YFat0fDE3oEa/vsCnrXZ2QUu2KkUVuCWoJf93etsmsGEH"
+          "pV0LbusqY0328pdXUlGHqZ6irrTAYj20UOVGocT8A+HsGj285dYAcyP8YAuc133VKItFlzlmKz2gUJ31"
+          "1EeDL11j57ZvG8B0gbuUgDhwaMnw5TMNvfIzUoEnhdruGFyq+LDk6zvw5sOcq3+w3FZDfz3UrmJ8wVDR"
+          "6wn4gxBGoBB79fz8u72W7RP0lW3bDuhkS9UP0t5gPbeWnkPS5/P4q5gzXMOD1bX2rCMCKgmqzl+mArl3"
+          "T+79h68hLDo93LgzvFIKWDxmJdUCzGAqDL7uXyJrS8wlp7Mf9n5NZHfEZaFk5I/TxgJHHd6JML7KgTen"
+          "rANPiikpXEzK/bBvPso9z0hJY6vfK62KviwJobnhkbgrztcjQcz+EwhhFROTTEc72J5l5iuedI7pnIg6"
+          " "
+          "HTTP/1.1"
+          "\r\n"
+          "User-Agent: "
+          "Ruuvi Ga";
+    const string req_header4
+        = "teway HTTP Client/1.0"
+          "\r\n"
+          "Host: a31415926535897-"
+          "ats.iot.us-west-2.amazonaws.com"
+          "\r\n"
+          "Content-Length: 0"
+          "\r\n"
+          "\r\n";
+
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    TEST_TCP_WRITE_RECORD(req_header);
+    TEST_TCP_WRITE_RECORD(req_header2);
+    TEST_TCP_WRITE_RECORD(req_header3);
+    TEST_TCP_WRITE_RECORD(req_header4);
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);

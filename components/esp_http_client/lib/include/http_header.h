@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include "sys/queue.h"
 #include "esp_err.h"
+#include "esp_http_client_stream.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,7 +40,6 @@ typedef enum http_header_generate_item_stage_e {
 
 typedef struct http_header_generate_item_state_t {
     http_header_generate_item_stage_e stage;
-    size_t offset;
 } http_header_generate_item_state_t;
 
 typedef enum http_header_generate_stage_e {
@@ -127,19 +127,30 @@ int http_header_set_format(http_header_handle_t header, const char *key, const c
 esp_err_t http_header_get(http_header_handle_t header, const char *key, char **value);
 
 /**
- * @brief      Create HTTP header string from the header with index, output string to buffer with buffer_len
- *             Also return the last index of header was generated
+ * @brief      Create an HTTP header string from the header, output string to buffer with buf_len.
  *
- * @param[in]  header      The header
- * @param[in]  index       The index
- * @param      buffer      The buffer
- * @param      buffer_len  The buffer length
+ * @param[in]     header      The header
+ * @param[in,out] p_state     Pointer to the state variable to keep track of the generation process,
+ *                            should be initialized with stage = HTTP_HEADER_GENERATE_STAGE_INIT and
+ *                            item_state.stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT before
+ *                            the first call to this function.
+ * @param[out]    p_buf       Pointer to the buffer to store the generated header string,
+ *                            note that the generated string will be null-terminated
+ *                            if there is enough space in the buffer.
+ * @param[in]     buf_len     The buffer length
+ * @param[in,out] p_buf_ofs   Pointer to the variable to update the offset of the buffer.
  *
  * @return
- *     - Content length if header was generated successfully (value greater than 0)
- *     - 0 if generation is complete and there is no more header to generate
+ *     - \c true if operation completed successfully,
+ *     - \c false if any error occurs during the generation process.
  */
-size_t http_header_generate_string(http_header_handle_t header, http_header_generate_state_t* const p_state, char * const p_buf, const size_t buf_len);
+bool http_header_generate_string(void *const p_stream_reader_ctx,
+                                 http_stream_last_call_t *const p_stream_reader_last_call,
+                                 http_header_handle_t header,
+                                 http_header_generate_state_t *const p_state,
+                                 char *const p_buf,
+                                 const size_t buf_len,
+                                 size_t *const p_buf_ofs);
 
 /**
  * @brief      Remove the header with key from the headers list

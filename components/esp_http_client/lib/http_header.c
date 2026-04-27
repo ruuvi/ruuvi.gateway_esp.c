@@ -23,6 +23,7 @@
 #include "esp_log.h"
 #include "http_header.h"
 #include "http_utils.h"
+#include "esp_http_client_stream.h"
 
 static const char *TAG = "HTTP_HEADER";
 #define HEADER_BUFFER (1024)
@@ -175,64 +176,83 @@ int http_header_set_format(http_header_handle_t header, const char *key, const c
 }
 
 static bool generate_item_token(const char *const p_token,
-                                size_t *const p_token_offset,
                                 char *const p_buf,
-                                const size_t buf_len,
-                                size_t *const p_num_bytes_copied) {
-    const size_t token_len = strlen(p_token);
-    const size_t rem_len = token_len - *p_token_offset;
-    const size_t num_bytes_to_copy = rem_len < buf_len ? rem_len : buf_len;
-    memcpy(p_buf, p_token + *p_token_offset, num_bytes_to_copy);
-    *p_num_bytes_copied = num_bytes_to_copy;
-    *p_token_offset += num_bytes_to_copy;
-    if (*p_token_offset == token_len) {
-        *p_token_offset = 0;
-        return true;
+                                const ssize_t buf_len,
+                                size_t *const p_buf_offset,
+                                bool *const p_is_buf_full,
+                                void *const p_stream_reader_ctx,
+                                http_stream_last_call_t *const p_stream_reader_last_call) {
+    http_stream_reader_string_ctx_t *const p_ctx = p_stream_reader_ctx;
+    if (NULL == p_ctx->p_str) {
+        http_stream_reader_string_open(p_ctx, p_token, p_stream_reader_last_call);
     }
-    return false;
+    const bool res = http_stream_reader_wrap_read_string(p_ctx, p_buf, buf_len, p_buf_offset, p_is_buf_full);
+    if (!res) {
+        http_stream_reader_string_close(p_ctx);
+        return false;
+    }
+    if (!*p_is_buf_full) {
+        http_stream_reader_string_close(p_ctx);
+    }
+    return true;
 }
 
 static bool http_header_generate_item(const http_header_item_handle_t item,
                                       http_header_generate_item_state_t *const p_state,
                                       char *const p_buf,
                                       const size_t buf_len,
-                                      size_t *const p_buf_ofs) {
-    ESP_LOGD(TAG, "%s: Header item (stage=%d, offset=%zu) %s: %s",
-             __func__, p_state->stage, p_state->offset, item->key, item->value);
-    if (buf_len < (*p_buf_ofs + 1)) {
-        return false;
-    }
-    size_t rem_buf_len = buf_len - *p_buf_ofs - 1; // Take final '\0' into account
+                                      size_t *const p_buf_ofs,
+                                      bool *const p_is_buf_full,
+                                      void *const p_stream_reader_ctx,
+                                      http_stream_last_call_t *const p_stream_reader_last_call) {
+    ESP_LOGD(TAG, "%s: Header item (stage=%d) %s: %s",
+             __func__, p_state->stage, item->key, item->value);
     while (p_state->stage != HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED) {
-        if (0 == rem_buf_len) {
-            p_buf[*p_buf_ofs] = '\0'; // Add final '\0' to buffer
-            return false;
+        const size_t rem_buf_len = buf_len - *p_buf_ofs;
+        if (rem_buf_len <= 1) {
+            if (0 != rem_buf_len) {
+                p_buf[*p_buf_ofs] = '\0'; // Add final '\0' to buffer
+            }
+            *p_is_buf_full = true;
+            return true;
         }
-        size_t bytes_copied = 0;
         switch (p_state->stage) {
             case HTTP_HEADER_GENERATE_ITEM_STAGE_INIT:
-                p_state->offset = 0;
                 p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_KEY;
-                bytes_copied = 0;
                 break;
             case HTTP_HEADER_GENERATE_ITEM_STAGE_KEY:
-                if (generate_item_token(item->key, &p_state->offset, &p_buf[*p_buf_ofs], rem_buf_len, &bytes_copied)) {
+                if (!generate_item_token(item->key, p_buf, buf_len, p_buf_ofs, p_is_buf_full,
+                                         p_stream_reader_ctx, p_stream_reader_last_call)) {
+                    return false;
+                }
+                if (!*p_is_buf_full) {
                     p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_SEPARATOR;
                 }
                 break;
             case HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_SEPARATOR:
-                if (generate_item_token(": ", &p_state->offset, &p_buf[*p_buf_ofs], rem_buf_len, &bytes_copied)) {
+                if (!generate_item_token(": ", p_buf, buf_len, p_buf_ofs, p_is_buf_full,
+                                         p_stream_reader_ctx, p_stream_reader_last_call)) {
+                    return false;
+                }
+                if (!*p_is_buf_full) {
                     p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_VALUE;
                 }
                 break;
             case HTTP_HEADER_GENERATE_ITEM_STAGE_VALUE:
-                if (generate_item_token(item->value, &p_state->offset, &p_buf[*p_buf_ofs], rem_buf_len,
-                                        &bytes_copied)) {
+                if (!generate_item_token(item->value, p_buf, buf_len, p_buf_ofs, p_is_buf_full,
+                                         p_stream_reader_ctx, p_stream_reader_last_call)) {
+                    return false;
+                }
+                if (!*p_is_buf_full) {
                     p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_EOL;
                 }
                 break;
             case HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_EOL:
-                if (generate_item_token("\r\n", &p_state->offset, &p_buf[*p_buf_ofs], rem_buf_len, &bytes_copied)) {
+                if (!generate_item_token("\r\n", p_buf, buf_len, p_buf_ofs, p_is_buf_full,
+                                         p_stream_reader_ctx, p_stream_reader_last_call)) {
+                    return false;
+                }
+                if (!*p_is_buf_full) {
                     p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED;
                 }
                 break;
@@ -240,77 +260,81 @@ static bool http_header_generate_item(const http_header_item_handle_t item,
                 assert(0);
                 break;
         }
-        *p_buf_ofs += bytes_copied;
-        rem_buf_len -= bytes_copied;
     }
-    p_buf[*p_buf_ofs] = '\0'; // Add final '\0' to buffer
+    if (*p_buf_ofs < buf_len) {
+        p_buf[*p_buf_ofs] = '\0'; // Add final '\0' to buffer
+    }
     p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT;
-    p_state->offset = 0;
     return true;
 }
 
 static bool http_header_generate_string_items(http_header_handle_t header,
                                               http_header_generate_state_t *const p_state,
-                                              char *const p_buf, const size_t buf_len, size_t *const p_len) {
+                                              char *const p_buf, const size_t buf_len, size_t *const p_buf_ofs,
+                                              bool *const p_is_buf_full,
+                                              void *const p_stream_reader_ctx,
+                                              http_stream_last_call_t *const p_stream_reader_last_call) {
     http_header_item_handle_t item;
     int32_t idx = 0;
-    size_t buf_ofs = 0;
     STAILQ_FOREACH(item, header, next) {
         if ((NULL != item->value) && (idx >= p_state->item_idx)) {
-            if (!http_header_generate_item(item, &p_state->item_state, p_buf, buf_len, &buf_ofs)) {
-                *p_len = buf_ofs;
-                p_state->item_idx = idx;
+            if (!http_header_generate_item(item, &p_state->item_state, p_buf, buf_len, p_buf_ofs, p_is_buf_full,
+                                           p_stream_reader_ctx, p_stream_reader_last_call)) {
                 return false;
+            }
+            if (*p_is_buf_full) {
+                p_state->item_idx = idx;
+                return true;
             }
         }
         idx += 1;
     }
-    *p_len = buf_ofs;
     p_state->item_idx = idx;
     return true;
 }
 
-size_t http_header_generate_string(http_header_handle_t header, http_header_generate_state_t *const p_state,
-                                   char *const p_buf, const size_t buf_len) {
-    size_t buf_ofs = 0;
-    bool flag_exit = false;
-    while (!flag_exit) {
+bool http_header_generate_string(
+    void* const p_stream_reader_ctx,
+    http_stream_last_call_t* const p_stream_reader_last_call,
+    http_header_handle_t header, http_header_generate_state_t *const p_state,
+                                 char *const p_buf, const size_t buf_len, size_t *const p_buf_ofs) {
+    bool flag_buf_full = false;
+    while (!flag_buf_full) {
         switch (p_state->stage) {
             case HTTP_HEADER_GENERATE_STAGE_INIT:
                 p_state->item_idx = 0;
                 p_state->item_state.stage = HTTP_HEADER_GENERATE_ITEM_STAGE_INIT;
-                p_state->item_state.offset = 0;
                 p_state->stage = HTTP_HEADER_GENERATE_STAGE_ADDING_ITEMS;
                 break;
             case HTTP_HEADER_GENERATE_STAGE_ADDING_ITEMS:
-                if (!http_header_generate_string_items(header, p_state, p_buf, buf_len, &buf_ofs)) {
-                    flag_exit = true;
-                    break;
+                if (!http_header_generate_string_items(header, p_state, p_buf, buf_len, p_buf_ofs, &flag_buf_full,
+                                                       p_stream_reader_ctx, p_stream_reader_last_call)) {
+                    return false;
                 }
-                p_state->stage = HTTP_HEADER_GENERATE_STAGE_FINAL_EOL;
-                p_state->item_state.stage = HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED;
-                p_state->item_state.offset = 0;
+                if (!flag_buf_full) {
+                    p_state->stage = HTTP_HEADER_GENERATE_STAGE_FINAL_EOL;
+                    p_state->item_state.stage = HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED;
+                }
                 break;
             case HTTP_HEADER_GENERATE_STAGE_FINAL_EOL: {
-                size_t bytes_copied = 0;
-                if (!generate_item_token("\r\n", &p_state->item_state.offset, &p_buf[buf_ofs], buf_len - buf_ofs - 1,
-                                         &bytes_copied)) {
-                    flag_exit = true;
-                } else {
+                if (!generate_item_token("\r\n", p_buf, buf_len, p_buf_ofs, &flag_buf_full,
+                                         p_stream_reader_ctx, p_stream_reader_last_call)) {
+                    return false;
+                }
+                if (!flag_buf_full) {
                     p_state->stage = HTTP_HEADER_GENERATE_STAGE_FINISHED;
                 }
-                buf_ofs += bytes_copied;
                 break;
             }
             case HTTP_HEADER_GENERATE_STAGE_FINISHED:
-                flag_exit = true;
+                flag_buf_full = true;
                 break;
         }
     }
-    if (buf_ofs < buf_len) {
-        p_buf[buf_ofs] = '\0';
+    if (*p_buf_ofs < buf_len) {
+        p_buf[*p_buf_ofs] = '\0';
     }
-    return buf_ofs;
+    return true;
 }
 
 esp_err_t http_header_clean(http_header_handle_t header)

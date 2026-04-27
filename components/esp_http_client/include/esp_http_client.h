@@ -20,6 +20,7 @@
 #include "sdkconfig.h"
 #include "esp_err.h"
 #include "esp_transport_ssl.h"
+#include "esp_http_client_stream.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -117,7 +118,11 @@ typedef struct {
     const char                  *password;           /*!< Using for Http authentication */
     esp_http_client_auth_type_t auth_type;           /*!< Http authentication type, see `esp_http_client_auth_type_t` */
     const char                  *path;               /*!< HTTP Path, if not set, default is `/` */
+    http_stream_reader_t        cb_path_stream_reader; /*!< Callback function to read the HTTP path */
+    void                        *cb_path_stream_reader_param; /*!< User defined parameter for cb_path_stream_reader */
     const char                  *query;              /*!< HTTP query */
+    http_stream_reader_t        cb_query_stream_reader; /*!< Callback function to read the HTTP query */
+    void                        *cb_query_stream_reader_param; /*!< User defined parameter for cb_query_stream_reader */
     const char                  *cert_pem;           /*!< SSL server certification, PEM format as string, if the client requires to verify server */
     const char                  *client_cert_pem;    /*!< SSL client certification, PEM format as string, if the server requires to verify client */
     const char                  *client_key_pem;     /*!< SSL client key, PEM format as string, if the server requires to verify client */

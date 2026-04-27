@@ -24,6 +24,7 @@
 #include "esp_transport_tcp.h"
 #include "http_utils.h"
 #include "http_auth.h"
+#include "esp_http_client_stream.h"
 #include "sdkconfig.h"
 #include "esp_http_client.h"
 #include "errno.h"
@@ -70,7 +71,11 @@ typedef struct {
     char                         *username;
     char                         *password;
     char                         *path;
+    http_stream_reader_t         cb_path_stream_reader;
+    void                         *cb_path_stream_reader_param;
     char                         *query;
+    http_stream_reader_t         cb_query_stream_reader;
+    void                         *cb_query_stream_reader_param;
     char                         *cert_pem;
     esp_http_client_method_t     method;
     esp_http_client_auth_type_t  auth_type;
@@ -106,9 +111,14 @@ typedef enum req_send_stage_e {
 
 typedef struct req_send_state_t {
     req_send_stage_e stage;
-    size_t data_offset;
     http_header_generate_state_t header_gen_state;
 } req_send_state_t;
+
+typedef union esp_http_client_stream_reader_ctx {
+    struct {
+        http_stream_reader_string_ctx_t context;
+    } ctx_str;
+} esp_http_client_stream_reader_ctx_t;
 
 /**
  * HTTP client class
@@ -148,6 +158,8 @@ struct esp_http_client {
     req_send_state_t            req_send_state;
     esp_http_client_cb_on_post_get_chunk cb_on_post_get_chunk;
     void* p_cb_on_post_get_chunk_user_data;
+    esp_http_client_stream_reader_ctx_t stream_reader_ctx;
+    http_stream_last_call_t stream_reader_last_call;
 };
 
 typedef struct esp_http_client esp_http_client_t;
@@ -427,14 +439,29 @@ static esp_err_t _set_config(esp_http_client_handle_t client, const esp_http_cli
         client->max_authorization_retries = 0;
     }
 
-    if (config->path) {
-        client->connection_info.path = strdup(config->path);
+    if (config->cb_path_stream_reader) {
+        if (NULL != config->path) {
+            ESP_LOGE(TAG, "Cannot use cb_path_stream_reader with path, path should be NULL");
+            return ESP_ERR_INVALID_ARG;
+        }
+        if ((NULL != client->connection_info.username) && (NULL != client->auth_data) &&
+                (HTTP_AUTH_TYPE_DIGEST == client->connection_info.auth_type)) {
+            ESP_LOGE(TAG, "Cannot use cb_path_stream_reader with digest authentication");
+            return ESP_ERR_INVALID_ARG;
+        }
+        client->connection_info.path = NULL;
+        client->connection_info.cb_path_stream_reader = config->cb_path_stream_reader;
+        client->connection_info.cb_path_stream_reader_param = config->cb_path_stream_reader_param;
     } else {
-        client->connection_info.path = strdup(DEFAULT_HTTP_PATH);
+        if (config->path) {
+            client->connection_info.path = strdup(config->path);
+        } else {
+            client->connection_info.path = strdup(DEFAULT_HTTP_PATH);
+        }
+        HTTP_MEM_CHECK(TAG, client->connection_info.path, {
+            return ESP_ERR_NO_MEM;
+        });
     }
-    HTTP_MEM_CHECK(TAG, client->connection_info.path, {
-        return ESP_ERR_NO_MEM;
-    });
 
     if (config->host) {
         const size_t host_len = strlen(config->host);
@@ -452,12 +479,22 @@ static esp_err_t _set_config(esp_http_client_handle_t client, const esp_http_cli
         });
     }
 
-    if (config->query) {
-        client->connection_info.query = strdup(config->query);
-        HTTP_MEM_CHECK(TAG, client->connection_info.query, {
-            _clear_connection_info(client);
-            return ESP_ERR_NO_MEM;
-        });
+    if (config->cb_query_stream_reader) {
+        if (NULL != config->query) {
+            ESP_LOGE(TAG, "Cannot use cb_query_stream_reader with query, query should be NULL");
+            return ESP_ERR_INVALID_ARG;
+        }
+        client->connection_info.query = NULL;
+        client->connection_info.cb_query_stream_reader = config->cb_query_stream_reader;
+        client->connection_info.cb_query_stream_reader_param = config->cb_query_stream_reader_param;
+    } else {
+        if (config->query) {
+            client->connection_info.query = strdup(config->query);
+            HTTP_MEM_CHECK(TAG, client->connection_info.query, {
+                _clear_connection_info(client);
+                return ESP_ERR_NO_MEM;
+            });
+        }
     }
 
     if (config->username) {
@@ -499,9 +536,13 @@ static esp_err_t _set_config(esp_http_client_handle_t client, const esp_http_cli
 
 static esp_err_t _clear_connection_info(esp_http_client_handle_t client)
 {
-    free(client->connection_info.path);
+    if (client->connection_info.path) {
+        free(client->connection_info.path);
+    }
     free(client->connection_info.host);
-    free(client->connection_info.query);
+    if (client->connection_info.query) {
+        free(client->connection_info.query);
+    }
     free(client->connection_info.username);
     if (client->connection_info.password) {
         memset(client->connection_info.password, 0, strlen(client->connection_info.password));
@@ -1403,46 +1444,31 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
     return ESP_OK;
 }
 
-static bool esp_http_client_generate_request_token(const char *const p_token,
-                                                   size_t *const p_token_offset,
-                                                   char *const p_buf,
-                                                   const size_t buf_len,
-                                                   size_t *const p_buf_offset) {
-    const size_t token_len = strlen(p_token);
-    const size_t rem_token_len = token_len - *p_token_offset;
-    size_t rem_buf_len = buf_len - *p_buf_offset;
-    if (0 == rem_buf_len) {
+static bool gen_req_token_from_str(esp_http_client_handle_t const client, const char *const p_str,
+                                   size_t *const p_buf_ofs, bool *const p_is_buf_full) {
+    http_stream_reader_string_ctx_t* const p_ctx = &client->stream_reader_ctx.ctx_str.context;
+    if (NULL == p_ctx->p_str) {
+        http_stream_reader_string_open(p_ctx, p_str, &client->stream_reader_last_call);
+    }
+    const bool res = http_stream_reader_wrap_read_string(p_ctx,
+                                   client->request->buffer->data,
+                                   client->buffer_size_tx,
+                                   p_buf_ofs,
+                                   p_is_buf_full);
+    if (!res) {
+        http_stream_reader_string_close(p_ctx);
         return false;
     }
-    if (1 == rem_buf_len) {
-        p_buf[*p_buf_offset] = '\0';
-        return false;
+    if (!*p_is_buf_full) {
+        http_stream_reader_string_close(p_ctx);
     }
-    rem_buf_len -= 1; // Reserver space for '\0'
-    const size_t num_bytes_to_copy = rem_token_len < rem_buf_len ? rem_token_len : rem_buf_len;
-    memcpy(&p_buf[*p_buf_offset], &p_token[*p_token_offset], num_bytes_to_copy);
-    *p_buf_offset += num_bytes_to_copy;
-    *p_token_offset += num_bytes_to_copy;
-    p_buf[*p_buf_offset] = '\0';
-    if (*p_token_offset == token_len) {
-        *p_token_offset = 0;
-        return true;
-    }
-    return false;
+    return true;
 }
 
-static bool gen_req_token(esp_http_client_handle_t const client, const char *const p_token, size_t* const p_buf_ofs) {
-    return esp_http_client_generate_request_token(p_token,
-                                                  &client->req_send_state.data_offset,
-                                                  client->request->buffer->data,
-                                                  client->buffer_size_tx,
-                                                  p_buf_ofs);
-}
-
-static size_t esp_http_client_generate_request(esp_http_client_handle_t const client, const ssize_t write_len) {
-    bool flag_exit = false;
+static ssize_t esp_http_client_generate_request(esp_http_client_handle_t const client, const ssize_t write_len) {
+    bool flag_buf_full = false;
     size_t buf_ofs = 0;
-    while (!flag_exit) {
+    while (!flag_buf_full) {
         switch (client->req_send_state.stage) {
             case REQ_SEND_STAGE_INIT:
                 if (write_len >= 0) {
@@ -1451,79 +1477,144 @@ static size_t esp_http_client_generate_request(esp_http_client_handle_t const cl
                     esp_http_client_set_header(client, "Transfer-Encoding", "chunked");
                     esp_http_client_set_method(client, HTTP_METHOD_POST);
                 }
-                client->req_send_state.data_offset = 0;
                 client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD;
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD:
-                if (!gen_req_token(client, HTTP_METHOD_MAPPING[client->connection_info.method], &buf_ofs)) {
-                    flag_exit = true;
-                } else {
+                if (!gen_req_token_from_str(client, HTTP_METHOD_MAPPING[client->connection_info.method], &buf_ofs, &flag_buf_full)) {
+                    return -1;
+                }
+                if (!flag_buf_full) {
                     client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD_SEPARATOR;
                 }
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD_SEPARATOR:
-                if (!gen_req_token(client, " ", &buf_ofs)) {
-                    flag_exit = true;
-                } else {
+                if (!gen_req_token_from_str(client, " ", &buf_ofs, &flag_buf_full)) {
+                    return -1;
+                }
+                if (!flag_buf_full) {
                     client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH;
+                    if (NULL != client->connection_info.cb_path_stream_reader) {
+                        if (!http_stream_reader_wrap_open(client->connection_info.cb_path_stream_reader,
+                                                          &client->stream_reader_ctx,
+                                                          client->connection_info.cb_path_stream_reader_param,
+                                                          &client->stream_reader_last_call)) {
+                            return -1;
+                        }
+                    }
                 }
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH:
-                if (!gen_req_token(client, client->connection_info.path, &buf_ofs)) {
-                    flag_exit = true;
+                if (NULL != client->connection_info.cb_path_stream_reader) {
+                    const bool res = http_stream_reader_wrap_read(client->connection_info.cb_path_stream_reader,
+                                                                  &client->stream_reader_ctx,
+                                                                  client->request->buffer->data,
+                                                                  client->buffer_size_tx,
+                                                                  &buf_ofs,
+                                                                  &flag_buf_full);
+                    if (!res) {
+                        http_stream_reader_wrap_close(client->connection_info.cb_path_stream_reader,
+                                                      &client->stream_reader_ctx);
+                        return -1;
+                    }
+                    if (!flag_buf_full) {
+                        http_stream_reader_wrap_close(client->connection_info.cb_path_stream_reader,
+                                                      &client->stream_reader_ctx);
+                    }
                 } else {
+                    if (!gen_req_token_from_str(client, client->connection_info.path, &buf_ofs, &flag_buf_full)) {
+                        return -1;
+                    }
+                }
+                if (!flag_buf_full) {
                     client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY_SEPARATOR;
                 }
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY_SEPARATOR:
-                if (client->connection_info.query && (!gen_req_token(client, "?", &buf_ofs))) {
-                    flag_exit = true;
-                } else {
+                if ((client->connection_info.query || (NULL != client->connection_info.cb_query_stream_reader)) &&
+                    (!gen_req_token_from_str(client, "?", &buf_ofs, &flag_buf_full))) {
+                    return -1;
+                }
+                if (!flag_buf_full) {
                     client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY;
+                    if (NULL != client->connection_info.cb_query_stream_reader) {
+                        if (!http_stream_reader_wrap_open(client->connection_info.cb_query_stream_reader,
+                                                          &client->stream_reader_ctx,
+                                                          client->connection_info.cb_query_stream_reader_param,
+                                                          &client->stream_reader_last_call)) {
+                            return -1;
+                        }
+                    }
                 }
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY:
-                if (client->connection_info.query && (!gen_req_token(client, client->connection_info.query, &buf_ofs))) {
-                    flag_exit = true;
+                if (NULL != client->connection_info.cb_query_stream_reader) {
+                    const bool res = http_stream_reader_wrap_read(client->connection_info.cb_query_stream_reader,
+                                                                  &client->stream_reader_ctx,
+                                                                  client->request->buffer->data,
+                                                                  client->buffer_size_tx,
+                                                                  &buf_ofs,
+                                                                  &flag_buf_full);
+                    if (!res) {
+                        http_stream_reader_wrap_close(client->connection_info.cb_path_stream_reader,
+                                                      &client->stream_reader_ctx);
+                        return -1;
+                    }
+                    if (!flag_buf_full) {
+                        http_stream_reader_wrap_close(client->connection_info.cb_path_stream_reader,
+                                                      &client->stream_reader_ctx);
+                    }
                 } else {
+                    if (client->connection_info.query &&
+                        (!gen_req_token_from_str(client, client->connection_info.query, &buf_ofs, &flag_buf_full))) {
+                        return -1;
+                    }
+                }
+                if (!flag_buf_full) {
                     client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PROTOCOL_SEPARATOR;
                 }
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PROTOCOL_SEPARATOR:
-                if (!gen_req_token(client, " ", &buf_ofs)) {
-                    flag_exit = true;
-                } else {
+                if (!gen_req_token_from_str(client, " ", &buf_ofs, &flag_buf_full)) {
+                    return -1;
+                }
+                if (!flag_buf_full) {
                     client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PROTOCOL;
                 }
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PROTOCOL:
-                if (!gen_req_token(client, DEFAULT_HTTP_PROTOCOL, &buf_ofs)) {
-                    flag_exit = true;
-                } else {
+                if (!gen_req_token_from_str(client, DEFAULT_HTTP_PROTOCOL, &buf_ofs, &flag_buf_full)) {
+                    return -1;
+                }
+                if (!flag_buf_full) {
                     client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_EOL;
                 }
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_EOL:
-                if (!gen_req_token(client, "\r\n", &buf_ofs)) {
-                    flag_exit = true;
-                } else {
+                if (!gen_req_token_from_str(client, "\r\n", &buf_ofs, &flag_buf_full)) {
+                    return -1;
+                }
+                if (!flag_buf_full) {
                     client->req_send_state.stage = REQ_SEND_STAGE_GEN_HTTP_HEADERS;
                     client->req_send_state.header_gen_state.stage = HTTP_HEADER_GENERATE_STAGE_INIT;
                 }
                 break;
             case REQ_SEND_STAGE_GEN_HTTP_HEADERS:
-                buf_ofs += http_header_generate_string(
-                    client->request->headers,
-                    &client->req_send_state.header_gen_state,
-                    &client->request->buffer->data[buf_ofs],
-                    client->buffer_size_tx - buf_ofs);
+                if (!http_header_generate_string(&client->stream_reader_ctx,
+                                                &client->stream_reader_last_call,
+                                                 client->request->headers,
+                                                 &client->req_send_state.header_gen_state,
+                                                 &client->request->buffer->data[0],
+                                                 client->buffer_size_tx,
+                                                 &buf_ofs)) {
+                    return -1;
+                }
                 if (client->req_send_state.header_gen_state.stage == HTTP_HEADER_GENERATE_STAGE_FINISHED) {
                     client->req_send_state.stage = REQ_SEND_STAGE_FINISHED;
                 }
-                flag_exit = true;
+                flag_buf_full = true;
                 break;
             case REQ_SEND_STAGE_FINISHED:
-                flag_exit = true;
+                flag_buf_full = true;
                 break;
         }
     }
@@ -1551,7 +1642,12 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t const cli
     }
 
     while (client->req_send_state.stage != REQ_SEND_STAGE_FINISHED) {
-        const size_t wlen = esp_http_client_generate_request(client, write_len);
+        const ssize_t wlen = esp_http_client_generate_request(client, write_len);
+        if (wlen < 0) {
+            ESP_LOGE(TAG, "Error while generating HTTP request");
+            esp_http_client_close(client);
+            return ESP_ERR_HTTP_WRITE_DATA;
+        }
 
         client->data_write_left = wlen;
         client->data_written_index = 0;
@@ -1685,6 +1781,13 @@ esp_err_t esp_http_client_close(esp_http_client_handle_t client)
     if (client->state >= HTTP_STATE_INIT) {
         http_dispatch_event(client, HTTP_EVENT_DISCONNECTED, esp_transport_get_error_handle(client->transport), 0);
         client->state = HTTP_STATE_INIT;
+        if (NULL != client->stream_reader_last_call.cb_stream_reader) {
+            client->stream_reader_last_call.cb_stream_reader(HTTP_STREAM_READER_CMD_CLOSE,
+                                                             (http_stream_reader_arg_t){
+                                                                 .close = {},
+                                                             },
+                                                             client->stream_reader_last_call.p_ctx);
+        }
         return esp_transport_close(client->transport);
     }
     return ESP_OK;
