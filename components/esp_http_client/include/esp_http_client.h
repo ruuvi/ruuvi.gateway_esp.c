@@ -123,6 +123,8 @@ typedef struct {
     const char                  *query;              /*!< HTTP query */
     http_stream_reader_t        cb_query_stream_reader; /*!< Callback function to read the HTTP query */
     void                        *cb_query_stream_reader_param; /*!< User defined parameter for cb_query_stream_reader */
+    http_stream_reader_t        cb_extra_headers_stream_reader; /*!< Callback function to read the HTTP headers */
+    void                        *cb_extra_headers_stream_reader_param; /*!< User defined parameter for cb_headers_stream_reader */
     const char                  *cert_pem;           /*!< SSL server certification, PEM format as string, if the client requires to verify server */
     const char                  *client_cert_pem;    /*!< SSL client certification, PEM format as string, if the server requires to verify client */
     const char                  *client_key_pem;     /*!< SSL client key, PEM format as string, if the server requires to verify client */
@@ -270,21 +272,22 @@ int esp_http_client_get_post_field(esp_http_client_handle_t client, const char *
  */
 esp_err_t esp_http_client_set_header(esp_http_client_handle_t client, const char *key, const char *value);
 
+esp_err_t esp_http_client_set_header_from_stream(esp_http_client_handle_t client, const char *key,
+                                                 http_stream_reader_t cb_stream_reader, void *const p_param);
+
 /**
- * @brief      Get http request header.
- *             The value parameter will be set to NULL if there is no header which is same as
- *             the key specified, otherwise the address of header value will be assigned to value parameter.
- *             This function must be called after `esp_http_client_init`.
+ * @brief Check if a specific header exists in the HTTP client's request headers.
  *
- * @param[in]  client  The esp_http_client handle
- * @param[in]  key     The header key
- * @param[out] value   The header value
+ * This function checks whether a header with the given key is present in the HTTP client's request header list.
+ *
+ * @param[in] client  The HTTP client handle.
+ * @param[in] key     The header key to search for.
  *
  * @return
- *     - ESP_OK
- *     - ESP_FAIL
+ *     - true if the header exists.
+ *     - false if the header does not exist or on error.
  */
-esp_err_t esp_http_client_get_header(esp_http_client_handle_t client, const char *key, char **value);
+bool esp_http_client_is_header_exist(esp_http_client_handle_t client, const char *key);
 
 /**
  * @brief      Get http request username.

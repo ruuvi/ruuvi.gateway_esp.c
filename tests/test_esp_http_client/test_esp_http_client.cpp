@@ -109,6 +109,8 @@ public:
     std::queue<std::shared_ptr<HttpEvent>> m_http_event_queue;
     string                                 m_custom_stream_reader_path;
     string                                 m_custom_stream_reader_query;
+    string                                 m_custom_stream_reader_header_val;
+    string                                 m_custom_stream_reader_headers;
 
     string
     addHttpReqHeader(
@@ -139,6 +141,8 @@ TestEspHttpClient::TestEspHttpClient()
     , m_http_event_queue {}
     , m_custom_stream_reader_path {}
     , m_custom_stream_reader_query {}
+    , m_custom_stream_reader_header_val {}
+    , m_custom_stream_reader_headers {}
     , Test()
 {
     std::srand(0);
@@ -376,6 +380,14 @@ cb_custom_stream_reader(const http_stream_reader_cmd_e cmd, const http_stream_re
             else if (strcmp(static_cast<const char*>(arg.open.p_param), "query") == 0)
             {
                 p_context->p_str = g_pTestClass->m_custom_stream_reader_query.c_str();
+            }
+            else if (strcmp(static_cast<const char*>(arg.open.p_param), "header") == 0)
+            {
+                p_context->p_str = g_pTestClass->m_custom_stream_reader_header_val.c_str();
+            }
+            else if (strcmp(static_cast<const char*>(arg.open.p_param), "headers") == 0)
+            {
+                p_context->p_str = g_pTestClass->m_custom_stream_reader_headers.c_str();
             }
             else
             {
@@ -657,6 +669,54 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path) // NOLINT
         "Content-Length: 0\r\n"
         "\r\n",
         req_header);
+    TEST_TCP_WRITE_RECORD(req_header);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+}
+
+TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_with_extra_header_fields_from_stream_reader) // NOLINT
+{
+    this->m_custom_stream_reader_header_val = "Value0";
+    this->m_custom_stream_reader_headers    = "X-Header1: Value1\r\nX-Header2: Value2\r\n";
+
+    esp_http_client_config_t config             = {};
+    config.event_handler                        = &event_handler;
+    config.host                                 = "myhost.com";
+    config.path                                 = "/api?cmd1=qwe&cmd2=asd#zzz";
+    config.cb_extra_headers_stream_reader       = &cb_custom_stream_reader;
+    config.cb_extra_headers_stream_reader_param = const_cast<void*>(static_cast<const void*>("headers"));
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    esp_http_client_set_header_from_stream(
+        client,
+        "X-Header0",
+        &cb_custom_stream_reader,
+        const_cast<void*>(static_cast<const void*>("header")));
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+    const string req_header
+        = "GET /api?cmd1=qwe&cmd2=asd#zzz HTTP/1.1\r\n"
+          "User-Agent: Ruuvi Gateway HTTP Client/1.0\r\n"
+          "Host: myhost.com\r\n"
+          "X-Header0: Value0\r\n"
+          "Content-Length: 0\r\n"
+          "X-Header1: Value1\r\n"
+          "X-Header2: Value2\r\n"
+          "\r\n";
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
     TEST_TCP_WRITE_RECORD(req_header);
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
@@ -1412,8 +1472,7 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_using_custom_re
     const string req_header4
         = "teway HTTP Client/1.0"
           "\r\n"
-          "Host: a31415926535897-"
-          "ats.iot.us-west-2.amazonaws.com"
+          "Host: a31415926535897-ats.iot.us-west-2.amazonaws.com"
           "\r\n"
           "Content-Length: 0"
           "\r\n"
@@ -1476,6 +1535,182 @@ TEST_F(TestEspHttpClient, test_http_get_split_http_method) // NOLINT
     {
         const string req_header_part = req_header.substr(i, 1);
         TEST_TCP_WRITE_RECORD(req_header_part);
+    }
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+}
+
+TEST_F(
+    TestEspHttpClient,
+    test_http_get_by_host_with_long_path_and_long_extra_header_fields_from_stream_reader) // NOLINT
+{
+    this->m_custom_stream_reader_path
+        = "/topics/gateway/environment/data/sensors/v1/room101/very_long_path"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    this->m_custom_stream_reader_query
+        = "X-Amz-Algorithm=AWS4-HMAC-SHA256&"
+          "X-Amz-Credential=ASIAUTORANDOMID12345%2F20260419%2Fus-west-2%2Fiotdata%2Faws4_request&"
+          "X-Amz-Date=20260419T010434Z&"
+          "X-Amz-Expires=3600&"
+          "X-Amz-SignedHeaders=content-type%3Bhost%3Bx-amz-client-id%3Bx-amz-date%3Bx-amz-meta-gateway-id%3Bx-amz-meta-"
+          "location&"
+          "X-Amz-Signature=b5e6f8d9a0c1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7"
+          "3pTLuMCYEeLAVt3g+xXXVQuPcc3w9i9HOb0OZxC6rP684ZWOClhU34evfC1Gm8dRXDV0m1vYJssN"
+          "H/7aw1bdtGECWvP9Omk8EQqouumRalKNpQ0YFat0fDE3oEa/vsCnrXZ2QUu2KkUVuCWoJf93etsmsGEH"
+          "pV0LbusqY0328pdXUlGHqZ6irrTAYj20UOVGocT8A+HsGj285dYAcyP8YAuc133VKItFlzlmKz2gUJ31"
+          "1EeDL11j57ZvG8B0gbuUgDhwaMnw5TMNvfIzUoEnhdruGFyq+LDk6zvw5sOcq3+w3FZDfz3UrmJ8wVDR"
+          "6wn4gxBGoBB79fz8u72W7RP0lW3bDuhkS9UP0t5gPbeWnkPS5/P4q5gzXMOD1bX2rCMCKgmqzl+mArl3"
+          "T+79h68hLDo93LgzvFIKWDxmJdUCzGAqDL7uXyJrS8wlp7Mf9n5NZHfEZaFk5I/TxgJHHd6JML7KgTen"
+          "rANPiikpXEzK/bBvPso9z0hJY6vfK62KviwJobnhkbgrztcjQcz+EwhhFROTTEc72J5l5iuedI7pnIg6";
+    this->m_custom_stream_reader_header_val
+        = "O/ASxxgjZf6HaiAF3nVQGukgaNG9AXwqUCAYK4DQHXNPlrzEhbCQGonRKrOnA47lw7RyltYelh6HlcVx"
+          "B6paiDk0ob4UN9JoCC3odhsJfY0ZuPAvbkNW8f+HAI3ukaedDOQAt5ygz2AJ21olR+mha0aVx9CdxEWl"
+          "5H5Cs0gNaBRwc+aMb3ztjNKQZmsmpJo8X4emQ26NGeOqv270hJptIIePvJGWlvq2hqLadWOtRTtcmTn+"
+          "aw29PZekG8awBgWeNhu6Wo4fQphi9ZXfnVdeqAjzbMuDXMujmT2IPrZfTzbBA99W1qFM0TGJ6NQ5uFPQ"
+          "j4xHC6YqxLFWcp3PPMWp46IUmhO+d9PNP+3Ds3tP0KeVX27MuKymi5s34zEgmphF7oHHV3ddPjmol/eG"
+          "deCxAxyqG384IFRUdSxG7/ys92xWZ6x2ACLxxmh2UwXN3WHc1tDdp4hgnaEt76T+4hMaYIJS5qPtRlOy"
+          "3G4alEa71aH27mxC+NGmvczmyZPwhDRQPNcqtLxUDyrzfuwJRD7O5oJPC6o6lOg5fc9QBNOIuK89OYeG";
+    this->m_custom_stream_reader_headers
+        = "X-Header1: "
+          "mfVNuugx3aL6Ep550Uq5tqrx4NvNLKvxN1WSUIipcijb3ulRYa0b89f8LYItlflqG82oPl4xC1Ijre6w"
+          "bvFprGTNFSzgWaT/JirudGDgE2MGkHFwsQI2dSPQyAfSlN0JHDRrHeq0rdz0/rtOg1dJ+yZp2yuf24pH"
+          "3LamX1/dCpyGGxyuDcb4d3G7lRwPmuCHvzLJJlNDvH7+Svxxo4AQw3GNWeH3Tc9jk7NJducnHdFVvRDl"
+          "bSUVI6UZ8fkNfEDnoboJnsUQbyV2Oqp8VPYWC6RTVvQJsagQj3avbMsFBFv0R2av6Nxwkus2us5X/Zop"
+          "PabVabSYrXvrfbJaZ4GOhlC0yR4U0DJ8nVpgkaK4h1PR6+8gJqtiHJjiCJvCe9ikOearqRg2AbrIX9ye"
+          "lxuVlJU8iQQN/YMKX7l3fRR74WfPjZbufH6geWY2qVQJwAtaRkUfMqIa+hUbT+UHoo4lHyPyH6rbFz9H"
+          "o5BBuSgDxt/O/byFsz60MutgY79qfZF3uyC/iZcACe7HBBv+HN0xXtkSWOWP4RWuslUHqv+fkj5eQZyK"
+          "\r\n"
+          "X-Header2: "
+          "3PB4LOIKbLfhpGApKFhnuk/OfJUDrw09fHEbbFOht0pVkAWF0eLPEmNjfgMz+RiBn5B5d3m/nG5XXhhE"
+          "+5Z7VRuwXukrVrhMSpoxplPVYpl/q+dv5SoEb0OEB/1e7oD8t64v00+itkySZoPMG8xgD5igUd/RVlnf"
+          "YSfH/YwkgO1LFq4lKhbsKnESslLxVj9sR59ayCmRP9ygjbCo7sU1urFSKTLcVtjgKN17GZhSzoOFoc60"
+          "NDEPhXci/ElDMGVdIciABaZ6pxi87Rl4CdlStJFQ+9C6T12h7hvDmq7UWZmhO9UUqepX6TwAR/5UWvmm"
+          "3LamX1/dCpyGGxyuDcb4d3G7lRwPmuCHvzLJJlNDvH7+Svxxo4AQw3GNWeH3Tc9jk7NJducnHdFVvRDl"
+          "bSUVI6UZ8fkNfEDnoboJnsUQbyV2Oqp8VPYWC6RTVvQJsagQj3avbMsFBFv0R2av6Nxwkus2us5X/Zop"
+          "PabVabSYrXvrfbJaZ4GOhlC0yR4U0DJ8nVpgkaK4h1PR6+8gJqtiHJjiCJvCe9ikOearqRg2AbrIX9ye"
+          "wgiMgrsWdKPBbOFF9dIR12xuU8z01dnSd5JSgDUs+ksioBgHqwv2hP2jN/B0"
+          "\r\n";
+
+    esp_http_client_config_t config             = {};
+    config.event_handler                        = &event_handler;
+    config.host                                 = "a31415926535897-ats.iot.us-west-2.amazonaws.com";
+    config.path                                 = nullptr;
+    config.cb_path_stream_reader                = &cb_custom_stream_reader;
+    config.cb_path_stream_reader_param          = const_cast<void*>(static_cast<const void*>("path"));
+    config.query                                = nullptr;
+    config.cb_query_stream_reader               = &cb_custom_stream_reader;
+    config.cb_query_stream_reader_param         = const_cast<void*>(static_cast<const void*>("query"));
+    config.cb_extra_headers_stream_reader       = &cb_custom_stream_reader;
+    config.cb_extra_headers_stream_reader_param = const_cast<void*>(static_cast<const void*>("headers"));
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    esp_http_client_set_header_from_stream(
+        client,
+        "X-Header0",
+        &cb_custom_stream_reader,
+        const_cast<void*>(static_cast<const void*>("header")));
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+    const string req_headers[] = {
+        "GET "
+        "/topics/gateway/environment/data/sensors/v1/room101/very_long_path"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef012345678",
+
+        "9abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "?"
+        "X-Amz-Algorithm=AWS4-HMAC-SHA256&"
+        "X-Amz-Credential=ASIAUTORANDOMID12345%2F20260419%2Fus-west-2%2Fiotdata%2Faws4_request&"
+        "X-Amz-Date=20260419T010434Z&"
+        "X-Amz-Expires=3600&"
+        "X-Amz-SignedHeaders=content-type%3Bhost%3Bx-amz-client-id%3Bx-amz-date%3Bx-amz-meta-gateway-id%3Bx-amz-meta-"
+        "location&"
+        "X-Amz-Signature=b5e6f8d9a0c1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7"
+        "3pTLuMCYEeLAVt3g+xXXVQuPcc3w9i9HOb0OZxC6rP684ZWOClhU34evfC1Gm8dRXDV0m1vYJssN",
+
+        "H/7aw1bdtGECWvP9Omk8EQqouumRalKNpQ0YFat0fDE3oEa/vsCnrXZ2QUu2KkUVuCWoJf93etsmsGEH"
+        "pV0LbusqY0328pdXUlGHqZ6irrTAYj20UOVGocT8A+HsGj285dYAcyP8YAuc133VKItFlzlmKz2gUJ31"
+        "1EeDL11j57ZvG8B0gbuUgDhwaMnw5TMNvfIzUoEnhdruGFyq+LDk6zvw5sOcq3+w3FZDfz3UrmJ8wVDR"
+        "6wn4gxBGoBB79fz8u72W7RP0lW3bDuhkS9UP0t5gPbeWnkPS5/P4q5gzXMOD1bX2rCMCKgmqzl+mArl3"
+        "T+79h68hLDo93LgzvFIKWDxmJdUCzGAqDL7uXyJrS8wlp7Mf9n5NZHfEZaFk5I/TxgJHHd6JML7KgTen"
+        "rANPiikpXEzK/bBvPso9z0hJY6vfK62KviwJobnhkbgrztcjQcz+EwhhFROTTEc72J5l5iuedI7pnIg6"
+        " "
+        "HTTP/1.1"
+        "\r\n"
+        "User-Agent: "
+        "Ruuvi Ga",
+
+        "teway HTTP Client/1.0"
+        "\r\n"
+        "Host: a31415926535897-ats.iot.us-west-2.amazonaws.com"
+        "\r\n"
+        "X-Header0: "
+        "O/ASxxgjZf6HaiAF3nVQGukgaNG9AXwqUCAYK4DQHXNPlrzEhbCQGonRKrOnA47lw7RyltYelh6HlcVx"
+        "B6paiDk0ob4UN9JoCC3odhsJfY0ZuPAvbkNW8f+HAI3ukaedDOQAt5ygz2AJ21olR+mha0aVx9CdxEWl"
+        "5H5Cs0gNaBRwc+aMb3ztjNKQZmsmpJo8X4emQ26NGeOqv270hJptIIePvJGWlvq2hqLadWOtRTtcmTn+"
+        "aw29PZekG8awBgWeNhu6Wo4fQphi9ZXfnVdeqAjzbMuDXMujmT2IPrZfTzbBA99W1qFM0TGJ6NQ5uFPQ"
+        "j4xHC6YqxLFWcp3PPMWp46IUmhO+d9PNP+3Ds3tP0KeVX27MuKymi5s34zEgmphF7oHHV3ddPjmol/eG"
+        "deCxAxyqG384IFRUdSxG7/",
+
+        "ys92xWZ6x2ACLxxmh2UwXN3WHc1tDdp4hgnaEt76T+4hMaYIJS5qPtRlOy"
+        "3G4alEa71aH27mxC+NGmvczmyZPwhDRQPNcqtLxUDyrzfuwJRD7O5oJPC6o6lOg5fc9QBNOIuK89OYeG"
+        "\r\n"
+        "Content-Length: 0\r\n"
+        "X-Header1: "
+        "mfVNuugx3aL6Ep550Uq5tqrx4NvNLKvxN1WSUIipcijb3ulRYa0b89f8LYItlflqG82oPl4xC1Ijre6w"
+        "bvFprGTNFSzgWaT/JirudGDgE2MGkHFwsQI2dSPQyAfSlN0JHDRrHeq0rdz0/rtOg1dJ+yZp2yuf24pH"
+        "3LamX1/dCpyGGxyuDcb4d3G7lRwPmuCHvzLJJlNDvH7+Svxxo4AQw3GNWeH3Tc9jk7NJducnHdFVvRDl"
+        "bSUVI6UZ8fkNfEDnoboJnsUQbyV2Oqp8VPYWC6RTVvQJsagQj3avbMsFBFv0R2av6Nxwkus2us5X/Zop"
+        "PabVabSYrXvrfbJaZ4GOh",
+
+        "lC0yR4U0DJ8nVpgkaK4h1PR6+8gJqtiHJjiCJvCe9ikOearqRg2AbrIX9ye"
+        "lxuVlJU8iQQN/YMKX7l3fRR74WfPjZbufH6geWY2qVQJwAtaRkUfMqIa+hUbT+UHoo4lHyPyH6rbFz9H"
+        "o5BBuSgDxt/O/byFsz60MutgY79qfZF3uyC/iZcACe7HBBv+HN0xXtkSWOWP4RWuslUHqv+fkj5eQZyK"
+        "\r\n"
+        "X-Header2: "
+        "3PB4LOIKbLfhpGApKFhnuk/OfJUDrw09fHEbbFOht0pVkAWF0eLPEmNjfgMz+RiBn5B5d3m/nG5XXhhE"
+        "+5Z7VRuwXukrVrhMSpoxplPVYpl/q+dv5SoEb0OEB/1e7oD8t64v00+itkySZoPMG8xgD5igUd/RVlnf"
+        "YSfH/YwkgO1LFq4lKhbsKnESslLxVj9sR59ayCmRP9ygjbCo7sU1urFSKTLcVtjgKN17GZhSzoOFoc60"
+        "NDEPhXci/ElDMGVdIciABaZ6pxi87Rl4CdlStJF",
+
+        "Q+9C6T12h7hvDmq7UWZmhO9UUqepX6TwAR/5UWvmm"
+        "3LamX1/dCpyGGxyuDcb4d3G7lRwPmuCHvzLJJlNDvH7+Svxxo4AQw3GNWeH3Tc9jk7NJducnHdFVvRDl"
+        "bSUVI6UZ8fkNfEDnoboJnsUQbyV2Oqp8VPYWC6RTVvQJsagQj3avbMsFBFv0R2av6Nxwkus2us5X/Zop"
+        "PabVabSYrXvrfbJaZ4GOhlC0yR4U0DJ8nVpgkaK4h1PR6+8gJqtiHJjiCJvCe9ikOearqRg2AbrIX9ye"
+        "wgiMgrsWdKPBbOFF9dIR12xuU8z01dnSd5JSgDUs+ksioBgHqwv2hP2jN/B0"
+        "\r\n"
+        "\r\n",
+    };
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    for (const string& req_header : req_headers)
+    {
+        TEST_TCP_WRITE_RECORD(req_header);
     }
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 

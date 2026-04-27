@@ -160,6 +160,8 @@ struct esp_http_client {
     void* p_cb_on_post_get_chunk_user_data;
     esp_http_client_stream_reader_ctx_t stream_reader_ctx;
     http_stream_last_call_t stream_reader_last_call;
+    http_stream_reader_t    cb_extra_headers_stream_reader;
+    void                    *cb_extra_headers_stream_reader_param;
 };
 
 typedef struct esp_http_client esp_http_client_t;
@@ -340,9 +342,14 @@ esp_err_t esp_http_client_set_header(esp_http_client_handle_t client, const char
     return http_header_set(client->request->headers, key, value);
 }
 
-esp_err_t esp_http_client_get_header(esp_http_client_handle_t client, const char *key, char **value)
+esp_err_t esp_http_client_set_header_from_stream(esp_http_client_handle_t client, const char *key,
+                                                 http_stream_reader_t cb_stream_reader, void *const p_param)
 {
-    return http_header_get(client->request->headers, key, value);
+    return http_header_set_from_stream(client->request->headers, key, cb_stream_reader, p_param);
+}
+
+bool esp_http_client_is_header_exist(esp_http_client_handle_t client, const char *key) {
+    return http_header_is_exist(client->request->headers, key);
 }
 
 esp_err_t esp_http_client_delete_header(esp_http_client_handle_t client, const char *key)
@@ -420,6 +427,8 @@ static esp_err_t _set_config(esp_http_client_handle_t client, const esp_http_cli
     client->buffer_size_rx = config->buffer_size;
     client->buffer_size_tx = config->buffer_size_tx;
     client->disable_auto_redirect = config->disable_auto_redirect;
+    client->cb_extra_headers_stream_reader = config->cb_extra_headers_stream_reader;
+    client->cb_extra_headers_stream_reader_param = config->cb_extra_headers_stream_reader_param;
 
     if (config->buffer_size == 0) {
         client->buffer_size_rx = DEFAULT_HTTP_BUF_SIZE;
@@ -1599,19 +1608,22 @@ static ssize_t esp_http_client_generate_request(esp_http_client_handle_t const c
                 }
                 break;
             case REQ_SEND_STAGE_GEN_HTTP_HEADERS:
-                if (!http_header_generate_string(&client->stream_reader_ctx,
+                if (!http_header_generate_string_with_extra(&client->stream_reader_ctx,
                                                 &client->stream_reader_last_call,
+                                                client->cb_extra_headers_stream_reader,
+                                                client->cb_extra_headers_stream_reader_param,
                                                  client->request->headers,
                                                  &client->req_send_state.header_gen_state,
-                                                 &client->request->buffer->data[0],
+                                                 client->request->buffer->data,
                                                  client->buffer_size_tx,
                                                  &buf_ofs)) {
                     return -1;
                 }
                 if (client->req_send_state.header_gen_state.stage == HTTP_HEADER_GENERATE_STAGE_FINISHED) {
                     client->req_send_state.stage = REQ_SEND_STAGE_FINISHED;
+                } else {
+                    flag_buf_full = true;
                 }
-                flag_buf_full = true;
                 break;
             case REQ_SEND_STAGE_FINISHED:
                 flag_buf_full = true;
@@ -1800,11 +1812,7 @@ esp_err_t esp_http_client_set_post_field(esp_http_client_handle_t client, const 
     client->post_len = len;
     ESP_LOGD(TAG, "set post file length = %d", len);
     if (client->post_data || client->cb_on_post_get_chunk) {
-        char *value = NULL;
-        if ((err = esp_http_client_get_header(client, "Content-Type", &value)) != ESP_OK) {
-            return err;
-        }
-        if (value == NULL) {
+        if (!esp_http_client_is_header_exist(client, "Content-Type")) {
             err = esp_http_client_set_header(client, "Content-Type", "application/x-www-form-urlencoded");
         }
     } else {
