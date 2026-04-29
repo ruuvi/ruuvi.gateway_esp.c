@@ -127,7 +127,7 @@ char *http_auth_digest(const char *username, const char *password, esp_http_auth
         }
     }
     asprintf(&auth_str, "Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", algorithm=\"MD5\", "
-             "response=\"%s\", qop=%s, nc=%08x, cnonce=\"%016llx\"",
+             "response=\"%s\", qop=%s, nc=%08x, cnonce=\"%016" PRIu64 "\"",
              username, auth_data->realm, auth_data->nonce, auth_data->uri, digest, auth_data->qop, auth_data->nc, auth_data->cnonce);
     if (auth_data->opaque) {
         asprintf(&temp_auth_str, "%s, opaque=\"%s\"", auth_str, auth_data->opaque);
@@ -143,7 +143,7 @@ _digest_exit:
 
 char *http_auth_basic(const char *username, const char *password)
 {
-    int out;
+    size_t olen = 0;
     char *user_info = NULL;
     char *digest = NULL;
     size_t n = 0;
@@ -153,7 +153,7 @@ char *http_auth_basic(const char *username, const char *password)
     digest = calloc(1, 6 + n + 1);
     HTTP_MEM_CHECK(TAG, digest, goto _basic_exit);
     strcpy(digest, "Basic ");
-    esp_crypto_base64_encode((unsigned char *)digest + 6, n, (size_t *)&out, (const unsigned char *)user_info, strlen(user_info));
+    esp_crypto_base64_encode((unsigned char *)digest + 6, n, &olen, (const unsigned char *)user_info, strlen(user_info));
 _basic_exit:
     free(user_info);
     return digest;
