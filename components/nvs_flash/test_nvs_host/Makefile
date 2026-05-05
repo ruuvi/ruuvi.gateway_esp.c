@@ -105,6 +105,7 @@ clean: clean-coverage
 	rm -f ../nvs_partition_generator/partition_decrypted.bin
 	rm -f ../nvs_partition_generator/Test-1-partition-encrypted.bin
 	rm -f ../nvs_partition_generator/Test-1-partition.bin
+	rm -rf mfg_host_test
 	rm -f ../../../tools/mass_mfg/samples/sample_values_multipage_blob_created.csv
 	rm -f ../../../tools/mass_mfg/samples/sample_values_singlepage_blob_created.csv
 

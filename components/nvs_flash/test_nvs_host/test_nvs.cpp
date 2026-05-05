@@ -3109,10 +3109,10 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", "bash",
                     "-c",
-                    "rm -rf $IDF_PATH/tools/mass_mfg/host_test && \
+                    "rm -rf mfg_host_test && \
                     cp -rf $IDF_PATH/tools/mass_mfg/testdata mfg_testdata && \
                     cp -rf ../nvs_partition_generator/testdata . && \
-                    mkdir -p $IDF_PATH/tools/mass_mfg/host_test", NULL));
+                    mkdir -p mfg_host_test", NULL));
     } else {
         CHECK(childpid > 0);
         waitpid(childpid, &status, 0);
@@ -3128,7 +3128,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                         "Test",
                         "0x3000",
                         "--outdir",
-                        idf_join("tools/mass_mfg/host_test").c_str(),
+                        "mfg_host_test",
                         "--version",
                         "1",NULL));
 
@@ -3142,7 +3142,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                 exit(execlp("python", "python",
                             "../nvs_partition_generator/nvs_partition_gen.py",
                             "generate",
-                            idf_join("tools/mass_mfg/host_test/csv/Test-1.csv").c_str(),
+                            "mfg_host_test/csv/Test-1.csv",
                             "../nvs_partition_generator/Test-1-partition.bin",
                             "0x3000",
                             "--version",
@@ -3159,7 +3159,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
 
     }
 
-    SpiFlashEmulator emu1(idf_join("tools/mass_mfg/host_test/bin/Test-1.bin").c_str());
+    SpiFlashEmulator emu1("mfg_host_test/bin/Test-1.bin");
     check_nvs_part_gen_args("test", 3, "mfg_testdata/sample_singlepage_blob.bin", false, NULL);
 
     SpiFlashEmulator emu2("../nvs_partition_generator/Test-1-partition.bin");
@@ -3170,7 +3170,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf $IDF_PATH/tools/mass_mfg/host_test | \
+                    "rm -rf mfg_host_test | \
                     rm -rf mfg_testdata | \
                     rm -rf testdata",NULL));
     } else {
@@ -3190,10 +3190,10 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf $IDF_PATH/tools/mass_mfg/host_test | \
+                    "rm -rf mfg_host_test | \
                     cp -rf $IDF_PATH/tools/mass_mfg/testdata mfg_testdata | \
                     cp -rf ../nvs_partition_generator/testdata . | \
-                    mkdir -p $IDF_PATH/tools/mass_mfg/host_test",NULL));
+                    mkdir -p mfg_host_test",NULL));
     } else {
         CHECK(childpid > 0);
         waitpid(childpid, &status, 0);
@@ -3209,7 +3209,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                         "Test",
                         "0x4000",
                         "--outdir",
-                        idf_join("tools/mass_mfg/host_test").c_str(),
+                        "mfg_host_test",
                         "--version",
                         "2",NULL));
 
@@ -3223,7 +3223,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                 exit(execlp("python", "python",
                             "../nvs_partition_generator/nvs_partition_gen.py",
                             "generate",
-                            idf_join("tools/mass_mfg/host_test/csv/Test-1.csv").c_str(),
+                            "mfg_host_test/csv/Test-1.csv",
                             "../nvs_partition_generator/Test-1-partition.bin",
                             "0x4000",
                             "--version",
@@ -3240,7 +3240,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
 
     }
 
-    SpiFlashEmulator emu1(idf_join("tools/mass_mfg/host_test/bin/Test-1.bin").c_str());
+    SpiFlashEmulator emu1("mfg_host_test/bin/Test-1.bin");
     check_nvs_part_gen_args("test", 4, "mfg_testdata/sample_multipage_blob.bin", false, NULL);
 
     SpiFlashEmulator emu2("../nvs_partition_generator/Test-1-partition.bin");
@@ -3250,7 +3250,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf $IDF_PATH/tools/mass_mfg/host_test | \
+                    "rm -rf mfg_host_test | \
                     rm -rf mfg_testdata | \
                     rm -rf testdata",NULL));
     } else {
@@ -3678,10 +3678,10 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf $IDF_PATH/tools/mass_mfg/host_test | \
+                    "rm -rf mfg_host_test | \
                     cp -rf $IDF_PATH/tools/mass_mfg/testdata mfg_testdata | \
                     cp -rf ../nvs_partition_generator/testdata . | \
-                    mkdir -p $IDF_PATH/tools/mass_mfg/host_test",NULL));
+                    mkdir -p mfg_host_test",NULL));
     } else {
         CHECK(childpid > 0);
         waitpid(childpid, &status, 0);
@@ -3698,7 +3698,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                         "Test",
                         "0x4000",
                         "--outdir",
-                        idf_join("tools/mass_mfg/host_test").c_str(),
+                        "mfg_host_test",
                         "--version",
                         "2",
                         "--inputkey",
@@ -3714,7 +3714,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                 exit(execlp("python", "python",
                             "../nvs_partition_generator/nvs_partition_gen.py",
                             "encrypt",
-                            idf_join("tools/mass_mfg/host_test/csv/Test-1.csv").c_str(),
+                            "mfg_host_test/csv/Test-1.csv",
                             "../nvs_partition_generator/Test-1-partition-encrypted.bin",
                             "0x4000",
                             "--version",
@@ -3733,7 +3733,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
 
     }
 
-    SpiFlashEmulator emu1(idf_join("tools/mass_mfg/host_test/bin/Test-1.bin").c_str());
+    SpiFlashEmulator emu1("mfg_host_test/bin/Test-1.bin");
 
     nvs_sec_cfg_t cfg;
     for(int count = 0; count < NVS_KEY_SIZE; count++) {
@@ -3752,7 +3752,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf $IDF_PATH/tools/mass_mfg/host_test | \
+                    "rm -rf mfg_host_test | \
                     rm -rf mfg_testdata | \
                     rm -rf testdata",NULL));
     } else {
@@ -3772,10 +3772,10 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf $IDF_PATH/tools/mass_mfg/host_test | \
+                    "rm -rf mfg_host_test | \
                     cp -rf $IDF_PATH/tools/mass_mfg/testdata mfg_testdata | \
                     cp -rf ../nvs_partition_generator/testdata . | \
-                    mkdir -p $IDF_PATH/tools/mass_mfg/host_test",NULL));
+                    mkdir -p mfg_host_test",NULL));
     } else {
         CHECK(childpid > 0);
         waitpid(childpid, &status, 0);
@@ -3787,7 +3787,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                         mfg_gen_py.c_str(),
                         "generate-key",
                         "--outdir",
-                        idf_join("tools/mass_mfg/host_test").c_str(),
+                        "mfg_host_test",
                         "--keyfile",
                         "encr_keys_host_test.bin",NULL));
 
@@ -3806,11 +3806,11 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                             "Test",
                             "0x4000",
                             "--outdir",
-                            idf_join("tools/mass_mfg/host_test").c_str(),
+                            "mfg_host_test",
                             "--version",
                             "2",
                             "--inputkey",
-                            idf_join("tools/mass_mfg/host_test/keys/encr_keys_host_test.bin").c_str(),NULL));
+                            "mfg_host_test/keys/encr_keys_host_test.bin",NULL));
 
             } else {
                 CHECK(childpid > 0);
@@ -3822,13 +3822,13 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                     exit(execlp("python", "python",
                                 "../nvs_partition_generator/nvs_partition_gen.py",
                                 "encrypt",
-                                idf_join("tools/mass_mfg/host_test/csv/Test-1.csv").c_str(),
+                                "mfg_host_test/csv/Test-1.csv",
                                 "../nvs_partition_generator/Test-1-partition-encrypted.bin",
                                 "0x4000",
                                 "--version",
                                 "2",
                                 "--inputkey",
-                                idf_join("tools/mass_mfg/host_test/keys/encr_keys_host_test.bin").c_str(),NULL));
+                                "mfg_host_test/keys/encr_keys_host_test.bin",NULL));
 
                 } else {
                     CHECK(childpid > 0);
@@ -3844,12 +3844,12 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     }
 
 
-    SpiFlashEmulator emu1(idf_join("tools/mass_mfg/host_test/bin/Test-1.bin").c_str());
+    SpiFlashEmulator emu1("mfg_host_test/bin/Test-1.bin");
 
     char buffer[64];
     FILE *fp;
 
-    fp = fopen(idf_join("tools/mass_mfg/host_test/keys/encr_keys_host_test.bin").c_str(),"rb");
+    fp = fopen("mfg_host_test/keys/encr_keys_host_test.bin","rb");
     fread(buffer,sizeof(buffer),1,fp);
 
     fclose(fp);
@@ -3874,7 +3874,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                     "rm -rf keys | \
                     rm -rf mfg_testdata | \
                     rm -rf testdata | \
-                    rm -rf $IDF_PATH/tools/mass_mfg/host_test",NULL));
+                    rm -rf mfg_host_test",NULL));
     } else {
         CHECK(childpid > 0);
         waitpid(childpid, &status, 0);
