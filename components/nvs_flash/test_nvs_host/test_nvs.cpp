@@ -1046,6 +1046,111 @@ TEST_CASE("nvs_get_blob_partial error cases", "[nvs]")
     TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
 }
 
+TEST_CASE("nvs_get_str_partial byte-by-byte on max length string", "[nvs]")
+{
+    SpiFlashEmulator emu(20);
+    emu.randomize(42);
+
+    const uint32_t NVS_FLASH_SECTOR = 0;
+    const uint32_t NVS_FLASH_SECTOR_COUNT = 20;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    // Generate a deterministic 4000-byte string (3999 printable chars + null terminator)
+    const size_t STR_SIZE = 4000;
+    char str_data[STR_SIZE];
+    uint32_t seed = 0xDEADBEEF;
+    for (size_t i = 0; i < STR_SIZE - 1; i++) {
+        seed = seed * 1103515245 + 12345;
+        str_data[i] = (char)(33 + ((seed >> 16) % 94)); // printable ASCII '!' to '~'
+    }
+    str_data[STR_SIZE - 1] = '\0';
+
+    TEST_ESP_OK(nvs_set_str(handle, "bigstr", str_data));
+
+    // Verify stored size (includes null terminator)
+    size_t stored_size;
+    TEST_ESP_OK(nvs_get_str_partial(handle, "bigstr", NULL, &stored_size, 0));
+    CHECK(stored_size == STR_SIZE);
+
+    // Read byte-by-byte from every offset and verify content
+    for (size_t offset = 0; offset < STR_SIZE; offset++) {
+        char byte_buf;
+        size_t len = 1;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "bigstr", &byte_buf, &len, offset));
+        CAPTURE(offset);
+        CHECK(len == 1);
+        CHECK(byte_buf == str_data[offset]);
+    }
+
+    // Also verify that reading from offset == STR_SIZE is rejected
+    char byte_buf;
+    size_t len = 1;
+    TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH,
+                 nvs_get_str_partial(handle, "bigstr", &byte_buf, &len, STR_SIZE));
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
+TEST_CASE("nvs_get_blob_partial byte-by-byte on large blob", "[nvs]")
+{
+    SpiFlashEmulator emu(20);
+    emu.randomize(42);
+
+    const uint32_t NVS_FLASH_SECTOR = 0;
+    const uint32_t NVS_FLASH_SECTOR_COUNT = 20;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    // Generate a deterministic 8192-byte blob
+    const size_t BLOB_SIZE = 8192;
+    uint8_t blob_data[BLOB_SIZE];
+    uint32_t seed = 0xCAFEBABE;
+    for (size_t i = 0; i < BLOB_SIZE; i++) {
+        seed = seed * 1103515245 + 12345;
+        blob_data[i] = (uint8_t)(seed >> 16);
+    }
+
+    TEST_ESP_OK(nvs_set_blob(handle, "bigblob", blob_data, BLOB_SIZE));
+
+    // Verify stored size
+    size_t stored_size;
+    TEST_ESP_OK(nvs_get_blob_partial(handle, "bigblob", NULL, &stored_size, 0));
+    CHECK(stored_size == BLOB_SIZE);
+
+    // Read byte-by-byte from every offset and verify content
+    for (size_t offset = 0; offset < BLOB_SIZE; offset++) {
+        uint8_t byte_buf;
+        size_t len = 1;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "bigblob", &byte_buf, &len, offset));
+        CAPTURE(offset);
+        CHECK(len == 1);
+        CHECK(byte_buf == blob_data[offset]);
+    }
+
+    // Also verify that reading from offset == BLOB_SIZE is rejected
+    uint8_t byte_buf;
+    size_t len = 1;
+    TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH,
+                 nvs_get_blob_partial(handle, "bigblob", &byte_buf, &len, BLOB_SIZE));
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
 TEST_CASE("nvs iterators tests", "[nvs]")
 {
     SpiFlashEmulator emu(5);

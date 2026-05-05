@@ -330,6 +330,8 @@ esp_err_t Page::readItem(uint8_t nsIndex, ItemType datatype, const char* key,
             } else {
                 size_t willCopy = ENTRY_SIZE - leftSkip;
                 willCopy = (left < willCopy)?left:willCopy;
+                const size_t leftToCopy = dataSize - bytesCopied;
+                willCopy = (leftToCopy < willCopy)?leftToCopy:willCopy;
                 memcpy(dst, ditem.rawData + leftSkip, willCopy);
                 srcOffset += leftSkip + willCopy;
                 left -= leftSkip + willCopy;
