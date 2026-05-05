@@ -58,9 +58,10 @@ jobs:
       - name: Run tests
         run: |
           source "$HOME/esp/esp-idf/export.sh"
+          printenv | grep IDF
           python --version
           which python
-          printenv | grep IDF
+          python -m pip install jsonschema
           cd components/nvs_flash/test_nvs_host
           make -j $(nproc)
           ./test_nvs -d yes exclude:[long]
