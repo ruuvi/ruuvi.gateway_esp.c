@@ -36,7 +36,19 @@ else
 COMPILER := gcc
 endif
 
-CPPFLAGS += -I../include -I../src -I./ -I../../esp_common/include -I../../esp32/include -I ../../mbedtls/mbedtls/include -I ../../spi_flash/include -I ../../soc/include -I ../../xtensa/include -I ../../../tools/catch -fprofile-arcs -ftest-coverage
+CPPFLAGS += -I../include \
+			-I../src \
+			-I./ \
+			-I../../esp_common/include \
+			-I$(IDF_PATH)/components/esp_common/include \
+			-I$(IDF_PATH)/components/esp32/include \
+			-I ../../mbedtls/mbedtls/include \
+			-I $(IDF_PATH)/components/spi_flash/include \
+			-I $(IDF_PATH)/components/soc/include \
+			-I $(IDF_PATH)/components/xtensa/include \
+			-I $(IDF_PATH)/tools/catch \
+			-fprofile-arcs \
+			-ftest-coverage
 CFLAGS += -fprofile-arcs -ftest-coverage
 CXXFLAGS += -std=c++11 -Wall -Werror
 LDFLAGS += -lstdc++ -Wall -fprofile-arcs -ftest-coverage

@@ -1,0 +1,24 @@
+name: Test nvs_flash
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ '*' ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test-nvs_flash:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Run tests
+        run: |
+          cd components/nvs_flash/test_nvs_host
+          make -j $(nproc)
+          ./test_nvs -d yes exclude:[long]
