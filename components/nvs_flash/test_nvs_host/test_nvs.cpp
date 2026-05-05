@@ -762,6 +762,290 @@ TEST_CASE("nvs api tests", "[nvs]")
     TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
 }
 
+TEST_CASE("nvs_get_str_partial basic read", "[nvs]")
+{
+    SpiFlashEmulator emu(10);
+    emu.randomize(100);
+
+    const uint32_t NVS_FLASH_SECTOR = 6;
+    const uint32_t NVS_FLASH_SECTOR_COUNT_MIN = 3;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    const char* str = "Hello, World!";
+    // stored size includes null terminator: 14 bytes
+    const size_t stored_size = strlen(str) + 1;
+    TEST_ESP_OK(nvs_set_str(handle, "key1", str));
+
+    SECTION("query available length from offset 0") {
+        size_t len;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", NULL, &len, 0));
+        CHECK(len == stored_size);
+    }
+
+    SECTION("query available length from middle offset") {
+        size_t len;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", NULL, &len, 7));
+        // "World!\0" = 7 bytes
+        CHECK(len == stored_size - 7);
+    }
+
+    SECTION("read full string from offset 0") {
+        char buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        size_t len = stored_size;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", buf, &len, 0));
+        CHECK(len == stored_size);
+        CHECK(memcmp(buf, str, stored_size) == 0);
+    }
+
+    SECTION("read substring from middle") {
+        char buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        size_t len = 5;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", buf, &len, 7));
+        CHECK(len == 5);
+        CHECK(memcmp(buf, "World", 5) == 0);
+    }
+
+    SECTION("read last byte (null terminator)") {
+        char buf[1];
+        size_t len = 1;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", buf, &len, stored_size - 1));
+        CHECK(len == 1);
+        CHECK(buf[0] == '\0');
+    }
+
+    SECTION("read exactly the remaining bytes from offset") {
+        char buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        // read from offset 5 to end: ", World!\0" = 9 bytes
+        size_t len = stored_size - 5;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", buf, &len, 5));
+        CHECK(len == stored_size - 5);
+        CHECK(memcmp(buf, ", World!\0", 9) == 0);
+    }
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
+TEST_CASE("nvs_get_str_partial error cases", "[nvs]")
+{
+    SpiFlashEmulator emu(10);
+    emu.randomize(100);
+
+    const uint32_t NVS_FLASH_SECTOR = 6;
+    const uint32_t NVS_FLASH_SECTOR_COUNT_MIN = 3;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    const char* str = "Hello, World!";
+    const size_t stored_size = strlen(str) + 1; // 14
+    TEST_ESP_OK(nvs_set_str(handle, "key1", str));
+
+    SECTION("null length pointer returns INVALID_LENGTH") {
+        char buf[64];
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", buf, NULL, 0));
+    }
+
+    SECTION("offset at stored_size returns INVALID_LENGTH") {
+        char buf[64];
+        size_t len = 1;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", buf, &len, stored_size));
+        CHECK(len == 0);
+    }
+
+    SECTION("offset beyond stored_size returns INVALID_LENGTH") {
+        char buf[64];
+        size_t len = 1;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", buf, &len, stored_size + 10));
+        CHECK(len == 0);
+    }
+
+    SECTION("requested length exceeds available bytes") {
+        char buf[64];
+        size_t len = stored_size; // request 14 bytes from offset 1 = only 13 available
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", buf, &len, 1));
+        CHECK(len == stored_size - 1);
+    }
+
+    SECTION("key not found") {
+        char buf[64];
+        size_t len = 5;
+        TEST_ESP_ERR(ESP_ERR_NVS_NOT_FOUND, nvs_get_str_partial(handle, "nokey", buf, &len, 0));
+    }
+
+    SECTION("query length with offset beyond stored size") {
+        size_t len;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", NULL, &len, stored_size + 1));
+        CHECK(len == 0);
+    }
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
+TEST_CASE("nvs_get_blob_partial basic read", "[nvs]")
+{
+    SpiFlashEmulator emu(10);
+    emu.randomize(100);
+
+    const uint32_t NVS_FLASH_SECTOR = 6;
+    const uint32_t NVS_FLASH_SECTOR_COUNT_MIN = 3;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    const uint8_t blob_data[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+                                 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
+    const size_t blob_size = sizeof(blob_data);
+    TEST_ESP_OK(nvs_set_blob(handle, "blob1", blob_data, blob_size));
+
+    SECTION("query available length from offset 0") {
+        size_t len;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", NULL, &len, 0));
+        CHECK(len == blob_size);
+    }
+
+    SECTION("query available length from middle offset") {
+        size_t len;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", NULL, &len, 8));
+        CHECK(len == blob_size - 8);
+    }
+
+    SECTION("read full blob from offset 0") {
+        uint8_t buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        size_t len = blob_size;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", buf, &len, 0));
+        CHECK(len == blob_size);
+        CHECK(memcmp(buf, blob_data, blob_size) == 0);
+    }
+
+    SECTION("read partial blob from middle") {
+        uint8_t buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        size_t len = 4;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", buf, &len, 4));
+        CHECK(len == 4);
+        CHECK(buf[0] == 0x44);
+        CHECK(buf[1] == 0x55);
+        CHECK(buf[2] == 0x66);
+        CHECK(buf[3] == 0x77);
+    }
+
+    SECTION("read last byte") {
+        uint8_t buf[1];
+        size_t len = 1;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", buf, &len, blob_size - 1));
+        CHECK(len == 1);
+        CHECK(buf[0] == 0xFF);
+    }
+
+    SECTION("read exactly the remaining bytes from offset") {
+        uint8_t buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        size_t len = blob_size - 10;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", buf, &len, 10));
+        CHECK(len == blob_size - 10);
+        CHECK(memcmp(buf, blob_data + 10, blob_size - 10) == 0);
+    }
+
+    SECTION("read single byte from each position") {
+        for (size_t i = 0; i < blob_size; ++i) {
+            uint8_t buf[1];
+            size_t len = 1;
+            TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", buf, &len, i));
+            CAPTURE(i);
+            CHECK(len == 1);
+            CHECK(buf[0] == blob_data[i]);
+        }
+    }
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
+TEST_CASE("nvs_get_blob_partial error cases", "[nvs]")
+{
+    SpiFlashEmulator emu(10);
+    emu.randomize(100);
+
+    const uint32_t NVS_FLASH_SECTOR = 6;
+    const uint32_t NVS_FLASH_SECTOR_COUNT_MIN = 3;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    const uint8_t blob_data[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+    const size_t blob_size = sizeof(blob_data);
+    TEST_ESP_OK(nvs_set_blob(handle, "blob1", blob_data, blob_size));
+
+    SECTION("null length pointer returns INVALID_LENGTH") {
+        uint8_t buf[64];
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", buf, NULL, 0));
+    }
+
+    SECTION("offset at blob_size returns INVALID_LENGTH") {
+        uint8_t buf[64];
+        size_t len = 1;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", buf, &len, blob_size));
+        CHECK(len == 0);
+    }
+
+    SECTION("offset beyond blob_size returns INVALID_LENGTH") {
+        uint8_t buf[64];
+        size_t len = 1;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", buf, &len, blob_size + 100));
+        CHECK(len == 0);
+    }
+
+    SECTION("requested length exceeds available bytes") {
+        uint8_t buf[64];
+        size_t len = blob_size; // request 8 from offset 1 = only 7 available
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", buf, &len, 1));
+        CHECK(len == blob_size - 1);
+    }
+
+    SECTION("key not found") {
+        uint8_t buf[64];
+        size_t len = 5;
+        TEST_ESP_ERR(ESP_ERR_NVS_NOT_FOUND, nvs_get_blob_partial(handle, "nokey", buf, &len, 0));
+    }
+
+    SECTION("query length with offset beyond stored size") {
+        size_t len;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", NULL, &len, blob_size + 1));
+        CHECK(len == 0);
+    }
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
 TEST_CASE("nvs iterators tests", "[nvs]")
 {
     SpiFlashEmulator emu(5);
