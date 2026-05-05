@@ -448,6 +448,38 @@ esp_err_t nvs_get_u64 (nvs_handle_t handle, const char* key, uint64_t* out_value
  */
 esp_err_t nvs_get_str (nvs_handle_t handle, const char* key, char* out_value, size_t* length);
 
+/**
+ * @brief      Get a substring from a string value for given key, starting at byte offset.
+ *
+ * This function is similar to nvs_get_str(), but reads only a portion of the stored string.
+ * The read starts at `offset` bytes from the beginning of the stored string.
+ *
+ * The WinAPI-style length query is supported:
+ * - If `out_value` is NULL and `length` is non-NULL, the function returns in `*length`
+ *   the number of bytes available from `offset` to the end of the stored string
+ *   (including the terminating zero if it is within that range).
+ *
+ * For partial reads (`out_value != NULL`), `*length` is interpreted as the requested number
+ * of bytes to read. On success, `*length` is left unchanged and exactly that many bytes are read.
+ *
+ * @param[in]     handle     Handle obtained from nvs_open function.
+ * @param[in]     key        Key name. Maximal length is (NVS_KEY_NAME_MAX_SIZE-1) characters.
+ * @param[out]    out_value  Destination buffer for the requested substring.
+ *                           May be NULL to query required length from `offset`.
+ * @param[inout]  length     Pointer to requested/read length in bytes. Must be non-NULL.
+ *                           If `out_value` is NULL, set to available bytes from `offset`.
+ * @param[in]     offset     Start position (in bytes) inside the stored string.
+ *
+ * @return
+ *             - ESP_OK if requested data was retrieved successfully
+ *             - ESP_ERR_NVS_NOT_FOUND if the requested key doesn't exist
+ *             - ESP_ERR_NVS_INVALID_HANDLE if handle has been closed or is NULL
+ *             - ESP_ERR_NVS_INVALID_NAME if key name doesn't satisfy constraints
+ *             - ESP_ERR_NVS_INVALID_LENGTH if:
+ *               - `length` is NULL, or
+ *               - `offset` is outside the stored value, or
+ *               - requested `*length` exceeds bytes available from `offset`
+ */
 esp_err_t nvs_get_str_partial(nvs_handle_t c_handle, const char* key,
                               char* out_value, size_t* length,
                               size_t offset);
@@ -459,6 +491,37 @@ esp_err_t nvs_get_str_partial(nvs_handle_t c_handle, const char* key,
  */
 esp_err_t nvs_get_blob(nvs_handle_t handle, const char* key, void* out_value, size_t* length);
 
+/**
+ * @brief      Get a partial binary value (blob) for given key, starting at byte offset.
+ *
+ * This function is similar to nvs_get_blob(), but reads only a portion of the stored blob.
+ * The read starts at `offset` bytes from the beginning of the blob.
+ *
+ * The WinAPI-style length query is supported:
+ * - If `out_value` is NULL and `length` is non-NULL, the function returns in `*length`
+ *   the number of bytes available from `offset` to the end of the blob.
+ *
+ * For partial reads (`out_value != NULL`), `*length` is interpreted as the requested number
+ * of bytes to read. On success, `*length` is left unchanged and exactly that many bytes are read.
+ *
+ * @param[in]     handle     Handle obtained from nvs_open function.
+ * @param[in]     key        Key name. Maximal length is (NVS_KEY_NAME_MAX_SIZE-1) characters.
+ * @param[out]    out_value  Destination buffer for the requested blob segment.
+ *                           May be NULL to query required length from `offset`.
+ * @param[inout]  length     Pointer to requested/read length in bytes. Must be non-NULL.
+ *                           If `out_value` is NULL, set to available bytes from `offset`.
+ * @param[in]     offset     Start position (in bytes) inside the stored blob.
+ *
+ * @return
+ *             - ESP_OK if requested data was retrieved successfully
+ *             - ESP_ERR_NVS_NOT_FOUND if the requested key doesn't exist
+ *             - ESP_ERR_NVS_INVALID_HANDLE if handle has been closed or is NULL
+ *             - ESP_ERR_NVS_INVALID_NAME if key name doesn't satisfy constraints
+ *             - ESP_ERR_NVS_INVALID_LENGTH if:
+ *               - `length` is NULL, or
+ *               - `offset` is outside the stored value, or
+ *               - requested `*length` exceeds bytes available from `offset`
+ */
 esp_err_t nvs_get_blob_partial(nvs_handle_t c_handle, const char* key,
                                void* out_value, size_t* length,
                                size_t offset);
