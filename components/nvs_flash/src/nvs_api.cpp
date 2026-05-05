@@ -522,7 +522,7 @@ static esp_err_t nvs_get_str_or_blob(nvs_handle_t c_handle, nvs::ItemType type,
         return ESP_ERR_NVS_INVALID_LENGTH;
     }
     if (out_value == nullptr) {
-        if (dataSize < dataOffset) {
+        if (dataOffset >= dataSize) {
             *length = 0;
             return ESP_ERR_NVS_INVALID_LENGTH;
         }

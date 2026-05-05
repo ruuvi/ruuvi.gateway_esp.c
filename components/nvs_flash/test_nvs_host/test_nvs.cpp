@@ -888,6 +888,12 @@ TEST_CASE("nvs_get_str_partial error cases", "[nvs]")
         TEST_ESP_ERR(ESP_ERR_NVS_NOT_FOUND, nvs_get_str_partial(handle, "nokey", buf, &len, 0));
     }
 
+    SECTION("query length with offset at stored size") {
+        size_t len;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", NULL, &len, stored_size));
+        CHECK(len == 0);
+    }
+
     SECTION("query length with offset beyond stored size") {
         size_t len;
         TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", NULL, &len, stored_size + 1));
@@ -1034,6 +1040,12 @@ TEST_CASE("nvs_get_blob_partial error cases", "[nvs]")
         uint8_t buf[64];
         size_t len = 5;
         TEST_ESP_ERR(ESP_ERR_NVS_NOT_FOUND, nvs_get_blob_partial(handle, "nokey", buf, &len, 0));
+    }
+
+    SECTION("query length with offset at blob size") {
+        size_t len;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", NULL, &len, blob_size));
+        CHECK(len == 0);
     }
 
     SECTION("query length with offset beyond stored size") {
