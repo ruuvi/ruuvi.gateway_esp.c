@@ -43,11 +43,11 @@ public:
 
     static const uint32_t SEC_SIZE = SPI_FLASH_SEC_SIZE;
 
-    static const size_t ENTRY_SIZE  = 32;
-    static const size_t ENTRY_COUNT = 126;
+    static const size_t ENTRY_SIZE  = NVS_ENTRY_SIZE;
+    static const size_t ENTRY_COUNT = NVS_ENTRY_COUNT;
     static const uint32_t INVALID_ENTRY = 0xffffffff;
 
-    static const size_t CHUNK_MAX_SIZE = ENTRY_SIZE * (ENTRY_COUNT - 1);
+    static const size_t CHUNK_MAX_SIZE = NVS_CHUNK_MAX_SIZE;
 
     static const uint8_t NS_INDEX = 0;
     static const uint8_t NS_ANY = 255;
@@ -93,7 +93,12 @@ public:
 
     esp_err_t writeItem(uint8_t nsIndex, ItemType datatype, const char* key, const void* data, size_t dataSize, uint8_t chunkIdx = CHUNK_ANY);
 
-    esp_err_t readItem(uint8_t nsIndex, ItemType datatype, const char* key, void* data, size_t dataSize, uint8_t chunkIdx = CHUNK_ANY, VerOffset chunkStart = VerOffset::VER_ANY);
+    esp_err_t readItem(uint8_t nsIndex, ItemType datatype, const char* key,
+                       void* data, size_t dataSize,
+                       uint8_t chunkIdx = CHUNK_ANY,
+                       VerOffset chunkStart = VerOffset::VER_ANY,
+                       bool isPartialRead = false,
+                       size_t dataOffset = 0);
 
     esp_err_t cmpItem(uint8_t nsIndex, ItemType datatype, const char* key, const void* data, size_t dataSize, uint8_t chunkIdx = CHUNK_ANY, VerOffset chunkStart = VerOffset::VER_ANY);
 

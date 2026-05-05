@@ -16,6 +16,10 @@
 extern "C" {
 #endif
 
+#define NVS_ENTRY_SIZE     (32U)
+#define NVS_ENTRY_COUNT    (126U)
+#define NVS_CHUNK_MAX_SIZE ((NVS_ENTRY_SIZE) * ((NVS_ENTRY_COUNT) - 1U))
+
 /**
  * Opaque pointer type representing non-volatile storage handle
  */
@@ -444,13 +448,20 @@ esp_err_t nvs_get_u64 (nvs_handle_t handle, const char* key, uint64_t* out_value
  */
 esp_err_t nvs_get_str (nvs_handle_t handle, const char* key, char* out_value, size_t* length);
 
+esp_err_t nvs_get_str_partial(nvs_handle_t c_handle, const char* key,
+                              char* out_value, size_t* length,
+                              size_t offset);
+
 /**
  * @brief      get blob value for given key
  *
  * This function behaves the same as \c nvs_get_str, except for the data type.
  */
 esp_err_t nvs_get_blob(nvs_handle_t handle, const char* key, void* out_value, size_t* length);
-/**@}*/
+
+esp_err_t nvs_get_blob_partial(nvs_handle_t c_handle, const char* key,
+                               void* out_value, size_t* length,
+                               size_t offset);
 
 /**
  * @brief      Erase key-value pair with given key name.

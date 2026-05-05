@@ -9,6 +9,7 @@
 #include <map>
 #include <sstream>
 #endif
+#include "nvs.h"
 
 namespace nvs
 {
@@ -428,10 +429,16 @@ esp_err_t Storage::createOrOpenNamespace(const char* nsName, bool canCreate, uin
     return ESP_OK;
 }
 
-esp_err_t Storage::readMultiPageBlob(uint8_t nsIndex, const char* key, void* data, size_t dataSize)
+esp_err_t Storage::readMultiPageBlob(uint8_t nsIndex, const char* key,
+                                     void* data, size_t dataSize,
+                                     bool isPartialRead, size_t dataOffset)
 {
     Item item;
     Page* findPage = nullptr;
+
+    if ((!isPartialRead) && (dataOffset != 0)) {
+        return ESP_ERR_INVALID_ARG;
+    }
 
     /* First read the blob index */
     auto err = findItem(nsIndex, ItemType::BLOB_IDX, key, findPage, item);
@@ -439,31 +446,97 @@ esp_err_t Storage::readMultiPageBlob(uint8_t nsIndex, const char* key, void* dat
         return err;
     }
 
-    uint8_t chunkCount = item.blobIndex.chunkCount;
-    VerOffset chunkStart = item.blobIndex.chunkStart;
-    size_t readSize = item.blobIndex.dataSize;
-    size_t offset = 0;
+    const uint8_t chunkCount = item.blobIndex.chunkCount;
+    const VerOffset chunkStart = item.blobIndex.chunkStart;
+    const size_t blobSize = item.blobIndex.dataSize;
+    size_t dstOffset = 0;
+    size_t srcOffset = 0;
+    size_t leftToCopy = dataSize;
 
-    assert(dataSize == readSize);
+    if (!isPartialRead) {
+        if(dataSize != blobSize) {
+            return ESP_ERR_NVS_INVALID_LENGTH;
+        }
+    } else {
+        if (dataOffset > blobSize) {
+            return ESP_ERR_NVS_INVALID_LENGTH;
+        }
+        const size_t bytesAvailable = blobSize - dataOffset;
+        if (dataSize > bytesAvailable) {
+            return ESP_ERR_NVS_INVALID_LENGTH;
+        }
+    }
 
     /* Now read corresponding chunks */
     for (uint8_t chunkNum = 0; chunkNum < chunkCount; chunkNum++) {
-        err = findItem(nsIndex, ItemType::BLOB_DATA, key, findPage, item, static_cast<uint8_t> (chunkStart) + chunkNum);
+        if (leftToCopy == 0) {
+            break;
+        }
+        err = findItem(nsIndex, ItemType::BLOB_DATA, key, findPage,
+                    item, static_cast<uint8_t> (chunkStart) + chunkNum);
         if (err != ESP_OK) {
             if (err == ESP_ERR_NVS_NOT_FOUND) {
                 break;
             }
             return err;
         }
-        err = findPage->readItem(nsIndex, ItemType::BLOB_DATA, key, static_cast<uint8_t*>(data) + offset, item.varLength.dataSize, static_cast<uint8_t> (chunkStart) + chunkNum);
-        if (err != ESP_OK) {
-            return err;
+        if (!isPartialRead) {
+            err = findPage->readItem(nsIndex, ItemType::BLOB_DATA, key,
+                static_cast<uint8_t*>(data) + dstOffset,
+                item.varLength.dataSize,
+                static_cast<uint8_t> (chunkStart) + chunkNum,
+                VerOffset::VER_ANY,
+                isPartialRead, dataOffset);
+            if (err != ESP_OK) {
+                return err;
+            }
+            dstOffset += item.varLength.dataSize;
+            srcOffset += item.varLength.dataSize;
+            leftToCopy -= item.varLength.dataSize;
+        } else {
+            if (srcOffset < dataOffset) {
+                if ((srcOffset + item.varLength.dataSize) <= dataOffset) {
+                    /* This chunk is completely before the requested offset. Skip it.*/
+                    srcOffset += item.varLength.dataSize;
+                } else {
+                    /* This chunk is partially before and partially after the requested offset. Read the part after the offset.*/
+                    const size_t offsetInChunk = dataOffset - srcOffset;
+                    const size_t leftInChunk = item.varLength.dataSize - offsetInChunk;
+                    const size_t willCopy = (leftToCopy < leftInChunk) ? leftToCopy : leftInChunk;
+                    err = findPage->readItem(nsIndex, ItemType::BLOB_DATA, key,
+                        static_cast<uint8_t*>(data) + dstOffset,
+                        willCopy,
+                        static_cast<uint8_t> (chunkStart) + chunkNum,
+                        VerOffset::VER_ANY,
+                        isPartialRead, offsetInChunk);
+                    if (err != ESP_OK) {
+                        return err;
+                    }
+                    dstOffset += willCopy;
+                    srcOffset += item.varLength.dataSize;
+                    leftToCopy -= willCopy;
+                }
+            } else {
+                /* This chunk is completely after the requested offset. Read it fully.*/
+                const size_t willCopy = (leftToCopy < item.varLength.dataSize) ? leftToCopy : item.varLength.dataSize;
+                err = findPage->readItem(nsIndex, ItemType::BLOB_DATA, key,
+                        static_cast<uint8_t*>(data) + dstOffset,
+                        willCopy,
+                        static_cast<uint8_t> (chunkStart) + chunkNum,
+                        VerOffset::VER_ANY,
+                        isPartialRead, 0);
+                if (err != ESP_OK) {
+                    return err;
+                }
+                dstOffset += willCopy;
+                srcOffset += willCopy;
+                leftToCopy -= willCopy;
+            }
         }
         assert(static_cast<uint8_t> (chunkStart) + chunkNum == item.chunkIndex);
-        offset += item.varLength.dataSize;
     }
     if (err == ESP_OK) {
-        assert(offset == dataSize);
+        assert(dstOffset == dataSize);
     }
     if (err == ESP_ERR_NVS_NOT_FOUND) {
         eraseMultiPageBlob(nsIndex, key); // cleanup if a chunk is not found
@@ -513,7 +586,9 @@ esp_err_t Storage::cmpMultiPageBlob(uint8_t nsIndex, const char* key, const void
     return err;
 }
 
-esp_err_t Storage::readItem(uint8_t nsIndex, ItemType datatype, const char* key, void* data, size_t dataSize)
+esp_err_t Storage::readItem(uint8_t nsIndex, ItemType datatype, const char* key,
+                            void* data, size_t dataSize,
+                            bool isPartialRead, size_t dataOffset)
 {
     if (mState != StorageState::ACTIVE) {
         return ESP_ERR_NVS_NOT_INITIALIZED;
@@ -522,7 +597,8 @@ esp_err_t Storage::readItem(uint8_t nsIndex, ItemType datatype, const char* key,
     Item item;
     Page* findPage = nullptr;
     if (datatype == ItemType::BLOB) {
-        auto err = readMultiPageBlob(nsIndex, key, data, dataSize);
+        auto err = readMultiPageBlob(nsIndex, key, data, dataSize,
+                                             isPartialRead, dataOffset);
         if (err != ESP_ERR_NVS_NOT_FOUND) {
             return err;
         } // else check if the blob is stored with earlier version format without index
@@ -532,7 +608,9 @@ esp_err_t Storage::readItem(uint8_t nsIndex, ItemType datatype, const char* key,
     if (err != ESP_OK) {
         return err;
     }
-    return findPage->readItem(nsIndex, datatype, key, data, dataSize);
+    return findPage->readItem(nsIndex, datatype, key, data, dataSize,
+                      Page::CHUNK_ANY, VerOffset::VER_ANY,
+                      isPartialRead, dataOffset);
 
 }
 

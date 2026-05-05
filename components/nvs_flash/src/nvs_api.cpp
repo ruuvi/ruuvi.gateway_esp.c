@@ -497,10 +497,15 @@ extern "C" esp_err_t nvs_get_u64 (nvs_handle_t c_handle, const char* key, uint64
     return nvs_get(c_handle, key, out_value);
 }
 
-static esp_err_t nvs_get_str_or_blob(nvs_handle_t c_handle, nvs::ItemType type, const char* key, void* out_value, size_t* length)
+static esp_err_t nvs_get_str_or_blob(nvs_handle_t c_handle, nvs::ItemType type,
+                                     const char* key, void* out_value, size_t* length,
+                                     bool isPartialRead, size_t dataOffset)
 {
     Lock lock;
     ESP_LOGD(TAG, "%s %s", __func__, key);
+    if ((!isPartialRead) && (dataOffset != 0)) {
+        return ESP_ERR_INVALID_ARG;
+    }
     NVSHandleSimple *handle;
     auto err = nvs_find_ns_handle(c_handle, &handle);
     if (err != ESP_OK) {
@@ -515,26 +520,58 @@ static esp_err_t nvs_get_str_or_blob(nvs_handle_t c_handle, nvs::ItemType type, 
 
     if (length == nullptr) {
         return ESP_ERR_NVS_INVALID_LENGTH;
-    } else if (out_value == nullptr) {
+    }
+    if (out_value == nullptr) {
         *length = dataSize;
         return ESP_OK;
-    } else if (*length < dataSize) {
+    }
+    if (!isPartialRead) {
+        if (*length < dataSize) {
+            *length = dataSize;
+            return ESP_ERR_NVS_INVALID_LENGTH;
+        }
         *length = dataSize;
-        return ESP_ERR_NVS_INVALID_LENGTH;
+    } else {
+        if (dataOffset >= dataSize) {
+            *length = 0;
+            return ESP_ERR_NVS_INVALID_LENGTH;
+        }
+        const size_t bytesAvailable = dataSize - dataOffset;
+        if (*length > bytesAvailable) {
+            *length = bytesAvailable;
+            return ESP_ERR_NVS_INVALID_LENGTH;
+        }
     }
 
-    *length = dataSize;
-    return handle->get_typed_item(type, key, out_value, dataSize);
+    return handle->get_typed_item(type, key, out_value, *length,
+                                  isPartialRead, dataOffset);
 }
 
 extern "C" esp_err_t nvs_get_str(nvs_handle_t c_handle, const char* key, char* out_value, size_t* length)
 {
-    return nvs_get_str_or_blob(c_handle, nvs::ItemType::SZ, key, out_value, length);
+    return nvs_get_str_or_blob(c_handle, nvs::ItemType::SZ, key, out_value, length,
+                    false, 0);
+}
+
+extern "C" esp_err_t nvs_get_str_partial(nvs_handle_t c_handle, const char* key,
+                                         char* out_value, size_t* length,
+                                         size_t offset)
+{
+    return nvs_get_str_or_blob(c_handle, nvs::ItemType::SZ, key, out_value, length,
+                    true, offset);
 }
 
 extern "C" esp_err_t nvs_get_blob(nvs_handle_t c_handle, const char* key, void* out_value, size_t* length)
 {
-    return nvs_get_str_or_blob(c_handle, nvs::ItemType::BLOB, key, out_value, length);
+    return nvs_get_str_or_blob(c_handle, nvs::ItemType::BLOB, key, out_value, length, false, 0);
+}
+
+extern "C" esp_err_t nvs_get_blob_partial(nvs_handle_t c_handle, const char* key,
+                                          void* out_value, size_t* length,
+                                          size_t offset)
+{
+    return nvs_get_str_or_blob(c_handle, nvs::ItemType::BLOB, key, out_value, length,
+                    true, offset);
 }
 
 extern "C" esp_err_t nvs_get_stats(const char* part_name, nvs_stats_t* nvs_stats)
