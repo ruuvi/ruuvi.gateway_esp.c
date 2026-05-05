@@ -98,9 +98,11 @@ clean: clean-coverage
 	rm -f $(OBJ_FILES) $(TEST_PROGRAM)
 	rm -f ../nvs_partition_generator/partition_single_page.bin
 	rm -f ../nvs_partition_generator/partition_multipage_blob.bin
+	rm -f ../nvs_partition_generator/partition_encoded.bin
 	rm -f ../nvs_partition_generator/partition_encrypted.bin
 	rm -f ../nvs_partition_generator/partition_encrypted_using_keygen.bin
 	rm -f ../nvs_partition_generator/partition_encrypted_using_keyfile.bin
+	rm -f ../nvs_partition_generator/partition_decrypted.bin
 	rm -f ../nvs_partition_generator/Test-1-partition-encrypted.bin
 	rm -f ../nvs_partition_generator/Test-1-partition.bin
 	rm -f ../../../tools/mass_mfg/samples/sample_values_multipage_blob_created.csv
