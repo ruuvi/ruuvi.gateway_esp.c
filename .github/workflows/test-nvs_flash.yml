@@ -17,8 +17,50 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.8'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ make gcovr
+
+      - name: Set IDF_PATH
+        run: echo "IDF_PATH=$HOME/esp/esp-idf" >> $GITHUB_ENV
+
+      - name: Cache ESP-IDF and tools
+        id: cache-esp-idf
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/esp
+            ~/.espressif
+          key: esp-idf-v4.2.5-v1
+
+      - name: Download and install ESP-IDF v4.2.5
+        if: steps.cache-esp-idf.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/esp
+          cd ~/esp
+          git clone --recursive --branch v4.2.5 https://github.com/espressif/esp-idf.git
+          cd $IDF_PATH
+          ./install.sh
+
+      - name: Verify ESP-IDF installation
+        run: |
+          if [ ! -f "$HOME/esp/esp-idf/export.sh" ]; then
+            echo "ESP-IDF installation is missing or cache is incomplete"
+            exit 1
+          fi
+
       - name: Run tests
         run: |
+          source "$HOME/esp/esp-idf/export.sh"
+          python --version
+          which python
+          printenv | grep IDF
           cd components/nvs_flash/test_nvs_host
           make -j $(nproc)
           ./test_nvs -d yes exclude:[long]
