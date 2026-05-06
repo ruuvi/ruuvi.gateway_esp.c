@@ -71,6 +71,7 @@ add_subdirectory(test_adv_post_signals)
 add_subdirectory(test_adv_table)
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
+add_subdirectory(test_esp_http_client)
 add_subdirectory(test_event_mgr)
 add_subdirectory(test_flashfatfs)
 add_subdirectory(test_json_ruuvi)
@@ -173,6 +174,11 @@ add_test(NAME test_bin2hex
 add_test(NAME test_cjson_wrap
         COMMAND ruuvi_gateway_esp-test-cjson_wrap
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-cjson_wrap>/gtestresults.xml
+)
+
+add_test(NAME test_esp_http_client
+        COMMAND ruuvi_gateway_esp-test-esp_http_client
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-esp_http_client>/gtestresults.xml
 )
 
 add_test(NAME test_event_mgr

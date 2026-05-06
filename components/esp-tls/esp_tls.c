@@ -149,7 +149,7 @@ static esp_err_t create_ssl_handle(const char *hostname, size_t hostlen, const v
     return _esp_create_ssl_handle(hostname, hostlen, cfg, tls);
 }
 
-static esp_err_t esp_tls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
+static esp_tls_async_conn_result_e esp_tls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg)
 {
     return _esp_tls_handshake(tls, cfg);
 }
@@ -502,16 +502,16 @@ esp_tls_low_level_conn_callback_dns_found(const char *hostname, const ip_addr_t 
     xSemaphoreGive(p_req_info->p_dns_mutex);
 }
 
-static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
+static esp_tls_async_conn_result_e esp_tls_low_level_conn(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
 {
     if (!tls) {
         ESP_TLS_LOGE_FUNC("empty esp_tls parameter");
-        return -1;
+        return ESP_TLS_ASYNC_CONN_ERROR;
     }
     psa_status_t status = psa_crypto_init();
     if (status != PSA_SUCCESS) {
         ESP_TLS_LOGE_FUNC("[%.*s] psa_crypto_init failed, ret=0x%x", hostlen, hostname, (unsigned int)status);
-        return -1;
+        return ESP_TLS_ASYNC_CONN_ERROR;
     }
 
     esp_err_t esp_ret;
@@ -527,7 +527,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         {
             xSemaphoreGive(tls->dns_mutex);
             ESP_TLS_LOGE_FUNC("Failed to resolve hostname '%.*s', there is no free slot for DNS query", hostlen, hostname);
-            return -1;
+            return ESP_TLS_ASYNC_CONN_ERROR;
         }
         p_dns_req_info->tls = tls;
         p_dns_req_info->p_dns_mutex = tls->dns_mutex;
@@ -539,7 +539,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
         tls->hostname = strndup(hostname, hostlen);
         if (NULL == tls->hostname) {
             ESP_TLS_LOGE_FUNC("Can't allocate memory for hostname: %.*s", hostlen, hostname);
-            return ESP_ERR_NO_MEM;
+            return ESP_TLS_ASYNC_CONN_ERROR;
         }
         if (cfg != NULL && cfg->is_plain_tcp == false) {
             _esp_tls_net_init(tls);
@@ -557,7 +557,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             /* DNS request sent, wait for esp_tls_low_level_conn_callback_dns_found being called */
             ESP_LOGD(TAG, "dns_gethostbyname got ERR_INPROGRESS");
             tls->conn_state = ESP_TLS_HOSTNAME_RESOLVING;
-            return 0; // Connection has not yet established
+            return ESP_TLS_ASYNC_CONN_IN_PROGRESS; // Connection has not yet established
         }
         p_dns_req_info->flag_busy = false;
         p_dns_req_info->tls = NULL;
@@ -568,7 +568,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME);
             free(tls->hostname);
             tls->hostname = NULL;
-            return -1;
+            return ESP_TLS_ASYNC_CONN_ERROR;
         }
         char remote_ip4_str[IP4ADDR_STRLEN_MAX];
         ip4addr_ntoa_r(&tls->remote_ip.u_addr.ip4, remote_ip4_str, sizeof(remote_ip4_str));
@@ -592,7 +592,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                     esp_tls_get_hostname(tls), esp_ret, (NULL != err_desc.buf) ? err_desc.buf : "");
             str_buf_free_buf(&err_desc);
             ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, esp_ret);
-            return -1;
+            return ESP_TLS_ASYNC_CONN_ERROR;
         }
         if (cfg && cfg->non_block) {
             tls->timer_start = xTaskGetTickCount();
@@ -622,10 +622,14 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                 tls->conn_state = ESP_TLS_FAIL;
                 close(tls->sockfd);
                 tls->sockfd = -1;
-                return -1;
+                return ESP_TLS_ASYNC_CONN_ERROR;
             }
-            ESP_TLS_LOGD_FUNC("[sock=%d][%s] select: rset=%d, wset=%d",
-                              tls->sockfd, esp_tls_get_hostname(tls), (int)(FD_ISSET(tls->sockfd, &tls->rset)), (int)(FD_ISSET(tls->sockfd, &tls->wset)));
+            ESP_TLS_LOGD_FUNC(
+                "[sock=%d][%s] select: rset=%d, wset=%d",
+                tls->sockfd,
+                esp_tls_get_hostname(tls),
+                (int)(FD_ISSET(tls->sockfd, &tls->rset)),
+                (int)(FD_ISSET(tls->sockfd, &tls->wset)));
             if (FD_ISSET(tls->sockfd, &tls->rset) || FD_ISSET(tls->sockfd, &tls->wset)) {
                 int error = 0;
                 socklen_t len = sizeof(error);
@@ -637,7 +641,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                     tls->conn_state = ESP_TLS_FAIL;
                     close(tls->sockfd);
                     tls->sockfd = -1;
-                    return -1;
+                    return ESP_TLS_ASYNC_CONN_ERROR;
                 }
                 if (0 != error) {
                     str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(error);
@@ -649,7 +653,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                     tls->conn_state = ESP_TLS_FAIL;
                     close(tls->sockfd);
                     tls->sockfd = -1;
-                    return -1;
+                    return ESP_TLS_ASYNC_CONN_ERROR;
                 }
             } else {
                 const TickType_t now = xTaskGetTickCount();
@@ -663,9 +667,9 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                     tls->conn_state = ESP_TLS_FAIL;
                     close(tls->sockfd);
                     tls->sockfd = -1;
-                    return -1;
+                    return ESP_TLS_ASYNC_CONN_ERROR;
                 }
-                return 0; // Connection has not yet established
+                return ESP_TLS_ASYNC_CONN_IN_PROGRESS; // Connection has not yet established
             }
         }
         /* By now, the connection has been established */
@@ -674,7 +678,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             tls->read = tcp_read;
             tls->write = tcp_write;
             ESP_TLS_LOGD_FUNC("[sock=%d][%s] non-tls connection established", tls->sockfd, esp_tls_get_hostname(tls));
-            return 1;
+            return ESP_TLS_ASYNC_CONN_SUCCESS;
         }
         esp_ret = create_ssl_handle(hostname, hostlen, cfg, tls);
         if (esp_ret != ESP_OK) {
@@ -690,7 +694,7 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             tls->conn_state = ESP_TLS_FAIL;
             close(tls->sockfd);
             tls->sockfd = -1;
-            return -1;
+            return ESP_TLS_ASYNC_CONN_ERROR;
         }
         tls->read = _esp_tls_read;
         tls->write = _esp_tls_write;
@@ -706,8 +710,8 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
     case ESP_TLS_HANDSHAKE:
     {
         ESP_TLS_LOGD_FUNC("[sock=%d][%s] handshake in progress...", tls->sockfd, esp_tls_get_hostname(tls));
-        const int res = esp_tls_handshake(tls, cfg);
-        if (res == 0) {
+        const esp_tls_async_conn_result_e res = esp_tls_handshake(tls, cfg);
+        if (res == ESP_TLS_ASYNC_CONN_IN_PROGRESS) {
             const TickType_t now = xTaskGetTickCount();
             const uint32_t delta_ticks = now - tls->timer_start;
             ESP_TLS_LOGD_FUNC("[sock=%d][%s] ESP_TLS_HANDSHAKE: timer delta_ticks: %u", tls->sockfd, esp_tls_get_hostname(tls), delta_ticks);
@@ -716,9 +720,9 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
                 ESP_TLS_LOGE_FUNC("[sock=%d][%s] connection timeout", tls->sockfd, esp_tls_get_hostname(tls));
                 tls->conn_state = ESP_TLS_FAIL;
                 // after create_ssl_handle we don't need to close the socket manually
-                return -1;
+                return ESP_TLS_ASYNC_CONN_ERROR;
             }
-            return 0; // Connection has not yet established
+            return ESP_TLS_ASYNC_CONN_IN_PROGRESS; // Connection has not yet established
         }
         return res;
     }
@@ -750,13 +754,13 @@ static int esp_tls_low_level_conn(const char *hostname, int hostlen, int port, c
             ESP_TLS_LOGE_FUNC("[%s] failed to open a new connection", esp_tls_get_hostname(tls));
             break;
         }
-        return 0;
+        return ESP_TLS_ASYNC_CONN_IN_PROGRESS;
     }
     default:
         ESP_TLS_LOGE_FUNC("[%s] invalid esp-tls state", esp_tls_get_hostname(tls));
         break;
     }
-    return -1;
+    return ESP_TLS_ASYNC_CONN_ERROR;
 }
 
 static esp_err_t resolve_dns(const char *host, struct sockaddr_in *ip)
@@ -849,17 +853,17 @@ esp_err_t esp_tls_plain_tcp_connect(const char *host, int hostlen, int port, con
     return esp_tls_tcp_connect(&remote_ip_addr, port, cfg, error_handle, sockfd);
 }
 
-int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
+esp_tls_sync_conn_result_e esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
 {
     const TickType_t start_time_tick = xTaskGetTickCount();
     while (1) {
-        int ret = esp_tls_low_level_conn(hostname, hostlen, port, cfg, tls);
-        if (ret == 1) {
-            return ret;
-        } else if (ret == -1) {
+        esp_tls_async_conn_result_e ret = esp_tls_low_level_conn(hostname, hostlen, port, cfg, tls);
+        if (ret == ESP_TLS_ASYNC_CONN_SUCCESS) {
+            return ESP_TLS_SYNC_CONN_SUCCESS;
+        } else if (ret == ESP_TLS_ASYNC_CONN_ERROR) {
             ESP_TLS_LOGE_FUNC("[%s] Failed to open new connection", esp_tls_get_hostname(tls));
-            return -1;
-        } else if (ret == 0 && cfg->timeout_ms >= 0) {
+            return ESP_TLS_SYNC_CONN_ERROR;
+        } else if (ret == ESP_TLS_ASYNC_CONN_IN_PROGRESS && cfg->timeout_ms >= 0) {
             const TickType_t current_time_tick = xTaskGetTickCount();
             const uint32_t elapsed_time_ticks = current_time_tick - start_time_tick;
             if (elapsed_time_ticks >= pdMS_TO_TICKS(cfg->timeout_ms)) {
@@ -868,21 +872,21 @@ int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp
                     esp_tls_get_hostname(tls),
                     cfg->timeout_ms);
                 ESP_INT_EVENT_TRACKER_CAPTURE(tls->error_handle, ESP_TLS_ERR_TYPE_ESP, ESP_ERR_ESP_TLS_CONNECTION_TIMEOUT);
-                return 0;
+                return ESP_TLS_SYNC_CONN_TIMEOUT;
             }
             vTaskDelay(pdMS_TO_TICKS(50));
         }
     }
-    return 0;
+    return ESP_TLS_SYNC_CONN_TIMEOUT;
 }
 
 /*
  * @brief      Create a new TLS/SSL non-blocking connection
  */
-int esp_tls_conn_new_async(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
+esp_tls_async_conn_result_e esp_tls_conn_new_async(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
 {
     ESP_TLS_LOGD_FUNC("[sock=%d][%s] esp_tls_low_level_conn", tls->sockfd, esp_tls_get_hostname(tls));
-    const int ret = esp_tls_low_level_conn(hostname, hostlen, port, cfg, tls);
+    const esp_tls_async_conn_result_e ret = esp_tls_low_level_conn(hostname, hostlen, port, cfg, tls);
     ESP_TLS_LOGD_FUNC("[sock=%d][%s] esp_tls_low_level_conn, ret=%d", tls->sockfd, esp_tls_get_hostname(tls), ret);
     return ret;
 }
@@ -914,7 +918,7 @@ esp_tls_t *esp_tls_conn_http_new(const char *url, const esp_tls_cfg_t *cfg)
     }
     /* Connect to host */
     if (esp_tls_conn_new_sync(&url[u.field_data[UF_HOST].off], u.field_data[UF_HOST].len,
-                              get_port(url, &u), cfg, tls) == 1) {
+                              get_port(url, &u), cfg, tls) == ESP_TLS_SYNC_CONN_SUCCESS) {
         return tls;
     }
     esp_tls_conn_destroy(tls);
@@ -924,7 +928,7 @@ esp_tls_t *esp_tls_conn_http_new(const char *url, const esp_tls_cfg_t *cfg)
 /**
  * @brief      Create a new TLS/SSL connection with a given "HTTP" url
  */
-int esp_tls_conn_http_new_sync(const char *url, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
+esp_tls_sync_conn_result_e esp_tls_conn_http_new_sync(const char *url, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
 {
     /* Parse URI */
     struct http_parser_url u;
@@ -939,7 +943,7 @@ int esp_tls_conn_http_new_sync(const char *url, const esp_tls_cfg_t *cfg, esp_tl
 /**
  * @brief      Create a new non-blocking TLS/SSL connection with a given "HTTP" url
  */
-int esp_tls_conn_http_new_async(const char *url, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
+esp_tls_async_conn_result_e esp_tls_conn_http_new_async(const char *url, const esp_tls_cfg_t *cfg, esp_tls_t *tls)
 {
     /* Parse URI */
     struct http_parser_url u;
