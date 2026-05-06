@@ -9,10 +9,15 @@
 #else
 #include "crc.h"
 #endif
+#include <cstdint>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <cassert>
 
 #include "nvs_ops.hpp"
+#include "nvs.h"
+#include "esp_err.h"
 
 namespace nvs
 {
@@ -261,7 +266,10 @@ esp_err_t Page::writeItem(uint8_t nsIndex, ItemType datatype, const char* key, c
     return ESP_OK;
 }
 
-esp_err_t Page::readItem(uint8_t nsIndex, ItemType datatype, const char* key, void* data, size_t dataSize, uint8_t chunkIdx, VerOffset chunkStart)
+esp_err_t Page::readItem(uint8_t nsIndex, ItemType datatype, const char* key,
+                         void* data, size_t dataSize,
+                         uint8_t chunkIdx, VerOffset chunkStart,
+                         bool isPartialRead, size_t dataOffset)
 {
     size_t index = 0;
     Item item;
@@ -284,25 +292,66 @@ esp_err_t Page::readItem(uint8_t nsIndex, ItemType datatype, const char* key, vo
         return ESP_OK;
     }
 
-    if (dataSize < static_cast<size_t>(item.varLength.dataSize)) {
-        return ESP_ERR_NVS_INVALID_LENGTH;
+    if ((!isPartialRead) && (dataOffset != 0)) {
+        return ESP_ERR_INVALID_ARG;
     }
 
-    uint8_t* dst = reinterpret_cast<uint8_t*>(data);
+    if (!isPartialRead) {
+        if (dataSize < static_cast<size_t>(item.varLength.dataSize)) {
+            return ESP_ERR_NVS_INVALID_LENGTH;
+        }
+    } else {
+        if (dataOffset >= static_cast<size_t>(item.varLength.dataSize)) {
+            return ESP_ERR_NVS_INVALID_LENGTH;
+        }
+        const size_t bytesAvailable = item.varLength.dataSize - dataOffset;
+        if (dataSize > bytesAvailable) {
+            return ESP_ERR_NVS_INVALID_LENGTH;
+        }
+    }
+
+    uint8_t *dst = static_cast<uint8_t*>(data);
+    size_t srcOffset = 0;
+    size_t bytesCopied = 0;
     size_t left = item.varLength.dataSize;
+    uint32_t crc32 = 0xffffffffU;
     for (size_t i = index + 1; i < index + item.span; ++i) {
         Item ditem;
         rc = readEntry(i, ditem);
         if (rc != ESP_OK) {
             return rc;
         }
-        size_t willCopy = ENTRY_SIZE;
-        willCopy = (left < willCopy)?left:willCopy;
-        memcpy(dst, ditem.rawData, willCopy);
-        left -= willCopy;
-        dst += willCopy;
+        crc32 = crc32_le(crc32, ditem.rawData, (left < ENTRY_SIZE) ? left : ENTRY_SIZE);
+        if (srcOffset < dataOffset) {
+            const size_t leftSkip = dataOffset - srcOffset;
+            if (leftSkip >= ENTRY_SIZE) {
+                srcOffset += ENTRY_SIZE;
+                left -= ENTRY_SIZE;
+            } else {
+                size_t willCopy = ENTRY_SIZE - leftSkip;
+                willCopy = (left < willCopy)?left:willCopy;
+                const size_t leftToCopy = dataSize - bytesCopied;
+                willCopy = (leftToCopy < willCopy)?leftToCopy:willCopy;
+                memcpy(dst, ditem.rawData + leftSkip, willCopy);
+                srcOffset += leftSkip + willCopy;
+                left -= leftSkip + willCopy;
+                bytesCopied += willCopy;
+                dst += willCopy;
+            }
+        } else {
+            const size_t bytesToHandle = (left < ENTRY_SIZE)?left:ENTRY_SIZE;
+            const size_t leftToCopy = dataSize - bytesCopied;
+            if (leftToCopy > 0) {
+                const size_t willCopy = (leftToCopy < bytesToHandle)?leftToCopy:bytesToHandle;
+                memcpy(dst, ditem.rawData, willCopy);
+                dst += willCopy;
+                bytesCopied += willCopy;
+            }
+            srcOffset += bytesToHandle;
+            left -= bytesToHandle;
+        }
     }
-    if (Item::calculateCrc32(reinterpret_cast<uint8_t*>(data), item.varLength.dataSize) != item.varLength.dataCrc32) {
+    if (crc32 != item.varLength.dataCrc32) {
         rc = eraseEntryAndSpan(index);
         if (rc != ESP_OK) {
             return rc;

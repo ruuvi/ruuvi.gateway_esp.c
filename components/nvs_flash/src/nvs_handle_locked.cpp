@@ -74,9 +74,12 @@ esp_err_t NVSHandleLocked::set_typed_item(ItemType datatype, const char *key, co
     return handle->set_typed_item(datatype, key, data, dataSize);
 }
 
-esp_err_t NVSHandleLocked::get_typed_item(ItemType datatype, const char *key, void* data, size_t dataSize) {
+esp_err_t NVSHandleLocked::get_typed_item(ItemType datatype, const char *key,
+                                          void* data, size_t dataSize,
+                                          bool isPartialRead,
+                                          size_t dataOffset) {
     Lock lock;
-    return handle->get_typed_item(datatype, key, data, dataSize);
+    return handle->get_typed_item(datatype, key, data, dataSize, isPartialRead, dataOffset);
 }
 
 } // namespace nvs

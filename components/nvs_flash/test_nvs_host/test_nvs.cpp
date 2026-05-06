@@ -27,6 +27,8 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <string>
+#include <cstdlib>
+#include <cstdio>
 
 #define TEST_ESP_ERR(rc, res) CHECK((rc) == (res))
 #define TEST_ESP_OK(rc) CHECK((rc) == ESP_OK)
@@ -35,6 +37,30 @@ using namespace std;
 using namespace nvs;
 
 stringstream s_perf;
+
+namespace {
+const char* require_idf_path()
+{
+    const char* p = std::getenv("IDF_PATH");
+    if (!p || p[0] == '\0') {
+        std::fprintf(stderr, "IDF_PATH is not set\n");
+        std::exit(1);
+    }
+    return p;
+}
+
+// Runs before main() / test runner startup.
+const char* g_idf_path = []() {
+    return require_idf_path();
+}();
+} // namespace
+
+static std::string idf_join(const char* rel)
+{
+    return std::string(g_idf_path) + "/" + rel;
+}
+
+static const std::string mfg_gen_py = idf_join("tools/mass_mfg/mfg_gen.py");
 
 void dumpBytes(const uint8_t* data, size_t count)
 {
@@ -733,6 +759,407 @@ TEST_CASE("nvs api tests", "[nvs]")
     nvs_close(handle_1);
     nvs_close(handle_2);
 
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
+TEST_CASE("nvs_get_str_partial basic read", "[nvs]")
+{
+    SpiFlashEmulator emu(10);
+    emu.randomize(100);
+
+    const uint32_t NVS_FLASH_SECTOR = 6;
+    const uint32_t NVS_FLASH_SECTOR_COUNT_MIN = 3;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    const char* str = "Hello, World!";
+    // stored size includes null terminator: 14 bytes
+    const size_t stored_size = strlen(str) + 1;
+    TEST_ESP_OK(nvs_set_str(handle, "key1", str));
+
+    SECTION("query available length from offset 0") {
+        size_t len;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", NULL, &len, 0));
+        CHECK(len == stored_size);
+    }
+
+    SECTION("query available length from middle offset") {
+        size_t len;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", NULL, &len, 7));
+        // "World!\0" = 7 bytes
+        CHECK(len == stored_size - 7);
+    }
+
+    SECTION("read full string from offset 0") {
+        char buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        size_t len = stored_size;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", buf, &len, 0));
+        CHECK(len == stored_size);
+        CHECK(memcmp(buf, str, stored_size) == 0);
+    }
+
+    SECTION("read substring from middle") {
+        char buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        size_t len = 5;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", buf, &len, 7));
+        CHECK(len == 5);
+        CHECK(memcmp(buf, "World", 5) == 0);
+    }
+
+    SECTION("read last byte (null terminator)") {
+        char buf[1];
+        size_t len = 1;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", buf, &len, stored_size - 1));
+        CHECK(len == 1);
+        CHECK(buf[0] == '\0');
+    }
+
+    SECTION("read exactly the remaining bytes from offset") {
+        char buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        // read from offset 5 to end: ", World!\0" = 9 bytes
+        size_t len = stored_size - 5;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "key1", buf, &len, 5));
+        CHECK(len == stored_size - 5);
+        CHECK(memcmp(buf, ", World!\0", 9) == 0);
+    }
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
+TEST_CASE("nvs_get_str_partial error cases", "[nvs]")
+{
+    SpiFlashEmulator emu(10);
+    emu.randomize(100);
+
+    const uint32_t NVS_FLASH_SECTOR = 6;
+    const uint32_t NVS_FLASH_SECTOR_COUNT_MIN = 3;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    const char* str = "Hello, World!";
+    const size_t stored_size = strlen(str) + 1; // 14
+    TEST_ESP_OK(nvs_set_str(handle, "key1", str));
+
+    SECTION("null length pointer returns INVALID_LENGTH") {
+        char buf[64];
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", buf, NULL, 0));
+    }
+
+    SECTION("offset at stored_size returns INVALID_LENGTH") {
+        char buf[64];
+        size_t len = 1;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", buf, &len, stored_size));
+        CHECK(len == 0);
+    }
+
+    SECTION("offset beyond stored_size returns INVALID_LENGTH") {
+        char buf[64];
+        size_t len = 1;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", buf, &len, stored_size + 10));
+        CHECK(len == 0);
+    }
+
+    SECTION("requested length exceeds available bytes") {
+        char buf[64];
+        size_t len = stored_size; // request 14 bytes from offset 1 = only 13 available
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", buf, &len, 1));
+        CHECK(len == stored_size - 1);
+    }
+
+    SECTION("key not found") {
+        char buf[64];
+        size_t len = 5;
+        TEST_ESP_ERR(ESP_ERR_NVS_NOT_FOUND, nvs_get_str_partial(handle, "nokey", buf, &len, 0));
+    }
+
+    SECTION("query length with offset at stored size") {
+        size_t len;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", NULL, &len, stored_size));
+        CHECK(len == 0);
+    }
+
+    SECTION("query length with offset beyond stored size") {
+        size_t len;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_str_partial(handle, "key1", NULL, &len, stored_size + 1));
+        CHECK(len == 0);
+    }
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
+TEST_CASE("nvs_get_blob_partial basic read", "[nvs]")
+{
+    SpiFlashEmulator emu(10);
+    emu.randomize(100);
+
+    const uint32_t NVS_FLASH_SECTOR = 6;
+    const uint32_t NVS_FLASH_SECTOR_COUNT_MIN = 3;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    const uint8_t blob_data[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+                                 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
+    const size_t blob_size = sizeof(blob_data);
+    TEST_ESP_OK(nvs_set_blob(handle, "blob1", blob_data, blob_size));
+
+    SECTION("query available length from offset 0") {
+        size_t len;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", NULL, &len, 0));
+        CHECK(len == blob_size);
+    }
+
+    SECTION("query available length from middle offset") {
+        size_t len;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", NULL, &len, 8));
+        CHECK(len == blob_size - 8);
+    }
+
+    SECTION("read full blob from offset 0") {
+        uint8_t buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        size_t len = blob_size;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", buf, &len, 0));
+        CHECK(len == blob_size);
+        CHECK(memcmp(buf, blob_data, blob_size) == 0);
+    }
+
+    SECTION("read partial blob from middle") {
+        uint8_t buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        size_t len = 4;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", buf, &len, 4));
+        CHECK(len == 4);
+        CHECK(buf[0] == 0x44);
+        CHECK(buf[1] == 0x55);
+        CHECK(buf[2] == 0x66);
+        CHECK(buf[3] == 0x77);
+    }
+
+    SECTION("read last byte") {
+        uint8_t buf[1];
+        size_t len = 1;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", buf, &len, blob_size - 1));
+        CHECK(len == 1);
+        CHECK(buf[0] == 0xFF);
+    }
+
+    SECTION("read exactly the remaining bytes from offset") {
+        uint8_t buf[64];
+        memset(buf, 0xff, sizeof(buf));
+        size_t len = blob_size - 10;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", buf, &len, 10));
+        CHECK(len == blob_size - 10);
+        CHECK(memcmp(buf, blob_data + 10, blob_size - 10) == 0);
+    }
+
+    SECTION("read single byte from each position") {
+        for (size_t i = 0; i < blob_size; ++i) {
+            uint8_t buf[1];
+            size_t len = 1;
+            TEST_ESP_OK(nvs_get_blob_partial(handle, "blob1", buf, &len, i));
+            CAPTURE(i);
+            CHECK(len == 1);
+            CHECK(buf[0] == blob_data[i]);
+        }
+    }
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
+TEST_CASE("nvs_get_blob_partial error cases", "[nvs]")
+{
+    SpiFlashEmulator emu(10);
+    emu.randomize(100);
+
+    const uint32_t NVS_FLASH_SECTOR = 6;
+    const uint32_t NVS_FLASH_SECTOR_COUNT_MIN = 3;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT_MIN; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT_MIN));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    const uint8_t blob_data[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+    const size_t blob_size = sizeof(blob_data);
+    TEST_ESP_OK(nvs_set_blob(handle, "blob1", blob_data, blob_size));
+
+    SECTION("null length pointer returns INVALID_LENGTH") {
+        uint8_t buf[64];
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", buf, NULL, 0));
+    }
+
+    SECTION("offset at blob_size returns INVALID_LENGTH") {
+        uint8_t buf[64];
+        size_t len = 1;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", buf, &len, blob_size));
+        CHECK(len == 0);
+    }
+
+    SECTION("offset beyond blob_size returns INVALID_LENGTH") {
+        uint8_t buf[64];
+        size_t len = 1;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", buf, &len, blob_size + 100));
+        CHECK(len == 0);
+    }
+
+    SECTION("requested length exceeds available bytes") {
+        uint8_t buf[64];
+        size_t len = blob_size; // request 8 from offset 1 = only 7 available
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", buf, &len, 1));
+        CHECK(len == blob_size - 1);
+    }
+
+    SECTION("key not found") {
+        uint8_t buf[64];
+        size_t len = 5;
+        TEST_ESP_ERR(ESP_ERR_NVS_NOT_FOUND, nvs_get_blob_partial(handle, "nokey", buf, &len, 0));
+    }
+
+    SECTION("query length with offset at blob size") {
+        size_t len;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", NULL, &len, blob_size));
+        CHECK(len == 0);
+    }
+
+    SECTION("query length with offset beyond stored size") {
+        size_t len;
+        TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob_partial(handle, "blob1", NULL, &len, blob_size + 1));
+        CHECK(len == 0);
+    }
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
+TEST_CASE("nvs_get_str_partial byte-by-byte on max length string", "[nvs]")
+{
+    SpiFlashEmulator emu(20);
+    emu.randomize(42);
+
+    const uint32_t NVS_FLASH_SECTOR = 0;
+    const uint32_t NVS_FLASH_SECTOR_COUNT = 20;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    // Generate a deterministic 4000-byte string (3999 printable chars + null terminator)
+    const size_t STR_SIZE = 4000;
+    char str_data[STR_SIZE];
+    uint32_t seed = 0xDEADBEEF;
+    for (size_t i = 0; i < STR_SIZE - 1; i++) {
+        seed = seed * 1103515245 + 12345;
+        str_data[i] = (char)(33 + ((seed >> 16) % 94)); // printable ASCII '!' to '~'
+    }
+    str_data[STR_SIZE - 1] = '\0';
+
+    TEST_ESP_OK(nvs_set_str(handle, "bigstr", str_data));
+
+    // Verify stored size (includes null terminator)
+    size_t stored_size;
+    TEST_ESP_OK(nvs_get_str_partial(handle, "bigstr", NULL, &stored_size, 0));
+    CHECK(stored_size == STR_SIZE);
+
+    // Read byte-by-byte from every offset and verify content
+    for (size_t offset = 0; offset < STR_SIZE; offset++) {
+        char byte_buf;
+        size_t len = 1;
+        TEST_ESP_OK(nvs_get_str_partial(handle, "bigstr", &byte_buf, &len, offset));
+        CAPTURE(offset);
+        CHECK(len == 1);
+        CHECK(byte_buf == str_data[offset]);
+    }
+
+    // Also verify that reading from offset == STR_SIZE is rejected
+    char byte_buf;
+    size_t len = 1;
+    TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH,
+                 nvs_get_str_partial(handle, "bigstr", &byte_buf, &len, STR_SIZE));
+
+    nvs_close(handle);
+    TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
+}
+
+TEST_CASE("nvs_get_blob_partial byte-by-byte on large blob", "[nvs]")
+{
+    SpiFlashEmulator emu(20);
+    emu.randomize(42);
+
+    const uint32_t NVS_FLASH_SECTOR = 0;
+    const uint32_t NVS_FLASH_SECTOR_COUNT = 20;
+    emu.setBounds(NVS_FLASH_SECTOR, NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT);
+    for (uint16_t i = NVS_FLASH_SECTOR; i < NVS_FLASH_SECTOR + NVS_FLASH_SECTOR_COUNT; ++i) {
+        spi_flash_erase_sector(i);
+    }
+    TEST_ESP_OK(nvs_flash_init_custom(NVS_DEFAULT_PART_NAME, NVS_FLASH_SECTOR, NVS_FLASH_SECTOR_COUNT));
+
+    nvs_handle_t handle;
+    TEST_ESP_OK(nvs_open("test_ns", NVS_READWRITE, &handle));
+
+    // Generate a deterministic 8192-byte blob
+    const size_t BLOB_SIZE = 8192;
+    uint8_t blob_data[BLOB_SIZE];
+    uint32_t seed = 0xCAFEBABE;
+    for (size_t i = 0; i < BLOB_SIZE; i++) {
+        seed = seed * 1103515245 + 12345;
+        blob_data[i] = (uint8_t)(seed >> 16);
+    }
+
+    TEST_ESP_OK(nvs_set_blob(handle, "bigblob", blob_data, BLOB_SIZE));
+
+    // Verify stored size
+    size_t stored_size;
+    TEST_ESP_OK(nvs_get_blob_partial(handle, "bigblob", NULL, &stored_size, 0));
+    CHECK(stored_size == BLOB_SIZE);
+
+    // Read byte-by-byte from every offset and verify content
+    for (size_t offset = 0; offset < BLOB_SIZE; offset++) {
+        uint8_t byte_buf;
+        size_t len = 1;
+        TEST_ESP_OK(nvs_get_blob_partial(handle, "bigblob", &byte_buf, &len, offset));
+        CAPTURE(offset);
+        CHECK(len == 1);
+        CHECK(byte_buf == blob_data[offset]);
+    }
+
+    // Also verify that reading from offset == BLOB_SIZE is rejected
+    uint8_t byte_buf;
+    size_t len = 1;
+    TEST_ESP_ERR(ESP_ERR_NVS_INVALID_LENGTH,
+                 nvs_get_blob_partial(handle, "bigblob", &byte_buf, &len, BLOB_SIZE));
+
+    nvs_close(handle);
     TEST_ESP_OK(nvs_flash_deinit_partition(NVS_DEFAULT_PART_NAME));
 }
 
@@ -2682,10 +3109,10 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", "bash",
                     "-c",
-                    "rm -rf ../../../tools/mass_mfg/host_test && \
-                    cp -rf ../../../tools/mass_mfg/testdata mfg_testdata && \
+                    "rm -rf mfg_host_test && \
+                    cp -rf $IDF_PATH/tools/mass_mfg/testdata mfg_testdata && \
                     cp -rf ../nvs_partition_generator/testdata . && \
-                    mkdir -p ../../../tools/mass_mfg/host_test", NULL));
+                    mkdir -p mfg_host_test", NULL));
     } else {
         CHECK(childpid > 0);
         waitpid(childpid, &status, 0);
@@ -2694,14 +3121,14 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
         childpid = fork();
         if (childpid == 0) {
             exit(execlp("python", "python",
-                        "../../../tools/mass_mfg/mfg_gen.py",
+                        mfg_gen_py.c_str(),
                         "generate",
-                        "../../../tools/mass_mfg/samples/sample_config.csv",
-                        "../../../tools/mass_mfg/samples/sample_values_singlepage_blob.csv",
+                        idf_join("tools/mass_mfg/samples/sample_config.csv").c_str(),
+                        idf_join("tools/mass_mfg/samples/sample_values_singlepage_blob.csv").c_str(),
                         "Test",
                         "0x3000",
                         "--outdir",
-                        "../../../tools/mass_mfg/host_test",
+                        "mfg_host_test",
                         "--version",
                         "1",NULL));
 
@@ -2715,7 +3142,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                 exit(execlp("python", "python",
                             "../nvs_partition_generator/nvs_partition_gen.py",
                             "generate",
-                            "../../../tools/mass_mfg/host_test/csv/Test-1.csv",
+                            "mfg_host_test/csv/Test-1.csv",
                             "../nvs_partition_generator/Test-1-partition.bin",
                             "0x3000",
                             "--version",
@@ -2732,7 +3159,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
 
     }
 
-    SpiFlashEmulator emu1("../../../tools/mass_mfg/host_test/bin/Test-1.bin");
+    SpiFlashEmulator emu1("mfg_host_test/bin/Test-1.bin");
     check_nvs_part_gen_args("test", 3, "mfg_testdata/sample_singlepage_blob.bin", false, NULL);
 
     SpiFlashEmulator emu2("../nvs_partition_generator/Test-1-partition.bin");
@@ -2743,7 +3170,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf ../../../tools/mass_mfg/host_test | \
+                    "rm -rf mfg_host_test | \
                     rm -rf mfg_testdata | \
                     rm -rf testdata",NULL));
     } else {
@@ -2763,10 +3190,10 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf ../../../tools/mass_mfg/host_test | \
-                    cp -rf ../../../tools/mass_mfg/testdata mfg_testdata | \
+                    "rm -rf mfg_host_test | \
+                    cp -rf $IDF_PATH/tools/mass_mfg/testdata mfg_testdata | \
                     cp -rf ../nvs_partition_generator/testdata . | \
-                    mkdir -p ../../../tools/mass_mfg/host_test",NULL));
+                    mkdir -p mfg_host_test",NULL));
     } else {
         CHECK(childpid > 0);
         waitpid(childpid, &status, 0);
@@ -2775,14 +3202,14 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
         childpid = fork();
         if (childpid == 0) {
             exit(execlp("python", "python",
-                        "../../../tools/mass_mfg/mfg_gen.py",
+                        mfg_gen_py.c_str(),
                         "generate",
-                        "../../../tools/mass_mfg/samples/sample_config.csv",
-                        "../../../tools/mass_mfg/samples/sample_values_multipage_blob.csv",
+                        idf_join("tools/mass_mfg/samples/sample_config.csv").c_str(),
+                        idf_join("tools/mass_mfg/samples/sample_values_multipage_blob.csv").c_str(),
                         "Test",
                         "0x4000",
                         "--outdir",
-                        "../../../tools/mass_mfg/host_test",
+                        "mfg_host_test",
                         "--version",
                         "2",NULL));
 
@@ -2796,7 +3223,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                 exit(execlp("python", "python",
                             "../nvs_partition_generator/nvs_partition_gen.py",
                             "generate",
-                            "../../../tools/mass_mfg/host_test/csv/Test-1.csv",
+                            "mfg_host_test/csv/Test-1.csv",
                             "../nvs_partition_generator/Test-1-partition.bin",
                             "0x4000",
                             "--version",
@@ -2813,7 +3240,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
 
     }
 
-    SpiFlashEmulator emu1("../../../tools/mass_mfg/host_test/bin/Test-1.bin");
+    SpiFlashEmulator emu1("mfg_host_test/bin/Test-1.bin");
     check_nvs_part_gen_args("test", 4, "mfg_testdata/sample_multipage_blob.bin", false, NULL);
 
     SpiFlashEmulator emu2("../nvs_partition_generator/Test-1-partition.bin");
@@ -2823,7 +3250,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf ../../../tools/mass_mfg/host_test | \
+                    "rm -rf mfg_host_test | \
                     rm -rf mfg_testdata | \
                     rm -rf testdata",NULL));
     } else {
@@ -3251,10 +3678,10 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf ../../../tools/mass_mfg/host_test | \
-                    cp -rf ../../../tools/mass_mfg/testdata mfg_testdata | \
+                    "rm -rf mfg_host_test | \
+                    cp -rf $IDF_PATH/tools/mass_mfg/testdata mfg_testdata | \
                     cp -rf ../nvs_partition_generator/testdata . | \
-                    mkdir -p ../../../tools/mass_mfg/host_test",NULL));
+                    mkdir -p mfg_host_test",NULL));
     } else {
         CHECK(childpid > 0);
         waitpid(childpid, &status, 0);
@@ -3262,15 +3689,16 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
 
         childpid = fork();
         if (childpid == 0) {
+
             exit(execlp("python", "python",
-                        "../../../tools/mass_mfg/mfg_gen.py",
+                        mfg_gen_py.c_str(),
                         "generate",
-                        "../../../tools/mass_mfg/samples/sample_config.csv",
-                        "../../../tools/mass_mfg/samples/sample_values_multipage_blob.csv",
+                        idf_join("tools/mass_mfg/samples/sample_config.csv").c_str(),
+                        idf_join("tools/mass_mfg/samples/sample_values_multipage_blob.csv").c_str(),
                         "Test",
                         "0x4000",
                         "--outdir",
-                        "../../../tools/mass_mfg/host_test",
+                        "mfg_host_test",
                         "--version",
                         "2",
                         "--inputkey",
@@ -3286,7 +3714,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                 exit(execlp("python", "python",
                             "../nvs_partition_generator/nvs_partition_gen.py",
                             "encrypt",
-                            "../../../tools/mass_mfg/host_test/csv/Test-1.csv",
+                            "mfg_host_test/csv/Test-1.csv",
                             "../nvs_partition_generator/Test-1-partition-encrypted.bin",
                             "0x4000",
                             "--version",
@@ -3305,7 +3733,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
 
     }
 
-    SpiFlashEmulator emu1("../../../tools/mass_mfg/host_test/bin/Test-1.bin");
+    SpiFlashEmulator emu1("mfg_host_test/bin/Test-1.bin");
 
     nvs_sec_cfg_t cfg;
     for(int count = 0; count < NVS_KEY_SIZE; count++) {
@@ -3324,7 +3752,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf ../../../tools/mass_mfg/host_test | \
+                    "rm -rf mfg_host_test | \
                     rm -rf mfg_testdata | \
                     rm -rf testdata",NULL));
     } else {
@@ -3344,10 +3772,10 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     if (childpid == 0) {
         exit(execlp("bash", " bash",
                     "-c",
-                    "rm -rf ../../../tools/mass_mfg/host_test | \
-                    cp -rf ../../../tools/mass_mfg/testdata mfg_testdata | \
+                    "rm -rf mfg_host_test | \
+                    cp -rf $IDF_PATH/tools/mass_mfg/testdata mfg_testdata | \
                     cp -rf ../nvs_partition_generator/testdata . | \
-                    mkdir -p ../../../tools/mass_mfg/host_test",NULL));
+                    mkdir -p mfg_host_test",NULL));
     } else {
         CHECK(childpid > 0);
         waitpid(childpid, &status, 0);
@@ -3356,10 +3784,10 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
         childpid = fork();
         if (childpid == 0) {
             exit(execlp("python", "python",
-                        "../../../tools/mass_mfg/mfg_gen.py",
+                        mfg_gen_py.c_str(),
                         "generate-key",
                         "--outdir",
-                        "../../../tools/mass_mfg/host_test",
+                        "mfg_host_test",
                         "--keyfile",
                         "encr_keys_host_test.bin",NULL));
 
@@ -3371,18 +3799,18 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
             childpid = fork();
             if (childpid == 0) {
                 exit(execlp("python", "python",
-                            "../../../tools/mass_mfg/mfg_gen.py",
+                            mfg_gen_py.c_str(),
                             "generate",
-                            "../../../tools/mass_mfg/samples/sample_config.csv",
-                            "../../../tools/mass_mfg/samples/sample_values_multipage_blob.csv",
+                            idf_join("tools/mass_mfg/samples/sample_config.csv").c_str(),
+                            idf_join("tools/mass_mfg/samples/sample_values_multipage_blob.csv").c_str(),
                             "Test",
                             "0x4000",
                             "--outdir",
-                            "../../../tools/mass_mfg/host_test",
+                            "mfg_host_test",
                             "--version",
                             "2",
                             "--inputkey",
-                            "../../../tools/mass_mfg/host_test/keys/encr_keys_host_test.bin",NULL));
+                            "mfg_host_test/keys/encr_keys_host_test.bin",NULL));
 
             } else {
                 CHECK(childpid > 0);
@@ -3394,13 +3822,13 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                     exit(execlp("python", "python",
                                 "../nvs_partition_generator/nvs_partition_gen.py",
                                 "encrypt",
-                                "../../../tools/mass_mfg/host_test/csv/Test-1.csv",
+                                "mfg_host_test/csv/Test-1.csv",
                                 "../nvs_partition_generator/Test-1-partition-encrypted.bin",
                                 "0x4000",
                                 "--version",
                                 "2",
                                 "--inputkey",
-                                "../../../tools/mass_mfg/host_test/keys/encr_keys_host_test.bin",NULL));
+                                "mfg_host_test/keys/encr_keys_host_test.bin",NULL));
 
                 } else {
                     CHECK(childpid > 0);
@@ -3416,12 +3844,12 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
     }
 
 
-    SpiFlashEmulator emu1("../../../tools/mass_mfg/host_test/bin/Test-1.bin");
+    SpiFlashEmulator emu1("mfg_host_test/bin/Test-1.bin");
 
     char buffer[64];
     FILE *fp;
 
-    fp = fopen("../../../tools/mass_mfg/host_test/keys/encr_keys_host_test.bin","rb");
+    fp = fopen("mfg_host_test/keys/encr_keys_host_test.bin","rb");
     fread(buffer,sizeof(buffer),1,fp);
 
     fclose(fp);
@@ -3446,7 +3874,7 @@ TEST_CASE("check and read data from partition generated via manufacturing utilit
                     "rm -rf keys | \
                     rm -rf mfg_testdata | \
                     rm -rf testdata | \
-                    rm -rf ../../../tools/mass_mfg/host_test",NULL));
+                    rm -rf mfg_host_test",NULL));
     } else {
         CHECK(childpid > 0);
         waitpid(childpid, &status, 0);

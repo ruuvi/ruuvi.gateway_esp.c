@@ -67,7 +67,9 @@ public:
 
     esp_err_t writeItem(uint8_t nsIndex, ItemType datatype, const char* key, const void* data, size_t dataSize);
 
-    esp_err_t readItem(uint8_t nsIndex, ItemType datatype, const char* key, void* data, size_t dataSize);
+    esp_err_t readItem(uint8_t nsIndex, ItemType datatype, const char* key,
+                       void* data, size_t dataSize,
+                       bool isPartialRead = false, size_t dataOffset = 0);
 
     esp_err_t getItemDataSize(uint8_t nsIndex, ItemType datatype, const char* key, size_t& dataSize);
 
@@ -103,7 +105,10 @@ public:
 
     esp_err_t writeMultiPageBlob(uint8_t nsIndex, const char* key, const void* data, size_t dataSize, VerOffset chunkStart);
 
-    esp_err_t readMultiPageBlob(uint8_t nsIndex, const char* key, void* data, size_t dataSize);
+    esp_err_t readMultiPageBlob(uint8_t nsIndex, const char* key, void* data,
+                                size_t dataSize,
+                                bool isPartialRead = false,
+                                size_t dataOffset = 0);
 
     esp_err_t cmpMultiPageBlob(uint8_t nsIndex, const char* key, const void* data, size_t dataSize);
 

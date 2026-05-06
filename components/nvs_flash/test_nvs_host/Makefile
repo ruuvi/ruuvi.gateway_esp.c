@@ -36,7 +36,19 @@ else
 COMPILER := gcc
 endif
 
-CPPFLAGS += -I../include -I../src -I./ -I../../esp_common/include -I../../esp32/include -I ../../mbedtls/mbedtls/include -I ../../spi_flash/include -I ../../soc/include -I ../../xtensa/include -I ../../../tools/catch -fprofile-arcs -ftest-coverage
+CPPFLAGS += -I../include \
+			-I../src \
+			-I./ \
+			-I../../esp_common/include \
+			-I$(IDF_PATH)/components/esp_common/include \
+			-I$(IDF_PATH)/components/esp32/include \
+			-I ../../mbedtls/mbedtls/include \
+			-I $(IDF_PATH)/components/spi_flash/include \
+			-I $(IDF_PATH)/components/soc/include \
+			-I $(IDF_PATH)/components/xtensa/include \
+			-I $(IDF_PATH)/tools/catch \
+			-fprofile-arcs \
+			-ftest-coverage
 CFLAGS += -fprofile-arcs -ftest-coverage
 CXXFLAGS += -std=c++11 -Wall -Werror
 LDFLAGS += -lstdc++ -Wall -fprofile-arcs -ftest-coverage
@@ -86,11 +98,14 @@ clean: clean-coverage
 	rm -f $(OBJ_FILES) $(TEST_PROGRAM)
 	rm -f ../nvs_partition_generator/partition_single_page.bin
 	rm -f ../nvs_partition_generator/partition_multipage_blob.bin
+	rm -f ../nvs_partition_generator/partition_encoded.bin
 	rm -f ../nvs_partition_generator/partition_encrypted.bin
 	rm -f ../nvs_partition_generator/partition_encrypted_using_keygen.bin
 	rm -f ../nvs_partition_generator/partition_encrypted_using_keyfile.bin
+	rm -f ../nvs_partition_generator/partition_decrypted.bin
 	rm -f ../nvs_partition_generator/Test-1-partition-encrypted.bin
 	rm -f ../nvs_partition_generator/Test-1-partition.bin
+	rm -rf mfg_host_test
 	rm -f ../../../tools/mass_mfg/samples/sample_values_multipage_blob_created.csv
 	rm -f ../../../tools/mass_mfg/samples/sample_values_singlepage_blob_created.csv
 

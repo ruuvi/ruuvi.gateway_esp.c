@@ -39,7 +39,10 @@ public:
 
     esp_err_t set_typed_item(ItemType datatype, const char *key, const void *data, size_t dataSize) override;
 
-    esp_err_t get_typed_item(ItemType datatype, const char *key, void *data, size_t dataSize) override;
+    esp_err_t get_typed_item(ItemType datatype, const char *key,
+                             void *data, size_t dataSize,
+                             bool isPartialRead = false,
+                             size_t dataOffset = 0) override;
 
     esp_err_t set_string(const char *key, const char *str) override;
 

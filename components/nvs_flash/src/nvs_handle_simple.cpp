@@ -29,11 +29,14 @@ esp_err_t NVSHandleSimple::set_typed_item(ItemType datatype, const char *key, co
     return mStoragePtr->writeItem(mNsIndex, datatype, key, data, dataSize);
 }
 
-esp_err_t NVSHandleSimple::get_typed_item(ItemType datatype, const char *key, void* data, size_t dataSize)
+esp_err_t NVSHandleSimple::get_typed_item(ItemType datatype, const char *key,
+                                          void* data, size_t dataSize,
+                                          bool isPartialRead, size_t dataOffset)
 {
     if (!valid) return ESP_ERR_NVS_INVALID_HANDLE;
 
-    return mStoragePtr->readItem(mNsIndex, datatype, key, data, dataSize);
+    return mStoragePtr->readItem(mNsIndex, datatype, key, data, dataSize,
+                                 isPartialRead, dataOffset);
 }
 
 esp_err_t NVSHandleSimple::set_string(const char *key, const char* str)
