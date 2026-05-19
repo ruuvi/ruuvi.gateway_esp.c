@@ -1012,7 +1012,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_resp_json_ruuvi();
+    http_server_resp_t resp = http_server_resp_json_ruuvi();
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1026,6 +1026,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1064,6 +1065,7 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
             &gw_cfg,
             &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    esp_log_wrapper_clear();
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1251,7 +1253,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_resp_json("ruuvi.json", false);
+    http_server_resp_t resp = http_server_resp_json("ruuvi.json", false);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1265,6 +1267,7 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1292,8 +1295,8 @@ TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
 
 TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
 {
-    const char*              expected_resp = "metrics_info";
-    const http_server_resp_t resp          = http_server_resp_metrics();
+    const char*        expected_resp = "metrics_info";
+    http_server_resp_t resp          = http_server_resp_metrics();
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1307,6 +1310,7 @@ TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1840,7 +1844,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1855,6 +1859,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1984,7 +1989,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // N
     gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1999,6 +2004,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // N
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2007,8 +2013,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // N
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
 {
-    const char*              expected_resp = "metrics_info";
-    const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
+    const char*        expected_resp = "metrics_info";
+    http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -2023,6 +2029,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2031,9 +2038,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics_during_fw_update) // NOLINT
 {
-    this->m_fw_update_is_in_progress       = true;
-    const char*              expected_resp = "metrics_info";
-    const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
+    this->m_fw_update_is_in_progress = true;
+    const char*        expected_resp = "metrics_info";
+    http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -2048,6 +2055,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics_during_fw_update) // NOLI
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2081,7 +2089,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
           "    }\n"
           "  }\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
@@ -2112,6 +2120,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 60 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2146,7 +2155,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_during_fw_update) // NOLI
           "    }\n"
           "  }\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
@@ -2177,6 +2186,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_during_fw_update) // NOLI
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 60 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2210,7 +2220,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
           "    }\n"
           "  }\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", "time=20", false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("history", "time=20", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
@@ -2243,6 +2253,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'decode=' in URL params"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 20 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2280,7 +2291,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
           "    }\n"
           "  }\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
@@ -2311,6 +2322,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history (without filtering)"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2348,7 +2360,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
           "    }\n"
           "  }\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", "counter=10", false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("history", "counter=10", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
@@ -2381,6 +2393,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'decode=' in URL params"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history starting from counter 10"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4219,7 +4232,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -4260,6 +4273,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4299,7 +4313,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -4340,6 +4354,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4379,7 +4394,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -4420,6 +4435,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4459,7 +4475,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -4500,6 +4516,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4539,7 +4556,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -4580,6 +4597,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4619,7 +4637,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -4660,6 +4678,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4707,7 +4726,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -4748,6 +4767,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4797,7 +4817,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -4838,6 +4858,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4885,7 +4906,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -4926,6 +4947,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4973,7 +4995,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5014,6 +5036,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5063,7 +5086,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5104,6 +5127,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5151,7 +5175,7 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5192,6 +5216,7 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5218,7 +5243,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5257,6 +5282,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
             "E http_server: Failed to download ruuvi_gateway_esp.bin, HTTP error: 404\n"
             "E http_server: Failed to download firmware update: http_resp_code=404, failed to download file: ruuvi_gateway_esp.bin\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5283,7 +5309,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5320,6 +5346,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
             "E http_server: Firmware_update info 'latest/version' is empty\n"
             "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5345,7 +5372,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5381,6 +5408,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5407,7 +5435,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5444,6 +5472,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Firmware_update info 'latest/version' is empty\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5469,7 +5498,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5506,6 +5535,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key 'latest/version' in firmware_update info\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5532,7 +5562,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5569,6 +5599,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Firmware_update info 'latest/url' is empty\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5594,7 +5625,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5631,6 +5662,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key 'latest/url' in firmware_update info\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5657,7 +5689,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5694,6 +5726,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Firmware_update info 'latest/url' is invalid: qqq://abc.com\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5715,7 +5748,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5752,6 +5785,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key 'latest' in firmware_update info\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5771,7 +5805,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5807,6 +5841,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5845,7 +5880,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5886,6 +5921,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -5922,7 +5958,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -5963,6 +5999,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6000,7 +6037,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -6041,6 +6078,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
             "I http_download: http_check: completed within 0 ticks\n"
             "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6078,7 +6116,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -6119,6 +6157,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6154,7 +6193,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -6195,6 +6234,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -6209,7 +6249,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
         = "validate_type=check_post_advs&url=https://myserver.com/"
           "&auth_type=none&use_ssl_client_cert=false&use_ssl_server_cert=false";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -6251,6 +6291,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
         "I http_server: Validate URL (POST advs): use_ssl_client_cert=0\n"
         "I http_server: Validate URL (POST advs): use_ssl_server_cert=0\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
