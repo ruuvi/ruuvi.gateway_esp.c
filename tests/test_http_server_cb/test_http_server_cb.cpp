@@ -32,6 +32,7 @@
 #include "partition_table.h"
 #include "http.h"
 #include "http_server_resp.h"
+#include "cjson_wrap.h"
 #include "ruuvi_gateway.h"
 
 #ifdef __cplusplus
@@ -371,14 +372,11 @@ protected:
     void
     SetUp() override
     {
+        os_malloc_trace_init();
         esp_log_wrapper_init();
         g_pTestClass = this;
 
-        cJSON_Hooks hooks = {
-            .malloc_fn = &os_malloc,
-            .free_fn   = &os_free_internal,
-        };
-        cJSON_InitHooks(&hooks);
+        cjson_wrap_init();
 
         g_cnt_cfg_button_pressed = 0;
 
@@ -423,6 +421,7 @@ protected:
         this->m_files.clear();
         this->m_fd   = -1;
         g_pTestClass = nullptr;
+        os_malloc_trace_deinit();
         esp_log_wrapper_deinit();
     }
 
@@ -549,7 +548,7 @@ os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
 void
 os_mutex_delete(os_mutex_t* const ph_mutex)
 {
-    (void)ph_mutex;
+    *ph_mutex = NULL;
 }
 
 void
@@ -857,6 +856,10 @@ TEST_F(TestHttpServerCb, http_server_cb_init_ok_deinit_ok) // NOLINT
     http_server_cb_deinit();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_deinit_of_not_initialized) // NOLINT
@@ -865,6 +868,10 @@ TEST_F(TestHttpServerCb, http_server_cb_deinit_of_not_initialized) // NOLINT
     http_server_cb_deinit();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_init_failed) // NOLINT
@@ -875,6 +882,10 @@ TEST_F(TestHttpServerCb, http_server_cb_init_failed) // NOLINT
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "flashfatfs_mount: failed to mount partition 'fatfs_gwui'");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
@@ -1015,6 +1026,10 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
@@ -1049,6 +1064,10 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
             &gw_cfg,
             &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
@@ -1097,6 +1116,10 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
@@ -1242,6 +1265,10 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
@@ -1257,6 +1284,10 @@ TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("Request to unknown json: unknown.json"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
@@ -1276,6 +1307,10 @@ TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
     ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_metrics_malloc_failed) // NOLINT
@@ -1292,6 +1327,10 @@ TEST_F(TestHttpServerCb, resp_metrics_malloc_failed) // NOLINT
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Not enough memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_get_content_type_by_ext) // NOLINT
@@ -1304,6 +1343,10 @@ TEST_F(TestHttpServerCb, http_get_content_type_by_ext) // NOLINT
     ASSERT_EQ(HTTP_CONTENT_TYPE_IMAGE_SVG_XML, http_get_content_type_by_ext(".svg"));
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_OCTET_STREAM, http_get_content_type_by_ext(".ttf"));
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_OCTET_STREAM, http_get_content_type_by_ext(".unk"));
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLINT
@@ -1325,6 +1368,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLIN
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "GWUI partition is not ready");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
@@ -1350,6 +1397,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
         ESP_LOG_ERROR,
         string("Temporary buffer is not enough for the file path '") + string(file_name) + string("'"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
@@ -1373,6 +1424,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
@@ -1396,6 +1451,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=2");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
@@ -1419,6 +1478,10 @@ TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: app.js"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
@@ -1442,6 +1505,10 @@ TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: style.css"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File style.css.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
@@ -1465,6 +1532,10 @@ TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: binary"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File binary was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
@@ -1482,6 +1553,10 @@ TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: unknown.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find file: unknown.html"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
@@ -1504,6 +1579,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't open file: index.html"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
@@ -1524,6 +1603,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ruuvi.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't find file: ruuvi.html");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_default_during_fw_update) // NOLINT
@@ -1545,6 +1628,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default_during_fw_update) // NOLI
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ruuvi.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't find file: ruuvi.html");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
@@ -1569,6 +1656,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html_during_fw_update) // NOLINT
@@ -1594,6 +1685,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html_during_fw_update) // N
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
@@ -1618,6 +1713,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: app.js"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
@@ -1756,6 +1855,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // NOLINT
@@ -1896,6 +1999,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // N
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
@@ -1916,6 +2023,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics_during_fw_update) // NOLINT
@@ -1937,6 +2048,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics_during_fw_update) // NOLI
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
@@ -1997,6 +2112,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 60 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history_during_fw_update) // NOLINT
@@ -2058,6 +2177,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_during_fw_update) // NOLI
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 60 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) // NOLINT
@@ -2120,6 +2243,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'decode=' in URL params"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 20 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NOLINT
@@ -2184,6 +2311,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history (without filtering)"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_filter_counter_10) // NOLINT
@@ -2250,6 +2381,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'decode=' in URL params"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history starting from counter 10"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg) // NOLINT
@@ -2292,6 +2427,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS1: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS2: ");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
@@ -2491,6 +2630,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
@@ -2723,6 +2866,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
@@ -2797,6 +2944,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
                "}"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to allocate memory for gw_cfg"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
@@ -2871,6 +3022,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
                "}"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
@@ -2945,6 +3100,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
                "}"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth) // NOLINT
@@ -3193,6 +3352,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth) // NOLINT
@@ -3450,6 +3613,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
@@ -3685,6 +3852,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) // NOLINT
@@ -3921,6 +4092,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
@@ -3968,6 +4143,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /unknown.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("POST /unknown.json"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
@@ -3983,6 +4162,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("DELETE /unknown.json, params="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_download_is_url_valid) // NOLINT
@@ -3997,6 +4180,10 @@ TEST_F(TestHttpServerCb, test_http_download_is_url_valid) // NOLINT
     ASSERT_TRUE(http_download_is_url_valid("https://a.c"));
     ASSERT_TRUE(http_download_is_url_valid("http://a.c:80"));
     ASSERT_TRUE(http_download_is_url_valid("https://a.c:443"));
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4073,6 +4260,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4149,6 +4340,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4225,6 +4420,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4301,6 +4500,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4377,6 +4580,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4453,6 +4660,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4537,6 +4748,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4623,6 +4838,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4707,6 +4926,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4791,6 +5014,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4877,6 +5104,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4961,6 +5192,10 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__good_json_missing_files) // NOLINT
@@ -5022,6 +5257,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
             "E http_server: Failed to download ruuvi_gateway_esp.bin, HTTP error: 404\n"
             "E http_server: Failed to download firmware update: http_resp_code=404, failed to download file: ruuvi_gateway_esp.bin\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_json) // NOLINT
@@ -5081,6 +5320,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
             "E http_server: Firmware_update info 'latest/version' is empty\n"
             "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__invalid_json) // NOLINT
@@ -5138,6 +5381,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_version) // NOLINT
@@ -5197,6 +5444,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Firmware_update info 'latest/version' is empty\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__no_version) // NOLINT
@@ -5255,6 +5506,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key 'latest/version' in firmware_update info\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_url) // NOLINT
@@ -5314,6 +5569,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Firmware_update info 'latest/url' is empty\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__no_url) // NOLINT
@@ -5372,6 +5631,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key 'latest/url' in firmware_update info\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__invalid_url) // NOLINT
@@ -5431,6 +5694,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Firmware_update info 'latest/url' is invalid: qqq://abc.com\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__no_latest) // NOLINT
@@ -5485,6 +5752,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key 'latest' in firmware_update info\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_resp) // NOLINT
@@ -5536,6 +5807,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_empty_version) // NOLINT
@@ -5611,6 +5886,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_no_version) // NOLINT
@@ -5684,6 +5963,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_empty_url) // NOLINT
@@ -5758,6 +6041,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
             "I http_download: http_check: completed within 0 ticks\n"
             "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_invalid_url) // NOLINT
@@ -5832,6 +6119,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_no_url) // NOLINT
@@ -5904,6 +6195,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__custom_http) // NOLINT
@@ -5956,6 +6251,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
         "I http_server: Validate URL (POST advs): use_ssl_client_cert=0\n"
         "I http_server: Validate URL (POST advs): use_ssl_server_cert=0\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__latest_only) // NOLINT
@@ -6002,6 +6301,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
         "D http_server: Feed watchdog\n"
         "I http_server: Run firmware auto-updating from URL: https://fwupdate.ruuvi.com/v1.14.3\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__latest_and_beta) // NOLINT
@@ -6053,6 +6356,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
         "D http_server: Feed watchdog\n"
         "I http_server: Run firmware auto-updating from URL: https://fwupdate.ruuvi.com/v1.14.3\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__latest_only_no_update_needed) // NOLINT
@@ -6091,6 +6398,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -6136,6 +6447,10 @@ TEST_F(
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest_and_beta) // NOLINT
@@ -6191,6 +6506,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
             "D http_server: Feed watchdog\n"
             "I http_server: Run firmware auto-updating from URL: https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest) // NOLINT
@@ -6237,6 +6556,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
             "D http_server: Feed watchdog\n"
             "I http_server: Run firmware auto-updating from URL: https://fwupdate.ruuvi.com/v1.14.3\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest_only_no_update_needed) // NOLINT
@@ -6275,6 +6598,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest_and_beta_no_update_needed) // NOLINT
@@ -6318,6 +6645,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__latest_and_beta) // NOLINT
@@ -6363,6 +6694,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__l
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__latest) // NOLINT
@@ -6401,6 +6736,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__l
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__latest_only_no_update_needed) // NOLINT
@@ -6439,6 +6778,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__l
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -6484,6 +6827,10 @@ TEST_F(
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__empty_version) // NOLINT
@@ -6518,6 +6865,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
             "E http_server: Firmware_update info 'latest/version' is empty\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_reset_blocked_during_fw_update) // NOLINT
@@ -6531,6 +6882,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_reset_blocked_during_f
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /fw_update_reset, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_blocked_during_fw_update) // NOLINT
@@ -6544,6 +6899,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_blocked_during_fw_upd
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /ruuvi.json, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_bluetooth_scanning_json_blocked_during_fw_update) // NOLINT
@@ -6560,6 +6919,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_bluetooth_scanning_json_blocked_
         string("FW update in progress, cannot handle POST request: /bluetooth_scanning.json, params=, "
                "flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_json_blocked_during_fw_update) // NOLINT
@@ -6573,6 +6936,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_json_blocked_during_fw
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /fw_update.json, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_json_blocked_during_fw_update) // NOLINT
@@ -6587,6 +6954,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_json_blocked_durin
         string(
             "FW update in progress, cannot handle POST request: /fw_update_url.json, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_blocked_during_fw_update) // NOLINT
@@ -6600,6 +6971,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_blocked_during_fw_
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /fw_update_url, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ssl_cert_blocked_during_fw_update) // NOLINT
@@ -6613,6 +6988,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ssl_cert_blocked_during_fw_updat
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /ssl_cert, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_init_storage_blocked_during_fw_update) // NOLINT
@@ -6626,6 +7005,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_init_storage_blocked_during_fw_u
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /init_storage, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_any_blocked_during_fw_update) // NOLINT
@@ -6639,6 +7022,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_any_blocked_during_fw_update) //
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /any_request, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_blocked_during_fw_update) // NOLINT
@@ -6652,6 +7039,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_blocked_during_fw_up
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle GET request: /validate_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_delete_blocked_during_fw_update) // NOLINT
@@ -6671,4 +7062,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete_blocked_during_fw_update) // N
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle DELETE request: /unknown.json, params="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }

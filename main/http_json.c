@@ -16,6 +16,18 @@
 #include "ruuvi_endpoint_f0.h"
 #include "adv_decode.h"
 
+static void*
+http_json_malloc(size_t size)
+{
+    return os_malloc(size);
+}
+
+static void
+http_json_free(void* ptr)
+{
+    os_free(ptr);
+}
+
 #if defined(RUUVI_TESTS)
 #define LOG_LOCAL_DISABLED 1
 #endif
@@ -425,8 +437,8 @@ http_json_create_stream_gen_advs(
         .indentation_mark    = ' ',
         .indentation         = 2,
         .max_nesting_level   = 4,
-        .p_malloc            = &os_malloc,
-        .p_free              = &os_free_internal,
+        .p_malloc            = &http_json_malloc,
+        .p_free              = &http_json_free,
         .p_localeconv        = NULL,
     };
     http_json_stream_gen_advs_ctx_t* p_ctx = NULL;

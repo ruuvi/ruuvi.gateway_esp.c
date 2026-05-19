@@ -182,7 +182,10 @@ target_compile_definitions(${ProjectId} PUBLIC
         CONFIG_DEFAULT_AP_SSID=\"RuuviGateway\"
         GW_GWUI_PARTITION="fatfs_gwui"
         GW_NRF_PARTITION="fatfs_nrf52"
+        OS_MALLOC_TRACE=1
+        OS_MALLOC_TRACE_DISABLE_TIMESTAMP=1
 )
+
 
 target_compile_options(${ProjectId} PUBLIC
         -g3
