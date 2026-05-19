@@ -707,12 +707,10 @@ http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_
 
     http_server_resp_t resp = http_download_or_check(HTTP_METHOD_HEAD, p_param, NULL, NULL, flag_use_big_tls_buf);
 
-    *p_http_resp_code = resp.http_resp_code;
-    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
-    {
-        os_free(resp.select_location.memory.p_buf);
-    }
-    return (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
+    *p_http_resp_code     = resp.http_resp_code;
+    const bool is_success = (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
+    http_server_resp_free(&resp);
+    return is_success;
 }
 
 #endif
@@ -728,20 +726,19 @@ http_download(
 
     http_server_resp_t resp = http_download_with_auth(p_param, p_cb_on_data, p_user_data, flag_use_big_tls_buf);
 
-    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
-    {
-        os_free(resp.select_location.memory.p_buf);
-    }
     if (NULL != p_flag_allow_retry)
     {
         *p_flag_allow_retry = (HTTP_RESP_CODE_502 == resp.http_resp_code) ? true : false;
     }
     const bool is_range_used = (0 != p_param->base.range_start) || (0 != p_param->base.range_end);
+    const bool is_success    = ((HTTP_RESP_CODE_200 == resp.http_resp_code)
+                             || (is_range_used && (HTTP_RESP_CODE_206 == resp.http_resp_code)))
+                                   ? true
+                                   : false;
 
-    return ((HTTP_RESP_CODE_200 == resp.http_resp_code)
-            || (is_range_used && (HTTP_RESP_CODE_206 == resp.http_resp_code)))
-               ? true
-               : false;
+    http_server_resp_free(&resp);
+
+    return is_success;
 }
 
 static bool
@@ -844,12 +841,22 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
         info.is_error       = true;
         info.http_resp_code = resp.http_resp_code;
 
-        const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
-                                       || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
-                                       || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
-        const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
-                                 ? (const char*)resp.select_location.memory.p_buf
-                                 : NULL;
+        const char* p_json = NULL;
+        switch (resp.content_location)
+        {
+            case HTTP_CONTENT_LOCATION_FLASH_MEM:
+                p_json = (const char*)resp.select_location.flash.p_buf;
+                break;
+            case HTTP_CONTENT_LOCATION_STATIC_MEM:
+                p_json = (const char*)resp.select_location.static_mem.p_buf;
+                break;
+            case HTTP_CONTENT_LOCATION_HEAP:
+                p_json = (const char*)resp.select_location.heap.p_buf;
+                break;
+            default:
+                LOG_ERR("Invalid content location: %d", (printf_int_t)resp.content_location);
+                break;
+        }
         if (NULL != p_json)
         {
             if (NULL != info.p_json_buf)
@@ -862,8 +869,8 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
                 p_params->base.p_url,
                 resp.http_resp_code,
                 p_json);
-            str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json);
-            info.p_json_buf   = str_buf.buf;
+            const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json);
+            info.p_json_buf         = str_buf.buf;
         }
         else
         {
@@ -895,6 +902,7 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
     {
         // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
     }
+    http_server_resp_free(&resp);
     if (info.is_error && (HTTP_RESP_CODE_200 == info.http_resp_code))
     {
         info.http_resp_code = HTTP_RESP_CODE_400;

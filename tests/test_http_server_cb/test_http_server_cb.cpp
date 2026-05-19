@@ -201,8 +201,8 @@ http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsS
               "\t\"status\":\t200,\n"
               "\t\"message\":\t\"{}\"\n"
               "}";
-        const char* p_resp = strdup(resp_content);
-        assert(NULL != p_resp);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", resp_content);
+        assert(NULL != str_buf.buf);
         const http_server_resp_t resp = {
             .http_resp_code       = HTTP_RESP_CODE_200,
             .content_location     = HTTP_CONTENT_LOCATION_HEAP,
@@ -210,11 +210,11 @@ http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsS
             .flag_add_header_date = true,
             .content_type         = HTTP_CONTENT_TYPE_APPLICATION_JSON,
             .p_content_type_param = NULL,
-            .content_len          = strlen(p_resp),
+            .content_len          = strlen(str_buf.buf),
             .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
             .select_location = {
-                .memory = {
-                    .p_buf = (const uint8_t*)p_resp,
+                .heap = {
+                    .p_buf = (uint8_t*)str_buf.buf,
                 },
             },
         };
@@ -231,11 +231,6 @@ http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsS
             .p_content_type_param = NULL,
             .content_len          = 0,
             .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
-            .select_location = {
-                .memory = {
-                    .p_buf = NULL,
-                },
-            },
         };
         return resp;
     }
@@ -253,11 +248,6 @@ http_check_post_stat(const http_check_params_t* const p_params, const TimeUnitsS
         .p_content_type_param = NULL,
         .content_len          = 0,
         .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
-        .select_location = {
-            .memory = {
-                .p_buf = NULL,
-            },
-        },
     };
     return resp;
 }
@@ -274,11 +264,6 @@ http_check_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const TimeUnitsSeco
         .p_content_type_param = NULL,
         .content_len          = 0,
         .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
-        .select_location = {
-            .memory = {
-                .p_buf = NULL,
-            },
-        },
     };
     return resp;
 }
@@ -359,45 +344,6 @@ wrap_esp_err_to_name_r(const esp_err_t code, char* const p_buf, const size_t buf
 
 } // extern "C"
 
-class MemAllocTrace
-{
-    vector<void*> allocated_mem;
-
-    std::vector<void*>::iterator
-    find(void* ptr)
-    {
-        for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
-        {
-            if (*iter == ptr)
-            {
-                return iter;
-            }
-        }
-        return this->allocated_mem.end();
-    }
-
-public:
-    void
-    add(void* ptr)
-    {
-        auto iter = find(ptr);
-        assert(iter == this->allocated_mem.end()); // ptr was found in the list of allocated memory blocks
-        this->allocated_mem.push_back(ptr);
-    }
-    void
-    remove(void* ptr)
-    {
-        auto iter = find(ptr);
-        assert(iter != this->allocated_mem.end()); // ptr was not found in the list of allocated memory blocks
-        this->allocated_mem.erase(iter);
-    }
-    bool
-    is_empty()
-    {
-        return this->allocated_mem.empty();
-    }
-};
-
 class FileInfo
 {
 public:
@@ -461,11 +407,16 @@ protected:
         this->m_firmware_update_resp             = str_buf_init_null();
         this->m_fw_updating_reason               = FW_UPDATE_REASON_NONE;
         this->m_fw_update_is_in_progress         = false;
+
+        this->m_alloc_free_call_count       = 0;
+        this->m_flag_alloc_counting_enabled = true;
     }
 
     void
     TearDown() override
     {
+        this->m_flag_alloc_counting_enabled = false;
+        this->m_alloc_free_call_count       = 0;
         http_server_cb_deinit();
         gw_cfg_deinit();
         gw_cfg_default_deinit();
@@ -480,7 +431,6 @@ public:
 
     ~TestHttpServerCb() override;
 
-    MemAllocTrace         m_mem_alloc_trace;
     uint32_t              m_malloc_cnt;
     uint32_t              m_malloc_fail_on_cnt;
     bool                  m_flag_settings_saved_to_flash;
@@ -497,6 +447,9 @@ public:
     size_t                m_http_check_with_auth_num_of_urls;
     fw_updating_reason_e  m_fw_updating_reason;
     bool                  m_fw_update_is_in_progress;
+
+    bool m_flag_alloc_counting_enabled;
+    int  m_alloc_free_call_count;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -508,6 +461,8 @@ TestHttpServerCb::TestHttpServerCb()
     , m_is_fatfs_mounted(false)
     , m_is_fatfs_mount_fail(false)
     , m_fd(-1)
+    , m_flag_alloc_counting_enabled(false)
+    , m_alloc_free_call_count(0)
     , Test()
 {
 }
@@ -515,51 +470,53 @@ TestHttpServerCb::TestHttpServerCb()
 extern "C" {
 
 void*
-os_malloc(const size_t size)
+__wrap_malloc(size_t size)
 {
-    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    extern void* __real_malloc(size_t _size) __THROW __attribute_malloc__ __attribute_alloc_size__((1)) __wur;
+    if (g_pTestClass && g_pTestClass->m_malloc_fail_on_cnt > 0)
     {
-        return nullptr;
+        g_pTestClass->m_malloc_cnt += 1;
+        if (g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+        {
+            return nullptr;
+        }
     }
-    void* ptr = malloc(size);
-    assert(nullptr != ptr);
-    g_pTestClass->m_mem_alloc_trace.add(ptr);
-    return ptr;
-}
-
-void
-os_free_internal(void* ptr)
-{
-    g_pTestClass->m_mem_alloc_trace.remove(ptr);
-    free(ptr);
+    if (g_pTestClass && g_pTestClass->m_flag_alloc_counting_enabled)
+    {
+        g_pTestClass->m_alloc_free_call_count += 1;
+    }
+    return __real_malloc(size);
 }
 
 void*
-os_calloc(const size_t nmemb, const size_t size)
+__wrap_calloc(size_t nmemb, size_t size)
 {
-    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    extern void*                     __real_calloc(size_t _nmemb, size_t _size)
+        __THROW __attribute_malloc__ __attribute_alloc_size__((1, 2)) __wur;
+    if (g_pTestClass && g_pTestClass->m_malloc_fail_on_cnt > 0)
     {
-        return nullptr;
+        g_pTestClass->m_malloc_cnt += 1;
+        if (g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+        {
+            return nullptr;
+        }
     }
-    void* ptr = calloc(nmemb, size);
-    assert(nullptr != ptr);
-    g_pTestClass->m_mem_alloc_trace.add(ptr);
-    return ptr;
+    if (g_pTestClass && g_pTestClass->m_flag_alloc_counting_enabled)
+    {
+        g_pTestClass->m_alloc_free_call_count += 1;
+    }
+    return __real_calloc(nmemb, size);
 }
 
-ATTR_NONNULL(1)
-bool
-os_realloc_safe_and_clean(void** const p_ptr, const size_t size)
+void
+__wrap_free(void* ptr)
 {
-    void* ptr       = *p_ptr;
-    void* p_new_ptr = realloc(ptr, size);
-    if (nullptr == p_new_ptr)
+    extern void __real_free(void* _ptr) __THROW;
+    if (g_pTestClass && g_pTestClass->m_flag_alloc_counting_enabled)
     {
-        os_free(*p_ptr);
-        return false;
+        g_pTestClass->m_alloc_free_call_count -= 1;
     }
-    *p_ptr = p_new_ptr;
-    return true;
+    __real_free(ptr);
 }
 
 os_mutex_recursive_t
@@ -1051,10 +1008,10 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1138,7 +1095,6 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -1279,10 +1235,10 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1299,7 +1255,6 @@ TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("Request to unknown json: unknown.json"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -1317,8 +1272,8 @@ TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
     ASSERT_EQ(string("version=0.0.4"), string(resp.p_content_type_param));
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -1335,7 +1290,6 @@ TEST_F(TestHttpServerCb, resp_metrics_malloc_failed) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Not enough memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -1368,7 +1322,6 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLIN
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "GWUI partition is not ready");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1392,7 +1345,6 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ") + string(file_name));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_ERROR,
@@ -1527,7 +1479,6 @@ TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: unknown.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find file: unknown.html"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1550,7 +1501,6 @@ TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't open file: index.html"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1798,10 +1748,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
@@ -1938,10 +1888,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // N
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
@@ -1961,8 +1911,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
     ASSERT_EQ(string("version=0.0.4"), string(resp.p_content_type_param));
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -1982,8 +1932,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics_during_fw_update) // NOLI
     ASSERT_EQ(string("version=0.0.4"), string(resp.p_content_type_param));
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -2325,8 +2275,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2367,8 +2317,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=1"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2599,8 +2549,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2819,7 +2769,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2894,7 +2843,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2969,7 +2917,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -3070,8 +3017,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_INFO,
@@ -3324,8 +3271,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_INFO,
@@ -3560,8 +3507,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_INFO,
@@ -3796,8 +3743,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_INFO,
@@ -4018,7 +3965,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /unknown.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("POST /unknown.json"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -4035,7 +3981,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("DELETE /unknown.json, params="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 }
@@ -4094,10 +4039,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4170,10 +4115,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4246,10 +4191,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4322,10 +4267,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4398,10 +4343,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4474,10 +4419,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4558,10 +4503,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4644,10 +4589,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4728,10 +4673,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4812,10 +4757,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4898,10 +4843,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4982,10 +4927,10 @@ TEST_F(
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5045,10 +4990,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5106,10 +5051,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5164,10 +5109,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5222,10 +5167,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5280,10 +5225,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5339,10 +5284,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5397,10 +5342,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5456,10 +5401,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5510,10 +5455,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5562,10 +5507,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5632,10 +5577,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5705,10 +5650,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5779,10 +5724,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5853,10 +5798,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5925,10 +5870,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5976,9 +5921,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
 
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get "
@@ -6721,7 +6666,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete_blocked_during_fw_update) // N
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("DELETE /unknown.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_ERROR,

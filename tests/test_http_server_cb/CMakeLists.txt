@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.13)
 
 project(ruuvi_gateway_esp-test-http_server_cb)
 set(ProjectId ruuvi_gateway_esp-test-http_server_cb)
@@ -115,6 +115,8 @@ add_executable(${ProjectId}
         ${RUUVI_ESP_WRAPPERS}/src/os_str.c
         ${RUUVI_ESP_WRAPPERS}/src/snprintf_with_esp_err_desc.c
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
+        ${RUUVI_ESP_WRAPPERS}/src/os_malloc.c
+        ${RUUVI_ESP_WRAPPERS_INC}/os_malloc.h
         ${WIFI_MANAGER_SRC}/http_server_auth.c
         ${WIFI_MANAGER_SRC}/http_server_auth.h
         ${WIFI_MANAGER_SRC}/http_server_auth_type.c
@@ -190,15 +192,20 @@ target_compile_options(${ProjectId} PUBLIC
         --coverage
 )
 
-# CMake has a target_link_options starting from version 3.13
-#target_link_options(${ProjectId} PUBLIC
-#        --coverage
-#)
+target_link_options(${ProjectId} PUBLIC
+        --coverage
+)
 
 target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
         ruuvi_esp_wrappers-common_test_funcs
-        --coverage
 )
+
+target_link_options(${ProjectId} PRIVATE
+        "-Wl,--wrap=malloc"
+        "-Wl,--wrap=calloc"
+        "-Wl,--wrap=free"
+)
+

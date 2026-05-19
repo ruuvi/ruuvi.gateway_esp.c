@@ -459,20 +459,25 @@ http_check_post_advs_internal3(
         http_resp_code = HTTP_RESP_CODE_200;
     }
 
-    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == server_resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == server_resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location);
-    const char* const p_json = (flag_is_in_memory && (NULL != server_resp.select_location.memory.p_buf))
-                                   ? (const char*)server_resp.select_location.memory.p_buf
-                                   : NULL;
+    const char* p_json = NULL;
+    switch (server_resp.content_location)
+    {
+        case HTTP_CONTENT_LOCATION_FLASH_MEM:
+            p_json = (const char*)server_resp.select_location.flash.p_buf;
+            break;
+        case HTTP_CONTENT_LOCATION_STATIC_MEM:
+            p_json = (const char*)server_resp.select_location.static_mem.p_buf;
+            break;
+        case HTTP_CONTENT_LOCATION_HEAP:
+            p_json = (const char*)server_resp.select_location.heap.p_buf;
+            break;
+        default:
+            break;
+    }
 
     const http_server_resp_t resp = http_server_cb_gen_resp(http_resp_code, "%s", (NULL != p_json) ? p_json : "");
 
-    if ((HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location)
-        && (NULL != server_resp.select_location.memory.p_buf))
-    {
-        os_free(server_resp.select_location.memory.p_buf);
-    }
+    http_server_resp_free(&server_resp);
 
     LOG_DBG("esp_http_client_cleanup");
     esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
