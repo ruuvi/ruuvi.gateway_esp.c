@@ -8,6 +8,8 @@
 #include "http_server_cb.h"
 #include <cstring>
 #include <utility>
+#include <vector>
+#include <functional>
 #include "gtest/gtest.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -35,6 +37,7 @@
 #include "cjson_wrap.h"
 #include "ruuvi_gateway.h"
 #include "http_post_helper.h"
+#include "http_download.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -414,6 +417,7 @@ protected:
         memset(&this->m_mock_async_resp, 0, sizeof(this->m_mock_async_resp));
         this->m_mock_esp_http_client_cleanup_called   = false;
         this->m_mock_http_async_info_free_data_called = false;
+        this->m_mock_http_download_with_auth          = nullptr;
     }
 
     void
@@ -460,6 +464,14 @@ public:
     bool               m_mock_async_resp_set;
     bool               m_mock_esp_http_client_cleanup_called;
     bool               m_mock_http_async_info_free_data_called;
+
+    // Mock for http_download_with_auth used by http_download_json tests
+    using http_download_mock_cb_t = std::function<http_server_resp_t(
+        const http_download_param_with_auth_t* p_param,
+        http_download_cb_on_data_t             p_cb_on_data,
+        void*                                  p_user_data,
+        bool                                   flag_use_big_tls_buf)>;
+    http_download_mock_cb_t m_mock_http_download_with_auth;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -805,6 +817,10 @@ http_download_with_auth(
     void* const                                  p_user_data,
     const bool                                   flag_use_big_tls_buf)
 {
+    if (g_pTestClass->m_mock_http_download_with_auth)
+    {
+        return g_pTestClass->m_mock_http_download_with_auth(p_param, p_cb_on_data, p_user_data, flag_use_big_tls_buf);
+    }
     if (0 == strcmp(p_param->base.p_url, "https://network.ruuvi.com/firmwareupdate"))
     {
         // Request for json always performed from the beginning (partial content is not supported)
@@ -7775,6 +7791,934 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete_blocked_during_fw_update) // N
         string("FW update in progress, cannot handle DELETE request: /unknown.json, params="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+/*** http_download_json / cb_on_http_download_json_data tests
+ * *******************************************************************************************************/
+
+TEST_F(TestHttpServerCb, http_download_json__ok_single_chunk_with_known_content_length) // NOLINT
+{
+    const char* p_json_resp              = "{\"version\":\"1.0\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const size_t len = strlen(p_json_resp);
+        p_cb_on_data((const uint8_t*)p_json_resp, len, 0, len, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json_resp);
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string(p_json_resp), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=17");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__ok_single_chunk_with_unknown_content_length) // NOLINT
+{
+    const char* p_json_resp              = "{\"key\":\"val\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const size_t len = strlen(p_json_resp);
+        // content_length=0 means unknown
+        p_cb_on_data((const uint8_t*)p_json_resp, len, 0, 0, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json_resp);
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string(p_json_resp), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=13");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__ok_two_chunks_unknown_content_length) // NOLINT
+{
+    const char* p_chunk1                 = "{\"key\":";
+    const char* p_chunk2                 = "\"val\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const size_t len1 = strlen(p_chunk1);
+        const size_t len2 = strlen(p_chunk2);
+        // content_length=0 means unknown, will trigger realloc on second chunk
+        p_cb_on_data((const uint8_t*)p_chunk1, len1, 0, 0, HTTP_RESP_CODE_200, 0, p_user_data);
+        p_cb_on_data((const uint8_t*)p_chunk2, len2, len1, 0, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{\"key\":\"val\"}");
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"key\":\"val\"}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=7");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=6");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "Reallocate 14 bytes");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_redirect_301) // NOLINT
+{
+    const char* p_json_resp              = "{\"result\":\"ok\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // First a redirect chunk (should be skipped), then real data
+        const uint8_t redirect_data[] = "Moved";
+        p_cb_on_data(redirect_data, sizeof(redirect_data) - 1, 0, 0, HTTP_RESP_CODE_301, 0, p_user_data);
+        const size_t len = strlen(p_json_resp);
+        p_cb_on_data((const uint8_t*)p_json_resp, len, 0, len, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json_resp);
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string(p_json_resp), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "Got HTTP error 301: Redirect to another location");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=15");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_redirect_302) // NOLINT
+{
+    const char* p_json_resp              = "{\"result\":\"ok\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const uint8_t redirect_data[] = "Found";
+        p_cb_on_data(redirect_data, sizeof(redirect_data) - 1, 0, 0, HTTP_RESP_CODE_302, 0, p_user_data);
+        const size_t len = strlen(p_json_resp);
+        p_cb_on_data((const uint8_t*)p_json_resp, len, 0, len, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json_resp);
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string(p_json_resp), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "Got HTTP error 302: Redirect to another location");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=15");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_is_error_already_set) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        http_server_download_info_t* p_info = (http_server_download_info_t*)p_user_data;
+        p_info->is_error                    = true;
+        const uint8_t data[]                = "some data";
+        const bool    result = p_cb_on_data(data, sizeof(data) - 1, 0, 9, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_FALSE(result);
+        return http_server_resp_500();
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_500, info.http_resp_code);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=9");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Error occurred while downloading");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Invalid content location: 0");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed for URL: https://example.com/data.json, resp_code=500, content: <NULL>");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_malloc_fail_first_alloc) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        g_pTestClass->m_malloc_fail_on_cnt = g_pTestClass->m_malloc_cnt + 1;
+        const uint8_t data[]               = "{\"test\":1}";
+        const bool    result
+            = p_cb_on_data(data, sizeof(data) - 1, 0, sizeof(data) - 1, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_FALSE(result);
+        // Return 200 with no content
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+        };
+        return resp;
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=10");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Can't allocate 11 bytes for json file");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download returned NULL buffer");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_realloc_fail) // NOLINT
+{
+    const char* p_chunk1                 = "{\"key\":";
+    const char* p_chunk2                 = "\"val\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const size_t len1 = strlen(p_chunk1);
+        const size_t len2 = strlen(p_chunk2);
+        // First chunk with content_length=0 (unknown)
+        bool result = p_cb_on_data((const uint8_t*)p_chunk1, len1, 0, 0, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_TRUE(result);
+        // Make next malloc (realloc) fail
+        g_pTestClass->m_malloc_fail_on_cnt = g_pTestClass->m_malloc_cnt + 1;
+        result = p_cb_on_data((const uint8_t*)p_chunk2, len2, len1, 0, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_FALSE(result);
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+        };
+        return resp;
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=7");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=6");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "Reallocate 14 bytes");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Can't allocate 14 bytes for json file");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download returned NULL buffer");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_buffer_overflow) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const char* p_data = "0123456789";
+        // Allocate buffer for 5 byte content (content_length=5 -> buf_size=6)
+        bool result = p_cb_on_data((const uint8_t*)p_data, 5, 0, 5, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_TRUE(result);
+        // Now send more data at offset 5 with buf_size 5, offset+buf_size=10 >= json_buf_size(6)
+        result = p_cb_on_data((const uint8_t*)p_data, 5, 5, 5, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_FALSE(result);
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+        };
+        return resp;
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "Buffer overflow while downloading json file: json_buf_size=6, offset=5, len=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download returned NULL buffer");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_buffer_overflow_offset_exceeds_buf_size) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const char* p_data = "ABCDE";
+        // First alloc with content_length=5 (buf_size=6)
+        bool result = p_cb_on_data((const uint8_t*)p_data, 3, 0, 5, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_TRUE(result);
+        // offset=10 which is >= json_buf_size=6
+        result = p_cb_on_data((const uint8_t*)p_data, 2, 10, 5, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_FALSE(result);
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+        };
+        return resp;
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=3");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=2");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "Buffer overflow while downloading json file: json_buf_size=6, offset=10, len=2");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download returned NULL buffer");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_not_200_with_heap_content) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Don't call the callback, just return 502 with error content in heap
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{\"error\":\"bad gateway\"}");
+        return http_server_resp_json_in_heap(HTTP_RESP_CODE_502, str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_502, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"error\":\"bad gateway\"}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed for URL: https://example.com/data.json, resp_code=502, "
+        "content: {\"error\":\"bad gateway\"}");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_not_200_with_heap_content_and_callback_had_json) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Callback receives some data (allocating info.p_json_buf)
+        const char* p_data = "{\"partial\":true}";
+        p_cb_on_data((const uint8_t*)p_data, strlen(p_data), 0, strlen(p_data), HTTP_RESP_CODE_200, 0, p_user_data);
+        // But return 502 with error content in heap — should free the callback's json_buf
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{\"error\":\"bad gateway\"}");
+        return http_server_resp_json_in_heap(HTTP_RESP_CODE_502, str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_502, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"error\":\"bad gateway\"}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=16");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed for URL: https://example.com/data.json, resp_code=502, "
+        "content: {\"error\":\"bad gateway\"}");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_not_200_no_content_no_json_buf) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Return 500 with no content at all
+        return http_server_resp_500();
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_500, info.http_resp_code);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Invalid content location: 0");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed for URL: https://example.com/data.json, resp_code=500, content: <NULL>");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_not_200_no_content_with_json_buf_from_callback) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Callback receives data first
+        const char* p_data = "{\"data\":1}";
+        p_cb_on_data((const uint8_t*)p_data, strlen(p_data), 0, strlen(p_data), HTTP_RESP_CODE_200, 0, p_user_data);
+        // Return 500 with no content (NO_CONTENT location)
+        return http_server_resp_500();
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_500, info.http_resp_code);
+    // The json_buf from callback is still present (not freed in this branch)
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"data\":1}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=10");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Invalid content location: 0");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed for URL: https://example.com/data.json, resp_code=500, content: {\"data\":1}");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_200_but_info_resp_code_not_200_with_json_buf) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Callback gets data with non-200 resp code (e.g. 404)
+        const char* p_data = "{\"error\":\"not found\"}";
+        p_cb_on_data((const uint8_t*)p_data, strlen(p_data), 0, strlen(p_data), HTTP_RESP_CODE_404, 0, p_user_data);
+        // But main resp is 200
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{}");
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_404, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"error\":\"not found\"}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=21");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed, HTTP resp code 404: {\"error\":\"not found\"}");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_200_but_info_resp_code_not_200_no_json_buf) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Simulate: callback sets non-200 resp code but no json_buf
+        http_server_download_info_t* p_info = (http_server_download_info_t*)p_user_data;
+        p_info->http_resp_code              = HTTP_RESP_CODE_503;
+        // Don't allocate any json_buf
+        // Return 200 resp
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{}");
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_503, info.http_resp_code);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download failed, HTTP resp code 503");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_200_but_null_json_buf) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Don't call callback at all — no data received
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{}");
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    // is_error with http_resp_code still 200 -> changed to 400
+    ASSERT_EQ(HTTP_RESP_CODE_400, info.http_resp_code);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download returned NULL buffer");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_two_chunks_known_content_length) // NOLINT
+{
+    // Two chunks with known content_length — second chunk should NOT trigger realloc
+    const char*  p_chunk1                = "{\"k\":";
+    const char*  p_chunk2                = "\"v\"}";
+    const size_t total_len               = strlen(p_chunk1) + strlen(p_chunk2);
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const size_t len1 = strlen(p_chunk1);
+        const size_t len2 = strlen(p_chunk2);
+        p_cb_on_data((const uint8_t*)p_chunk1, len1, 0, total_len, HTTP_RESP_CODE_200, 0, p_user_data);
+        p_cb_on_data((const uint8_t*)p_chunk2, len2, len1, total_len, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{\"k\":\"v\"}");
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"k\":\"v\"}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=4");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_firmware_update_info__ok) // NOLINT
+{
+    const char* p_json_resp = "{\"latest\":{\"version\":\"v1.15.0\",\"url\":\"https://fwupdate.ruuvi.com/v1.15.0\"}}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        EXPECT_EQ(string("https://network.ruuvi.com/firmwareupdate"), string(p_param->base.p_url));
+        EXPECT_EQ(30, p_param->base.timeout_seconds);
+        EXPECT_TRUE(p_param->base.flag_feed_task_watchdog);
+        EXPECT_FALSE(flag_use_big_tls_buf);
+        const size_t len = strlen(p_json_resp);
+        p_cb_on_data((const uint8_t*)p_json_resp, len, 0, len, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json_resp);
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    http_server_download_info_t info = http_download_firmware_update_info(
+        "https://network.ruuvi.com/firmwareupdate",
+        false);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string(p_json_resp), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + to_string(strlen(p_json_resp)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
