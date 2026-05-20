@@ -25,6 +25,7 @@
 #include "gw_cfg_storage.h"
 #include "event_mgr.h"
 #include "tls_shared_buf.h"
+#include "reset_task.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -748,13 +749,16 @@ mqtt_app_stop(void)
         }
         LOG_INFO("MQTT destroy");
 
-        // esp_mqtt_client_stop (called from esp_mqtt_client_destroy) now uses bounded waiting
-        // with a single transport force-close on the first timeout, so it won't block long enough
-        // to trigger the watchdog.
+        // esp_mqtt_client_stop (called from esp_mqtt_client_destroy) now uses bounded waiting.
+        // It may still wait for up to about 10 seconds, but avoids TWDT triggers by periodically
+        // feeding the watchdog when subscribed and by force-closing the transport once on the
+        // first timeout.
         const esp_err_t err = esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
         if (ESP_OK != err)
         {
-            LOG_ERR("%s failed, err = %d", "esp_mqtt_client_destroy", err);
+            LOG_ERR("%s failed, err = %d - restart", "esp_mqtt_client_destroy", err);
+            gateway_restart("MQTT failed");
+            return;
         }
 
         LOG_INFO("MQTT destroyed");

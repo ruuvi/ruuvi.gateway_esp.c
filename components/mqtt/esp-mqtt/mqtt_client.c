@@ -1696,7 +1696,7 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
     } else {
         ESP_LOGW(TAG, "Client asked to stop, but was not started");
         MQTT_API_UNLOCK(client);
-        return ESP_OK;
+        return ESP_FAIL;
     }
 }
 
