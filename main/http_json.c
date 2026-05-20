@@ -15,6 +15,12 @@
 #include "ruuvi_endpoint_e1.h"
 #include "ruuvi_endpoint_f0.h"
 #include "adv_decode.h"
+#if defined(RUUVI_TESTS)
+#define LOG_LOCAL_DISABLED 1
+#endif
+#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
+#include "log.h"
+static const char TAG[] = "http";
 
 static void*
 http_json_malloc(size_t size)
@@ -27,13 +33,6 @@ http_json_free(void* ptr)
 {
     os_free(ptr);
 }
-
-#if defined(RUUVI_TESTS)
-#define LOG_LOCAL_DISABLED 1
-#endif
-#define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
-#include "log.h"
-static const char TAG[] = "http";
 
 #define BYTE_MASK (0xFFU)
 

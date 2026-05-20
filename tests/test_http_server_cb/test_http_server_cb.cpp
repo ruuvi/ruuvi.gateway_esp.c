@@ -472,6 +472,7 @@ void*
 __wrap_malloc(size_t size)
 {
     extern void* __real_malloc(size_t _size) __THROW __attribute_malloc__ __attribute_alloc_size__((1)) __wur;
+    extern void                                                           __real_free(void* _ptr) __THROW;
 
     void* ptr = __real_malloc(size);
     assert(nullptr != ptr);
@@ -484,6 +485,7 @@ __wrap_malloc(size_t size)
         g_pTestClass->m_malloc_cnt += 1;
         if (g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
         {
+            __real_free(ptr);
             return nullptr;
         }
     }
@@ -499,6 +501,7 @@ __wrap_calloc(size_t nmemb, size_t size)
 {
     extern void*                     __real_calloc(size_t _nmemb, size_t _size)
         __THROW __attribute_malloc__ __attribute_alloc_size__((1, 2)) __wur;
+    extern void                      __real_free(void* _ptr) __THROW;
 
     void* ptr = __real_calloc(nmemb, size);
     assert(nullptr != ptr);
@@ -511,6 +514,7 @@ __wrap_calloc(size_t nmemb, size_t size)
         g_pTestClass->m_malloc_cnt += 1;
         if (g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
         {
+            __real_free(ptr);
             return nullptr;
         }
     }
