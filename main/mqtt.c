@@ -7,7 +7,6 @@
 
 #include "mqtt.h"
 #include <esp_attr.h>
-#include <esp_task_wdt.h>
 #include "esp_err.h"
 #include "mbedtls/ssl_misc.h"
 #include "cJSON.h"
@@ -743,29 +742,13 @@ mqtt_app_stop(void)
             mqtt_publish_state_offline(p_mqtt_data);
             vTaskDelay(pdMS_TO_TICKS(500));
         }
-        LOG_INFO("TaskWatchdog: Unregister current thread");
-        const bool flag_task_wdt_used = (ESP_OK == esp_task_wdt_delete(xTaskGetCurrentTaskHandle())) ? true : false;
-
         LOG_INFO("MQTT destroy");
 
-        // Calling esp_mqtt_client_destroy can take quite a long time (more than 5 seconds),
-        // depending on how quickly the server responds (it seems that esp_mqtt_client_stop takes most of the time).
-        // So, the only way to prevent the task watchdog from triggering is to disable it.
-        // If esp_mqtt_client_destroy is refactored in the future in an asynchronous manner,
-        // then this will allow us to opt out of disabling the task watchdog.
-
-        // TODO: Need to refactor esp_mqtt_client_destroy in an asynchronous manner, see issue:
-        // https://github.com/ruuvi/ruuvi.gateway_esp.c/issues/577
-
+        // esp_mqtt_client_stop (called from esp_mqtt_client_destroy) now uses bounded waiting
+        // with periodic transport force-close, so it won't block long enough to trigger the watchdog.
         esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
 
         LOG_INFO("MQTT destroyed");
-
-        if (flag_task_wdt_used)
-        {
-            LOG_INFO("TaskWatchdog: Register current thread");
-            esp_task_wdt_add(xTaskGetCurrentTaskHandle());
-        }
 
         if (NULL != p_mqtt_data->p_tls_shared_buf_mqtts)
         {
