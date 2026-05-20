@@ -763,6 +763,7 @@ static bool create_client_data(esp_mqtt_client_handle_t client)
 
 esp_mqtt_client_handle_t esp_mqtt_client_init(const esp_mqtt_client_config_t *config)
 {
+    esp_err_t err = ESP_OK;
     esp_mqtt_client_handle_t client = calloc(1, sizeof(struct esp_mqtt_client));
     ESP_MEM_CHECK(TAG, client, return NULL);
     if (!create_client_data(client)) {
@@ -809,7 +810,10 @@ esp_mqtt_client_handle_t esp_mqtt_client_init(const esp_mqtt_client_config_t *co
 
     return client;
 _mqtt_init_failed:
-    esp_mqtt_client_destroy(client);
+    err = esp_mqtt_client_destroy(client);
+    if (ESP_OK != err) {
+        ESP_LOGE(TAG, "Failed to destroy mqtt client in init failure case, err = %d", err);
+    }
     return NULL;
 }
 
@@ -819,7 +823,10 @@ esp_err_t esp_mqtt_client_destroy(esp_mqtt_client_handle_t client)
         return ESP_ERR_INVALID_ARG;
     }
     if (client->api_lock) {
-        esp_mqtt_client_stop(client);
+        const esp_err_t err = esp_mqtt_client_stop(client);
+        if (ESP_OK != err) {
+            return err;
+        }
     }
     esp_mqtt_destroy_config(client);
     if (client->transport_list) {
@@ -1685,11 +1692,11 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
             }
         }
         ESP_LOGE(TAG, "MQTT task did not stop within the expected time");
-        return ESP_OK;
+        return ESP_ERR_TIMEOUT;
     } else {
         ESP_LOGW(TAG, "Client asked to stop, but was not started");
         MQTT_API_UNLOCK(client);
-        return ESP_FAIL;
+        return ESP_OK;
     }
 }
 

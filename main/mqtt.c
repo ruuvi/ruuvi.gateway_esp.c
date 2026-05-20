@@ -602,10 +602,14 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
         return false;
     }
 
-    const esp_err_t err = esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
+    esp_err_t err = esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
     if (ESP_OK != err)
     {
-        esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        err = esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        if (ESP_OK != err)
+        {
+            LOG_ERR("%s failed, err = %d", "esp_mqtt_client_destroy", err);
+        }
         p_mqtt_data->p_mqtt_client = NULL;
         return false;
     }
@@ -745,8 +749,13 @@ mqtt_app_stop(void)
         LOG_INFO("MQTT destroy");
 
         // esp_mqtt_client_stop (called from esp_mqtt_client_destroy) now uses bounded waiting
-        // with periodic transport force-close, so it won't block long enough to trigger the watchdog.
-        esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        // with a single transport force-close on the first timeout, so it won't block long enough
+        // to trigger the watchdog.
+        const esp_err_t err = esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        if (ESP_OK != err)
+        {
+            LOG_ERR("%s failed, err = %d", "esp_mqtt_client_destroy", err);
+        }
 
         LOG_INFO("MQTT destroyed");
 
