@@ -173,6 +173,7 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
 static void
 http_download_log_resp(const http_server_resp_t* const p_resp)
 {
+    (void)p_resp;
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
     size_t      len    = 0;
     const char* p_json = (const char*)http_server_resp_get_content_ptr_if_in_memory(p_resp, &len);
@@ -227,7 +228,7 @@ http_download_by_handle(
     }
 
     LOG_DBG("http_wait_until_async_req_completed");
-    http_server_resp_t resp = http_wait_until_async_req_completed(
+    const http_server_resp_t resp = http_wait_until_async_req_completed(
         p_http_handle,
         NULL,
         flag_feed_task_watchdog,
@@ -842,22 +843,8 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
         info.is_error       = true;
         info.http_resp_code = resp.http_resp_code;
 
-        const char* p_json = NULL;
-        switch (resp.content_location)
-        {
-            case HTTP_CONTENT_LOCATION_FLASH_MEM:
-                p_json = (const char*)resp.select_location.flash.p_buf;
-                break;
-            case HTTP_CONTENT_LOCATION_STATIC_MEM:
-                p_json = (const char*)resp.select_location.static_mem.p_buf;
-                break;
-            case HTTP_CONTENT_LOCATION_HEAP:
-                p_json = (const char*)resp.select_location.heap.p_buf;
-                break;
-            default:
-                LOG_ERR("Invalid content location: %d", (printf_int_t)resp.content_location);
-                break;
-        }
+        size_t            len    = 0;
+        const char* const p_json = (const char*)http_server_resp_get_content_ptr_if_in_memory(&resp, &len);
         if (NULL != p_json)
         {
             if (NULL != info.p_json_buf)
@@ -866,15 +853,17 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
                 info.p_json_buf = NULL;
             }
             LOG_ERR(
-                "http_download failed for URL: %s, resp_code=%d, content: %s",
+                "http_download failed for URL: %s, resp_code=%d, content: %.*s",
                 p_params->base.p_url,
                 resp.http_resp_code,
+                (printf_int_t)len,
                 p_json);
             const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json);
             info.p_json_buf         = str_buf.buf;
         }
         else
         {
+            LOG_ERR("Invalid content location: %d", (printf_int_t)resp.content_location);
             LOG_ERR(
                 "http_download failed for URL: %s, resp_code=%d, content: %s",
                 p_params->base.p_url,
