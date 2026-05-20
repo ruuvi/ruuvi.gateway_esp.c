@@ -34,6 +34,7 @@
 #include "http_server_resp.h"
 #include "cjson_wrap.h"
 #include "ruuvi_gateway.h"
+#include "http_post_helper.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -408,6 +409,11 @@ protected:
 
         this->m_alloc_free_call_count       = 0;
         this->m_flag_alloc_counting_enabled = true;
+
+        this->m_mock_async_resp_set = false;
+        memset(&this->m_mock_async_resp, 0, sizeof(this->m_mock_async_resp));
+        this->m_mock_esp_http_client_cleanup_called   = false;
+        this->m_mock_http_async_info_free_data_called = false;
     }
 
     void
@@ -449,6 +455,11 @@ public:
 
     bool m_flag_alloc_counting_enabled;
     int  m_alloc_free_call_count;
+
+    http_server_resp_t m_mock_async_resp;
+    bool               m_mock_async_resp_set;
+    bool               m_mock_esp_http_client_cleanup_called;
+    bool               m_mock_http_async_info_free_data_called;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -462,6 +473,10 @@ TestHttpServerCb::TestHttpServerCb()
     , m_fd(-1)
     , m_flag_alloc_counting_enabled(false)
     , m_alloc_free_call_count(0)
+    , m_mock_async_resp()
+    , m_mock_async_resp_set(false)
+    , m_mock_esp_http_client_cleanup_called(false)
+    , m_mock_http_async_info_free_data_called(false)
     , Test()
 {
 }
@@ -845,6 +860,49 @@ fw_update_is_in_progress(void)
     return g_pTestClass->m_fw_update_is_in_progress;
 }
 
+http_server_resp_t
+http_wait_until_async_req_completed(
+    esp_http_client_handle_t   p_http_handle,
+    http_resp_cb_info_t* const p_cb_info,
+    const bool                 flag_feed_task_watchdog,
+    const TimeUnitsSeconds_t   timeout_seconds)
+{
+    (void)p_http_handle;
+    (void)p_cb_info;
+    (void)flag_feed_task_watchdog;
+    (void)timeout_seconds;
+    if (g_pTestClass->m_mock_async_resp_set)
+    {
+        return g_pTestClass->m_mock_async_resp;
+    }
+    const http_server_resp_t resp = {
+        .http_resp_code       = HTTP_RESP_CODE_200,
+        .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+        .flag_no_cache        = true,
+        .flag_add_header_date = true,
+        .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+        .p_content_type_param = NULL,
+        .content_len          = 0,
+        .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+    };
+    return resp;
+}
+
+esp_err_t
+esp_http_client_cleanup(esp_http_client_handle_t client)
+{
+    (void)client;
+    g_pTestClass->m_mock_esp_http_client_cleanup_called = true;
+    return ESP_OK;
+}
+
+void
+http_async_info_free_data(http_async_info_t* const p_http_async_info)
+{
+    (void)p_http_async_info;
+    g_pTestClass->m_mock_http_async_info_free_data_called = true;
+}
+
 } // extern "C"
 
 TestHttpServerCb::~TestHttpServerCb() = default;
@@ -879,6 +937,346 @@ TEST_F(TestHttpServerCb, http_server_cb_init_ok_deinit_ok) // NOLINT
     http_server_cb_deinit();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_ok) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "OK");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t200,\n"
+          "\t\"message\":\t\"OK\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_with_error_code) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_502, "%s", "Bad Gateway");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t502,\n"
+          "\t\"message\":\t\"Bad Gateway\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_with_formatted_message) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_400, "Incorrect URL: '%s'", "http://bad");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t400,\n"
+          "\t\"message\":\t\"Incorrect URL: 'http://bad'\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_with_empty_message) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t200,\n"
+          "\t\"message\":\t\"\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_malloc_fail_on_str_buf) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 1;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "OK");
+
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't allocate memory for response");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_malloc_fail_on_cjson_create) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 2;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "OK");
+
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't create json object");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_malloc_fail_on_add_status) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 3;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "OK");
+
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't add json item: status");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_malloc_fail_on_add_message) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 5;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "OK");
+
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't add json item: message");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_post_helper_wait_and_gen_resp_ok_200) // NOLINT
+{
+    const char* json_content = "{\"data\":\"test\"}";
+    char*       p_heap_buf   = static_cast<char*>(os_malloc(strlen(json_content) + 1));
+    ASSERT_NE(nullptr, p_heap_buf);
+    strcpy(p_heap_buf, json_content);
+
+    this->m_mock_async_resp_set = true;
+    this->m_mock_async_resp     = (http_server_resp_t){
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_HEAP,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_APPLICATION_JSON,
+            .p_content_type_param = NULL,
+            .content_len          = strlen(json_content),
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+            .select_location = {
+                .heap = {
+                    .p_buf = reinterpret_cast<uint8_t*>(p_heap_buf),
+                },
+            },
+    };
+
+    http_async_info_t async_info    = {};
+    async_info.p_http_client_handle = reinterpret_cast<esp_http_client_handle_t>(0x1234);
+
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_post_helper_wait_until_async_req_completed_and_gen_resp(&async_info, 10);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t200,\n"
+          "\t\"message\":\t\"{\\\"data\\\":\\\"test\\\"}\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+
+    ASSERT_TRUE(this->m_mock_esp_http_client_cleanup_called);
+    ASSERT_TRUE(this->m_mock_http_async_info_free_data_called);
+    ASSERT_EQ(nullptr, async_info.p_http_client_handle);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_post_helper_wait_and_gen_resp_429_returns_200) // NOLINT
+{
+    const char* json_content = "{\"error\":\"too many\"}";
+    char*       p_heap_buf   = static_cast<char*>(os_malloc(strlen(json_content) + 1));
+    ASSERT_NE(nullptr, p_heap_buf);
+    strcpy(p_heap_buf, json_content);
+
+    this->m_mock_async_resp_set = true;
+    this->m_mock_async_resp     = (http_server_resp_t){
+            .http_resp_code       = HTTP_RESP_CODE_429,
+            .content_location     = HTTP_CONTENT_LOCATION_HEAP,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_APPLICATION_JSON,
+            .p_content_type_param = NULL,
+            .content_len          = strlen(json_content),
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+            .select_location = {
+                .heap = {
+                    .p_buf = reinterpret_cast<uint8_t*>(p_heap_buf),
+                },
+            },
+    };
+
+    http_async_info_t async_info    = {};
+    async_info.p_http_client_handle = reinterpret_cast<esp_http_client_handle_t>(0x1234);
+
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_post_helper_wait_until_async_req_completed_and_gen_resp(&async_info, 10);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    // HTTP_RESP_CODE_429 is converted to HTTP_RESP_CODE_200 in the status field
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t200,\n"
+          "\t\"message\":\t\"{\\\"error\\\":\\\"too many\\\"}\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+
+    ASSERT_TRUE(this->m_mock_esp_http_client_cleanup_called);
+    ASSERT_TRUE(this->m_mock_http_async_info_free_data_called);
+    ASSERT_EQ(nullptr, async_info.p_http_client_handle);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_post_helper_wait_and_gen_resp_500_error) // NOLINT
+{
+    this->m_mock_async_resp_set = true;
+    this->m_mock_async_resp     = (http_server_resp_t) {
+            .http_resp_code       = HTTP_RESP_CODE_500,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+    };
+
+    http_async_info_t async_info    = {};
+    async_info.p_http_client_handle = reinterpret_cast<esp_http_client_handle_t>(0x5678);
+
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_post_helper_wait_until_async_req_completed_and_gen_resp(&async_info, 30);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    // No content -> p_json is NULL -> empty message
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t500,\n"
+          "\t\"message\":\t\"\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+
+    ASSERT_TRUE(this->m_mock_esp_http_client_cleanup_called);
+    ASSERT_TRUE(this->m_mock_http_async_info_free_data_called);
+    ASSERT_EQ(nullptr, async_info.p_http_client_handle);
+
+    http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());

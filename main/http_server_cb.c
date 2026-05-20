@@ -660,12 +660,14 @@ http_server_cb_gen_resp(const http_resp_code_e resp_code, const char* const p_fm
     if (NULL == cJSON_AddNumberToObject(p_json_root, "status", resp_code))
     {
         LOG_ERR("Can't add json item: %s", "status");
+        cJSON_Delete(p_json_root);
         str_buf_free_buf(&msg);
         return http_server_resp_500();
     }
     if (NULL == cJSON_AddStringToObject(p_json_root, "message", (NULL != msg.buf) ? msg.buf : ""))
     {
         LOG_ERR("Can't add json item: %s", "message");
+        cJSON_Delete(p_json_root);
         str_buf_free_buf(&msg);
         return http_server_resp_500();
     }

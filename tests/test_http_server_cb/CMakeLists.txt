@@ -70,6 +70,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/http_server_cb.h
         ${RUUVI_GW_SRC}/http_server_cb_on_get.c
         ${RUUVI_GW_SRC}/http_server_cb_on_post.c
+        ${RUUVI_GW_SRC}/http_post_helper.c
+        ${RUUVI_GW_SRC}/http_post_helper.h
         ${RUUVI_GW_SRC}/http_json.c
         ${RUUVI_GW_SRC}/http_json.h
         ${RUUVI_GW_SRC}/json_ruuvi.c
