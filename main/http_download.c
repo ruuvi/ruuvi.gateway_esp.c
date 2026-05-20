@@ -858,7 +858,7 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
                 resp.http_resp_code,
                 (printf_int_t)len,
                 p_json);
-            const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json);
+            const str_buf_t str_buf = str_buf_printf_with_alloc("%.*s", (printf_int_t)len, p_json);
             info.p_json_buf         = str_buf.buf;
         }
         else
