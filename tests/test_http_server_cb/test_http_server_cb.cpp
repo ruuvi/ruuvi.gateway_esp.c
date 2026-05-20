@@ -472,6 +472,13 @@ void*
 __wrap_malloc(size_t size)
 {
     extern void* __real_malloc(size_t _size) __THROW __attribute_malloc__ __attribute_alloc_size__((1)) __wur;
+
+    void* ptr = __real_malloc(size);
+    assert(nullptr != ptr);
+    if (nullptr == ptr)
+    {
+        return nullptr;
+    }
     if (g_pTestClass && g_pTestClass->m_malloc_fail_on_cnt > 0)
     {
         g_pTestClass->m_malloc_cnt += 1;
@@ -484,7 +491,7 @@ __wrap_malloc(size_t size)
     {
         g_pTestClass->m_alloc_free_call_count += 1;
     }
-    return __real_malloc(size);
+    return ptr;
 }
 
 void*
@@ -492,6 +499,13 @@ __wrap_calloc(size_t nmemb, size_t size)
 {
     extern void*                     __real_calloc(size_t _nmemb, size_t _size)
         __THROW __attribute_malloc__ __attribute_alloc_size__((1, 2)) __wur;
+
+    void* ptr = __real_calloc(nmemb, size);
+    assert(nullptr != ptr);
+    if (nullptr == ptr)
+    {
+        return nullptr;
+    }
     if (g_pTestClass && g_pTestClass->m_malloc_fail_on_cnt > 0)
     {
         g_pTestClass->m_malloc_cnt += 1;
@@ -504,18 +518,23 @@ __wrap_calloc(size_t nmemb, size_t size)
     {
         g_pTestClass->m_alloc_free_call_count += 1;
     }
-    return __real_calloc(nmemb, size);
+    return ptr;
 }
 
 void
 __wrap_free(void* ptr)
 {
     extern void __real_free(void* _ptr) __THROW;
+
+    __real_free(ptr);
+    if (nullptr == ptr)
+    {
+        return;
+    }
     if (g_pTestClass && g_pTestClass->m_flag_alloc_counting_enabled)
     {
         g_pTestClass->m_alloc_free_call_count -= 1;
     }
-    __real_free(ptr);
 }
 
 os_mutex_recursive_t
