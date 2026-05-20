@@ -603,14 +603,12 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
         return false;
     }
 
-    esp_err_t err = esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
+    const esp_err_t err = esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
     if (ESP_OK != err)
     {
-        err = esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
-        if (ESP_OK != err)
-        {
-            LOG_ERR("%s failed, err = %d", "esp_mqtt_client_destroy", err);
-        }
+        LOG_ERR("%s failed, err=%d, client resources have been freed", "esp_mqtt_client_start", err);
+        // esp_mqtt_client_start frees client resources on failure,
+        // so we only need to clear the pointer.
         p_mqtt_data->p_mqtt_client = NULL;
         return false;
     }
@@ -749,14 +747,17 @@ mqtt_app_stop(void)
         }
         LOG_INFO("MQTT destroy");
 
-        // esp_mqtt_client_stop (called from esp_mqtt_client_destroy) now uses bounded waiting.
-        // It may still wait for up to about 10 seconds, but avoids TWDT triggers by periodically
-        // feeding the watchdog when subscribed and by force-closing the transport once on the
-        // first timeout.
+        // esp_mqtt_client_stop (called from esp_mqtt_client_destroy) uses bounded waiting
+        // with periodic task watchdog feeding and force-closes the transport to unblock
+        // the MQTT task. If it still fails (e.g. timeout), the MQTT task is still running
+        // and resources cannot be freed — a system restart is required.
         const esp_err_t err = esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
         if (ESP_OK != err)
         {
-            LOG_ERR("%s failed, err = %d - restart", "esp_mqtt_client_destroy", err);
+            LOG_ERR(
+                "%s failed, err=%d - the MQTT task is still running, restart required",
+                "esp_mqtt_client_destroy",
+                err);
             gateway_restart("MQTT failed");
             return;
         }

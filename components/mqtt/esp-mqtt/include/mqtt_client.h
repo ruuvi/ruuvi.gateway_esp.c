@@ -270,7 +270,7 @@ esp_err_t esp_mqtt_client_disconnect(esp_mqtt_client_handle_t client);
  *
  * @param client    mqtt client handle
  *
- * @return ESP_OK on success
+ * @return ESP_OK on success or if client is not started
  *         ESP_ERR_INVALID_ARG on wrong initialization
  *         ESP_FAIL if client is in invalid state
  */
