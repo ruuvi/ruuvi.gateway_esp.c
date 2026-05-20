@@ -174,22 +174,16 @@ static void
 http_download_log_resp(const http_server_resp_t* const p_resp)
 {
 #if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    const char* p_json = NULL;
-    switch (p_resp->content_location)
+    size_t      len    = 0;
+    const char* p_json = (const char*)http_server_resp_get_content_ptr_if_in_memory(p_resp, &len);
+    if (NULL != p_json)
     {
-        case HTTP_CONTENT_LOCATION_FLASH_MEM:
-            p_json = (const char*)p_resp->select_location.flash.p_buf;
-            break;
-        case HTTP_CONTENT_LOCATION_STATIC_MEM:
-            p_json = (const char*)p_resp->select_location.static_mem.p_buf;
-            break;
-        case HTTP_CONTENT_LOCATION_HEAP:
-            p_json = (const char*)p_resp->select_location.heap.p_buf;
-            break;
-        default:
-            break;
+        LOG_DBG("Resp: resp_code=%d, content: %.*s", p_resp->http_resp_code, (printf_int_t)len, p_json);
     }
-    LOG_DBG("Resp: resp_code=%d, content: %s", p_resp->http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
+    else
+    {
+        LOG_DBG("Resp: resp_code=%d, content: <NULL>", p_resp->http_resp_code);
+    }
 #endif
 }
 

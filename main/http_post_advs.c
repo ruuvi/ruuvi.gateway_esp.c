@@ -459,23 +459,14 @@ http_check_post_advs_internal3(
         http_resp_code = HTTP_RESP_CODE_200;
     }
 
-    const char* p_json = NULL;
-    switch (server_resp.content_location)
-    {
-        case HTTP_CONTENT_LOCATION_FLASH_MEM:
-            p_json = (const char*)server_resp.select_location.flash.p_buf;
-            break;
-        case HTTP_CONTENT_LOCATION_STATIC_MEM:
-            p_json = (const char*)server_resp.select_location.static_mem.p_buf;
-            break;
-        case HTTP_CONTENT_LOCATION_HEAP:
-            p_json = (const char*)server_resp.select_location.heap.p_buf;
-            break;
-        default:
-            break;
-    }
+    size_t            len    = 0;
+    const char* const p_json = (const char*)http_server_resp_get_content_ptr_if_in_memory(&server_resp, &len);
 
-    const http_server_resp_t resp = http_server_cb_gen_resp(http_resp_code, "%s", (NULL != p_json) ? p_json : "");
+    const http_server_resp_t resp = http_server_cb_gen_resp(
+        http_resp_code,
+        "%.*s",
+        (printf_int_t)len,
+        (NULL != p_json) ? p_json : "");
 
     http_server_resp_free(&server_resp);
 
