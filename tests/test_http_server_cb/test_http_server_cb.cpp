@@ -1135,6 +1135,256 @@ TEST_F(TestHttpServerCb, http_server_cb_gen_resp_malloc_fail_on_add_message) // 
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_json_ok) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp_json(HTTP_RESP_CODE_200, "{\"key\":\"val\"}");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected = "{\"status\": 200, \"json\": {\"key\":\"val\"}}";
+    ASSERT_EQ(string(expected), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_json_with_error_code) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp_json(HTTP_RESP_CODE_502, "{\"err\":true}");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected = "{\"status\": 502, \"json\": {\"err\":true}}";
+    ASSERT_EQ(string(expected), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected), resp.content_len);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_json_malloc_fail) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 1;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_gen_resp_json(HTTP_RESP_CODE_200, "{\"key\":\"val\"}");
+
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't allocate memory for response");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_ok_single_param) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("key=value123", "key=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("value123"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=value123");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_ok_multiple_params) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("first=aaa&key=value456&other=zzz", "key=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("value456"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=value456");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_ok_last_param) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("first=aaa&key=lastval", "key=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("lastval"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=lastval");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_ok_empty_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("key=&other=val", "key=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string(""), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_key_not_found) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("other=value", "key=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'key=' in URL params");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_malloc_fail) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 1;
+
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("key=value123", "key=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=value123");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't allocate memory param key=value123");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_ok) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("url=http%3A%2F%2Fexample.com&other=1", "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("http://example.com"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=http%3A%2F%2Fexample.com");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        "HTTP params: key 'url=': value (encoded): http%3A%2F%2Fexample.com");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (decoded): http://example.com");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_no_encoding_needed) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("key=plain_value", "key=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("plain_value"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=plain_value");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'key=': value (encoded): plain_value");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'key=': value (decoded): plain_value");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_key_not_found) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("other=value", "key=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'key=' in URL params");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'key='");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_malloc_fail_on_get_params) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 1;
+
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("key=hello%20world", "key=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=hello%20world");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't allocate memory param key=hello%20world");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'key='");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_malloc_fail_on_decode) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 2;
+
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("key=hello%20world", "key=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=hello%20world");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'key=': value (encoded): hello%20world");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: key 'key=': Can't decode value: hello%20world");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
 TEST_F(TestHttpServerCb, http_post_helper_wait_and_gen_resp_ok_200) // NOLINT
 {
     const char* json_content = "{\"data\":\"test\"}";
