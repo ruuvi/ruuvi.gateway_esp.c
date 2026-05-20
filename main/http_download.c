@@ -170,6 +170,29 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
     return ESP_OK;
 }
 
+static void
+http_download_log_resp(const http_server_resp_t* const p_resp)
+{
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    const char* p_json = NULL;
+    switch (p_resp->content_location)
+    {
+        case HTTP_CONTENT_LOCATION_FLASH_MEM:
+            p_json = (const char*)p_resp->select_location.flash.p_buf;
+            break;
+        case HTTP_CONTENT_LOCATION_STATIC_MEM:
+            p_json = (const char*)p_resp->select_location.static_mem.p_buf;
+            break;
+        case HTTP_CONTENT_LOCATION_HEAP:
+            p_json = (const char*)p_resp->select_location.heap.p_buf;
+            break;
+        default:
+            break;
+    }
+    LOG_DBG("Resp: resp_code=%d, content: %s", p_resp->http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
+#endif
+}
+
 static http_server_resp_t
 http_download_by_handle(
     esp_http_client_handle_t p_http_handle,
@@ -217,15 +240,7 @@ http_download_by_handle(
         timeout_seconds);
     LOG_DBG("http_wait_until_async_req_completed: finished, http_resp_code=%d", resp.http_resp_code);
 
-#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
-    const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
-                             ? (const char*)resp.select_location.memory.p_buf
-                             : NULL;
-    LOG_DBG("Resp: resp_code=%d, content: %s", resp.http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
-#endif
+    http_download_log_resp(&resp);
 
     return resp;
 }
@@ -391,15 +406,7 @@ http_download_or_check_stage_5(
     LOG_DBG("Call http_download_by_handle");
     const http_server_resp_t resp = http_download_by_handle(http_handle, flag_feed_task_watchdog, timeout_seconds);
 
-#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
-    const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
-                             ? (const char*)resp.select_location.memory.p_buf
-                             : NULL;
-    LOG_DBG("Resp: resp_code=%d, content: %s", resp.http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
-#endif
+    http_download_log_resp(&resp);
 
     return resp;
 }

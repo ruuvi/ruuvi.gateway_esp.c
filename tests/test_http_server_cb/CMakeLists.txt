@@ -186,7 +186,6 @@ target_compile_definitions(${ProjectId} PUBLIC
         OS_MALLOC_TRACE_DISABLE_TIMESTAMP=1
 )
 
-
 target_compile_options(${ProjectId} PUBLIC
         -g3
         -ggdb
@@ -211,4 +210,3 @@ target_link_options(${ProjectId} PRIVATE
         "-Wl,--wrap=calloc"
         "-Wl,--wrap=free"
 )
-
