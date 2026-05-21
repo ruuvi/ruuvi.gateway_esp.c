@@ -130,6 +130,8 @@ idf_component_register(
         http_json.c
         http_json.h
         http_post_advs.c
+        http_post_helper.c
+        http_post_helper.h
         http_post_stat.c
         json_ruuvi.c
         json_ruuvi.h

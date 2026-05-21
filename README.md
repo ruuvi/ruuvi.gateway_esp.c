@@ -107,6 +107,100 @@ should show up as /dev/ttyUSB*. Depending on your computer, the COM port may sho
 a different number.
 
 
+## Build Environment Setup
+
+### Prerequisites (Ubuntu 22.04)
+
+```shell
+sudo apt-get update
+sudo apt-get install -y gcc g++ cmake make ninja-build mtools lcov
+sudo apt-get install -y git wget libncurses-dev flex bison gperf ccache libffi-dev libssl-dev
+sudo apt-get install -y locales software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt-get install -y python3.8 python3.8-venv python3.8-dev
+sudo locale-gen de_DE.UTF-8   # Required by some unit tests
+```
+
+### Installing ESP-IDF v4.2.5
+
+```shell
+git clone --recursive --branch v4.2.5 https://github.com/espressif/esp-idf.git ~/esp-idf-v4.2.5
+cd ~/esp-idf-v4.2.5
+./install.sh
+```
+
+The installation path (`~/esp-idf-v4.2.5` in this example) is host-specific — adjust it to match
+your setup.
+
+### Python 3.8 requirement
+
+ESP-IDF v4.2.5 **requires Python 3.8**. The build will fail with newer Python versions (3.9+).
+If your system default Python is newer, you need to ensure that `python` resolves to `python3.8`
+before sourcing ESP-IDF's `export.sh`. The environment setup script below handles this automatically.
+
+### Environment setup script (`esp-idf-env.sh`)
+
+Before compiling firmware or running unit tests, you must set up the ESP-IDF environment.
+The minimal approach is:
+
+```shell
+export IDF_PATH="$HOME/esp-idf-v4.2.5"
+source "$IDF_PATH/export.sh"
+```
+
+However, this only works if your system default `python` is already Python 3.8.
+For systems with a newer default Python, create a helper script (e.g. `~/esp-idf-env.sh`)
+with the following content and `source` it before building:
+
+```bash
+#!/usr/bin/env bash
+
+# ESP-IDF 4.2.5 root — adjust this path to your installation
+export IDF_PATH="$HOME/esp-idf-v4.2.5"
+
+# Keep the venv path fixed for this IDF version
+export IDF_PYTHON_ENV_PATH="$HOME/.espressif/python_env/idf4.2_py3.8_env"
+
+# Locate Python 3.8 and fail fast if not found
+PYTHON38="$(command -v python3.8 2>/dev/null)" || true
+if [ -z "$PYTHON38" ]; then
+    echo "ERROR: python3.8 not found in PATH. Install it first (see README)." >&2
+    return 1 2>/dev/null || exit 1
+fi
+
+# Make Python 3.8 appear first — create a shim so that "python" resolves to python3.8
+PY38_SHIM_DIR="$HOME/.local/esp-idf-py38-shim"
+mkdir -p "$PY38_SHIM_DIR"
+cat > "$PY38_SHIM_DIR/python" <<PYEOF
+#!/usr/bin/env bash
+exec "$PYTHON38" "\$@"
+PYEOF
+chmod +x "$PY38_SHIM_DIR/python"
+case ":$PATH:" in
+    *":$PY38_SHIM_DIR:"*) ;;
+    *) export PATH="$PY38_SHIM_DIR:$PATH" ;;
+esac
+
+# Load ESP-IDF environment (adds toolchain to PATH, sets up idf.py, etc.)
+. "$IDF_PATH/export.sh"
+```
+
+**Note:** This script is not part of the repository because it depends on host-specific paths.
+Adjust `IDF_PATH` to match your ESP-IDF installation location.
+
+Usage:
+```shell
+source ~/esp-idf-env.sh
+```
+
+### Additional pip packages
+
+The `bincopy` pip package is needed for firmware builds:
+```shell
+python -m pip install bincopy
+```
+
 ## Build and Flash
 
 ### Build firmware from source

@@ -9,7 +9,6 @@
 #include <string.h>
 #include <esp_task_wdt.h>
 #include "os_malloc.h"
-#include "http_server_cb.h"
 #include "http_server_resp.h"
 #include "adv_post.h"
 #include "gw_cfg_storage.h"
@@ -17,6 +16,7 @@
 #include "ruuvi_gateway.h"
 #include "tls_shared_buf.h"
 #include "gw_status.h"
+#include "http_post_helper.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -236,41 +236,7 @@ http_check_post_stat_internal3(
     }
     os_free(p_stat_info);
 
-    const bool         flag_feed_task_watchdog = true;
-    http_server_resp_t server_resp             = http_wait_until_async_req_completed(
-        p_http_async_info->p_http_client_handle,
-        &p_http_async_info->http_resp_cb_info,
-        flag_feed_task_watchdog,
-        timeout_seconds);
-
-    http_resp_code_e http_resp_code = server_resp.http_resp_code;
-    if (HTTP_RESP_CODE_429 == http_resp_code)
-    {
-        // Return OK if we got error "Too Many Requests"
-        http_resp_code = HTTP_RESP_CODE_200;
-    }
-
-    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == server_resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == server_resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location);
-    const char* const p_json = (flag_is_in_memory && (NULL != server_resp.select_location.memory.p_buf))
-                                   ? (const char*)server_resp.select_location.memory.p_buf
-                                   : NULL;
-
-    const http_server_resp_t resp = http_server_cb_gen_resp(http_resp_code, "%s", (NULL != p_json) ? p_json : "");
-
-    if ((HTTP_CONTENT_LOCATION_HEAP == server_resp.content_location)
-        && (NULL != server_resp.select_location.memory.p_buf))
-    {
-        os_free(server_resp.select_location.memory.p_buf);
-    }
-
-    LOG_DBG("esp_http_client_cleanup");
-    esp_http_client_cleanup(p_http_async_info->p_http_client_handle);
-    p_http_async_info->p_http_client_handle = NULL;
-    http_async_info_free_data(p_http_async_info);
-
-    return resp;
+    return http_post_helper_wait_until_async_req_completed_and_gen_resp(p_http_async_info, timeout_seconds);
 }
 
 static http_server_resp_t

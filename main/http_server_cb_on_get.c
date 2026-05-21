@@ -229,7 +229,7 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_metrics(void)
 {
-    const char* p_metrics = metrics_generate();
+    char* const p_metrics = metrics_generate();
     if (NULL == p_metrics)
     {
         LOG_ERR("Not enough memory");
@@ -243,7 +243,7 @@ http_server_resp_metrics(void)
         "version=0.0.4",
         strlen(p_metrics),
         HTTP_CONTENT_ENCODING_NONE,
-        (const uint8_t*)p_metrics,
+        (uint8_t*)p_metrics,
         flag_no_cache,
         flag_add_header_date);
 }
