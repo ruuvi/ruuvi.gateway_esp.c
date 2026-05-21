@@ -125,7 +125,7 @@ Eight workflows run on push/PR:
 3. **`check-schemas.yml` (Check JSON Schemas)** — installs `check-jsonschema` pip package, runs `schemas/check_schemas.sh`.
 4. **`build-fw-dev.yml` (Build Firmware — dev)** — builds firmware in dev environment on push/PR, runs reproducible build (build → touch → build), uploads artifact with all binary images. Requires `bincopy` pip package and secure boot signing key.
 5. **`build-fw-prod.yml` (Build Firmware — prod)** — same as dev but runs only on push to master/tags, uses prod environment.
-6. **`sonar-scan.yml` (SonarCloud Analysis)** — builds firmware with SonarSource build-wrapper, builds tests with `--coverage`, generates `gcovr -r . --sonarqube` coverage report, uploads to SonarCloud (project key configured in `sonar-project.properties`).
+6. **`sonar-scan.yml` (SonarCloud Analysis)** — builds firmware with SonarSource build-wrapper, builds tests (coverage is already enabled per-target via `target_compile_options` in each `test_*/CMakeLists.txt`), generates `gcovr -r . --sonarqube` coverage report, uploads to SonarCloud (project key configured in `sonar-project.properties`).
 7. **`test-mbedtls.yml` (Test mbedTLS)** — runs mbedTLS test suites (`make test`) plus SSL sanitize/reduced-buffer/variable-buffer test scripts in `components/mbedtls/mbedtls/`.
 8. **`test-nvs_flash.yml` (Test nvs_flash)** — builds and runs NVS host tests in `components/nvs_flash/test_nvs_host/` (`make -j`, then `./test_nvs -d yes exclude:[long]`). Requires `jsonschema` pip package.
 

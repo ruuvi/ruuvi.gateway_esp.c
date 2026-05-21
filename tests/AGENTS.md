@@ -42,13 +42,14 @@ ctest --test-dir cmake-build-unit-tests -R test_gw_cfg --output-on-failure
 - Alternative build directory names: `build/` (Makefiles) or `cmake-build-unit-tests/` (Ninja).
 
 ## Code coverage
-- To build with coverage, add `--coverage` flags:
+- Coverage is **already enabled** in every test target — each `test_*/CMakeLists.txt` adds `-fprofile-arcs -ftest-coverage --coverage` via `target_compile_options` and links with `gcov --coverage`. No extra CMake flags are needed.
+- Standard build already produces `.gcno`/`.gcda` files:
 ```bash
-cmake -S . -B cmake-build-unit-tests -G Ninja -DCMAKE_CXX_FLAGS="--coverage"
+cmake -S . -B cmake-build-unit-tests -G Ninja
 cmake --build cmake-build-unit-tests
 ctest --test-dir cmake-build-unit-tests --output-on-failure
 ```
-- Generate coverage report with `lcov` and `genhtml`:
+- Generate a local coverage report with `lcov` and `genhtml`:
 ```bash
 lcov --capture --directory cmake-build-unit-tests --output-file cmake-build-unit-tests/coverage_all.info
 lcov --extract cmake-build-unit-tests/coverage_all.info '*/main/*' \
@@ -83,7 +84,7 @@ cd .. && scripts/clang_format_all.sh
 Relevant workflows:
 
 1. **`google-tests.yml` (Google Tests)** — on ubuntu-22.04, sets up Python 3.8, installs ESP-IDF v4.2.5 (cached at `~/esp/esp-idf`), builds tests with Ninja in `tests/cmake-build-unit-tests`, runs `ctest --output-on-failure`. Requires `de_DE.UTF-8` locale. Install locally with `sudo locale-gen de_DE.UTF-8`.
-2. **`sonar-scan.yml` (SonarCloud Analysis)** — builds tests in `tests/build` with `-DCMAKE_CXX_FLAGS="--coverage"`, runs `ctest`, then generates `gcovr -r . --sonarqube` from the repository root for SonarCloud upload.
+2. **`sonar-scan.yml` (SonarCloud Analysis)** — builds tests in `tests/build` (coverage is already enabled per-target), runs `ctest`, then generates `gcovr -r . --sonarqube` from the repository root for SonarCloud upload.
 3. **`code-style.yml` (Clang-Format)** — installs clang-format-14, runs `scripts/clang_format_all.sh`, and fails if any file changes.
 
 Key CI details for reproducing locally:
