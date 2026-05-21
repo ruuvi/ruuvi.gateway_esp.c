@@ -32,11 +32,11 @@ The ESP32 runs in **unicore mode** (`CONFIG_FREERTOS_UNICORE=y`).
 
 ## Build Environment Setup
 
-**Environment setup (required before compiling):** set `IDF_PATH` and source ESP-IDF's `export.sh`. 
-ESP-IDF v4.2.5 **strictly requires Python 3.8** (builds fail with 3.9+), 
-so you must also ensure `python` resolves to `python3.8`. 
-A convenience script `~/esp-idf-env.sh` handles both — see 
-[README.md § Build Environment Setup](README.md#build-environment-setup) for the full script 
+**Environment setup (required before compiling):** set `IDF_PATH` and source ESP-IDF's `export.sh`.
+ESP-IDF v4.2.5 **strictly requires Python 3.8** (builds fail with 3.9+),
+so you must also ensure `python` resolves to `python3.8`.
+A convenience script `~/esp-idf-env.sh` handles both — see
+[README.md § Build Environment Setup](README.md#build-environment-setup) for the full script
 and setup instructions.
 
 Quick reference:
@@ -49,7 +49,7 @@ export IDF_PATH="$HOME/esp-idf-v4.2.5"
 source "$IDF_PATH/export.sh"
 ```
 
-**Note:** Both `IDF_PATH` and the `esp-idf-env.sh` path are host-specific — adjust to match your 
+**Note:** Both `IDF_PATH` and the `esp-idf-env.sh` path are host-specific — adjust to match your
 ESP-IDF installation location.
 
 ### Prerequisites (Ubuntu 22.04)
