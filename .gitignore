@@ -1,12 +1,10 @@
 *.orig
 
-/build
-/build-sonar
-/build-coverage
-/tests/build
-/tests/build-sonar
-/cmake-build-*
-/tests/cmake-build-*
+build/
+build-sonar/
+build-coverage/
+cmake-build-*/
+
 /sdkconfig.old
 
 .DS_Store

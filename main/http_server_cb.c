@@ -660,12 +660,14 @@ http_server_cb_gen_resp(const http_resp_code_e resp_code, const char* const p_fm
     if (NULL == cJSON_AddNumberToObject(p_json_root, "status", resp_code))
     {
         LOG_ERR("Can't add json item: %s", "status");
+        cJSON_Delete(p_json_root);
         str_buf_free_buf(&msg);
         return http_server_resp_500();
     }
     if (NULL == cJSON_AddStringToObject(p_json_root, "message", (NULL != msg.buf) ? msg.buf : ""))
     {
         LOG_ERR("Can't add json item: %s", "message");
+        cJSON_Delete(p_json_root);
         str_buf_free_buf(&msg);
         return http_server_resp_500();
     }
@@ -730,12 +732,13 @@ http_server_get_from_params_with_decoding(const char* const p_params, const char
     LOG_DBG("HTTP params: key '%s': value (encoded): %s", p_key, val_encoded.buf);
 
     const str_buf_t val_decoded = url_decode_with_alloc(val_encoded.buf);
-    str_buf_free_buf(&val_encoded);
     if (NULL == val_decoded.buf)
     {
         LOG_ERR("HTTP params: key '%s': Can't decode value: %s", p_key, val_encoded.buf);
+        str_buf_free_buf(&val_encoded);
         return str_buf_init_null();
     }
+    str_buf_free_buf(&val_encoded);
     LOG_DBG("HTTP params: key '%s': value (decoded): %s", p_key, val_decoded.buf);
     return val_decoded;
 }

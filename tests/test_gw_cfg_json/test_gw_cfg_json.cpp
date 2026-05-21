@@ -626,7 +626,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
     gw_cfg_t gw_cfg                    = get_gateway_config_default();
     gw_cfg.ruuvi_cfg.filter.company_id = 0x0500;
 
-    string json_content = string(
+    const string json_content = string(
         "{\n"
         "\t\"use_eth\":\ttrue,\n"
         "\t\"eth_dhcp\":\ttrue,\n"
@@ -689,10 +689,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
         "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
         "}");
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
-    json_str.p_str            = json_content.c_str();
+    json_str.p_str            = strdup(json_content.c_str());
+    assert(nullptr != json_str.p_str);
 
     gw_cfg_t gw_cfg2 = get_gateway_config_default();
     ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, json_str.p_str, &gw_cfg2));
+    free(json_str.p_str);
 
     ASSERT_EQ(gw_cfg2.ruuvi_cfg.filter.company_id, gw_cfg.ruuvi_cfg.filter.company_id);
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));

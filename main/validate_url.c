@@ -808,7 +808,7 @@ validate_url_check_fw_update_url_step2(const http_server_download_info_t* const 
 
     const http_server_resp_t http_resp = validate_url_check_fw_update_url_step3(p_json_root, p_info->p_json_buf);
 
-    cJSON_free(p_json_root);
+    cJSON_Delete(p_json_root);
 
     return http_resp;
 }
