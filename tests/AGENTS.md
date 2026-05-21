@@ -24,11 +24,11 @@
 - Test modules include: `test_adv_table`, `test_adv_mqtt_*`, `test_adv_post_*`, `test_gw_cfg*`, `test_http_json`, `test_http_server_cb`, `test_leds*`, `test_nrf52fw`, `test_nrf52swd`, `test_mqtt_json`, `test_bin2hex`, `test_cjson_wrap`, `test_event_mgr`, `test_flashfatfs`, `test_hmac_sha256`, `test_json_ruuvi`, `test_metrics`, `test_ruuvi_auth`, `test_time_str`, `test_url_encode`, and more.
 
 ## Build and test workflow
-- **Environment setup (required before compiling):** ESP-IDF v4.2.5 strictly requires Python 3.8. 
-- Set `IDF_PATH`, ensure `python` resolves to `python3.8`, and source ESP-IDF's `export.sh`. 
-- The recommended way is to use a convenience script — see 
-- [README.md § Build Environment Setup](../README.md#build-environment-setup) for the full script 
-- and setup instructions.
+- **Environment setup (required before compiling):** ESP-IDF v4.2.5 strictly requires Python 3.8.
+- Set `IDF_PATH`, ensure `python` resolves to `python3.8`, and source ESP-IDF's `export.sh`.
+  The recommended way is to use a convenience script — see
+  [README.md § Build Environment Setup](../README.md#build-environment-setup) for the full script
+  and setup instructions.
 ```bash
 source ~/esp-idf-env.sh
 ```

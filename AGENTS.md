@@ -42,9 +42,13 @@ ESP-IDF installation location.
 
 ### Prerequisites (Ubuntu 22.04)
 ```bash
-sudo apt-get install -y gcc g++ cmake make ninja-build mtools
+sudo apt-get update
+sudo apt-get install -y gcc g++ cmake make ninja-build mtools lcov
 sudo apt-get install -y git wget libncurses-dev flex bison gperf ccache libffi-dev libssl-dev
-sudo apt-get install -y locales
+sudo apt-get install -y locales software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt-get install -y python3.8 python3.8-venv python3.8-dev
 sudo locale-gen de_DE.UTF-8   # Required by some unit tests
 ```
 
