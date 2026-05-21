@@ -118,7 +118,7 @@ The `tests/` directory is an **independent CMake project** that can be opened se
 
 ## CI / GitHub Actions (`.github/workflows/`)
 
-Eight workflows run on push/PR:
+Eight workflows run on push and/or PR:
 
 1. **`google-tests.yml` (Google Tests)** — on ubuntu-22.04, sets up Python 3.8, installs ESP-IDF v4.2.5 (cached at `~/esp/esp-idf`), builds tests with Ninja in `tests/cmake-build-unit-tests`, runs `ctest --output-on-failure`. Requires `de_DE.UTF-8` locale.
 2. **`code-style.yml` (Clang-Format)** — installs clang-format-14, runs `scripts/clang_format_all.sh`, and fails if any file changes (`git diff --exit-code`).
