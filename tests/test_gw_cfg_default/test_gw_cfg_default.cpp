@@ -90,6 +90,10 @@ public:
     bool m_flag_storage_stat_srv_cert { false };
     bool m_flag_storage_mqtt_srv_cert { false };
     bool m_flag_storage_remote_cfg_srv_cert { false };
+
+    bool m_flag_storage_http_path { false };
+    bool m_flag_storage_http_query { false };
+    bool m_flag_storage_http_headers { false };
 };
 
 TestGwCfgDefault::TestGwCfgDefault()
@@ -231,6 +235,21 @@ gw_cfg_storage_check_file(const char* const p_file_name, const bool is_blob, siz
         if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, p_file_name))
         {
             return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_srv_cert;
+        }
+    }
+    else
+    {
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_PATH, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_path;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_QUERY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_query;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_HEADERS, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_headers;
         }
     }
 

@@ -9,7 +9,7 @@
 #include <string.h>
 #include <assert.h>
 
-#define GW_CFG_STORAGE_NUM_ALLOWED_FILES (12U)
+#define GW_CFG_STORAGE_NUM_ALLOWED_FILES (15U)
 
 typedef struct gw_cfg_storage_file_info
 {
@@ -65,6 +65,18 @@ const gw_cfg_storage_file_info_t g_gw_cfg_storage_list_of_allowed_files[GW_CFG_S
     {
         GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT,
         false,
+    },
+    {
+        GW_CFG_STORAGE_HTTP_PATH,
+        true,
+    },
+    {
+        GW_CFG_STORAGE_HTTP_QUERY,
+        true,
+    },
+    {
+        GW_CFG_STORAGE_HTTP_HEADERS,
+        true,
     },
 };
 

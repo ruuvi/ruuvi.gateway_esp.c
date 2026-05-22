@@ -109,6 +109,27 @@ _Static_assert(
     "sizeof(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT)");
 #endif
 
+#define GW_CFG_STORAGE_HTTP_PATH "http_path"
+#ifndef __cplusplus
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_HTTP_PATH) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_HTTP_PATH)");
+#endif
+
+#define GW_CFG_STORAGE_HTTP_QUERY "http_query"
+#ifndef __cplusplus
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_HTTP_QUERY) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_HTTP_QUERY)");
+#endif
+
+#define GW_CFG_STORAGE_HTTP_HEADERS "http_headers"
+#ifndef __cplusplus
+_Static_assert(
+    sizeof(GW_CFG_STORAGE_HTTP_HEADERS) <= (GW_CFG_STORAGE_MAX_FILE_NAME_LEN + 1),
+    "sizeof(GW_CFG_STORAGE_HTTP_HEADERS)");
+#endif
+
 typedef bool (
     *gw_cfg_storage_files_iterate_cb_t)(const char* const p_file_name, const bool is_blob, void* const p_user_data);
 

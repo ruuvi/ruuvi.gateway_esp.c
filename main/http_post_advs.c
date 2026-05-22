@@ -33,6 +33,9 @@ typedef struct http_send_advs_internal_params_t
     const bool     flag_post_to_ruuvi;
     const bool     use_ssl_client_cert;
     const bool     use_ssl_server_cert;
+    const bool     use_extra_http_path;
+    const bool     use_extra_http_query;
+    const bool     use_extra_http_headers;
 } http_send_advs_internal_params_t;
 
 static bool
@@ -50,18 +53,6 @@ http_init_client_config_for_http_target(
         p_http_user = &p_cfg_http->auth.auth_basic.user;
         p_http_pass = &p_cfg_http->auth.auth_basic.password;
     }
-
-    ruuvi_gw_cfg_http_url_t* p_http_url = os_malloc(sizeof(*p_http_url));
-    if (NULL == p_http_url)
-    {
-        LOG_ERR("Can't allocate memory");
-        return false;
-    }
-    (void)snprintf(
-        p_http_url->buf,
-        sizeof(p_http_url->buf),
-        "%s",
-        p_params->flag_post_to_ruuvi ? RUUVI_GATEWAY_HTTP_DEFAULT_URL : p_cfg_http->http_url.buf);
 
     str_buf_t str_buf_server_cert_http = str_buf_init_null();
     str_buf_t str_buf_client_cert      = str_buf_init_null();
@@ -87,8 +78,27 @@ http_init_client_config_for_http_target(
             return false;
         }
     }
+    const char* p_filename_extra_http_path = NULL;
+    if (p_params->use_extra_http_path)
+    {
+        p_filename_extra_http_path = GW_CFG_STORAGE_HTTP_PATH;
+    }
+    const char* p_filename_extra_http_query = NULL;
+    if (p_params->use_extra_http_query)
+    {
+        p_filename_extra_http_query = GW_CFG_STORAGE_HTTP_QUERY;
+    }
+    const char* p_filename_extra_http_headers = NULL;
+    if (p_params->use_extra_http_headers)
+    {
+        p_filename_extra_http_headers = GW_CFG_STORAGE_HTTP_HEADERS;
+    }
+
     const http_init_client_config_params_t http_cli_cfg_params = {
-        .p_url                           = p_http_url,
+        .p_url                           = p_params->flag_post_to_ruuvi ? NULL : &p_cfg_http->http_url,
+        .p_filename_extra_http_path      = p_filename_extra_http_path,
+        .p_filename_extra_http_query     = p_filename_extra_http_query,
+        .p_filename_extra_http_headers   = p_filename_extra_http_headers,
         .p_user                          = p_http_user,
         .p_password                      = p_http_pass,
         .p_server_cert                   = str_buf_server_cert_http.buf,
@@ -103,8 +113,6 @@ http_init_client_config_for_http_target(
     };
 
     http_init_client_config(p_http_client_config, &http_cli_cfg_params, p_user_data);
-
-    os_free(p_http_url);
 
     return true;
 }
@@ -228,7 +236,7 @@ http_send_advs_internal(
     p_http_async_info->p_http_client_handle = esp_http_client_init(&p_http_cli_cfg->esp_http_client_config);
     if (NULL == p_http_async_info->p_http_client_handle)
     {
-        LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_cli_cfg->http_url.buf);
+        LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_cli_cfg->http_url_copy.buf);
         http_async_info_free_data(p_http_async_info);
         return false;
     }
@@ -297,12 +305,19 @@ http_post_advs(
     const bool use_ssl_client_cert = (!flag_post_to_ruuvi) && p_cfg_http->http_use_ssl_client_cert;
     const bool use_ssl_server_cert = (!flag_post_to_ruuvi) && p_cfg_http->http_use_ssl_server_cert;
 
+    const bool use_extra_http_path    = (!flag_post_to_ruuvi) && p_cfg_http->http_use_extra_http_path;
+    const bool use_extra_http_query   = (!flag_post_to_ruuvi) && p_cfg_http->http_use_extra_http_query;
+    const bool use_extra_http_headers = (!flag_post_to_ruuvi) && p_cfg_http->http_use_extra_http_headers;
+
     const http_send_advs_internal_params_t params = {
-        .nonce               = nonce,
-        .flag_use_timestamps = flag_use_timestamps,
-        .flag_post_to_ruuvi  = flag_post_to_ruuvi,
-        .use_ssl_client_cert = use_ssl_client_cert,
-        .use_ssl_server_cert = use_ssl_server_cert,
+        .nonce                  = nonce,
+        .flag_use_timestamps    = flag_use_timestamps,
+        .flag_post_to_ruuvi     = flag_post_to_ruuvi,
+        .use_ssl_client_cert    = use_ssl_client_cert,
+        .use_ssl_server_cert    = use_ssl_server_cert,
+        .use_extra_http_path    = use_extra_http_path,
+        .use_extra_http_query   = use_extra_http_query,
+        .use_extra_http_headers = use_extra_http_headers,
     };
 
     if (!http_send_advs_internal(p_http_async_info, p_reports, p_cfg_http, &params, p_user_data))
@@ -439,15 +454,31 @@ http_check_post_advs_internal3(
             break;
     }
 
+    const bool flag_post_to_ruuvi = (0 == strcmp(p_params->p_url, RUUVI_GATEWAY_HTTP_DEFAULT_URL) ? true : false);
+
+    p_cfg_http->use_http_ruuvi = flag_post_to_ruuvi;
+    p_cfg_http->use_http       = !p_cfg_http->use_http_ruuvi;
+
+    p_cfg_http->http_use_ssl_client_cert    = p_params->use_ssl_client_cert;
+    p_cfg_http->http_use_ssl_server_cert    = p_params->use_ssl_server_cert;
+    p_cfg_http->http_use_extra_http_path    = p_params->use_extra_http_path;
+    p_cfg_http->http_use_extra_http_query   = p_params->use_extra_http_query;
+    p_cfg_http->http_use_extra_http_headers = p_params->use_extra_http_headers;
+
     (void)snprintf(p_cfg_http->http_url.buf, sizeof(p_cfg_http->http_url), "%s", p_params->p_url);
-    p_cfg_http->auth_type = p_params->auth_type;
+    p_cfg_http->http_period = 0;
+    p_cfg_http->data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+    p_cfg_http->auth_type   = p_params->auth_type;
 
     const http_send_advs_internal_params_t params = {
-        .nonce               = esp_random(),
-        .flag_use_timestamps = gw_cfg_get_ntp_use(),
-        .flag_post_to_ruuvi  = (0 == strcmp(p_params->p_url, RUUVI_GATEWAY_HTTP_DEFAULT_URL) ? true : false),
-        .use_ssl_client_cert = p_params->use_ssl_client_cert,
-        .use_ssl_server_cert = p_params->use_ssl_server_cert,
+        .nonce                  = esp_random(),
+        .flag_use_timestamps    = gw_cfg_get_ntp_use(),
+        .flag_post_to_ruuvi     = flag_post_to_ruuvi,
+        .use_ssl_client_cert    = p_params->use_ssl_client_cert,
+        .use_ssl_server_cert    = p_params->use_ssl_server_cert,
+        .use_extra_http_path    = p_params->use_extra_http_path,
+        .use_extra_http_query   = p_params->use_extra_http_query,
+        .use_extra_http_headers = p_params->use_extra_http_headers,
     };
 
     LOG_DBG("http_send_advs_internal");
@@ -466,7 +497,7 @@ http_check_post_advs_internal2(
     const http_check_params_t* const p_params,
     const TimeUnitsSeconds_t         timeout_seconds)
 {
-    ruuvi_gw_cfg_http_t* p_cfg_http = os_malloc(sizeof(*p_cfg_http));
+    ruuvi_gw_cfg_http_t* p_cfg_http = os_calloc(1, sizeof(*p_cfg_http));
     if (NULL == p_cfg_http)
     {
         LOG_ERR("Can't allocate memory for ruuvi_gw_cfg_http_t");

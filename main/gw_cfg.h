@@ -246,6 +246,9 @@ typedef struct ruuvi_gw_cfg_http_t
     bool                      use_http;
     bool                      http_use_ssl_client_cert;
     bool                      http_use_ssl_server_cert;
+    bool                      http_use_extra_http_path;
+    bool                      http_use_extra_http_query;
+    bool                      http_use_extra_http_headers;
     ruuvi_gw_cfg_http_url_t   http_url;
     uint32_t                  http_period;
     gw_cfg_http_data_format_e data_format;

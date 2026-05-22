@@ -91,8 +91,11 @@ gw_cfg_blob_convert_http(
         }
         else
         {
-            p_cfg_dst_http->use_http_ruuvi = false;
-            p_cfg_dst_http->use_http       = true;
+            p_cfg_dst_http->use_http_ruuvi              = false;
+            p_cfg_dst_http->use_http                    = true;
+            p_cfg_dst_http->http_use_extra_http_path    = false;
+            p_cfg_dst_http->http_use_extra_http_query   = false;
+            p_cfg_dst_http->http_use_extra_http_headers = false;
             (void)snprintf(
                 p_cfg_dst_http->http_url.buf,
                 sizeof(p_cfg_dst_http->http_url.buf),

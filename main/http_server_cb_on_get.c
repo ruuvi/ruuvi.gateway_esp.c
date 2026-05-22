@@ -473,6 +473,48 @@ http_server_resp_file(const char* file_path, const http_resp_code_e http_resp_co
 }
 
 http_server_resp_t
+http_server_cb_on_get_extra_cfg(const char* const p_uri_params)
+{
+    LOG_INFO("GET /extra_cfg %s", (NULL != p_uri_params) ? p_uri_params : "NULL");
+    str_buf_t filename_str_buf = http_server_get_from_params_with_decoding(p_uri_params, "file=");
+    if (NULL == filename_str_buf.buf)
+    {
+        LOG_ERR("HTTP extra_cfg: can't find 'file' in params: %s", p_uri_params);
+        return http_server_resp_400();
+    }
+    bool is_blob = false;
+    if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf, &is_blob))
+    {
+        LOG_ERR("HTTP extra_cfg: Unknown file name: %s", filename_str_buf.buf);
+        str_buf_free_buf(&filename_str_buf);
+        return http_server_resp_400();
+    }
+    if (!is_blob)
+    {
+        LOG_ERR("HTTP extra_cfg: Access denied: %s", filename_str_buf.buf);
+        str_buf_free_buf(&filename_str_buf);
+        return http_server_resp_403();
+    }
+    size_t file_size = 0;
+    if (!gw_cfg_storage_check_file(filename_str_buf.buf, true, &file_size))
+    {
+        LOG_ERR("HTTP extra_cfg: File doesn't exist: %s", filename_str_buf.buf);
+        str_buf_free_buf(&filename_str_buf);
+        return http_server_resp_404();
+    }
+    const str_buf_t content = gw_cfg_storage_read_file_as_blob(filename_str_buf.buf);
+    if (NULL == content.buf)
+    {
+        LOG_ERR("HTTP extra_cfg: Can't read file content: %s", filename_str_buf.buf);
+        str_buf_free_buf(&filename_str_buf);
+        return http_server_resp_500();
+    }
+    str_buf_free_buf(&filename_str_buf);
+
+    return http_server_resp_text_in_heap(HTTP_RESP_CODE_200, content.buf);
+}
+
+http_server_resp_t
 http_server_cb_on_get(
     const char* const               p_path,
     const char* const               p_uri_params,
@@ -512,6 +554,10 @@ http_server_cb_on_get(
         LOG_INFO("%s: Clear all saved TLS session tickets", __func__);
         esp_transport_ssl_clear_saved_session_tickets();
         return validate_url(p_uri_params);
+    }
+    if (0 == strcmp(p_path, "extra_cfg"))
+    {
+        return http_server_cb_on_get_extra_cfg(p_uri_params);
     }
     const char* p_file_path = ('\0' == p_path[0]) ? "ruuvi.html" : p_path;
     return http_server_resp_file(p_file_path, (NULL != p_resp_auth) ? p_resp_auth->http_resp_code : HTTP_RESP_CODE_200);

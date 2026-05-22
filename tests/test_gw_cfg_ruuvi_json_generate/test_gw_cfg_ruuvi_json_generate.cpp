@@ -152,6 +152,10 @@ public:
     bool m_flag_storage_stat_srv_cert { false };
     bool m_flag_storage_mqtt_srv_cert { false };
     bool m_flag_storage_remote_cfg_srv_cert { false };
+
+    bool m_flag_storage_http_path { false };
+    bool m_flag_storage_http_query { false };
+    bool m_flag_storage_http_headers { false };
 };
 
 TestGwCfgRuuviJsonGenerate::TestGwCfgRuuviJsonGenerate()
@@ -324,6 +328,21 @@ gw_cfg_storage_check_file(const char* const p_file_name, const bool is_blob, siz
         if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, p_file_name))
         {
             return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_srv_cert;
+        }
+    }
+    else
+    {
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_PATH, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_path;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_QUERY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_query;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_HEADERS, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_headers;
         }
     }
 
@@ -1313,6 +1332,9 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\"https://my_server1.com\",\n"
                "\t\"http_period\":\t15,\n"
                "\t\"http_data_format\":\t\"ruuvi_raw_and_decoded\",\n"

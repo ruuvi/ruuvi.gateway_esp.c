@@ -39,7 +39,7 @@ typedef struct tls_shared_buf_https_post_t tls_shared_buf_https_post_t;
 typedef struct http_client_config_t
 {
     esp_http_client_config_t     esp_http_client_config;
-    ruuvi_gw_cfg_http_url_t      http_url;
+    ruuvi_gw_cfg_http_url_t      http_url_copy;
     ruuvi_gw_cfg_http_user_t     http_user;
     ruuvi_gw_cfg_http_password_t http_pass;
 } http_client_config_t;
@@ -91,11 +91,17 @@ typedef struct http_check_params_t
     const char* const             p_pass;
     const bool                    use_ssl_client_cert;
     const bool                    use_ssl_server_cert;
+    const bool                    use_extra_http_path;
+    const bool                    use_extra_http_query;
+    const bool                    use_extra_http_headers;
 } http_check_params_t;
 
 typedef struct http_init_client_config_params_t
 {
     const ruuvi_gw_cfg_http_url_t* const      p_url;
+    const char* const                         p_filename_extra_http_path;
+    const char* const                         p_filename_extra_http_query;
+    const char* const                         p_filename_extra_http_headers;
     const ruuvi_gw_cfg_http_user_t* const     p_user;
     const ruuvi_gw_cfg_http_password_t* const p_password;
     const char* const                         p_server_cert;
@@ -162,7 +168,7 @@ http_handle_add_authorization_if_needed(
 const char*
 http_client_method_to_str(const esp_http_client_method_t http_method);
 
-void
+bool
 http_init_client_config(
     http_client_config_t* const                   p_http_client_config,
     const http_init_client_config_params_t* const p_params,

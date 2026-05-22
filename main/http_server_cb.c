@@ -76,27 +76,27 @@ http_server_cb_deinit(void)
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_cb_on_delete_ssl_cert(const char* const p_uri_params)
+http_server_cb_on_delete_extra_cfg(const char* const p_uri_params)
 {
-    LOG_DBG("DELETE /ssl_cert %s", (NULL != p_uri_params) ? p_uri_params : "NULL");
+    LOG_INFO("DELETE /extra_cfg %s", (NULL != p_uri_params) ? p_uri_params : "NULL");
     str_buf_t filename_str_buf = http_server_get_from_params_with_decoding(p_uri_params, "file=");
     if (NULL == filename_str_buf.buf)
     {
-        LOG_ERR("HTTP delete_ssl_cert: can't find 'file' in params: %s", p_uri_params);
+        LOG_ERR("HTTP delete_extra_cfg: can't find 'file' in params: %s", p_uri_params);
         return http_server_resp_400();
     }
 
     bool is_blob = false;
     if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf, &is_blob))
     {
-        LOG_ERR("HTTP delete_ssl_cert: Unknown file name: %s", filename_str_buf.buf);
+        LOG_ERR("HTTP delete_extra_cfg: Unknown file name: %s", filename_str_buf.buf);
         str_buf_free_buf(&filename_str_buf);
         return http_server_resp_400();
     }
 
     if (!gw_cfg_storage_delete_file(filename_str_buf.buf))
     {
-        LOG_ERR("HTTP delete_ssl_cert: Failed to delete file: %s", filename_str_buf.buf);
+        LOG_ERR("HTTP delete_extra_cfg: Failed to delete file: %s", filename_str_buf.buf);
         str_buf_free_buf(&filename_str_buf);
         return http_server_resp_500();
     }
@@ -125,7 +125,11 @@ http_server_cb_on_delete(
     }
     if (0 == strcmp(p_file_name, "ssl_cert"))
     {
-        return http_server_cb_on_delete_ssl_cert(p_uri_params);
+        return http_server_cb_on_delete_extra_cfg(p_uri_params);
+    }
+    if (0 == strcmp(p_file_name, "extra_cfg"))
+    {
+        return http_server_cb_on_delete_extra_cfg(p_uri_params);
     }
     return http_server_resp_404();
 }

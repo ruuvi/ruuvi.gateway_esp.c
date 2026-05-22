@@ -7,11 +7,13 @@
 
 #include "http.h"
 #include <string.h>
+#include <errno.h>
 #include <esp_task_wdt.h>
 #include "cjson_wrap.h"
 #include "esp_http_client.h"
 #include "mbedtls/ssl_misc.h"
 #include "ruuvi_gateway.h"
+#include "ruuvi_nvs.h"
 #include "leds.h"
 #include "os_str.h"
 #include "hmac_sha256.h"
@@ -28,6 +30,8 @@
 #include "reset_task.h"
 #include "network_timeout.h"
 #include "tls_shared_buf.h"
+#include "gw_cfg_default.h"
+#include "gw_cfg_storage.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -43,6 +47,17 @@ static const char TAG[] = "http";
 
 typedef int esp_http_client_len_t;
 typedef int esp_http_client_http_status_code_t;
+
+/**
+ * @brief Context structure for file-based HTTP stream reader.
+ */
+typedef struct http_stream_reader_file_ctx
+{
+    const char*  p_filename;  /*!< The source file to read from */
+    nvs_handle_t handle;      /*!< NVS handle for the opened file */
+    size_t       data_offset; /*!< The current offset in the source file */
+    size_t       file_size;   /*!< The total size of the file content */
+} http_stream_reader_file_ctx_t;
 
 static http_async_info_t g_http_async_info;
 
@@ -161,14 +176,102 @@ http_post_event_handler(esp_http_client_event_t* p_evt) // NOSONAR
     return ESP_OK;
 }
 
-void
+static ssize_t
+cb_stream_file_reader(const http_stream_reader_cmd_e cmd, const http_stream_reader_arg_t arg, void* const p_ctx)
+{
+    http_stream_reader_file_ctx_t* const p_context = p_ctx;
+    switch (cmd)
+    {
+        case HTTP_STREAM_READER_CMD_OPEN:
+        {
+            p_context->p_filename = arg.open.p_param;
+            LOG_DBG("HTTP_STREAM_READER_CMD_OPEN: Read file '%s' from NVS", p_context->p_filename);
+            if (!ruuvi_nvs_open_gw_cfg_storage(NVS_READONLY, &p_context->handle))
+            {
+                LOG_ERR("%s failed", "ruuvi_nvs_open_gw_cfg_storage");
+                return -1;
+            }
+            LOG_DBG("p_context=%p, handle=%u", p_context, p_context->handle);
+            const esp_err_t esp_err = nvs_get_blob(
+                p_context->handle,
+                p_context->p_filename,
+                NULL,
+                &p_context->file_size);
+            if (ESP_OK != esp_err)
+            {
+                LOG_ERR_ESP(esp_err, "Can't find key '%s' in NVS", p_context->p_filename);
+                return -1;
+            }
+            LOG_DBG("File '%s' size=%zu", p_context->p_filename, p_context->file_size);
+            if (0 == p_context->file_size)
+            {
+                LOG_ERR("File '%s' is empty", p_context->p_filename);
+                return -1;
+            }
+
+            p_context->data_offset = 0;
+            return 0;
+        }
+        case HTTP_STREAM_READER_CMD_READ:
+        {
+            LOG_DBG("HTTP_STREAM_READER_CMD_READ: p_context=%p, handle=%u", p_context, p_context->handle);
+            const size_t rem_len       = p_context->file_size - p_context->data_offset;
+            const size_t bytes_to_read = ((arg.read.buf_len - 1) < rem_len) ? (arg.read.buf_len - 1) : rem_len;
+            size_t       data_size     = bytes_to_read;
+
+            const esp_err_t esp_err = nvs_get_blob_partial(
+                p_context->handle,
+                p_context->p_filename,
+                arg.read.p_buf,
+                &data_size,
+                p_context->data_offset);
+            if (ESP_OK != esp_err)
+            {
+                LOG_ERR_ESP(esp_err, "Can't read file from NVS by key '%s'", p_context->p_filename);
+                return -1;
+            }
+            if (data_size != bytes_to_read)
+            {
+                LOG_ERR(
+                    "Read unexpected number of bytes from NVS file '%s': expected %zu, got %zu",
+                    p_context->p_filename,
+                    bytes_to_read,
+                    data_size);
+                return -1;
+            }
+            arg.read.p_buf[bytes_to_read] = '\0';
+            LOG_DUMP_DBG(
+                (const uint8_t*)arg.read.p_buf,
+                data_size,
+                "Data read from file '%s' from offset %zu (bytes_read=%zu)",
+                p_context->p_filename,
+                p_context->data_offset,
+                bytes_to_read);
+            p_context->data_offset += bytes_to_read;
+            if (p_context->data_offset == p_context->file_size)
+            {
+                LOG_DBG("Finished reading file '%s' from NVS", p_context->p_filename);
+            }
+            return bytes_to_read;
+        }
+        case HTTP_STREAM_READER_CMD_CLOSE:
+            LOG_DBG("HTTP_STREAM_READER_CMD_CLOSE: p_context=%p, handle=%u", p_context, p_context->handle);
+            nvs_close(p_context->handle);
+            p_context->handle      = 0;
+            p_context->data_offset = 0;
+            return 0;
+    }
+    assert(0);
+    return -1;
+}
+
+bool
 http_init_client_config(
     http_client_config_t* const                   p_http_client_config,
     const http_init_client_config_params_t* const p_params,
     void* const                                   p_user_data)
 {
     LOG_DBG("p_user_data=%p", p_user_data);
-    p_http_client_config->http_url = *p_params->p_url;
     if (NULL != p_params->p_user)
     {
         p_http_client_config->http_user = *p_params->p_user;
@@ -185,20 +288,26 @@ http_init_client_config(
     {
         p_http_client_config->http_pass.buf[0] = '\0';
     }
-    LOG_DBG("URL=%s", p_http_client_config->http_url.buf);
-    LOG_DBG("user=%s", p_http_client_config->http_user.buf);
-    LOG_DBG("pass=%s", p_http_client_config->http_pass.buf);
 
     p_http_client_config->esp_http_client_config = (esp_http_client_config_t) {
         // clang-format off
-        .url = &p_http_client_config->http_url.buf[0],
+        .url = NULL,
         .host = NULL,
         .port = 0,
         .username = &p_http_client_config->http_user.buf[0],
         .password = &p_http_client_config->http_pass.buf[0],
         .auth_type = ('\0' != p_http_client_config->http_user.buf[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
         .path = NULL,
+        .cb_path_stream_reader = p_params->p_filename_extra_http_path ? &cb_stream_file_reader : NULL,
+        .cb_path_stream_reader_param = p_params->p_filename_extra_http_path ? (void*)p_params->p_filename_extra_http_path : NULL,
+        .cb_path_stream_reader_ctx_size = p_params->p_filename_extra_http_path ? sizeof(http_stream_reader_file_ctx_t) : 0,
         .query = NULL,
+        .cb_query_stream_reader = p_params->p_filename_extra_http_query ? &cb_stream_file_reader : NULL,
+        .cb_query_stream_reader_param = p_params->p_filename_extra_http_query ? (void*)p_params->p_filename_extra_http_query : NULL,
+        .cb_query_stream_reader_ctx_size = p_params->p_filename_extra_http_query ? sizeof(http_stream_reader_file_ctx_t) : 0,
+        .cb_extra_headers_stream_reader = p_params->p_filename_extra_http_headers ? &cb_stream_file_reader : NULL,
+        .cb_extra_headers_stream_reader_param = p_params->p_filename_extra_http_headers ? (void*)p_params->p_filename_extra_http_headers : NULL,
+        .cb_extra_headers_stream_reader_ctx_size = p_params->p_filename_extra_http_headers ? sizeof(http_stream_reader_file_ctx_t) : 0,
         .cert_pem = p_params->p_server_cert,
         .client_cert_pem = p_params->p_client_cert,
         .client_key_pem = p_params->p_client_key,
@@ -223,6 +332,72 @@ http_init_client_config(
         .ssl_buf_cfg = p_params->ssl_buf_cfg,
         // clang-format on
     };
+
+    if (NULL == p_params->p_url)
+    {
+        snprintf(
+            p_http_client_config->http_url_copy.buf,
+            sizeof(p_http_client_config->http_url_copy.buf),
+            "%s",
+            RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    }
+    else
+    {
+        p_http_client_config->http_url_copy = *p_params->p_url;
+    }
+
+    LOG_DBG("Base URL=%s", p_http_client_config->http_url_copy.buf);
+
+    if (!esp_http_client_config_set_from_url(
+            &p_http_client_config->esp_http_client_config,
+            p_http_client_config->http_url_copy.buf))
+    {
+        LOG_ERR("esp_http_client_config_set_from_url failed for URL: %s", p_http_client_config->http_url_copy.buf);
+        return false;
+    }
+
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    LOG_DBG(
+        "filename_extra_http_path=%s",
+        p_params->p_filename_extra_http_path ? p_params->p_filename_extra_http_path : "<NULL>");
+    LOG_DBG(
+        "filename_extra_http_query=%s",
+        p_params->p_filename_extra_http_query ? p_params->p_filename_extra_http_query : "<NULL>");
+    LOG_DBG(
+        "p_filename_extra_http_headers=%s",
+        p_params->p_filename_extra_http_headers ? p_params->p_filename_extra_http_headers : "<NULL>");
+    const esp_http_client_config_t* const p_http_config = &p_http_client_config->esp_http_client_config;
+    LOG_DBG("path=%s%s", p_http_config->path ? "/" : "", p_http_config->path ? p_http_config->path : "<NULL>");
+    LOG_DBG("query=%s", p_http_config->query ? p_http_config->query : "<NULL>");
+    LOG_DBG(
+        "URL: http%s://%s:%u/%s%s%s",
+        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+        p_http_config->host ? p_http_config->host : "<NULL>",
+        p_http_config->port,
+        (NULL != p_http_config->path)
+            ? p_http_config->path
+            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+        (NULL != p_http_config->query)
+            ? p_http_config->query
+            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
+    LOG_DBG("user=%s", p_http_client_config->http_user.buf);
+    LOG_DBG("pass=%s", p_http_client_config->http_pass.buf);
+#endif
+
+    if (p_http_client_config->esp_http_client_config.path
+        && p_http_client_config->esp_http_client_config.cb_path_stream_reader)
+    {
+        LOG_ERR("HTTP client config error: both path and cb_path_stream_reader are set");
+        return false;
+    }
+    if (p_http_client_config->esp_http_client_config.query
+        && p_http_client_config->esp_http_client_config.cb_query_stream_reader)
+    {
+        LOG_ERR("HTTP client config error: both query and cb_query_stream_reader are set");
+        return false;
+    }
+    return true;
 }
 
 static http_server_resp_t
@@ -303,7 +478,6 @@ http_wait_until_async_req_completed(
         }
         if (ESP_ERR_HTTP_EAGAIN != err)
         {
-            LOG_ERR_ESP(err, "%s failed", "esp_http_client_perform");
             if ((NULL != p_cb_info) && (NULL != p_cb_info->p_buf))
             {
                 os_free(p_cb_info->p_buf);
@@ -403,7 +577,18 @@ http_send_async(http_async_info_t* const p_http_async_info)
 {
     const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
 
-    LOG_INFO("### HTTP POST to URL=%s", p_http_config->url);
+    LOG_INFO(
+        "### HTTP POST to URL=http%s://%s:%u/%s%s%s",
+        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+        p_http_config->host,
+        p_http_config->port,
+        (NULL != p_http_config->path)
+            ? p_http_config->path
+            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+        (NULL != p_http_config->query)
+            ? p_http_config->query
+            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
 
     ruuvi_log_heap_usage();
 
@@ -442,7 +627,19 @@ http_send_async(http_async_info_t* const p_http_async_info)
     const esp_err_t err = esp_http_client_perform(p_http_async_info->p_http_client_handle);
     if (ESP_ERR_HTTP_EAGAIN != err)
     {
-        LOG_ERR_ESP(err, "### HTTP POST to URL=%s: request failed", p_http_config->url);
+        LOG_ERR_ESP(
+            err,
+            "### HTTP POST to URL=http%s://%s:%u/%s%s%s: request failed",
+            (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+            p_http_config->host,
+            p_http_config->port,
+            (NULL != p_http_config->path)
+                ? p_http_config->path
+                : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+            ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+            (NULL != p_http_config->query)
+                ? p_http_config->query
+                : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
         LOG_DBG("esp_http_client_cleanup");
         if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
         {
@@ -555,9 +752,19 @@ http_async_poll_handle_resp_ok(
     const http_async_info_t* const           p_http_async_info,
     const esp_http_client_http_status_code_t http_status)
 {
+    const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
     LOG_INFO(
-        "### HTTP POST to URL=%s: STATUS=%d",
-        p_http_async_info->http_client_config.esp_http_client_config.url,
+        "### HTTP POST to URL=http%s://%s:%u/%s%s%s: STATUS=%d",
+        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+        p_http_config->host,
+        p_http_config->port,
+        (NULL != p_http_config->path)
+            ? p_http_config->path
+            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+        (NULL != p_http_config->query)
+            ? p_http_config->query
+            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""),
         http_status);
     switch (p_http_async_info->recipient)
     {
@@ -577,9 +784,19 @@ http_async_poll_handle_resp_err(
     const http_async_info_t* const           p_http_async_info,
     const esp_http_client_http_status_code_t http_status)
 {
+    const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
     LOG_ERR(
-        "### HTTP POST to URL=%s: STATUS=%d",
-        p_http_async_info->http_client_config.esp_http_client_config.url,
+        "### HTTP POST to URL=http%s://%s:%u/%s%s%s: STATUS=%d",
+        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+        p_http_config->host,
+        p_http_config->port,
+        (NULL != p_http_config->path)
+            ? p_http_config->path
+            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+        (NULL != p_http_config->query)
+            ? p_http_config->query
+            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""),
         http_status);
     if (HTTP_RESP_CODE_429 == http_status)
     {
@@ -681,10 +898,21 @@ http_async_poll(void)
     }
     else
     {
+        const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config
+                                                                   .esp_http_client_config;
         LOG_ERR_ESP(
             err,
-            "### HTTP POST to URL=%s: failed",
-            p_http_async_info->http_client_config.esp_http_client_config.url);
+            "### HTTP POST to URL=http%s://%s:%u/%s%s%s: failed",
+            (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+            p_http_config->host,
+            p_http_config->port,
+            (NULL != p_http_config->path)
+                ? p_http_config->path
+                : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+            ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+            (NULL != p_http_config->query)
+                ? p_http_config->query
+                : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
         if (esp_tls_err_is_ssl_alloc_failed(err))
         {
             // In case if esp_http_client_perform fails with MBEDTLS_ERR_SSL_ALLOC_FAILED
@@ -763,10 +991,21 @@ http_abort_any_req_during_processing(void)
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
     if (!os_sema_wait_immediate(p_http_async_info->p_http_async_sema))
     {
+        const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config
+                                                                   .esp_http_client_config;
         LOG_WARN(
-            "### Abort HTTP %s to URL=%s",
+            "### Abort HTTP %s to URL=http%s://%s:%u/%s%s%s",
             http_method_to_str(p_http_async_info),
-            p_http_async_info->http_client_config.esp_http_client_config.url);
+            (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+            p_http_config->host,
+            p_http_config->port,
+            (NULL != p_http_config->path)
+                ? p_http_config->path
+                : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+            ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+            (NULL != p_http_config->query)
+                ? p_http_config->query
+                : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
 
         if (p_http_async_info->p_task != os_task_get_cur_task_handle())
         {

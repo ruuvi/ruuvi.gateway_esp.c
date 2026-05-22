@@ -474,6 +474,18 @@ gw_cfg_json_add_items_http_custom_params(
     {
         return false;
     }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_path", p_cfg_http->http_use_extra_http_path))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_query", p_cfg_http->http_use_extra_http_query))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_headers", p_cfg_http->http_use_extra_http_headers))
+    {
+        return false;
+    }
     if (!gw_cfg_json_add_string(p_json_root, "http_url", p_cfg_http->http_url.buf))
     {
         return false;
