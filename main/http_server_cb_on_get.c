@@ -18,10 +18,10 @@
 #include "flashfatfs.h"
 #include "ruuvi_gateway.h"
 #include "str_buf.h"
-#include "gw_status.h"
 #include "validate_url.h"
 #include "network_timeout.h"
 #include "esp_transport_ssl.h"
+#include "gw_cfg_storage.h"
 
 #if RUUVI_TESTS_HTTP_SERVER_CB
 #define LOG_LOCAL_LEVEL LOG_LEVEL_DEBUG

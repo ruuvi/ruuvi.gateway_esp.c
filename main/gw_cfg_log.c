@@ -23,6 +23,8 @@
 
 static const char TAG[] = "gw_cfg";
 
+#define GW_CFG_LOG_FILE_INFO_BUF_SIZE (24U)
+
 static const char*
 gw_cfg_log_get_sta_password_for_logging(const wifi_sta_config_t* const p_wifi_cfg_sta)
 {
@@ -200,6 +202,24 @@ gw_cfg_log_wifi_cfg_sta(const wifiman_config_sta_t* const p_wifi_cfg_sta, const 
     LOG_INFO("config: Host info: nrf52_fw_ver: %s", p_wifi_cfg_sta->hostinfo.nrf52_fw_ver.buf);
 }
 
+static bool
+gw_cfg_log_print_file_info(const char* const p_file_name, const bool is_blob, void* const p_user_data)
+{
+    size_t     file_size = 0;
+    const bool is_exist  = gw_cfg_storage_check_file(p_file_name, is_blob, &file_size);
+    char       buf[GW_CFG_LOG_FILE_INFO_BUF_SIZE];
+    if (!is_exist)
+    {
+        snprintf(buf, sizeof(buf), "%s", "N/A");
+    }
+    else
+    {
+        snprintf(buf, sizeof(buf), "%zu bytes", file_size);
+    }
+    LOG_INFO("config: device_info: storage: %s (%s): %s", p_file_name, is_blob ? "blob" : "string", buf);
+    return false;
+}
+
 void
 gw_cfg_log_device_info(const gw_cfg_device_info_t* const p_dev_info, const char* const p_title)
 {
@@ -219,57 +239,7 @@ gw_cfg_log_device_info(const gw_cfg_device_info_t* const p_dev_info, const char*
     LOG_INFO("config: device_info: storage_ready: %d", (printf_int_t)is_storage_ready);
     if (is_storage_ready)
     {
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_HTTP_CLI_KEY,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_HTTP_SRV_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT));
-
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_STAT_CLI_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_CERT));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_STAT_CLI_KEY,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_KEY));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_STAT_SRV_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT));
-
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_MQTT_CLI_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_MQTT_CLI_KEY,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_MQTT_SRV_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT));
-
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT));
+        gw_cfg_storage_files_iterate(&gw_cfg_log_print_file_info, NULL);
     }
 }
 

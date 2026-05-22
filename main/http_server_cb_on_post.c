@@ -240,19 +240,30 @@ http_server_cb_on_post_ssl_cert(const char* const p_body, const char* const p_ur
         LOG_ERR("HTTP post_ssl_cert: can't find 'file' in params: %s", p_uri_params);
         return http_server_resp_400();
     }
-    LOG_DBG("Content: %s", p_body);
-    if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf))
+    if (LOG_LOCAL_LEVEL >= LOG_LEVEL_INFO)
     {
-        LOG_ERR("HTTP post_ssl_cert: Unknown file name: %s", filename_str_buf.buf);
+        LOG_DBG("Content (length: %zu): %s", strlen(p_body), p_body);
+    }
+    else
+    {
+        LOG_DBG("Content length: %zu", strlen(p_body));
+    }
+    bool is_blob = false;
+    if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf, &is_blob))
+    {
+        LOG_ERR("HTTP extra_cfg: Unknown file name: %s", filename_str_buf.buf);
         str_buf_free_buf(&filename_str_buf);
         return http_server_resp_400();
     }
 
-    if (!gw_cfg_storage_write_file(filename_str_buf.buf, p_body))
+    if (!is_blob)
     {
-        LOG_ERR("Can't write file '%s', length=%lu", filename_str_buf.buf, (printf_ulong_t)strlen(p_body));
-        str_buf_free_buf(&filename_str_buf);
-        return http_server_resp_500();
+        if (!gw_cfg_storage_write_file_as_string(filename_str_buf.buf, p_body))
+        {
+            LOG_ERR("Can't write file '%s', length=%lu", filename_str_buf.buf, (printf_ulong_t)strlen(p_body));
+            str_buf_free_buf(&filename_str_buf);
+            return http_server_resp_500();
+        }
     }
     str_buf_free_buf(&filename_str_buf);
 

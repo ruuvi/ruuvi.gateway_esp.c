@@ -68,12 +68,24 @@ http_init_client_config_for_http_target(
     str_buf_t str_buf_client_key       = str_buf_init_null();
     if (p_params->use_ssl_client_cert)
     {
-        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT);
-        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY);
+        str_buf_client_cert = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT);
+        if (NULL == str_buf_client_cert.buf)
+        {
+            return false;
+        }
+        str_buf_client_key = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY);
+        if (NULL == str_buf_client_key.buf)
+        {
+            return false;
+        }
     }
     if (p_params->use_ssl_server_cert)
     {
-        str_buf_server_cert_http = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
+        str_buf_server_cert_http = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
+        if (NULL == str_buf_server_cert_http.buf)
+        {
+            return false;
+        }
     }
     const http_init_client_config_params_t http_cli_cfg_params = {
         .p_url                           = p_http_url,

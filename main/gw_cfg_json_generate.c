@@ -64,18 +64,36 @@ gw_cfg_json_add_number(cJSON* const p_json_root, const char* const p_item_name, 
     return true;
 }
 
+typedef struct gw_cfg_json_add_item_device_info_storage_files_ctx
+{
+    cJSON* p_storage;
+    bool   is_ok;
+} gw_cfg_json_add_item_device_info_storage_files_ctx_t;
+
+static bool
+gw_cfg_json_add_item_device_info_storage_files(
+    const char* const p_file_name,
+    const bool        is_blob,
+    void* const       p_user_data)
+{
+    gw_cfg_json_add_item_device_info_storage_files_ctx_t* const p_ctx = p_user_data;
+    if (!gw_cfg_json_add_bool(p_ctx->p_storage, p_file_name, gw_cfg_storage_check_file(p_file_name, is_blob, NULL)))
+    {
+        p_ctx->is_ok = false;
+        return true; // Stop iterating if failed to add json item.
+    }
+    return false;
+}
+
 static bool
 gw_cfg_json_add_items_device_info_storage_files(cJSON* p_storage)
 {
-    for (int32_t i = 0; i < GW_CFG_STORAGE_NUM_ALLOWED_FILES; ++i)
-    {
-        const char* const p_file_name = g_gw_cfg_storage_list_of_allowed_files[i];
-        if (!gw_cfg_json_add_bool(p_storage, p_file_name, gw_cfg_storage_check_file(p_file_name)))
-        {
-            return false;
-        }
-    }
-    return true;
+    gw_cfg_json_add_item_device_info_storage_files_ctx_t ctx = {
+        .p_storage = p_storage,
+        .is_ok     = true,
+    };
+    gw_cfg_storage_files_iterate(&gw_cfg_json_add_item_device_info_storage_files, &ctx);
+    return ctx.is_ok;
 }
 
 static bool

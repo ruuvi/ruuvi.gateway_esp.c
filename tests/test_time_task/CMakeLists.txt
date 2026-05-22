@@ -15,6 +15,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_log.c
         ${RUUVI_GW_SRC}/gw_cfg_log.h
+        ${RUUVI_GW_SRC}/gw_cfg_storage_files.c
+        ${RUUVI_GW_SRC}/gw_cfg_storage.h
         ${RUUVI_GW_SRC}/event_mgr.c
         ${RUUVI_GW_SRC}/event_mgr.h
         ${WIFI_MANAGER_SRC}/http_server_auth_type.c

@@ -86,7 +86,8 @@ http_server_cb_on_delete_ssl_cert(const char* const p_uri_params)
         return http_server_resp_400();
     }
 
-    if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf))
+    bool is_blob = false;
+    if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf, &is_blob))
     {
         LOG_ERR("HTTP delete_ssl_cert: Unknown file name: %s", filename_str_buf.buf);
         str_buf_free_buf(&filename_str_buf);
@@ -438,12 +439,12 @@ http_server_download_gw_cfg(const ruuvi_gw_cfg_remote_t* const p_remote, const b
     str_buf_t str_buf_client_key         = str_buf_init_null();
     if (p_remote->use_ssl_client_cert)
     {
-        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT);
-        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY);
+        str_buf_client_cert = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT);
+        str_buf_client_key  = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY);
     }
     if (p_remote->use_ssl_server_cert)
     {
-        str_buf_server_cert_remote = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT);
+        str_buf_server_cert_remote = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT);
     }
 
     const http_server_download_gw_cfg_params_t params = {

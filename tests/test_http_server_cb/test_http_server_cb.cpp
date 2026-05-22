@@ -311,19 +311,35 @@ gw_cfg_storage_check(void)
 }
 
 bool
-gw_cfg_storage_check_file(const char* const p_file_name)
+gw_cfg_storage_check_file(const char* const p_file_name, const bool is_blob, size_t* const p_file_size)
 {
+    if (nullptr != p_file_size)
+    {
+        *p_file_size = 0;
+    }
     return false;
 }
 
 str_buf_t
-gw_cfg_storage_read_file(const char* const p_file_name)
+gw_cfg_storage_read_file_as_string(const char* const p_file_name)
+{
+    return str_buf_init_null();
+}
+
+str_buf_t
+gw_cfg_storage_read_file_as_blob(const char* const p_file_name)
 {
     return str_buf_init_null();
 }
 
 bool
-gw_cfg_storage_write_file(const char* const p_file_name, const char* const p_content)
+gw_cfg_storage_write_file_as_string(const char* const p_file_name, const char* const p_content)
+{
+    return false;
+}
+
+bool
+gw_cfg_storage_write_file_as_blob(const char* const p_file_name, const uint8_t* const p_content, const size_t len)
 {
     return false;
 }
