@@ -9,6 +9,9 @@
 #include "gtest/gtest.h"
 #include <string>
 #include <cstdlib>
+#include <cstdarg>
+#include <cstring>
+#include <cstdio>
 
 #include "esp_log_wrapper.hpp"
 #include "esp_transport_internal.h"
@@ -85,14 +88,22 @@ protected:
     void
     SetUp() override
     {
-        g_pTestClass = this;
+        this->m_alloc_free_call_count = 0;
+        this->m_malloc_fail_on_cnt    = 0;
+        this->m_malloc_cnt            = 0;
         esp_log_wrapper_init();
+        esp_log_wrapper_clear();
+        this->m_alloc_free_call_count       = 0;
+        this->m_flag_alloc_counting_enabled = true;
+        g_pTestClass                        = this;
     }
 
     void
     TearDown() override
     {
-        g_pTestClass = nullptr;
+        this->m_flag_alloc_counting_enabled = false;
+        this->m_alloc_free_call_count       = 0;
+        g_pTestClass                        = nullptr;
         esp_log_wrapper_deinit();
     }
 
@@ -101,6 +112,10 @@ public:
 
     ~TestEspHttpClient() override;
 
+    bool                                   m_flag_alloc_counting_enabled;
+    int                                    m_alloc_free_call_count;
+    uint32_t                               m_malloc_cnt;
+    uint32_t                               m_malloc_fail_on_cnt;
     std::queue<int>                        m_tcp_connect_ret_code;
     std::queue<int>                        m_tcp_connect_async_ret_code;
     std::queue<int>                        m_tcp_write_ret_code;
@@ -133,7 +148,11 @@ public:
 };
 
 TestEspHttpClient::TestEspHttpClient()
-    : m_tcp_connect_ret_code {}
+    : m_flag_alloc_counting_enabled(false)
+    , m_alloc_free_call_count(0)
+    , m_malloc_cnt(0)
+    , m_malloc_fail_on_cnt(0)
+    , m_tcp_connect_ret_code {}
     , m_tcp_connect_async_ret_code {}
     , m_tcp_write_ret_code {}
     , m_tcp_write_queue {}
@@ -249,6 +268,170 @@ TestEspHttpClient::addHttpRespHeaderAndData(
 }
 
 extern "C" {
+
+void*
+__wrap_malloc(size_t size)
+{
+    extern void* __real_malloc(size_t _size) __THROW __attribute_malloc__ __attribute_alloc_size__((1)) __wur;
+    extern void                                                           __real_free(void* _ptr) __THROW;
+
+    void* ptr = __real_malloc(size);
+    assert(nullptr != ptr);
+    if (nullptr == ptr)
+    {
+        return nullptr;
+    }
+    if (g_pTestClass && g_pTestClass->m_malloc_fail_on_cnt > 0)
+    {
+        g_pTestClass->m_malloc_cnt += 1;
+        if (g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+        {
+            __real_free(ptr);
+            return nullptr;
+        }
+    }
+    if (g_pTestClass && g_pTestClass->m_flag_alloc_counting_enabled)
+    {
+        g_pTestClass->m_alloc_free_call_count += 1;
+    }
+    return ptr;
+}
+
+void*
+__wrap_calloc(size_t nmemb, size_t size)
+{
+    extern void*                     __real_calloc(size_t _nmemb, size_t _size)
+        __THROW __attribute_malloc__ __attribute_alloc_size__((1, 2)) __wur;
+    extern void                      __real_free(void* _ptr) __THROW;
+
+    void* ptr = __real_calloc(nmemb, size);
+    assert(nullptr != ptr);
+    if (nullptr == ptr)
+    {
+        return nullptr;
+    }
+    if (g_pTestClass && g_pTestClass->m_malloc_fail_on_cnt > 0)
+    {
+        g_pTestClass->m_malloc_cnt += 1;
+        if (g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+        {
+            __real_free(ptr);
+            return nullptr;
+        }
+    }
+    if (g_pTestClass && g_pTestClass->m_flag_alloc_counting_enabled)
+    {
+        g_pTestClass->m_alloc_free_call_count += 1;
+    }
+    return ptr;
+}
+
+void
+__wrap_free(void* ptr)
+{
+    extern void __real_free(void* _ptr) __THROW;
+
+    __real_free(ptr);
+    if (nullptr == ptr)
+    {
+        return;
+    }
+    if (g_pTestClass && g_pTestClass->m_flag_alloc_counting_enabled)
+    {
+        g_pTestClass->m_alloc_free_call_count -= 1;
+    }
+}
+
+void*
+__wrap_realloc(void* ptr, size_t size)
+{
+    extern void* __real_realloc(void* _ptr, size_t _size) __THROW __wur;
+
+    if (nullptr == ptr)
+    {
+        // realloc(NULL, size) acts like malloc
+        return __wrap_malloc(size);
+    }
+    if (0 == size)
+    {
+        // realloc(ptr, 0) acts like free
+        __wrap_free(ptr);
+        return nullptr;
+    }
+    // __real_realloc may internally free the old block (via glibc's free, not counted)
+    // and allocate a new block (via glibc's malloc, not counted).
+    // Since the old block was counted as +1 (allocated via __wrap_malloc/calloc),
+    // we need to account for losing it (-1) and gaining a new one (+1). Net: 0 change.
+    // But if ptr was never counted (allocated before counting), this won't affect count.
+    // The simplest correct approach: treat as free(old) + malloc(new).
+    void* new_ptr = __real_realloc(ptr, size);
+    // No counting adjustment needed: the alloc count for the old block
+    // was already tracked at initial allocation time, and realloc doesn't change
+    // the number of live allocations (still 1 block for this pointer).
+    return new_ptr;
+}
+
+char*
+__wrap_strdup(const char* s)
+{
+    if (nullptr == s)
+    {
+        return nullptr;
+    }
+    const size_t len = strlen(s) + 1;
+    char*        dup = static_cast<char*>(__wrap_malloc(len));
+    if (nullptr != dup)
+    {
+        memcpy(dup, s, len);
+    }
+    return dup;
+}
+
+int
+__wrap_asprintf(char** strp, const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    const int len = vsnprintf(nullptr, 0, fmt, args);
+    va_end(args);
+    if (len < 0)
+    {
+        *strp = nullptr;
+        return -1;
+    }
+    *strp = static_cast<char*>(__wrap_malloc(len + 1));
+    if (nullptr == *strp)
+    {
+        return -1;
+    }
+    va_start(args, fmt);
+    vsnprintf(*strp, len + 1, fmt, args);
+    va_end(args);
+    return len;
+}
+
+int
+__wrap_vasprintf(char** strp, const char* fmt, va_list ap)
+{
+    va_list ap2;
+    va_copy(ap2, ap);
+    const int len = vsnprintf(nullptr, 0, fmt, ap);
+    va_end(ap);
+    if (len < 0)
+    {
+        *strp = nullptr;
+        return -1;
+    }
+    *strp = static_cast<char*>(__wrap_malloc(len + 1));
+    if (nullptr == *strp)
+    {
+        va_end(ap2);
+        return -1;
+    }
+    vsnprintf(*strp, len + 1, fmt, ap2);
+    va_end(ap2);
+    return len;
+}
 
 uint32_t
 esp_random(void)
@@ -537,6 +720,262 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_default_path) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_null_cfg) // NOLINT
+{
+    char url[] = "http://myhost.com/path";
+    ASSERT_FALSE(esp_http_client_config_set_from_url(nullptr, url));
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_null_url) // NOLINT
+{
+    esp_http_client_config_t config = {};
+    ASSERT_FALSE(esp_http_client_config_set_from_url(&config, nullptr));
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_host_already_set) // NOLINT
+{
+    char                     url[]  = "http://myhost.com/path";
+    esp_http_client_config_t config = {};
+    config.host                     = "existing_host";
+    ASSERT_FALSE(esp_http_client_config_set_from_url(&config, url));
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_http) // NOLINT
+{
+    char                     url[]  = "http://myhost.com/api/v1?key=val";
+    esp_http_client_config_t config = {};
+    ASSERT_TRUE(esp_http_client_config_set_from_url(&config, url));
+    ASSERT_STREQ("myhost.com", config.host);
+    ASSERT_EQ(80, config.port);
+    ASSERT_EQ(HTTP_TRANSPORT_OVER_TCP, config.transport_type);
+    ASSERT_STREQ("api/v1", config.path);
+    ASSERT_STREQ("key=val", config.query);
+    ASSERT_EQ(nullptr, config.username);
+    ASSERT_EQ(nullptr, config.password);
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_https) // NOLINT
+{
+    char                     url[]  = "https://secure.example.com/data";
+    esp_http_client_config_t config = {};
+    ASSERT_TRUE(esp_http_client_config_set_from_url(&config, url));
+    ASSERT_STREQ("secure.example.com", config.host);
+    ASSERT_EQ(443, config.port);
+    ASSERT_EQ(HTTP_TRANSPORT_OVER_SSL, config.transport_type);
+    ASSERT_STREQ("data", config.path);
+    ASSERT_EQ(nullptr, config.query);
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_with_port) // NOLINT
+{
+    char                     url[]  = "http://myhost.com:8080/api";
+    esp_http_client_config_t config = {};
+    ASSERT_TRUE(esp_http_client_config_set_from_url(&config, url));
+    ASSERT_STREQ("myhost.com", config.host);
+    ASSERT_EQ(8080, config.port);
+    ASSERT_STREQ("api", config.path);
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_with_userinfo) // NOLINT
+{
+    char                     url[]  = "http://user:pass@myhost.com/path";
+    esp_http_client_config_t config = {};
+    ASSERT_TRUE(esp_http_client_config_set_from_url(&config, url));
+    ASSERT_STREQ("myhost.com", config.host);
+    ASSERT_STREQ("user", config.username);
+    ASSERT_STREQ("pass", config.password);
+    ASSERT_STREQ("path", config.path);
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_with_username_only) // NOLINT
+{
+    char                     url[]  = "http://user@myhost.com/path";
+    esp_http_client_config_t config = {};
+    ASSERT_TRUE(esp_http_client_config_set_from_url(&config, url));
+    ASSERT_STREQ("myhost.com", config.host);
+    ASSERT_STREQ("user", config.username);
+    ASSERT_EQ(nullptr, config.password);
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_no_path) // NOLINT
+{
+    char                     url[]  = "http://myhost.com";
+    esp_http_client_config_t config = {};
+    ASSERT_TRUE(esp_http_client_config_set_from_url(&config, url));
+    ASSERT_STREQ("myhost.com", config.host);
+    ASSERT_EQ(80, config.port);
+    ASSERT_EQ(nullptr, config.path);
+    ASSERT_EQ(nullptr, config.query);
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_root_path) // NOLINT
+{
+    char                     url[]  = "http://myhost.com/";
+    esp_http_client_config_t config = {};
+    ASSERT_TRUE(esp_http_client_config_set_from_url(&config, url));
+    ASSERT_STREQ("myhost.com", config.host);
+    ASSERT_STREQ("", config.path);
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_unsupported_schema) // NOLINT
+{
+    char                     url[]  = "ftp://myhost.com/path";
+    esp_http_client_config_t config = {};
+    ASSERT_FALSE(esp_http_client_config_set_from_url(&config, url));
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_invalid_url) // NOLINT
+{
+    char                     url[]  = "not a url at all";
+    esp_http_client_config_t config = {};
+    ASSERT_FALSE(esp_http_client_config_set_from_url(&config, url));
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_hostname_too_long) // NOLINT
+{
+    // Build a URL with hostname longer than ESP_HTTP_CLIENT_MAX_HOSTNAME_LEN (253)
+    string long_host;
+    for (int i = 0; i < 4; i++)
+    {
+        if (i > 0)
+            long_host += ".";
+        long_host += string(63, 'a');
+    }
+    // long_host is 63*4 + 3 = 255 chars, which is > 253
+    string url_str = "http://" + long_host + "/path";
+    // Need mutable buffer
+    std::vector<char> url_buf(url_str.begin(), url_str.end());
+    url_buf.push_back('\0');
+
+    esp_http_client_config_t config = {};
+    ASSERT_FALSE(esp_http_client_config_set_from_url(&config, url_buf.data()));
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_then_init_and_perform) // NOLINT
+{
+    char                     url[]  = "http://myhost.com/api/v1?cmd=test";
+    esp_http_client_config_t config = {};
+    config.event_handler            = &event_handler;
+    ASSERT_TRUE(esp_http_client_config_set_from_url(&config, url));
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    const string req_header
+        = "GET /api/v1?cmd=test HTTP/1.1\r\n"
+          "User-Agent: Ruuvi Gateway HTTP Client/1.0\r\n"
+          "Host: myhost.com\r\n"
+          "Content-Length: 0\r\n"
+          "\r\n";
+    TEST_TCP_WRITE_RECORD(req_header);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestEspHttpClient, test_config_set_from_url_https_then_init_and_perform) // NOLINT
+{
+    char                     url[]  = "https://secure.example.com:8443/data/endpoint";
+    esp_http_client_config_t config = {};
+    config.event_handler            = &event_handler;
+    ASSERT_TRUE(esp_http_client_config_set_from_url(&config, url));
+
+    ASSERT_EQ(8443, config.port);
+    ASSERT_EQ(HTTP_TRANSPORT_OVER_SSL, config.transport_type);
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    const string req_header
+        = "GET /data/endpoint HTTP/1.1\r\n"
+          "User-Agent: Ruuvi Gateway HTTP Client/1.0\r\n"
+          "Host: secure.example.com:8443\r\n"
+          "Content-Length: 0\r\n"
+          "\r\n";
+    TEST_TCP_WRITE_RECORD(req_header);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_without_leading_slash) // NOLINT
+{
+    esp_http_client_config_t config = {};
+    config.event_handler            = &event_handler;
+    config.host                     = "myhost.com";
+    config.path                     = "api/v2";
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    const string req_header
+        = "GET /api/v2 HTTP/1.1\r\n"
+          "User-Agent: Ruuvi Gateway HTTP Client/1.0\r\n"
+          "Host: myhost.com\r\n"
+          "Content-Length: 0\r\n"
+          "\r\n";
+    TEST_TCP_WRITE_RECORD(req_header);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_host_and_default_path_async) // NOLINT
@@ -575,6 +1014,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_default_path_async) // NOLIN
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_host_with_max_hostname_len) // NOLINT
@@ -621,6 +1065,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_with_max_hostname_len) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_host_with_hostname_len_overflow) // NOLINT
@@ -672,6 +1121,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_with_extra_header_fields_from_stream_reader) // NOLINT
@@ -724,6 +1178,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_with_extra_header_field
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_with_custom_path_reader) // NOLINT
@@ -764,6 +1223,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_with_custom_path_reader
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_and_query) // NOLINT
@@ -801,6 +1265,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_and_query) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_and_query_with_custom_readers) // NOLINT
@@ -846,6 +1315,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_and_query_with_custom_r
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_url_with_default_path) // NOLINT
@@ -881,6 +1355,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_url_with_default_path) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_url_with_max_hostname_len) // NOLINT
@@ -927,6 +1406,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_url_with_max_hostname_len) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_url_with_hostname_len_overflow) // NOLINT
@@ -975,6 +1459,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_url_with_path) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_by_url_and_headers) // NOLINT
@@ -1013,6 +1502,11 @@ TEST_F(TestEspHttpClient, test_http_get_by_url_and_headers) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_with_basic_auth) // NOLINT
@@ -1056,6 +1550,11 @@ TEST_F(TestEspHttpClient, test_http_get_with_basic_auth) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_with_digest_auth) // NOLINT
@@ -1121,6 +1620,11 @@ TEST_F(TestEspHttpClient, test_http_get_with_digest_auth) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_with_long_url_split_req_header) // NOLINT
@@ -1184,6 +1688,11 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_url_split_req_header) // NOLIN
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_with_long_path_split_req_header) // NOLINT
@@ -1245,6 +1754,11 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_path_split_req_header) // NOLI
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_async_get_with_long_path_split_req_header) // NOLINT
@@ -1349,6 +1863,11 @@ TEST_F(TestEspHttpClient, test_http_async_get_with_long_path_split_req_header) /
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_split_req_header) // NOLINT
@@ -1431,6 +1950,11 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_split_req_heade
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_using_custom_readers) // NOLINT
@@ -1540,6 +2064,11 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_using_custom_re
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestEspHttpClient, test_http_get_split_http_method) // NOLINT
@@ -1583,6 +2112,11 @@ TEST_F(TestEspHttpClient, test_http_get_split_http_method) // NOLINT
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -1765,4 +2299,9 @@ TEST_F(
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
     esp_http_client_cleanup(client);
+    this->m_flag_alloc_counting_enabled = false;
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    this->m_flag_alloc_counting_enabled = true;
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }

@@ -851,6 +851,12 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
 
     free(client->parser);
     free(client->parser_settings);
+    if (client->connection_info.stream_reader_desc_path.p_ctx) {
+        free(client->connection_info.stream_reader_desc_path.p_ctx);
+    }
+    if (client->connection_info.stream_reader_desc_query.p_ctx) {
+        free(client->connection_info.stream_reader_desc_query.p_ctx);
+    }
     _clear_connection_info(client);
     _clear_auth_data(client);
     free(client->auth_data);
@@ -859,12 +865,6 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
     free(client->auth_header);
     if (client->stream_reader_desc_extra_headers.p_ctx) {
         free(client->stream_reader_desc_extra_headers.p_ctx);
-    }
-    if (client->connection_info.stream_reader_desc_path.p_ctx) {
-        free(client->connection_info.stream_reader_desc_path.p_ctx);
-    }
-    if (client->connection_info.stream_reader_desc_query.p_ctx) {
-        free(client->connection_info.stream_reader_desc_query.p_ctx);
     }
     free(client);
     return ESP_OK;
@@ -1007,6 +1007,7 @@ esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char *u
                                  url + purl.field_data[UF_PATH].off + 1, // Skip the leading '/'
                                  purl.field_data[UF_PATH].len - 1);
     } else {
+        free(client->connection_info.path);
         client->connection_info.path = strdup("");
     }
     HTTP_MEM_CHECK(TAG, client->connection_info.path, return ESP_ERR_NO_MEM);

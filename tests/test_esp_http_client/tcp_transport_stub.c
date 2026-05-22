@@ -133,6 +133,21 @@ base_poll_write(esp_transport_handle_t t, int timeout_ms)
 static int
 base_destroy(esp_transport_handle_t transport)
 {
+    if (transport)
+    {
+        if (transport->foundation)
+        {
+            if (transport->foundation->error_handle)
+            {
+                free(transport->foundation->error_handle);
+            }
+            free(transport->foundation);
+        }
+        if (transport->data)
+        {
+            free(transport->data);
+        }
+    }
     return 0;
 }
 

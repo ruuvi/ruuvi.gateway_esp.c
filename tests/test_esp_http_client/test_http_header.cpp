@@ -13,6 +13,9 @@
 
 using namespace std;
 
+class TestHttpHeader;
+static TestHttpHeader* g_pTestClass;
+
 class TestHttpHeader : public ::testing::Test
 {
 private:
@@ -20,19 +23,26 @@ protected:
     void
     SetUp() override
     {
-        this->m_header = http_header_init();
+        this->m_alloc_free_call_count       = 0;
+        this->m_flag_alloc_counting_enabled = false;
+        this->m_header                      = http_header_init();
         assert(this->m_header != nullptr);
+        this->m_flag_alloc_counting_enabled = true;
+        g_pTestClass                        = this;
     }
 
     void
     TearDown() override
     {
+        this->m_flag_alloc_counting_enabled = false;
         if (this->m_header)
         {
             const esp_err_t err = http_header_destroy(this->m_header);
             this->m_header      = nullptr;
             assert(err == ESP_OK);
         }
+        this->m_alloc_free_call_count = 0;
+        g_pTestClass                  = nullptr;
     }
 
 public:
@@ -40,11 +50,15 @@ public:
 
     ~TestHttpHeader() override;
 
+    bool                 m_flag_alloc_counting_enabled;
+    int                  m_alloc_free_call_count;
     http_header_handle_t m_header;
 };
 
 TestHttpHeader::TestHttpHeader()
     : Test()
+    , m_flag_alloc_counting_enabled(false)
+    , m_alloc_free_call_count(0)
     , m_header {}
 {
 }

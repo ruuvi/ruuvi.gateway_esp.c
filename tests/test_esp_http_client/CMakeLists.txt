@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.13)
 
 project(ruuvi_gateway_esp-test-esp_http_client)
 set(ProjectId ruuvi_gateway_esp-test-esp_http_client)
@@ -71,10 +71,10 @@ target_compile_options(${ProjectId} PUBLIC
         --coverage
 )
 
-# CMake has a target_link_options starting from version 3.13
-#target_link_options(${ProjectId} PUBLIC
-#        --coverage
-#)
+
+target_link_options(${ProjectId} PUBLIC
+        --coverage
+)
 
 target_link_libraries(${ProjectId}
         gtest
@@ -82,5 +82,14 @@ target_link_libraries(${ProjectId}
         gcov
         ruuvi_esp_wrappers
         ruuvi_esp_wrappers-common_test_funcs
-        --coverage
+)
+
+target_link_options(${ProjectId} PRIVATE
+        "-Wl,--wrap=malloc"
+        "-Wl,--wrap=calloc"
+        "-Wl,--wrap=realloc"
+        "-Wl,--wrap=free"
+        "-Wl,--wrap=strdup"
+        "-Wl,--wrap=asprintf"
+        "-Wl,--wrap=vasprintf"
 )
