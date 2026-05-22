@@ -387,6 +387,17 @@ cb_custom_stream_reader(const http_stream_reader_cmd_e cmd, const http_stream_re
             }
             else if (strcmp(static_cast<const char*>(arg.open.p_param), "headers") == 0)
             {
+                if (g_pTestClass->m_custom_stream_reader_headers.length() < 2)
+                {
+                    assert(g_pTestClass->m_custom_stream_reader_headers.length() >= 2);
+                }
+                const string last2 = g_pTestClass->m_custom_stream_reader_headers.substr(
+                    g_pTestClass->m_custom_stream_reader_headers.size() - 2,
+                    2);
+                if (last2 != "\r\n")
+                {
+                    assert(last2 == "\r\n");
+                }
                 p_context->p_str = g_pTestClass->m_custom_stream_reader_headers.c_str();
             }
             else
@@ -394,12 +405,6 @@ cb_custom_stream_reader(const http_stream_reader_cmd_e cmd, const http_stream_re
                 assert(0);
             }
             p_context->data_offset = 0;
-            p_context->p_last_call = arg.open.p_last_call;
-            if (nullptr != p_context->p_last_call)
-            {
-                p_context->p_last_call->cb_stream_reader = &http_stream_reader_string;
-                p_context->p_last_call->p_ctx            = p_ctx;
-            }
             return 0;
         case HTTP_STREAM_READER_CMD_READ:
         {
@@ -418,12 +423,6 @@ cb_custom_stream_reader(const http_stream_reader_cmd_e cmd, const http_stream_re
         case HTTP_STREAM_READER_CMD_CLOSE:
             p_context->p_str       = nullptr;
             p_context->data_offset = 0;
-            if (nullptr != p_context->p_last_call)
-            {
-                p_context->p_last_call->cb_stream_reader = nullptr;
-                p_context->p_last_call->p_ctx            = nullptr;
-                p_context->p_last_call                   = nullptr;
-            }
             return 0;
     }
     assert(0);
@@ -680,21 +679,25 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_with_extra_header_field
     this->m_custom_stream_reader_header_val = "Value0";
     this->m_custom_stream_reader_headers    = "X-Header1: Value1\r\nX-Header2: Value2\r\n";
 
-    esp_http_client_config_t config             = {};
-    config.event_handler                        = &event_handler;
-    config.host                                 = "myhost.com";
-    config.path                                 = "/api?cmd1=qwe&cmd2=asd#zzz";
-    config.cb_extra_headers_stream_reader       = &cb_custom_stream_reader;
-    config.cb_extra_headers_stream_reader_param = const_cast<void*>(static_cast<const void*>("headers"));
+    esp_http_client_config_t config                = {};
+    config.event_handler                           = &event_handler;
+    config.host                                    = "myhost.com";
+    config.path                                    = "/api?cmd1=qwe&cmd2=asd#zzz";
+    config.cb_extra_headers_stream_reader          = &cb_custom_stream_reader;
+    config.cb_extra_headers_stream_reader_param    = const_cast<void*>(static_cast<const void*>("headers"));
+    config.cb_extra_headers_stream_reader_ctx_size = sizeof(http_stream_reader_string_ctx_t);
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     ASSERT_NE(nullptr, client);
 
-    esp_http_client_set_header_from_stream(
-        client,
-        "X-Header0",
-        &cb_custom_stream_reader,
-        const_cast<void*>(static_cast<const void*>("header")));
+    http_stream_reader_string_ctx_t context = {};
+    http_stream_reader_desc_t       desc    = {
+                 .p_cb    = &cb_custom_stream_reader,
+                 .p_param = const_cast<void*>(static_cast<const void*>("header")),
+                 .p_ctx   = &context,
+    };
+
+    esp_http_client_set_header_from_stream(client, "X-Header0", &desc);
 
     this->m_tcp_connect_ret_code.push(ESP_OK);
     const string req_header
@@ -725,14 +728,15 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_with_extra_header_field
 
 TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_with_custom_path_reader) // NOLINT
 {
-    this->m_custom_stream_reader_path = "/api2?cmd2=QWE&cmd3=ASD#zzz";
+    this->m_custom_stream_reader_path = "api2?cmd2=QWE&cmd3=ASD#zzz";
 
-    esp_http_client_config_t config    = {};
-    config.event_handler               = &event_handler;
-    config.host                        = "myhost.com";
-    config.path                        = nullptr;
-    config.cb_path_stream_reader       = &cb_custom_stream_reader;
-    config.cb_path_stream_reader_param = const_cast<void*>(static_cast<const void*>("path"));
+    esp_http_client_config_t config       = {};
+    config.event_handler                  = &event_handler;
+    config.host                           = "myhost.com";
+    config.path                           = nullptr;
+    config.cb_path_stream_reader          = &cb_custom_stream_reader;
+    config.cb_path_stream_reader_param    = const_cast<void*>(static_cast<const void*>("path"));
+    config.cb_path_stream_reader_ctx_size = sizeof(http_stream_reader_string_ctx_t);
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     ASSERT_NE(nullptr, client);
@@ -801,18 +805,20 @@ TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_and_query) // NOLINT
 
 TEST_F(TestEspHttpClient, test_http_get_by_host_and_path_and_query_with_custom_readers) // NOLINT
 {
-    this->m_custom_stream_reader_path  = "/api3";
+    this->m_custom_stream_reader_path  = "api3";
     this->m_custom_stream_reader_query = "cmd3=ZXC&cmd4=fgh";
 
-    esp_http_client_config_t config     = {};
-    config.event_handler                = &event_handler;
-    config.host                         = "myhost.com";
-    config.path                         = nullptr;
-    config.cb_path_stream_reader        = &cb_custom_stream_reader;
-    config.cb_path_stream_reader_param  = const_cast<void*>(static_cast<const void*>("path"));
-    config.query                        = nullptr;
-    config.cb_query_stream_reader       = &cb_custom_stream_reader;
-    config.cb_query_stream_reader_param = const_cast<void*>(static_cast<const void*>("query"));
+    esp_http_client_config_t config        = {};
+    config.event_handler                   = &event_handler;
+    config.host                            = "myhost.com";
+    config.path                            = nullptr;
+    config.cb_path_stream_reader           = &cb_custom_stream_reader;
+    config.cb_path_stream_reader_param     = const_cast<void*>(static_cast<const void*>("path"));
+    config.cb_path_stream_reader_ctx_size  = sizeof(http_stream_reader_string_ctx_t);
+    config.query                           = nullptr;
+    config.cb_query_stream_reader          = &cb_custom_stream_reader;
+    config.cb_query_stream_reader_param    = const_cast<void*>(static_cast<const void*>("query"));
+    config.cb_query_stream_reader_ctx_size = sizeof(http_stream_reader_string_ctx_t);
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     ASSERT_NE(nullptr, client);
@@ -948,7 +954,6 @@ TEST_F(TestEspHttpClient, test_http_get_by_url_with_path) // NOLINT
     ASSERT_NE(nullptr, client);
 
     this->m_tcp_connect_ret_code.push(ESP_OK);
-    const string req_header        = this->addHttpReqHeader(config);
     const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
 
     ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
@@ -960,13 +965,50 @@ TEST_F(TestEspHttpClient, test_http_get_by_url_with_path) // NOLINT
     TEST_HTTP_EVENT_ON_FINISH();
     ASSERT_TRUE(this->m_http_event_queue.empty());
 
-    ASSERT_EQ(
-        "GET /api?cmd1=qwe&cmd2=asd HTTP/1.1\r\n"
-        "User-Agent: Ruuvi Gateway HTTP Client/1.0\r\n"
-        "Host: myhost.com\r\n"
-        "Content-Length: 0\r\n"
-        "\r\n",
-        req_header);
+    const string req_header
+        = "GET /api?cmd1=qwe&cmd2=asd HTTP/1.1\r\n"
+          "User-Agent: Ruuvi Gateway HTTP Client/1.0\r\n"
+          "Host: myhost.com\r\n"
+          "Content-Length: 0\r\n"
+          "\r\n";
+    TEST_TCP_WRITE_RECORD(req_header);
+    ASSERT_TRUE(this->m_tcp_write_queue.empty());
+
+    esp_http_client_cleanup(client);
+}
+
+TEST_F(TestEspHttpClient, test_http_get_by_url_and_headers) // NOLINT
+{
+    esp_http_client_config_t config                = {};
+    config.event_handler                           = &event_handler;
+    config.url                                     = "http://myhost.com/api?cmd1=qwe&cmd2=asd#zzz";
+    config.cb_extra_headers_stream_reader          = &cb_custom_stream_reader;
+    config.cb_extra_headers_stream_reader_param    = const_cast<void*>(static_cast<const void*>("headers"));
+    config.cb_extra_headers_stream_reader_ctx_size = sizeof(http_stream_reader_string_ctx_t);
+    this->m_custom_stream_reader_headers           = "X-Header1: val123\r\n";
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    ASSERT_NE(nullptr, client);
+
+    this->m_tcp_connect_ret_code.push(ESP_OK);
+    const string resp_content_data = this->addHttpRespHeaderAndData(HttpStatus_Ok, R"({})");
+
+    ASSERT_EQ(ESP_OK, esp_http_client_perform(client));
+
+    TEST_HTTP_EVENT_ON_CONNECTED();
+    TEST_HTTP_EVENT_HEADERS_SENT();
+    TEST_HTTP_EVENT_ON_HEADER("Content-Length", to_string(resp_content_data.length()));
+    TEST_HTTP_EVENT_ON_DATA(resp_content_data.c_str(), resp_content_data.length());
+    TEST_HTTP_EVENT_ON_FINISH();
+    ASSERT_TRUE(this->m_http_event_queue.empty());
+
+    const string req_header
+        = "GET /api?cmd1=qwe&cmd2=asd HTTP/1.1\r\n"
+          "User-Agent: Ruuvi Gateway HTTP Client/1.0\r\n"
+          "Host: myhost.com\r\n"
+          "Content-Length: 0\r\n"
+          "X-Header1: val123\r\n"
+          "\r\n";
     TEST_TCP_WRITE_RECORD(req_header);
     ASSERT_TRUE(this->m_tcp_write_queue.empty());
 
@@ -1394,7 +1436,7 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_split_req_heade
 TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_using_custom_readers) // NOLINT
 {
     this->m_custom_stream_reader_path
-        = "/topics/gateway/environment/data/sensors/v1/room101/very_long_path"
+        = "topics/gateway/environment/data/sensors/v1/room101/very_long_path"
           "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
           "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
           "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -1422,13 +1464,15 @@ TEST_F(TestEspHttpClient, test_http_get_with_long_path_and_query_using_custom_re
     esp_http_client_config_t config = {};
     config.event_handler            = &event_handler;
 
-    config.host                         = "a31415926535897-ats.iot.us-west-2.amazonaws.com";
-    config.path                         = nullptr;
-    config.cb_path_stream_reader        = &cb_custom_stream_reader;
-    config.cb_path_stream_reader_param  = const_cast<void*>(static_cast<const void*>("path"));
-    config.query                        = nullptr;
-    config.cb_query_stream_reader       = &cb_custom_stream_reader;
-    config.cb_query_stream_reader_param = const_cast<void*>(static_cast<const void*>("query"));
+    config.host                            = "a31415926535897-ats.iot.us-west-2.amazonaws.com";
+    config.path                            = nullptr;
+    config.cb_path_stream_reader           = &cb_custom_stream_reader;
+    config.cb_path_stream_reader_param     = const_cast<void*>(static_cast<const void*>("path"));
+    config.cb_path_stream_reader_ctx_size  = sizeof(http_stream_reader_string_ctx_t);
+    config.query                           = nullptr;
+    config.cb_query_stream_reader          = &cb_custom_stream_reader;
+    config.cb_query_stream_reader_param    = const_cast<void*>(static_cast<const void*>("query"));
+    config.cb_query_stream_reader_ctx_size = sizeof(http_stream_reader_string_ctx_t);
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     ASSERT_NE(nullptr, client);
@@ -1546,7 +1590,7 @@ TEST_F(
     test_http_get_by_host_with_long_path_and_long_extra_header_fields_from_stream_reader) // NOLINT
 {
     this->m_custom_stream_reader_path
-        = "/topics/gateway/environment/data/sensors/v1/room101/very_long_path"
+        = "topics/gateway/environment/data/sensors/v1/room101/very_long_path"
           "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
           "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
           "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -1599,26 +1643,32 @@ TEST_F(
           "wgiMgrsWdKPBbOFF9dIR12xuU8z01dnSd5JSgDUs+ksioBgHqwv2hP2jN/B0"
           "\r\n";
 
-    esp_http_client_config_t config             = {};
-    config.event_handler                        = &event_handler;
-    config.host                                 = "a31415926535897-ats.iot.us-west-2.amazonaws.com";
-    config.path                                 = nullptr;
-    config.cb_path_stream_reader                = &cb_custom_stream_reader;
-    config.cb_path_stream_reader_param          = const_cast<void*>(static_cast<const void*>("path"));
-    config.query                                = nullptr;
-    config.cb_query_stream_reader               = &cb_custom_stream_reader;
-    config.cb_query_stream_reader_param         = const_cast<void*>(static_cast<const void*>("query"));
-    config.cb_extra_headers_stream_reader       = &cb_custom_stream_reader;
-    config.cb_extra_headers_stream_reader_param = const_cast<void*>(static_cast<const void*>("headers"));
+    esp_http_client_config_t config                = {};
+    config.event_handler                           = &event_handler;
+    config.host                                    = "a31415926535897-ats.iot.us-west-2.amazonaws.com";
+    config.path                                    = nullptr;
+    config.cb_path_stream_reader                   = &cb_custom_stream_reader;
+    config.cb_path_stream_reader_param             = const_cast<void*>(static_cast<const void*>("path"));
+    config.cb_path_stream_reader_ctx_size          = sizeof(http_stream_reader_string_ctx_t);
+    config.query                                   = nullptr;
+    config.cb_query_stream_reader                  = &cb_custom_stream_reader;
+    config.cb_query_stream_reader_param            = const_cast<void*>(static_cast<const void*>("query"));
+    config.cb_query_stream_reader_ctx_size         = sizeof(http_stream_reader_string_ctx_t);
+    config.cb_extra_headers_stream_reader          = &cb_custom_stream_reader;
+    config.cb_extra_headers_stream_reader_param    = const_cast<void*>(static_cast<const void*>("headers"));
+    config.cb_extra_headers_stream_reader_ctx_size = sizeof(http_stream_reader_string_ctx_t);
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     ASSERT_NE(nullptr, client);
 
-    esp_http_client_set_header_from_stream(
-        client,
-        "X-Header0",
-        &cb_custom_stream_reader,
-        const_cast<void*>(static_cast<const void*>("header")));
+    http_stream_reader_string_ctx_t context = {};
+    http_stream_reader_desc_t       desc    = {
+                 .p_cb    = &cb_custom_stream_reader,
+                 .p_param = const_cast<void*>(static_cast<const void*>("header")),
+                 .p_ctx   = &context,
+    };
+
+    esp_http_client_set_header_from_stream(client, "X-Header0", &desc);
 
     this->m_tcp_connect_ret_code.push(ESP_OK);
     const string req_headers[] = {

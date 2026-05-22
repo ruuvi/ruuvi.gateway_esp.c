@@ -104,7 +104,7 @@ char *http_auth_digest(const char *username, const char *password, esp_http_auth
             goto _digest_exit;
         }
     }
-    if (md5_printf(ha2, "%s:%s", auth_data->method, auth_data->uri) <= 0) {
+    if (md5_printf(ha2, "%s:/%s", auth_data->method, auth_data->uri) <= 0) {
         goto _digest_exit;
     }
 
@@ -126,7 +126,7 @@ char *http_auth_digest(const char *username, const char *password, esp_http_auth
             goto _digest_exit;
         }
     }
-    asprintf(&auth_str, "Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", algorithm=\"MD5\", "
+    asprintf(&auth_str, "Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"/%s\", algorithm=\"MD5\", "
              "response=\"%s\", qop=%s, nc=%08x, cnonce=\"%016" PRIu64 "\"",
              username, auth_data->realm, auth_data->nonce, auth_data->uri, digest, auth_data->qop, auth_data->nc, auth_data->cnonce);
     if (auth_data->opaque) {

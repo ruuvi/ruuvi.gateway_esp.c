@@ -64,18 +64,15 @@ typedef struct {
 } esp_http_data_t;
 
 typedef struct {
-    char                         *url;
     char                         *scheme;
     char                         *host;
     int                          port;
     char                         *username;
     char                         *password;
     char                         *path;
-    http_stream_reader_t         cb_path_stream_reader;
-    void                         *cb_path_stream_reader_param;
+    http_stream_reader_desc_t    stream_reader_desc_path;
     char                         *query;
-    http_stream_reader_t         cb_query_stream_reader;
-    void                         *cb_query_stream_reader_param;
+    http_stream_reader_desc_t    stream_reader_desc_query;
     char                         *cert_pem;
     esp_http_client_method_t     method;
     esp_http_client_auth_type_t  auth_type;
@@ -99,6 +96,7 @@ typedef enum req_send_stage_e {
     REQ_SEND_STAGE_INIT = 0,
     REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD,
     REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD_SEPARATOR,
+    REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH_STARTING_SLASH,
     REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH,
     REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY_SEPARATOR,
     REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY,
@@ -158,10 +156,9 @@ struct esp_http_client {
     req_send_state_t            req_send_state;
     esp_http_client_cb_on_post_get_chunk cb_on_post_get_chunk;
     void* p_cb_on_post_get_chunk_user_data;
-    esp_http_client_stream_reader_ctx_t stream_reader_ctx;
     http_stream_last_call_t stream_reader_last_call;
-    http_stream_reader_t    cb_extra_headers_stream_reader;
-    void                    *cb_extra_headers_stream_reader_param;
+    http_stream_reader_desc_t stream_reader_desc_extra_headers;
+    http_stream_reader_string_ctx_t stream_reader_string_ctx;
 };
 
 typedef struct esp_http_client esp_http_client_t;
@@ -175,7 +172,6 @@ static esp_err_t _clear_connection_info(esp_http_client_handle_t client);
 
 static const char *DEFAULT_HTTP_USER_AGENT = "Ruuvi Gateway HTTP Client/1.0";
 static const char *DEFAULT_HTTP_PROTOCOL = "HTTP/1.1";
-static const char *DEFAULT_HTTP_PATH = "/";
 static const int DEFAULT_MAX_REDIRECT = 10;
 static const int DEFAULT_MAX_AUTH_RETRIES = 10;
 static const int DEFAULT_TIMEOUT_MS = 15000;
@@ -343,9 +339,9 @@ esp_err_t esp_http_client_set_header(esp_http_client_handle_t client, const char
 }
 
 esp_err_t esp_http_client_set_header_from_stream(esp_http_client_handle_t client, const char *key,
-                                                 http_stream_reader_t cb_stream_reader, void *const p_param)
+                                                 const http_stream_reader_desc_t *const p_stream_reader_desc)
 {
-    return http_header_set_from_stream(client->request->headers, key, cb_stream_reader, p_param);
+    return http_header_set_from_stream(client->request->headers, key, p_stream_reader_desc);
 }
 
 bool esp_http_client_is_header_exist(esp_http_client_handle_t client, const char *key) {
@@ -427,8 +423,8 @@ static esp_err_t _set_config(esp_http_client_handle_t client, const esp_http_cli
     client->buffer_size_rx = config->buffer_size;
     client->buffer_size_tx = config->buffer_size_tx;
     client->disable_auto_redirect = config->disable_auto_redirect;
-    client->cb_extra_headers_stream_reader = config->cb_extra_headers_stream_reader;
-    client->cb_extra_headers_stream_reader_param = config->cb_extra_headers_stream_reader_param;
+    client->stream_reader_desc_extra_headers.p_cb = config->cb_extra_headers_stream_reader;
+    client->stream_reader_desc_extra_headers.p_param = config->cb_extra_headers_stream_reader_param;
 
     if (config->buffer_size == 0) {
         client->buffer_size_rx = DEFAULT_HTTP_BUF_SIZE;
@@ -448,7 +444,7 @@ static esp_err_t _set_config(esp_http_client_handle_t client, const esp_http_cli
         client->max_authorization_retries = 0;
     }
 
-    if (config->cb_path_stream_reader) {
+    if (NULL != config->cb_path_stream_reader) {
         if (NULL != config->path) {
             ESP_LOGE(TAG, "Cannot use cb_path_stream_reader with path, path should be NULL");
             return ESP_ERR_INVALID_ARG;
@@ -459,13 +455,13 @@ static esp_err_t _set_config(esp_http_client_handle_t client, const esp_http_cli
             return ESP_ERR_INVALID_ARG;
         }
         client->connection_info.path = NULL;
-        client->connection_info.cb_path_stream_reader = config->cb_path_stream_reader;
-        client->connection_info.cb_path_stream_reader_param = config->cb_path_stream_reader_param;
+        client->connection_info.stream_reader_desc_path.p_cb = config->cb_path_stream_reader;
+        client->connection_info.stream_reader_desc_path.p_param = config->cb_path_stream_reader_param;
     } else {
-        if (config->path) {
-            client->connection_info.path = strdup(config->path);
+        if (NULL != config->path) {
+            client->connection_info.path = strdup((config->path[0] == '/') ? &config->path[1] : config->path);
         } else {
-            client->connection_info.path = strdup(DEFAULT_HTTP_PATH);
+            client->connection_info.path = strdup("");
         }
         HTTP_MEM_CHECK(TAG, client->connection_info.path, {
             return ESP_ERR_NO_MEM;
@@ -494,8 +490,8 @@ static esp_err_t _set_config(esp_http_client_handle_t client, const esp_http_cli
             return ESP_ERR_INVALID_ARG;
         }
         client->connection_info.query = NULL;
-        client->connection_info.cb_query_stream_reader = config->cb_query_stream_reader;
-        client->connection_info.cb_query_stream_reader_param = config->cb_query_stream_reader_param;
+        client->connection_info.stream_reader_desc_query.p_cb = config->cb_query_stream_reader;
+        client->connection_info.stream_reader_desc_query.p_param = config->cb_query_stream_reader_param;
     } else {
         if (config->query) {
             client->connection_info.query = strdup(config->query);
@@ -558,7 +554,6 @@ static esp_err_t _clear_connection_info(esp_http_client_handle_t client)
         free(client->connection_info.password);
     }
     free(client->connection_info.scheme);
-    free(client->connection_info.url);
     memset(&client->connection_info, 0, sizeof(connection_info_t));
     return ESP_OK;
 }
@@ -639,12 +634,46 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
                    (client->request->buffer        = calloc(1, sizeof(esp_http_buffer_t)))           &&
                    (client->response               = calloc(1, sizeof(esp_http_data_t)))             &&
                    (client->response->headers      = http_header_init())                             &&
-                   (client->response->buffer       = calloc(1, sizeof(esp_http_buffer_t)))
-               );
+                   (client->response->buffer       = calloc(1, sizeof(esp_http_buffer_t))));
 
     if (!_success) {
         ESP_LOGE(TAG, "Error allocate memory");
         goto error;
+    }
+    if (NULL != config->cb_extra_headers_stream_reader) {
+        if (0 == config->cb_extra_headers_stream_reader_ctx_size) {
+            ESP_LOGE(TAG, "cb_extra_headers_stream_reader_ctx_size must be greater than 0 when cb_extra_headers_stream_reader is set");
+            goto error;
+        }
+        client->stream_reader_desc_extra_headers.p_ctx = calloc(1, config->cb_extra_headers_stream_reader_ctx_size);
+        if (NULL == client->stream_reader_desc_extra_headers.p_ctx) {
+            ESP_LOGE(TAG, "Error allocate memory for extra headers stream reader context");
+            goto error;
+        }
+    }
+    if (NULL != config->cb_path_stream_reader)
+    {
+        if (0 == config->cb_path_stream_reader_ctx_size) {
+            ESP_LOGE(TAG, "cb_path_stream_reader_ctx_size must be greater than 0 when cb_path_stream_reader is set");
+            goto error;
+        }
+        client->connection_info.stream_reader_desc_path.p_ctx = calloc(1, config->cb_path_stream_reader_ctx_size);
+        if (NULL == client->connection_info.stream_reader_desc_path.p_ctx) {
+            ESP_LOGE(TAG, "Error allocate memory for path stream reader context");
+            goto error;
+        }
+    }
+    if (NULL != config->cb_query_stream_reader)
+    {
+        if (0 == config->cb_query_stream_reader_ctx_size) {
+            ESP_LOGE(TAG, "cb_query_stream_reader_ctx_size must be greater than 0 when cb_query_stream_reader is set");
+            goto error;
+        }
+        client->connection_info.stream_reader_desc_query.p_ctx = calloc(1, config->cb_query_stream_reader_ctx_size);
+        if (NULL == client->connection_info.stream_reader_desc_query.p_ctx) {
+            ESP_LOGE(TAG, "Error allocate memory for query stream reader context");
+            goto error;
+        }
     }
 
     _success = (
@@ -796,9 +825,13 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
         return ESP_FAIL;
     }
     esp_http_client_close(client);
-    esp_transport_list_destroy(client->transport_list);
+    if (client->transport_list) {
+        esp_transport_list_destroy(client->transport_list);
+    }
     if (client->request) {
-        http_header_destroy(client->request->headers);
+        if (client->request->headers) {
+            http_header_destroy(client->request->headers);
+        }
         if (client->request->buffer) {
             free(client->request->buffer->data);
         }
@@ -806,7 +839,9 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
         free(client->request);
     }
     if (client->response) {
-        http_header_destroy(client->response->headers);
+        if (client->response->headers) {
+            http_header_destroy(client->response->headers);
+        }
         if (client->response->buffer) {
             free(client->response->buffer->data);
         }
@@ -822,6 +857,15 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client)
     free(client->current_header_key);
     free(client->location);
     free(client->auth_header);
+    if (client->stream_reader_desc_extra_headers.p_ctx) {
+        free(client->stream_reader_desc_extra_headers.p_ctx);
+    }
+    if (client->connection_info.stream_reader_desc_path.p_ctx) {
+        free(client->connection_info.stream_reader_desc_path.p_ctx);
+    }
+    if (client->connection_info.stream_reader_desc_query.p_ctx) {
+        free(client->connection_info.stream_reader_desc_query.p_ctx);
+    }
     free(client);
     return ESP_OK;
 }
@@ -937,9 +981,11 @@ esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char *u
 
     if (purl.field_data[UF_USERINFO].len) {
         char *user_info = NULL;
-        http_utils_assign_string(&user_info, url + purl.field_data[UF_USERINFO].off, purl.field_data[UF_USERINFO].len);
+        http_utils_assign_string(&user_info,
+                          url + purl.field_data[UF_USERINFO].off,
+                                 purl.field_data[UF_USERINFO].len);
         if (user_info) {
-            char *username = user_info;
+            const char * const username = user_info;
             char *password = strchr(user_info, ':');
             if (password) {
                 *password = 0;
@@ -957,14 +1003,18 @@ esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char *u
 
     //Reset path and query if there are no information
     if (purl.field_data[UF_PATH].len) {
-        http_utils_assign_string(&client->connection_info.path, url + purl.field_data[UF_PATH].off, purl.field_data[UF_PATH].len);
+        http_utils_assign_string(&client->connection_info.path,
+                                 url + purl.field_data[UF_PATH].off + 1, // Skip the leading '/'
+                                 purl.field_data[UF_PATH].len - 1);
     } else {
-        http_utils_assign_string(&client->connection_info.path, "/", -1);
+        client->connection_info.path = strdup("");
     }
     HTTP_MEM_CHECK(TAG, client->connection_info.path, return ESP_ERR_NO_MEM);
 
     if (purl.field_data[UF_QUERY].len) {
-        http_utils_assign_string(&client->connection_info.query, url + purl.field_data[UF_QUERY].off, purl.field_data[UF_QUERY].len);
+        http_utils_assign_string(&client->connection_info.query,
+                                 url + purl.field_data[UF_QUERY].off,
+                                 purl.field_data[UF_QUERY].len);
         HTTP_MEM_CHECK(TAG, client->connection_info.query, return ESP_ERR_NO_MEM);
     } else if (client->connection_info.query) {
         free(client->connection_info.query);
@@ -972,6 +1022,107 @@ esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char *u
     }
 
     return ESP_OK;
+}
+
+bool esp_http_client_config_set_from_url(esp_http_client_config_t *const p_cfg,
+                                         char *const url)
+{
+    if (p_cfg == NULL || url == NULL) {
+        ESP_LOGE(TAG, "%s: p_cfg or url must not be NULL", __func__);
+        return false;
+    }
+    if (NULL != p_cfg->host) {
+        ESP_LOGE(TAG, "%s: host should be NULL", __func__);
+        return false;
+    }
+
+    struct http_parser_url purl;
+    http_parser_url_init(&purl);
+
+    const int parser_status = http_parser_parse_url(url, strlen(url), 0, &purl);
+    if (parser_status != 0) {
+        ESP_LOGE(TAG, "%s: Error parse url %s", __func__, url);
+        return false;
+    }
+
+    if (purl.field_data[UF_SCHEMA].len) {
+        char* p_schema = url + purl.field_data[UF_SCHEMA].off;
+        p_schema[purl.field_data[UF_SCHEMA].len] = '\0';
+
+        if (strcasecmp(p_schema, "http") == 0) {
+            p_cfg->port = DEFAULT_HTTP_PORT;
+            p_cfg->transport_type = HTTP_TRANSPORT_OVER_TCP;
+        } else if (strcasecmp(p_schema, "https") == 0) {
+            p_cfg->port = DEFAULT_HTTPS_PORT;
+            p_cfg->transport_type = HTTP_TRANSPORT_OVER_SSL;
+        } else
+        {
+            ESP_LOGE(TAG, "%s: Unsupported URL schema '%s'", __func__, p_schema);
+            return false;
+        }
+    } else {
+        p_cfg->port = DEFAULT_HTTP_PORT;
+        p_cfg->transport_type = HTTP_TRANSPORT_OVER_TCP;
+    }
+
+    if (0 == purl.field_data[UF_HOST].len) {
+        ESP_LOGE(TAG, "%s: Host is missing in URL '%s'", __func__, url);
+        return false;
+    }
+    if (purl.field_data[UF_HOST].len > ESP_HTTP_CLIENT_MAX_HOSTNAME_LEN) {
+        ESP_LOGE(TAG, "%s: Hostname '%.*s' is too long (%u bytes), max length is %u",
+            __func__,
+            purl.field_data[UF_HOST].len,
+            url + purl.field_data[UF_HOST].off,
+            purl.field_data[UF_HOST].len,
+            ESP_HTTP_CLIENT_MAX_HOSTNAME_LEN);
+        return false;
+    }
+    char * p_host = url + purl.field_data[UF_HOST].off;
+    p_host[purl.field_data[UF_HOST].len] = '\0';
+    p_cfg->host = p_host;
+
+    if (purl.field_data[UF_PORT].len) {
+        char* p_port = url + purl.field_data[UF_PORT].off;
+        p_port[purl.field_data[UF_PORT].len] = '\0';
+        char* p_end = NULL;
+        p_cfg->port = strtol(p_port, &p_end, 10);
+        if ((p_end == p_port) || (*p_end != '\0')) {
+            ESP_LOGE(TAG, "%s: Invalid port '%s' in URL '%s'", __func__, p_port, url);
+            return false;
+        }
+    }
+
+    if (purl.field_data[UF_USERINFO].len) {
+        char *user_info = url + purl.field_data[UF_USERINFO].off;
+        user_info[purl.field_data[UF_USERINFO].len] = '\0';
+        char *username = user_info;
+        char *password = strchr(user_info, ':');
+        if (password) {
+            *password = 0;
+            password ++;
+            p_cfg->password = password;
+        }
+        p_cfg->username = username;
+    }
+
+    if (purl.field_data[UF_PATH].len) {
+        char* p_path = url + purl.field_data[UF_PATH].off;
+        p_path[purl.field_data[UF_PATH].len] = '\0';
+        p_cfg->path = p_path + 1; // Skip the leading '/'
+    } else {
+        p_cfg->path = NULL;
+    }
+
+    if (purl.field_data[UF_QUERY].len) {
+        char* p_query = url + purl.field_data[UF_QUERY].off;
+        p_query[purl.field_data[UF_QUERY].len] = '\0';
+        p_cfg->query = p_query;
+    } else {
+        p_cfg->query = NULL;
+    }
+
+    return true;
 }
 
 esp_err_t esp_http_client_set_method(esp_http_client_handle_t client, esp_http_client_method_t method)
@@ -1455,9 +1606,11 @@ static esp_err_t esp_http_client_connect(esp_http_client_handle_t client)
 
 static bool gen_req_token_from_str(esp_http_client_handle_t const client, const char *const p_str,
                                    size_t *const p_buf_ofs, bool *const p_is_buf_full) {
-    http_stream_reader_string_ctx_t* const p_ctx = &client->stream_reader_ctx.ctx_str.context;
+    http_stream_reader_string_ctx_t* const p_ctx = &client->stream_reader_string_ctx;
     if (NULL == p_ctx->p_str) {
-        http_stream_reader_string_open(p_ctx, p_str, &client->stream_reader_last_call);
+        http_stream_reader_string_open(p_ctx, p_str);
+        client->stream_reader_last_call.cb_stream_reader = &http_stream_reader_string;
+        client->stream_reader_last_call.p_ctx = p_ctx;
     }
     const bool res = http_stream_reader_wrap_read_string(p_ctx,
                                    client->request->buffer->data,
@@ -1466,10 +1619,12 @@ static bool gen_req_token_from_str(esp_http_client_handle_t const client, const 
                                    p_is_buf_full);
     if (!res) {
         http_stream_reader_string_close(p_ctx);
+        client->stream_reader_last_call.cb_stream_reader = NULL;
         return false;
     }
     if (!*p_is_buf_full) {
         http_stream_reader_string_close(p_ctx);
+        client->stream_reader_last_call.cb_stream_reader = NULL;
     }
     return true;
 }
@@ -1481,7 +1636,7 @@ static ssize_t esp_http_client_generate_request(esp_http_client_handle_t const c
         switch (client->req_send_state.stage) {
             case REQ_SEND_STAGE_INIT:
                 if (write_len >= 0) {
-                    http_header_set_format(client->request->headers, "Content-Length", "%d", write_len);
+                    http_header_set_format(client->request->headers, "Content-Length", "%zd", write_len);
                 } else {
                     esp_http_client_set_header(client, "Transfer-Encoding", "chunked");
                     esp_http_client_set_method(client, HTTP_METHOD_POST);
@@ -1489,7 +1644,12 @@ static ssize_t esp_http_client_generate_request(esp_http_client_handle_t const c
                 client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD;
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_METHOD:
-                if (!gen_req_token_from_str(client, HTTP_METHOD_MAPPING[client->connection_info.method], &buf_ofs, &flag_buf_full)) {
+                if (!gen_req_token_from_str(
+                        client,
+                        HTTP_METHOD_MAPPING[client->connection_info.method],
+                        &buf_ofs,
+                        &flag_buf_full))
+                {
                     return -1;
                 }
                 if (!flag_buf_full) {
@@ -1501,37 +1661,56 @@ static ssize_t esp_http_client_generate_request(esp_http_client_handle_t const c
                     return -1;
                 }
                 if (!flag_buf_full) {
+                    client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH_STARTING_SLASH;
+                }
+                break;
+            case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH_STARTING_SLASH:
+                if (!gen_req_token_from_str(client, "/", &buf_ofs, &flag_buf_full)) {
+                    return -1;
+                }
+                if (!flag_buf_full) {
                     client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH;
-                    if (NULL != client->connection_info.cb_path_stream_reader) {
-                        if (!http_stream_reader_wrap_open(client->connection_info.cb_path_stream_reader,
-                                                          &client->stream_reader_ctx,
-                                                          client->connection_info.cb_path_stream_reader_param,
-                                                          &client->stream_reader_last_call)) {
+                    if (NULL != client->connection_info.stream_reader_desc_path.p_cb) {
+                        if (!http_stream_reader_wrap_open(client->connection_info.stream_reader_desc_path.p_cb,
+                                                          client->connection_info.stream_reader_desc_path.p_ctx,
+                                                          client->connection_info.stream_reader_desc_path.p_param)) {
                             return -1;
                         }
+                        client->stream_reader_last_call.cb_stream_reader = client->connection_info.stream_reader_desc_path.p_cb;
+                        client->stream_reader_last_call.p_ctx = client->connection_info.stream_reader_desc_path.p_ctx;
                     }
                 }
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_PATH:
-                if (NULL != client->connection_info.cb_path_stream_reader) {
-                    const bool res = http_stream_reader_wrap_read(client->connection_info.cb_path_stream_reader,
-                                                                  &client->stream_reader_ctx,
+                if (NULL != client->connection_info.stream_reader_desc_path.p_cb) {
+                    const bool res = http_stream_reader_wrap_read(client->connection_info.stream_reader_desc_path.p_cb,
+                                                                  client->connection_info.stream_reader_desc_path.p_ctx,
                                                                   client->request->buffer->data,
                                                                   client->buffer_size_tx,
                                                                   &buf_ofs,
                                                                   &flag_buf_full);
                     if (!res) {
-                        http_stream_reader_wrap_close(client->connection_info.cb_path_stream_reader,
-                                                      &client->stream_reader_ctx);
+                        http_stream_reader_wrap_close(client->connection_info.stream_reader_desc_path.p_cb,
+                                                      client->connection_info.stream_reader_desc_path.p_ctx);
+                        client->stream_reader_last_call.cb_stream_reader = NULL;
                         return -1;
                     }
                     if (!flag_buf_full) {
-                        http_stream_reader_wrap_close(client->connection_info.cb_path_stream_reader,
-                                                      &client->stream_reader_ctx);
+                        http_stream_reader_wrap_close(client->connection_info.stream_reader_desc_path.p_cb,
+                                                      client->connection_info.stream_reader_desc_path.p_ctx);
+                        client->stream_reader_last_call.cb_stream_reader = NULL;
                     }
                 } else {
-                    if (!gen_req_token_from_str(client, client->connection_info.path, &buf_ofs, &flag_buf_full)) {
-                        return -1;
+                    if ((NULL != client->connection_info.path) && ('\0' != client->connection_info.path[0])) {
+                        if (!gen_req_token_from_str(client,
+                                                    client->connection_info.path,
+                                                    &buf_ofs,
+                                                    &flag_buf_full)) {
+                            return -1;
+                        }
+                    } else {
+                        client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY_SEPARATOR;
+                        break;
                     }
                 }
                 if (!flag_buf_full) {
@@ -1539,38 +1718,42 @@ static ssize_t esp_http_client_generate_request(esp_http_client_handle_t const c
                 }
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY_SEPARATOR:
-                if ((client->connection_info.query || (NULL != client->connection_info.cb_query_stream_reader)) &&
+                if ((client->connection_info.query || (NULL != client->connection_info.stream_reader_desc_query.p_cb))
+                    &&
                     (!gen_req_token_from_str(client, "?", &buf_ofs, &flag_buf_full))) {
                     return -1;
                 }
                 if (!flag_buf_full) {
                     client->req_send_state.stage = REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY;
-                    if (NULL != client->connection_info.cb_query_stream_reader) {
-                        if (!http_stream_reader_wrap_open(client->connection_info.cb_query_stream_reader,
-                                                          &client->stream_reader_ctx,
-                                                          client->connection_info.cb_query_stream_reader_param,
-                                                          &client->stream_reader_last_call)) {
+                    if (NULL != client->connection_info.stream_reader_desc_query.p_cb) {
+                        if (!http_stream_reader_wrap_open(client->connection_info.stream_reader_desc_query.p_cb,
+                                                          client->connection_info.stream_reader_desc_query.p_ctx,
+                                                          client->connection_info.stream_reader_desc_query.p_param)) {
                             return -1;
                         }
+                        client->stream_reader_last_call.cb_stream_reader = client->connection_info.stream_reader_desc_query.p_cb;
+                        client->stream_reader_last_call.p_ctx = client->connection_info.stream_reader_desc_query.p_ctx;
                     }
                 }
                 break;
             case REQ_SEND_STAGE_GEN_FIRST_LINE_HTTP_QUERY:
-                if (NULL != client->connection_info.cb_query_stream_reader) {
-                    const bool res = http_stream_reader_wrap_read(client->connection_info.cb_query_stream_reader,
-                                                                  &client->stream_reader_ctx,
+                if (NULL != client->connection_info.stream_reader_desc_query.p_cb) {
+                    const bool res = http_stream_reader_wrap_read(client->connection_info.stream_reader_desc_query.p_cb,
+                                                                  client->connection_info.stream_reader_desc_query.p_ctx,
                                                                   client->request->buffer->data,
                                                                   client->buffer_size_tx,
                                                                   &buf_ofs,
                                                                   &flag_buf_full);
                     if (!res) {
-                        http_stream_reader_wrap_close(client->connection_info.cb_path_stream_reader,
-                                                      &client->stream_reader_ctx);
+                        http_stream_reader_wrap_close(client->connection_info.stream_reader_desc_query.p_cb,
+                                                      client->connection_info.stream_reader_desc_query.p_ctx);
+                        client->stream_reader_last_call.cb_stream_reader = NULL;
                         return -1;
                     }
                     if (!flag_buf_full) {
-                        http_stream_reader_wrap_close(client->connection_info.cb_path_stream_reader,
-                                                      &client->stream_reader_ctx);
+                        http_stream_reader_wrap_close(client->connection_info.stream_reader_desc_query.p_cb,
+                                                      client->connection_info.stream_reader_desc_query.p_ctx);
+                        client->stream_reader_last_call.cb_stream_reader = NULL;
                     }
                 } else {
                     if (client->connection_info.query &&
@@ -1608,15 +1791,15 @@ static ssize_t esp_http_client_generate_request(esp_http_client_handle_t const c
                 }
                 break;
             case REQ_SEND_STAGE_GEN_HTTP_HEADERS:
-                if (!http_header_generate_string_with_extra(&client->stream_reader_ctx,
-                                                &client->stream_reader_last_call,
-                                                client->cb_extra_headers_stream_reader,
-                                                client->cb_extra_headers_stream_reader_param,
-                                                 client->request->headers,
-                                                 &client->req_send_state.header_gen_state,
-                                                 client->request->buffer->data,
-                                                 client->buffer_size_tx,
-                                                 &buf_ofs)) {
+                if (!http_header_generate_string_with_extra(
+                        &client->stream_reader_string_ctx,
+                        &client->stream_reader_last_call,
+                        &client->stream_reader_desc_extra_headers,
+                        client->request->headers,
+                        &client->req_send_state.header_gen_state,
+                        client->request->buffer->data,
+                        client->buffer_size_tx,
+                        &buf_ofs)) {
                     return -1;
                 }
                 if (client->req_send_state.header_gen_state.stage == HTTP_HEADER_GENERATE_STAGE_FINISHED) {
@@ -1660,6 +1843,9 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t const cli
             esp_http_client_close(client);
             return ESP_ERR_HTTP_WRITE_DATA;
         }
+
+        ESP_LOGD(TAG, "%s: Send request:", __func__);
+        ESP_LOG_BUFFER_HEXDUMP(TAG, client->request->buffer->data, wlen, ESP_LOG_DEBUG);
 
         client->data_write_left = wlen;
         client->data_written_index = 0;
@@ -1799,6 +1985,7 @@ esp_err_t esp_http_client_close(esp_http_client_handle_t client)
                                                                  .close = {},
                                                              },
                                                              client->stream_reader_last_call.p_ctx);
+            client->stream_reader_last_call.cb_stream_reader = NULL;
         }
         return esp_transport_close(client->transport);
     }
@@ -1948,7 +2135,8 @@ esp_err_t esp_http_client_get_url(esp_http_client_handle_t client, char *url, co
         return ESP_ERR_INVALID_ARG;
     }
     if (client->connection_info.host && client->connection_info.scheme && client->connection_info.path) {
-        snprintf(url, len, "%s://%s%s", client->connection_info.scheme, client->connection_info.host, client->connection_info.path);
+        snprintf(url, len, "%s://%s/%s", client->connection_info.scheme, client->connection_info.host,
+                 client->connection_info.path);
         return ESP_OK;
     } else {
         ESP_LOGE(TAG, "Failed to get URL");

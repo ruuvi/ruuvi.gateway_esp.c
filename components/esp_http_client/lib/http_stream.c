@@ -17,11 +17,6 @@ ssize_t http_stream_reader_string(const http_stream_reader_cmd_e cmd,
         case HTTP_STREAM_READER_CMD_OPEN:
             p_context->p_str = arg.open.p_param;
             p_context->data_offset = 0;
-            p_context->p_last_call = arg.open.p_last_call;
-            if (NULL != p_context->p_last_call) {
-                p_context->p_last_call->cb_stream_reader = &http_stream_reader_string;
-                p_context->p_last_call->p_ctx = p_ctx;
-            }
             return 0;
         case HTTP_STREAM_READER_CMD_READ: {
             const size_t len = strlen(&p_context->p_str[p_context->data_offset]);
@@ -38,24 +33,17 @@ ssize_t http_stream_reader_string(const http_stream_reader_cmd_e cmd,
         case HTTP_STREAM_READER_CMD_CLOSE:
             p_context->p_str = NULL;
             p_context->data_offset = 0;
-            if (NULL != p_context->p_last_call) {
-                p_context->p_last_call->cb_stream_reader = NULL;
-                p_context->p_last_call->p_ctx = NULL;
-                p_context->p_last_call = NULL;
-            }
             return 0;
     }
     assert(0);
     return -1;
 }
 
-void http_stream_reader_string_open(http_stream_reader_string_ctx_t *const p_ctx, const char *const p_str,
-                                    http_stream_last_call_t *const p_stream_reader_last_call) {
+void http_stream_reader_string_open(http_stream_reader_string_ctx_t *const p_ctx, const char *const p_str) {
     (void) http_stream_reader_string(HTTP_STREAM_READER_CMD_OPEN,
                                      (http_stream_reader_arg_t){
                                          .open = {
                                              .p_param = (void *) p_str,
-                                             .p_last_call = p_stream_reader_last_call,
                                          },
                                      },
                                      p_ctx);
@@ -69,12 +57,10 @@ void http_stream_reader_string_close(http_stream_reader_string_ctx_t *const p_ct
                                      p_ctx);
 }
 
-bool http_stream_reader_wrap_open(http_stream_reader_t stream_reader, void *const p_ctx, void *const p_param,
-                                  http_stream_last_call_t *const p_stream_reader_last_call) {
+bool http_stream_reader_wrap_open(http_stream_reader_t stream_reader, void *const p_ctx, void *const p_param) {
     const ssize_t res = stream_reader(HTTP_STREAM_READER_CMD_OPEN, (http_stream_reader_arg_t){
                                           .open = {
                                               .p_param = p_param,
-                                              .p_last_call = p_stream_reader_last_call,
                                           },
                                       }, p_ctx);
     if (0 != res) {

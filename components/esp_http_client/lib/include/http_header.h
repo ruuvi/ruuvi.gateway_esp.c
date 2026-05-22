@@ -74,7 +74,7 @@ http_header_handle_t http_header_init(void);
  *     - ESP_OK
  *     - ESP_FAIL
  */
-esp_err_t http_header_clean(http_header_handle_t header);
+esp_err_t http_header_clean(http_header_handle_t const header);
 
 /**
  * @brief      Cleanup with http_header_clean and destroy http header handle object
@@ -85,7 +85,7 @@ esp_err_t http_header_clean(http_header_handle_t header);
  *     - ESP_OK
  *     - ESP_FAIL
  */
-esp_err_t http_header_destroy(http_header_handle_t header);
+esp_err_t http_header_destroy(http_header_handle_t const header);
 
 /**
  * @brief      Add a key-value pair of http header to the list,
@@ -99,10 +99,12 @@ esp_err_t http_header_destroy(http_header_handle_t header);
  *     - ESP_OK
  *     - ESP_FAIL
  */
-esp_err_t http_header_set(http_header_handle_t header, const char *key, const char *value);
+esp_err_t http_header_set(http_header_handle_t const header, const char *const key, const char *const value);
 
-esp_err_t http_header_set_from_stream(http_header_handle_t header, const char *key,
-                                      http_stream_reader_t cb_reader, void *const p_param);
+esp_err_t http_header_set_from_stream(http_header_handle_t const header, const char *const key,
+                                      const http_stream_reader_desc_t *const p_stream_reader_desc);
+
+esp_err_t http_header_set_from_string(http_header_handle_t const header, const char *const key_value_data);
 
 /**
  * @brief      Sample as `http_header_set` but the value can be formated
@@ -128,7 +130,7 @@ int http_header_set_format(http_header_handle_t header, const char *key, const c
  *     - true if the header with the specified key exists.
  *     - false if the header does not exist or on error.
  */
-bool http_header_is_exist(http_header_handle_t header, const char *key);
+bool http_header_is_exist(http_header_handle_t const header, const char * const key);
 
 /**
  * @brief Create an HTTP header string from the header list, optionally including extra headers, and output to a buffer.
@@ -155,11 +157,10 @@ bool http_header_is_exist(http_header_handle_t header, const char *key);
  *     - true if the operation completed successfully.
  *     - false if any error occurs during the generation process.
  */
-bool http_header_generate_string_with_extra(void *const p_stream_reader_ctx,
+bool http_header_generate_string_with_extra(http_stream_reader_string_ctx_t *const p_stream_reader_string_ctx,
                                             http_stream_last_call_t *const p_stream_reader_last_call,
-                                            http_stream_reader_t const cb_extra_headers_stream_reader,
-                                            void *const p_cb_extra_headers_stream_reader_param,
-                                            http_header_handle_t header,
+                                            const http_stream_reader_desc_t* const p_stream_reader_desc_extra_headers,
+                                            http_header_handle_t const header,
                                             http_header_generate_state_t *const p_state,
                                             char *const p_buf,
                                             const size_t buf_len,
@@ -188,7 +189,7 @@ bool http_header_generate_string_with_extra(void *const p_stream_reader_ctx,
  *     - true if the operation completed successfully.
  *     - false if any error occurs during the generation process.
  */
-bool http_header_generate_string(void *const p_stream_reader_ctx,
+bool http_header_generate_string(http_stream_reader_string_ctx_t *const p_stream_reader_string_ctx,
                                  http_stream_last_call_t *const p_stream_reader_last_call,
                                  http_header_handle_t header,
                                  http_header_generate_state_t *const p_state,
@@ -206,7 +207,7 @@ bool http_header_generate_string(void *const p_stream_reader_ctx,
  *     - ESP_OK
  *     - ESP_FAIL
  */
-esp_err_t http_header_delete(http_header_handle_t header, const char *key);
+esp_err_t http_header_delete(http_header_handle_t const header, const char *const key);
 
 /**
  * @brief Count the number of header items in the HTTP header list.
@@ -215,7 +216,7 @@ esp_err_t http_header_delete(http_header_handle_t header, const char *key);
  *
  * @return     The number of header items.
  */
-int http_header_count(http_header_handle_t header);
+int http_header_count(http_header_handle_t const header);
 
 #ifdef __cplusplus
 }

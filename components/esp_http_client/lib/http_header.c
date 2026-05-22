@@ -35,19 +35,19 @@ static const char *TAG = "HTTP_HEADER";
  * This allows the value to be generated dynamically or streamed from an external source.
  *
  * - @c key is the header name.
- * - @c cb_reader is the stream reader callback used to get the header value.
- * - @c p_param is a user-defined parameter passed to the stream reader.
- *      In the case of string reader, p_param points to the statically or dynamically allocated string.
- * - @c flag_param_dyn_allocated is true if p_param was dynamically allocated and should be freed when the item is deleted.
+ * - @c stream_reader_desc is the descriptor for the stream reader used to obtain the header value.
+ * - @c flag_param_dyn_allocated is true if stream_reader_desc.p_param
+ *      was dynamically allocated and it will be automatically freed when the item is deleted.
+ *      In the case of string reader, stream_reader_desc.p_param points to
+ *      the statically or dynamically allocated string.
  *
  * The struct is designed for use in a singly linked tail queue (STAILQ).
  */
 typedef struct http_header_item {
-    char *key;                           /*!< Header key (name). */
-    bool flag_param_dyn_allocated;       /*!< True if p_param is dynamically allocated and must be freed. */
-    http_stream_reader_t cb_reader;      /*!< Stream reader callback for dynamic value. */
-    void* p_param;                       /*!< Parameter to pass to the stream reader. */
-    STAILQ_ENTRY(http_header_item) next; /*!< Pointer to the next entry in the queue. */
+    char *key;                                    /*!< Header key (name). */
+    bool flag_param_dyn_allocated;                /*!< True if p_param is dynamically allocated and must be freed. */
+    http_stream_reader_desc_t stream_reader_desc; /*!< Stream reader descriptor for the header value. */
+    STAILQ_ENTRY(http_header_item) next;          /*!< Pointer to the next entry in the queue. */
 } http_header_item_t;
 
 STAILQ_HEAD(http_header, http_header_item);
@@ -61,14 +61,14 @@ http_header_handle_t http_header_init(void)
     return header;
 }
 
-esp_err_t http_header_destroy(http_header_handle_t header)
+esp_err_t http_header_destroy(http_header_handle_t const header)
 {
-    esp_err_t err = http_header_clean(header);
+    const esp_err_t err = http_header_clean(header);
     free(header);
     return err;
 }
 
-http_header_item_handle_t http_header_get_item(http_header_handle_t header, const char *key)
+static http_header_item_handle_t http_header_get_item(http_header_handle_t const header, const char *const key)
 {
     http_header_item_handle_t item;
     if (header == NULL || key == NULL) {
@@ -82,22 +82,23 @@ http_header_item_handle_t http_header_get_item(http_header_handle_t header, cons
     return NULL;
 }
 
-bool http_header_is_exist(http_header_handle_t header, const char *key) {
-    http_header_item_handle_t item = http_header_get_item(header, key);
+bool http_header_is_exist(http_header_handle_t const header, const char *const key) {
+    http_header_item_handle_t const item = http_header_get_item(header, key);
     if (NULL == item) {
         return false;
     }
-    if ((NULL == item->cb_reader) || (NULL == item->p_param)) {
+    const http_stream_reader_desc_t* const p_desc = &item->stream_reader_desc;
+    if ((NULL == p_desc->p_cb) || (NULL == p_desc->p_param)) {
         return false;
     }
     return true;
 }
 
-static esp_err_t http_header_new_item_string(http_header_handle_t header, const char *key, const char *value)
+static esp_err_t http_header_new_item_string(http_header_handle_t const header,
+                                             const char *const key,
+                                             const char *const value)
 {
-    http_header_item_handle_t item;
-
-    item = calloc(1, sizeof(http_header_item_t));
+    http_header_item_handle_t const item = calloc(1, sizeof(http_header_item_t));
     HTTP_MEM_CHECK(TAG, item, return ESP_ERR_NO_MEM);
     item->flag_param_dyn_allocated = true;
     http_utils_assign_string(&item->key, key, -1);
@@ -107,30 +108,31 @@ static esp_err_t http_header_new_item_string(http_header_handle_t header, const 
     http_utils_assign_string(&p_value, value, -1);
     HTTP_MEM_CHECK(TAG, p_value, goto _header_new_item_exit);
     http_utils_trim_whitespace(&p_value);
-    item->cb_reader = &http_stream_reader_string;
-    item->p_param = p_value;
+    http_stream_reader_desc_t* const p_desc = &item->stream_reader_desc;
+    p_desc->p_cb = &http_stream_reader_string;
+    p_desc->p_param = p_value;
+    p_desc->p_ctx = NULL; /* For the string reader, context will be passed later
+                             to http_header_generate_string_with_extra when the string is generated. */
     STAILQ_INSERT_TAIL(header, item, next);
     return ESP_OK;
 _header_new_item_exit:
     free(item->key);
-    free(item->p_param);
+    free(item->stream_reader_desc.p_param);
     free(item);
     return ESP_ERR_NO_MEM;
 }
 
-static esp_err_t http_header_new_item_stream(http_header_handle_t header, const char *key,
-                                             http_stream_reader_t cb_reader, void *const p_param)
+static esp_err_t http_header_new_item_stream(http_header_handle_t const header,
+                                             const char *const key,
+                                             const http_stream_reader_desc_t *const p_stream_reader_desc)
 {
-    http_header_item_handle_t item;
-
-    item = calloc(1, sizeof(http_header_item_t));
+    http_header_item_handle_t const item = calloc(1, sizeof(http_header_item_t));
     HTTP_MEM_CHECK(TAG, item, return ESP_ERR_NO_MEM);
     item->flag_param_dyn_allocated = false;
     http_utils_assign_string(&item->key, key, -1);
     HTTP_MEM_CHECK(TAG, item->key, goto _header_new_item_exit);
     http_utils_trim_whitespace(&item->key);
-    item->cb_reader = cb_reader;
-    item->p_param = p_param;
+    item->stream_reader_desc = *p_stream_reader_desc;
     STAILQ_INSERT_TAIL(header, item, next);
     return ESP_OK;
 _header_new_item_exit:
@@ -140,59 +142,55 @@ _header_new_item_exit:
 }
 
 
-esp_err_t http_header_set(http_header_handle_t header, const char *key, const char *value)
+esp_err_t http_header_set(http_header_handle_t const header, const char *const key, const char *const value)
 {
     if (value == NULL) {
         return http_header_delete(header, key);
     }
 
-    http_header_item_handle_t item = http_header_get_item(header, key);
+    http_header_item_handle_t const item = http_header_get_item(header, key);
 
     if (item) {
         if (item->flag_param_dyn_allocated) {
-            free(item->p_param);
-            item->p_param = NULL;
+            free(item->stream_reader_desc.p_param);
+            item->stream_reader_desc.p_param = NULL;
         }
         item->flag_param_dyn_allocated = true;
-        item->p_param = strdup(value);
-        if (NULL == item->p_param) {
+        item->stream_reader_desc.p_param = strdup(value);
+        if (NULL == item->stream_reader_desc.p_param) {
             return ESP_ERR_NO_MEM;
         }
-        http_utils_trim_whitespace((char**)&item->p_param);
+        http_utils_trim_whitespace((char**)&item->stream_reader_desc.p_param);
         return ESP_OK;
     }
     return http_header_new_item_string(header, key, value);
 }
 
-esp_err_t http_header_set_from_stream(http_header_handle_t header, const char *key,
-                                      http_stream_reader_t cb_reader, void *const p_param) {
-    if (cb_reader == NULL) {
+esp_err_t http_header_set_from_stream(http_header_handle_t const header, const char *const key,
+                                      const http_stream_reader_desc_t *const p_stream_reader_desc) {
+    if (p_stream_reader_desc == NULL) {
         return http_header_delete(header, key);
     }
 
-    http_header_item_handle_t item = http_header_get_item(header, key);
+    http_header_item_handle_t const item = http_header_get_item(header, key);
 
     if (item) {
         if (item->flag_param_dyn_allocated) {
-            free(item->p_param);
-            item->p_param = NULL;
+            free(item->stream_reader_desc.p_param);
+            item->stream_reader_desc.p_param = NULL;
         }
         item->flag_param_dyn_allocated = false;
-        item->cb_reader = cb_reader;
-        item->p_param = p_param;
+        item->stream_reader_desc = *p_stream_reader_desc;
         return ESP_OK;
     }
-    return http_header_new_item_stream(header, key, cb_reader, p_param);
+    return http_header_new_item_stream(header, key, p_stream_reader_desc);
 }
 
-esp_err_t http_header_set_from_string(http_header_handle_t header, const char *key_value_data)
+esp_err_t http_header_set_from_string(http_header_handle_t const header, const char *const key_value_data)
 {
-    char *eq_ch;
-    char *p_str;
-
-    p_str = strdup(key_value_data);
+    char *const p_str = strdup(key_value_data);
     HTTP_MEM_CHECK(TAG, p_str, return ESP_ERR_NO_MEM);
-    eq_ch = strchr(p_str, ':');
+    char *const eq_ch = strchr(p_str, ':');
     if (eq_ch == NULL) {
         free(p_str);
         return ESP_ERR_INVALID_ARG;
@@ -205,16 +203,16 @@ esp_err_t http_header_set_from_string(http_header_handle_t header, const char *k
 }
 
 
-esp_err_t http_header_delete(http_header_handle_t header, const char *key)
+esp_err_t http_header_delete(http_header_handle_t const header, const char *const key)
 {
-    http_header_item_handle_t item = http_header_get_item(header, key);
+    http_header_item_handle_t const item = http_header_get_item(header, key);
     if (item) {
         STAILQ_REMOVE(header, item, http_header_item, next);
         free(item->key);
         item->key = NULL;
         if (item->flag_param_dyn_allocated) {
-            free(item->p_param);
-            item->p_param = NULL;
+            free(item->stream_reader_desc.p_param);
+            item->stream_reader_desc.p_param = NULL;
         }
         free(item);
     } else {
@@ -246,19 +244,22 @@ static bool generate_item_token(const char *const p_token,
                                 const ssize_t buf_len,
                                 size_t *const p_buf_offset,
                                 bool *const p_is_buf_full,
-                                void *const p_stream_reader_ctx,
+                                http_stream_reader_string_ctx_t *const p_ctx,
                                 http_stream_last_call_t *const p_stream_reader_last_call) {
-    http_stream_reader_string_ctx_t *const p_ctx = p_stream_reader_ctx;
     if (NULL == p_ctx->p_str) {
-        http_stream_reader_string_open(p_ctx, p_token, p_stream_reader_last_call);
+        http_stream_reader_string_open(p_ctx, p_token);
+        p_stream_reader_last_call->cb_stream_reader = &http_stream_reader_string;
+        p_stream_reader_last_call->p_ctx = p_ctx;
     }
     const bool res = http_stream_reader_wrap_read_string(p_ctx, p_buf, buf_len, p_buf_offset, p_is_buf_full);
     if (!res) {
         http_stream_reader_string_close(p_ctx);
+        p_stream_reader_last_call->cb_stream_reader = NULL;
         return false;
     }
     if (!*p_is_buf_full) {
         http_stream_reader_string_close(p_ctx);
+        p_stream_reader_last_call->cb_stream_reader = NULL;
     }
     return true;
 }
@@ -269,11 +270,12 @@ static bool http_header_generate_item(const http_header_item_handle_t item,
                                       const size_t buf_len,
                                       size_t *const p_buf_ofs,
                                       bool *const p_is_buf_full,
-                                      void *const p_stream_reader_ctx,
+                                      http_stream_reader_string_ctx_t *const p_stream_reader_string_ctx,
                                       http_stream_last_call_t *const p_stream_reader_last_call) {
     ESP_LOGD(TAG, "%s: Header item (stage=%d) %s: %s",
              __func__, p_state->stage, item->key,
-             (&http_stream_reader_string == item->cb_reader) ? (char*)item->p_param : "<stream_reader>");
+             (&http_stream_reader_string == item->stream_reader_desc.p_cb) ?
+                (char*)item->stream_reader_desc.p_param : "<stream_reader>");
     while (p_state->stage != HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED) {
         const size_t rem_buf_len = buf_len - *p_buf_ofs;
         if (rem_buf_len <= 1) {
@@ -289,7 +291,7 @@ static bool http_header_generate_item(const http_header_item_handle_t item,
                 break;
             case HTTP_HEADER_GENERATE_ITEM_STAGE_KEY:
                 if (!generate_item_token(item->key, p_buf, buf_len, p_buf_ofs, p_is_buf_full,
-                                         p_stream_reader_ctx, p_stream_reader_last_call)) {
+                                         p_stream_reader_string_ctx, p_stream_reader_last_call)) {
                     return false;
                 }
                 if (!*p_is_buf_full) {
@@ -298,32 +300,39 @@ static bool http_header_generate_item(const http_header_item_handle_t item,
                 break;
             case HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_SEPARATOR:
                 if (!generate_item_token(": ", p_buf, buf_len, p_buf_ofs, p_is_buf_full,
-                                         p_stream_reader_ctx, p_stream_reader_last_call)) {
+                                         p_stream_reader_string_ctx, p_stream_reader_last_call)) {
                     return false;
                 }
                 if (!*p_is_buf_full) {
                     p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_VALUE;
-                    if (!http_stream_reader_wrap_open(item->cb_reader, p_stream_reader_ctx, item->p_param,
-                                                      p_stream_reader_last_call)) {
+                    if (!http_stream_reader_wrap_open(item->stream_reader_desc.p_cb,
+                                                      item->stream_reader_desc.p_ctx,
+                                                      item->stream_reader_desc.p_param)) {
                         return false;
                     }
+                    p_stream_reader_last_call->cb_stream_reader = item->stream_reader_desc.p_cb;
+                    p_stream_reader_last_call->p_ctx = item->stream_reader_desc.p_ctx;
                 }
                 break;
             case HTTP_HEADER_GENERATE_ITEM_STAGE_VALUE: {
-                const bool res = http_stream_reader_wrap_read(item->cb_reader, p_stream_reader_ctx, p_buf, buf_len, p_buf_ofs, p_is_buf_full);
+                const bool res = http_stream_reader_wrap_read(item->stream_reader_desc.p_cb,
+                                                              item->stream_reader_desc.p_ctx,
+                                                              p_buf, buf_len, p_buf_ofs, p_is_buf_full);
                 if (!res) {
-                    http_stream_reader_wrap_close(item->cb_reader, p_stream_reader_ctx);
+                    http_stream_reader_wrap_close(item->stream_reader_desc.p_cb, item->stream_reader_desc.p_ctx);
+                    p_stream_reader_last_call->cb_stream_reader = NULL;
                     return false;
                 }
                 if (!*p_is_buf_full) {
-                    http_stream_reader_wrap_close(item->cb_reader, p_stream_reader_ctx);
+                    http_stream_reader_wrap_close(item->stream_reader_desc.p_cb, item->stream_reader_desc.p_ctx);
+                    p_stream_reader_last_call->cb_stream_reader = NULL;
                     p_state->stage = HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_EOL;
                 }
                 break;
             }
             case HTTP_HEADER_GENERATE_ITEM_STAGE_KEY_VAL_EOL:
                 if (!generate_item_token("\r\n", p_buf, buf_len, p_buf_ofs, p_is_buf_full,
-                                         p_stream_reader_ctx, p_stream_reader_last_call)) {
+                                         p_stream_reader_string_ctx, p_stream_reader_last_call)) {
                     return false;
                 }
                 if (!*p_is_buf_full) {
@@ -342,18 +351,22 @@ static bool http_header_generate_item(const http_header_item_handle_t item,
     return true;
 }
 
-static bool http_header_generate_string_items(http_header_handle_t header,
+static bool http_header_generate_string_items(http_header_handle_t const header,
                                               http_header_generate_state_t *const p_state,
                                               char *const p_buf, const size_t buf_len, size_t *const p_buf_ofs,
                                               bool *const p_is_buf_full,
-                                              void *const p_stream_reader_ctx,
+                                              http_stream_reader_string_ctx_t *const p_stream_reader_string_ctx,
                                               http_stream_last_call_t *const p_stream_reader_last_call) {
     http_header_item_handle_t item;
     int32_t idx = 0;
     STAILQ_FOREACH(item, header, next) {
-        if ((NULL != item->cb_reader) && (NULL != item->p_param) && (idx >= p_state->item_idx)) {
+        if ((NULL != item->stream_reader_desc.p_cb) && (NULL != item->stream_reader_desc.p_param) &&
+                (idx >= p_state->item_idx)) {
+            if (&http_stream_reader_string == item->stream_reader_desc.p_cb) {
+                item->stream_reader_desc.p_ctx = p_stream_reader_string_ctx;
+            }
             if (!http_header_generate_item(item, &p_state->item_state, p_buf, buf_len, p_buf_ofs, p_is_buf_full,
-                                           p_stream_reader_ctx, p_stream_reader_last_call)) {
+                                           p_stream_reader_string_ctx, p_stream_reader_last_call)) {
                 return false;
             }
             if (*p_is_buf_full) {
@@ -367,11 +380,10 @@ static bool http_header_generate_string_items(http_header_handle_t header,
     return true;
 }
 
-bool http_header_generate_string_with_extra(void *const p_stream_reader_ctx,
+bool http_header_generate_string_with_extra(http_stream_reader_string_ctx_t *const p_stream_reader_string_ctx,
                                             http_stream_last_call_t *const p_stream_reader_last_call,
-                                            http_stream_reader_t const cb_extra_headers_stream_reader,
-                                            void *const p_cb_extra_headers_stream_reader_param,
-                                            http_header_handle_t header,
+                                            const http_stream_reader_desc_t* const p_stream_reader_desc_extra_headers,
+                                            http_header_handle_t const header,
                                             http_header_generate_state_t *const p_state,
                                             char *const p_buf,
                                             const size_t buf_len,
@@ -386,35 +398,42 @@ bool http_header_generate_string_with_extra(void *const p_stream_reader_ctx,
                 break;
             case HTTP_HEADER_GENERATE_STAGE_ADDING_ITEMS:
                 if (!http_header_generate_string_items(header, p_state, p_buf, buf_len, p_buf_ofs, &flag_buf_full,
-                                                       p_stream_reader_ctx, p_stream_reader_last_call)) {
+                                                       p_stream_reader_string_ctx, p_stream_reader_last_call)) {
                     return false;
                 }
                 if (!flag_buf_full) {
                     p_state->item_state.stage = HTTP_HEADER_GENERATE_ITEM_STAGE_FINISHED;
                     p_state->stage = HTTP_HEADER_GENERATE_STAGE_ADDING_EXTRA_HEADERS;
-                    if (NULL != cb_extra_headers_stream_reader) {
-                        if (!http_stream_reader_wrap_open(cb_extra_headers_stream_reader,
-                                                          p_stream_reader_ctx,
-                                                          p_cb_extra_headers_stream_reader_param,
-                                                          p_stream_reader_last_call)) {
+                    if ((NULL != p_stream_reader_desc_extra_headers) && (
+                            NULL != p_stream_reader_desc_extra_headers->p_cb)) {
+                        if (!http_stream_reader_wrap_open(p_stream_reader_desc_extra_headers->p_cb,
+                                                          p_stream_reader_desc_extra_headers->p_ctx,
+                                                          p_stream_reader_desc_extra_headers->p_param)) {
                             return false;
                         }
+                        p_stream_reader_last_call->cb_stream_reader = p_stream_reader_desc_extra_headers->p_cb;
+                        p_stream_reader_last_call->p_ctx = p_stream_reader_desc_extra_headers->p_ctx;
                     }
                 }
                 break;
             case HTTP_HEADER_GENERATE_STAGE_ADDING_EXTRA_HEADERS:
-                if (NULL != cb_extra_headers_stream_reader) {
-                    if (!http_stream_reader_wrap_read(cb_extra_headers_stream_reader,
-                                                      p_stream_reader_ctx,
+                if ((NULL != p_stream_reader_desc_extra_headers) && (
+                        NULL != p_stream_reader_desc_extra_headers->p_cb)) {
+                    if (!http_stream_reader_wrap_read(p_stream_reader_desc_extra_headers->p_cb,
+                                                      p_stream_reader_desc_extra_headers->p_ctx,
                                                       p_buf,
                                                       buf_len,
                                                       p_buf_ofs,
                                                       &flag_buf_full)) {
-                        http_stream_reader_wrap_close(cb_extra_headers_stream_reader, p_stream_reader_ctx);
+                        http_stream_reader_wrap_close(p_stream_reader_desc_extra_headers->p_cb,
+                                                      p_stream_reader_desc_extra_headers->p_ctx);
+                        p_stream_reader_last_call->cb_stream_reader = NULL;
                         return false;
                     }
                     if (!flag_buf_full) {
-                        http_stream_reader_wrap_close(cb_extra_headers_stream_reader, p_stream_reader_ctx);
+                        http_stream_reader_wrap_close(p_stream_reader_desc_extra_headers->p_cb,
+                                                      p_stream_reader_desc_extra_headers->p_ctx);
+                        p_stream_reader_last_call->cb_stream_reader = NULL;
                     }
                 }
                 if (!flag_buf_full) {
@@ -423,7 +442,7 @@ bool http_header_generate_string_with_extra(void *const p_stream_reader_ctx,
                 break;
             case HTTP_HEADER_GENERATE_STAGE_FINAL_EOL: {
                 if (!generate_item_token("\r\n", p_buf, buf_len, p_buf_ofs, &flag_buf_full,
-                                         p_stream_reader_ctx, p_stream_reader_last_call)) {
+                                         p_stream_reader_string_ctx, p_stream_reader_last_call)) {
                     return false;
                 }
                 if (!flag_buf_full) {
@@ -442,16 +461,15 @@ bool http_header_generate_string_with_extra(void *const p_stream_reader_ctx,
     return true;
 }
 
-bool http_header_generate_string(void *const p_stream_reader_ctx,
+bool http_header_generate_string(http_stream_reader_string_ctx_t *const p_stream_reader_string_ctx,
                                  http_stream_last_call_t *const p_stream_reader_last_call,
                                  http_header_handle_t header,
                                  http_header_generate_state_t *const p_state,
                                  char *const p_buf,
                                  const size_t buf_len,
                                  size_t *const p_buf_ofs) {
-    return http_header_generate_string_with_extra(p_stream_reader_ctx,
+    return http_header_generate_string_with_extra(p_stream_reader_string_ctx,
                                      p_stream_reader_last_call,
-                                     NULL,
                                      NULL,
                                      header,
                                      p_state,
@@ -461,14 +479,14 @@ bool http_header_generate_string(void *const p_stream_reader_ctx,
 
 }
 
-esp_err_t http_header_clean(http_header_handle_t header)
+esp_err_t http_header_clean(http_header_handle_t const header)
 {
-    http_header_item_handle_t item = STAILQ_FIRST(header), tmp;
+    http_header_item_handle_t item = STAILQ_FIRST(header);
     while (item != NULL) {
-        tmp = STAILQ_NEXT(item, next);
+        http_header_item_handle_t const tmp = STAILQ_NEXT(item, next);
         free(item->key);
         if (item->flag_param_dyn_allocated) {
-            free(item->p_param);
+            free(item->stream_reader_desc.p_param);
         }
         free(item);
         item = tmp;
@@ -477,7 +495,7 @@ esp_err_t http_header_clean(http_header_handle_t header)
     return ESP_OK;
 }
 
-int http_header_count(http_header_handle_t header)
+int http_header_count(http_header_handle_t const header)
 {
     http_header_item_handle_t item;
     int count = 0;

@@ -120,11 +120,14 @@ typedef struct {
     const char                  *path;               /*!< HTTP Path, if not set, default is `/` */
     http_stream_reader_t        cb_path_stream_reader; /*!< Callback function to read the HTTP path */
     void                        *cb_path_stream_reader_param; /*!< User defined parameter for cb_path_stream_reader */
+    size_t                      cb_path_stream_reader_ctx_size;
     const char                  *query;              /*!< HTTP query */
     http_stream_reader_t        cb_query_stream_reader; /*!< Callback function to read the HTTP query */
     void                        *cb_query_stream_reader_param; /*!< User defined parameter for cb_query_stream_reader */
+    size_t                      cb_query_stream_reader_ctx_size;
     http_stream_reader_t        cb_extra_headers_stream_reader; /*!< Callback function to read the HTTP headers */
     void                        *cb_extra_headers_stream_reader_param; /*!< User defined parameter for cb_headers_stream_reader */
+    size_t                      cb_extra_headers_stream_reader_ctx_size;
     const char                  *cert_pem;           /*!< SSL server certification, PEM format as string, if the client requires to verify server */
     const char                  *client_cert_pem;    /*!< SSL client certification, PEM format as string, if the server requires to verify client */
     const char                  *client_key_pem;     /*!< SSL client key, PEM format as string, if the server requires to verify client */
@@ -235,6 +238,28 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client);
 esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char *url);
 
 /**
+ * @brief     Parse a URL and set the corresponding fields in the HTTP client config structure.
+ *
+ * This function parses the given URL and fills the relevant fields of the provided
+ * esp_http_client_config_t structure, such as host, port, path, username, password, and transport type.
+ *
+ * @param[out]     p_cfg      Pointer to the HTTP client configuration structure to be filled.
+ *                            The 'host' field must be NULL before calling this function.
+ * @param[in/out]  url        The URL string to parse (must be mutable,
+ *                            as it will be modified by inserting '\0' between fields).
+ *
+ * @return
+ *         - true on success
+ *         - false on error (invalid arguments, parse error, unsupported schema, etc.)
+ *
+ * @note
+ *      - The input URL string will be modified during parsing.
+ *      - The function does not allocate memory for the fields; it sets pointers into the input URL string.
+ *      - The input URL string must remain valid for the lifetime of the config usage.
+ */
+bool esp_http_client_config_set_from_url(esp_http_client_config_t *const p_cfg, char *const url);
+
+/**
  * @brief      Set post data, this function must be called before `esp_http_client_perform`.
  *             Note: The data parameter passed to this function is a pointer and this function will not copy the data
  *
@@ -273,7 +298,7 @@ int esp_http_client_get_post_field(esp_http_client_handle_t client, const char *
 esp_err_t esp_http_client_set_header(esp_http_client_handle_t client, const char *key, const char *value);
 
 esp_err_t esp_http_client_set_header_from_stream(esp_http_client_handle_t client, const char *key,
-                                                 http_stream_reader_t cb_stream_reader, void *const p_param);
+                                                 const http_stream_reader_desc_t *const p_stream_reader_desc);
 
 /**
  * @brief Check if a specific header exists in the HTTP client's request headers.

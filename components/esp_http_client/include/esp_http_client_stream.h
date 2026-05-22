@@ -41,7 +41,6 @@ typedef struct http_stream_last_call http_stream_last_call_t;
 typedef union http_stream_reader_arg {
     struct {
         void *p_param; /*!< Parameter for OPEN command (e.g., pointer to source string). */
-        http_stream_last_call_t *p_last_call; /*!< Pointer to last call tracking structure. */
     } open;
 
     struct {
@@ -62,7 +61,6 @@ typedef union http_stream_reader_arg {
 typedef struct http_stream_reader_string_ctx {
     const char *p_str; /*!< The source string to read from */
     size_t data_offset; /*!< The current offset in the source string */;
-    http_stream_last_call_t *p_last_call; /*!< Pointer to last call tracking structure. */
 } http_stream_reader_string_ctx_t;
 
 /**
@@ -93,6 +91,22 @@ struct http_stream_last_call {
 };
 
 /**
+ * @brief Descriptor for an HTTP stream reader.
+ *
+ * This structure encapsulates all information needed to describe a stream reader instance,
+ * including the callback function, its parameter, and a context pointer.
+ *
+ * - @c p_cb:     Pointer to the stream reader callback function to use for reading data.
+ * - @c p_param:  User-defined parameter to pass to the stream reader (e.g., a string or resource handle).
+ * - @c p_ctx:    Optional context pointer for maintaining state between stream reader calls.
+ */
+typedef struct http_stream_reader_desc {
+    http_stream_reader_t p_cb; /*!< Stream reader callback function. */
+    void *p_param;             /*!< Parameter to pass to the stream reader. */
+    void *p_ctx;               /*!< Context pointer for stream reader state. */
+} http_stream_reader_desc_t;
+
+/**
  * @brief String-based implementation of the http_stream_reader_t interface.
  *
  * This function allows reading from a C string as a stream, supporting OPEN, READ, and CLOSE commands.
@@ -119,14 +133,11 @@ ssize_t http_stream_reader_string(const http_stream_reader_cmd_e cmd,
  * @brief Helper to initialize a string stream reader context.
  *
  * Calls http_stream_reader_string with the OPEN command to set up the context for reading.
- * Optionally sets up last call tracking.
  *
  * @param p_ctx Pointer to the string stream reader context to initialize.
  * @param p_str Pointer to the source string to read from.
- * @param p_stream_reader_last_call Pointer to last call tracking structure (can be NULL).
  */
-void http_stream_reader_string_open(http_stream_reader_string_ctx_t *const p_ctx, const char *const p_str,
-                                    http_stream_last_call_t *const p_stream_reader_last_call);
+void http_stream_reader_string_open(http_stream_reader_string_ctx_t *const p_ctx, const char *const p_str);
 
 /**
  * @brief Helper to close a string stream reader context.
@@ -141,18 +152,15 @@ void http_stream_reader_string_close(http_stream_reader_string_ctx_t *const p_ct
  * @brief Helper to open (initialize) a generic stream reader context.
  *
  * Calls the specified stream_reader with the OPEN command to initialize the context for reading.
- * Optionally sets up last call tracking.
  *
  * @param stream_reader             The stream reader function to call.
  * @param p_ctx                     Context pointer to initialize.
  * @param p_param                   Initialization parameter (e.g., pointer to a string or resource).
- * @param p_stream_reader_last_call Pointer to last call tracking structure (can be NULL).
  * @return
  *   - true on success (stream opened/initialized).
  *   - false on error (e.g., stream_reader returns negative value).
  */
-bool http_stream_reader_wrap_open(http_stream_reader_t stream_reader, void *const p_ctx, void *const p_param,
-                                  http_stream_last_call_t *const p_stream_reader_last_call);
+bool http_stream_reader_wrap_open(http_stream_reader_t stream_reader, void *const p_ctx, void *const p_param);
 
 /**
  * @brief Helper to close a generic stream reader context.
