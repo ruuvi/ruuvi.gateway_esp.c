@@ -163,12 +163,6 @@ gw_cfg_storage_delete_file(const char* const p_file_name);
 void
 gw_cfg_storage_deinit_erase_init(void);
 
-str_buf_t
-gw_cfg_storage_read_string_from_nvs(void* const hndl, const char* const p_nvs_key);
-
-str_buf_t
-gw_cfg_storage_read_blob_from_nvs(void* const hndl, const char* const p_nvs_key);
-
 #ifdef __cplusplus
 }
 #endif

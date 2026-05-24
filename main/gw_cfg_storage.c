@@ -8,7 +8,6 @@
 #include "gw_cfg_storage.h"
 #include <string.h>
 #include <nvs_flash.h>
-#include "gw_cfg.h"
 #include "os_malloc.h"
 #include "ruuvi_nvs.h"
 #include "nvs.h"
@@ -25,6 +24,8 @@
 #endif
 
 static const char TAG[] = "gw_cfg";
+
+#define GW_CFG_STORAGE_MAX_BLOB_SIZE (8192U)
 
 bool
 gw_cfg_storage_check(void)
@@ -73,12 +74,11 @@ gw_cfg_storage_check_file(const char* const p_file_name, const bool is_blob, siz
     return true;
 }
 
-str_buf_t
-gw_cfg_storage_read_string_from_nvs(void* const hndl, const char* const p_nvs_key)
+static str_buf_t
+gw_cfg_storage_read_string_from_nvs(nvs_handle_t const handle, const char* const p_nvs_key)
 {
-    const nvs_handle_t handle    = (nvs_handle_t)hndl;
-    size_t             file_size = 0;
-    esp_err_t          esp_err   = nvs_get_str(handle, p_nvs_key, NULL, &file_size);
+    size_t    file_size = 0;
+    esp_err_t esp_err   = nvs_get_str(handle, p_nvs_key, NULL, &file_size);
     if (ESP_OK != esp_err)
     {
         LOG_ERR_ESP(esp_err, "Can't find string key '%s' in flash", p_nvs_key);
@@ -102,12 +102,11 @@ gw_cfg_storage_read_string_from_nvs(void* const hndl, const char* const p_nvs_ke
     return str_buf_init(p_file_content, file_size);
 }
 
-str_buf_t
-gw_cfg_storage_read_blob_from_nvs(void* const hndl, const char* const p_nvs_key)
+static str_buf_t
+gw_cfg_storage_read_blob_from_nvs(nvs_handle_t handle, const char* const p_nvs_key)
 {
-    const nvs_handle_t handle    = (nvs_handle_t)hndl;
-    size_t             file_size = 0;
-    esp_err_t          esp_err   = nvs_get_blob(handle, p_nvs_key, NULL, &file_size);
+    size_t    file_size = 0;
+    esp_err_t esp_err   = nvs_get_blob(handle, p_nvs_key, NULL, &file_size);
     if (ESP_OK != esp_err)
     {
         LOG_ERR_ESP(esp_err, "Can't find blob key '%s' in flash", p_nvs_key);
@@ -144,7 +143,7 @@ gw_cfg_storage_read_file_as_string(const char* const p_file_name)
         return str_buf_init_null();
     }
 
-    str_buf_t str_buf = gw_cfg_storage_read_string_from_nvs((void*)handle, p_file_name);
+    str_buf_t str_buf = gw_cfg_storage_read_string_from_nvs(handle, p_file_name);
 
     nvs_close(handle);
 
@@ -169,7 +168,7 @@ gw_cfg_storage_read_file_as_blob(const char* const p_file_name)
         return str_buf_init_null();
     }
 
-    const str_buf_t str_buf = gw_cfg_storage_read_blob_from_nvs((void*)handle, p_file_name);
+    const str_buf_t str_buf = gw_cfg_storage_read_blob_from_nvs(handle, p_file_name);
 
     nvs_close(handle);
 
@@ -244,13 +243,13 @@ gw_cfg_storage_write_file_as_blob(const char* const p_file_name, const uint8_t* 
         return false;
     }
 
-    if (len > NVS_CHUNK_MAX_SIZE)
+    if (len > GW_CFG_STORAGE_MAX_BLOB_SIZE)
     {
         LOG_ERR(
             "File '%s' is too big to write as blob to NVS (length=%zu, max=%u)",
             p_file_name,
             len,
-            NVS_CHUNK_MAX_SIZE);
+            GW_CFG_STORAGE_MAX_BLOB_SIZE);
         nvs_close(handle);
         return false;
     }
