@@ -68,6 +68,7 @@ http_init_client_config_for_http_target(
         str_buf_client_key = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY);
         if (NULL == str_buf_client_key.buf)
         {
+            str_buf_free_buf(&str_buf_client_cert);
             return false;
         }
     }
@@ -76,6 +77,8 @@ http_init_client_config_for_http_target(
         str_buf_server_cert_http = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT);
         if (NULL == str_buf_server_cert_http.buf)
         {
+            str_buf_free_buf(&str_buf_client_cert);
+            str_buf_free_buf(&str_buf_client_key);
             return false;
         }
     }
