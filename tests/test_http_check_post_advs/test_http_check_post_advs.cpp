@@ -76,7 +76,7 @@ protected:
         this->m_mock_ssl_client_cert                = "";
         this->m_mock_ssl_client_key                 = "";
         this->m_mock_ssl_server_cert                = "";
-        this->m_mock_http_init_client_config_result = true;
+        this->m_mock_http_client_config_init_result = true;
         this->m_mock_http_handle_add_auth_result    = true;
         this->m_mock_json_stream_gen                = reinterpret_cast<json_stream_gen_t*>(0xDEADBEEF);
 
@@ -84,7 +84,7 @@ protected:
         this->m_captured_auth_type               = GW_CFG_HTTP_AUTH_TYPE_NONE;
         memset(&this->m_captured_auth, 0, sizeof(this->m_captured_auth));
 
-        this->m_mock_http_init_client_config_called = false;
+        this->m_mock_http_client_config_init_called = false;
         this->m_captured_server_cert.clear();
         this->m_captured_client_cert.clear();
         this->m_captured_client_key.clear();
@@ -128,7 +128,7 @@ public:
     int32_t                  m_mock_esp_http_client_cleanup_called;
     int32_t                  m_mock_http_async_info_free_data_called;
     bool                     m_flag_gateway_restart_low_memory;
-    bool                     m_mock_http_init_client_config_result;
+    bool                     m_mock_http_client_config_init_result;
     bool                     m_mock_http_handle_add_auth_result;
     json_stream_gen_t*       m_mock_json_stream_gen;
 
@@ -136,7 +136,7 @@ public:
     gw_cfg_http_auth_type_e  m_captured_auth_type;
     ruuvi_gw_cfg_http_auth_t m_captured_auth;
 
-    bool   m_mock_http_init_client_config_called;
+    bool   m_mock_http_client_config_init_called;
     string m_captured_server_cert;
     string m_captured_client_cert;
     string m_captured_client_key;
@@ -161,13 +161,13 @@ TestHttpCheckPostAdvs::TestHttpCheckPostAdvs()
     , m_mock_esp_http_client_cleanup_called(0)
     , m_mock_http_async_info_free_data_called(0)
     , m_flag_gateway_restart_low_memory(false)
-    , m_mock_http_init_client_config_result(true)
+    , m_mock_http_client_config_init_result(true)
     , m_mock_http_handle_add_auth_result(true)
     , m_mock_json_stream_gen(nullptr)
     , m_mock_http_handle_add_auth_called(false)
     , m_captured_auth_type(GW_CFG_HTTP_AUTH_TYPE_NONE)
     , m_captured_auth()
-    , m_mock_http_init_client_config_called(false)
+    , m_mock_http_client_config_init_called(false)
     , Test()
 {
 }
@@ -489,16 +489,16 @@ http_json_create_stream_gen_advs(
 }
 
 bool
-http_init_client_config(
+http_client_config_init(
     http_client_config_t* const                   p_http_client_config,
-    const http_init_client_config_params_t* const p_params,
+    const http_client_config_init_params_t* const p_params,
     void* const                                   p_user_data)
 {
     if (nullptr == g_pTestClass)
     {
         return false;
     }
-    g_pTestClass->m_mock_http_init_client_config_called = true;
+    g_pTestClass->m_mock_http_client_config_init_called = true;
     g_pTestClass->m_captured_server_cert        = (nullptr != p_params->p_server_cert) ? p_params->p_server_cert : "";
     g_pTestClass->m_captured_client_cert        = (nullptr != p_params->p_client_cert) ? p_params->p_client_cert : "";
     g_pTestClass->m_captured_client_key         = (nullptr != p_params->p_client_key) ? p_params->p_client_key : "";
@@ -516,7 +516,7 @@ http_init_client_config(
     p_http_client_config->esp_http_client_config.cert_pem        = p_params->p_server_cert;
     p_http_client_config->esp_http_client_config.client_cert_pem = p_params->p_client_cert;
     p_http_client_config->esp_http_client_config.client_key_pem  = p_params->p_client_key;
-    return g_pTestClass->m_mock_http_init_client_config_result;
+    return g_pTestClass->m_mock_http_client_config_init_result;
 }
 
 static http_async_info_t g_test_http_async_info;
@@ -813,7 +813,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_none_ok)
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_TRUE(this->m_mock_http_handle_add_auth_called);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, this->m_captured_auth_type);
-    ASSERT_TRUE(this->m_mock_http_init_client_config_called);
+    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ("", this->m_captured_client_cert.c_str());
     ASSERT_STREQ("", this->m_captured_client_key.c_str());
     ASSERT_STREQ("", this->m_captured_server_cert.c_str());
@@ -1215,7 +1215,7 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_client_cert_ok)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_init_client_config_called);
+    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ(
         "-----BEGIN CERTIFICATE-----\nfake_cert\n-----END CERTIFICATE-----",
         this->m_captured_client_cert.c_str());
@@ -1290,7 +1290,7 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_server_cert_ok)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_init_client_config_called);
+    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ(
         "-----BEGIN CERTIFICATE-----\nfake_server_cert\n-----END CERTIFICATE-----",
         this->m_captured_server_cert.c_str());
@@ -1339,7 +1339,7 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_flags)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_init_client_config_called);
+    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_PATH, this->m_captured_extra_http_path.c_str());
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_QUERY, this->m_captured_extra_http_query.c_str());
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, this->m_captured_extra_http_headers.c_str());
@@ -1365,7 +1365,7 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_path_only)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_init_client_config_called);
+    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_PATH, this->m_captured_extra_http_path.c_str());
     ASSERT_STREQ("", this->m_captured_extra_http_query.c_str());
     ASSERT_STREQ("", this->m_captured_extra_http_headers.c_str());
@@ -1391,7 +1391,7 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_query_only)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_init_client_config_called);
+    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ("", this->m_captured_extra_http_path.c_str());
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_QUERY, this->m_captured_extra_http_query.c_str());
     ASSERT_STREQ("", this->m_captured_extra_http_headers.c_str());
@@ -1417,7 +1417,7 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_headers_only)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_init_client_config_called);
+    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ("", this->m_captured_extra_http_path.c_str());
     ASSERT_STREQ("", this->m_captured_extra_http_query.c_str());
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, this->m_captured_extra_http_headers.c_str());
@@ -1491,7 +1491,7 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_client_and_server_cert_ok)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_init_client_config_called);
+    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ("fake_client_cert", this->m_captured_client_cert.c_str());
     ASSERT_STREQ("fake_client_key", this->m_captured_client_key.c_str());
     ASSERT_STREQ("fake_server_cert", this->m_captured_server_cert.c_str());
@@ -1523,7 +1523,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_basic_with_ssl_client_cert)
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_BASIC, this->m_captured_auth_type);
     ASSERT_STREQ("admin", this->m_captured_auth.auth_basic.user.buf);
     ASSERT_STREQ("secret", this->m_captured_auth.auth_basic.password.buf);
-    ASSERT_TRUE(this->m_mock_http_init_client_config_called);
+    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ("fake_cert", this->m_captured_client_cert.c_str());
     ASSERT_STREQ("fake_key", this->m_captured_client_key.c_str());
     ASSERT_STREQ("", this->m_captured_server_cert.c_str());
@@ -1535,7 +1535,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_basic_with_ssl_client_cert)
 TEST_F(TestHttpCheckPostAdvs, test_post_to_ruuvi_url_with_ssl_cert_flags_fails_when_certs_missing)
 {
     // When posting to ruuvi default URL with SSL cert flags set but no certs available,
-    // the function should fail because http_init_client_config_for_http_target tries
+    // the function should fail because http_client_config_init_for_http_target tries
     // to read certs and they are not found
     const http_check_params_t params = {
         .p_url                  = RUUVI_GATEWAY_HTTP_DEFAULT_URL,
@@ -1574,7 +1574,7 @@ TEST_F(TestHttpCheckPostAdvs, test_post_to_ruuvi_url_without_ssl_flags)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_init_client_config_called);
+    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_PATH, this->m_captured_extra_http_path.c_str());
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_QUERY, this->m_captured_extra_http_query.c_str());
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, this->m_captured_extra_http_headers.c_str());

@@ -126,6 +126,12 @@ idf_component_register(
         hmac_sha256.h
         http.c
         http.h
+        http_client_config.c
+        http_client_config.h
+        http_post_event_handler.c
+        http_post_event_handler.h
+        http_stream_reader_nvs.c
+        http_stream_reader_nvs.h
         http_check_mqtt.c
         http_json.c
         http_json.h

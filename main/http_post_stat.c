@@ -61,7 +61,7 @@ http_send_statistics_internal(
         str_buf_server_cert_stat = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_STAT_SRV_CERT);
     }
 
-    const http_init_client_config_params_t http_cli_cfg_params = {
+    const http_client_config_init_params_t http_cli_cfg_params = {
         .p_url         = &p_cfg_http_stat->http_stat_url,
         .p_user        = &p_cfg_http_stat->http_stat_user,
         .p_password    = &p_cfg_http_stat->http_stat_pass,
@@ -77,7 +77,7 @@ http_send_statistics_internal(
         .ssl_buf_cfg.ssl_out_content_len = RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN,
     };
 
-    http_init_client_config(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data);
+    http_client_config_init(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data);
 
     p_http_async_info->p_http_client_handle = esp_http_client_init(
         &p_http_async_info->http_client_config.esp_http_client_config);

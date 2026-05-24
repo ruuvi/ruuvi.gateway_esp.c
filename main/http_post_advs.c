@@ -40,7 +40,7 @@ typedef struct http_send_advs_internal_params_t
 } http_send_advs_internal_params_t;
 
 static bool
-http_init_client_config_for_http_target(
+http_client_config_init_for_http_target(
     http_client_config_t* const                   p_http_client_config,
     const ruuvi_gw_cfg_http_t* const              p_cfg_http,
     const http_send_advs_internal_params_t* const p_params,
@@ -98,7 +98,7 @@ http_init_client_config_for_http_target(
         p_filename_extra_http_headers = GW_CFG_STORAGE_HTTP_HEADERS;
     }
 
-    const http_init_client_config_params_t http_cli_cfg_params = {
+    const http_client_config_init_params_t http_cli_cfg_params = {
         .p_url                           = p_params->flag_post_to_ruuvi ? NULL : &p_cfg_http->http_url,
         .p_filename_extra_http_path      = p_filename_extra_http_path,
         .p_filename_extra_http_query     = p_filename_extra_http_query,
@@ -116,7 +116,7 @@ http_init_client_config_for_http_target(
         .ssl_buf_cfg.ssl_out_content_len = RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN,
     };
 
-    http_init_client_config(p_http_client_config, &http_cli_cfg_params, p_user_data);
+    http_client_config_init(p_http_client_config, &http_cli_cfg_params, p_user_data);
 
     return true;
 }
@@ -129,40 +129,40 @@ http_send_advs_log_auth_type(const ruuvi_gw_cfg_http_t* const p_cfg_http)
     {
         case GW_CFG_HTTP_AUTH_TYPE_NONE:
             LOG_DBG(
-                "http_init_client_config: URL=%s, auth_type=%s",
+                "http_client_config_init: URL=%s, auth_type=%s",
                 p_cfg_http->http_url.buf,
                 GW_CFG_HTTP_AUTH_TYPE_STR_NONE);
             break;
         case GW_CFG_HTTP_AUTH_TYPE_BASIC:
             LOG_DBG(
-                "http_init_client_config: URL=%s, auth_type=%s",
+                "http_client_config_init: URL=%s, auth_type=%s",
                 p_cfg_http->http_url.buf,
                 GW_CFG_HTTP_AUTH_TYPE_STR_BASIC);
             LOG_DBG(
-                "http_init_client_config: user=%s, pass=%s",
+                "http_client_config_init: user=%s, pass=%s",
                 p_cfg_http->auth.auth_basic.user.buf,
                 p_cfg_http->auth.auth_basic.password.buf);
             break;
         case GW_CFG_HTTP_AUTH_TYPE_BEARER:
             LOG_DBG(
-                "http_init_client_config: URL=%s, auth_type=%s",
+                "http_client_config_init: URL=%s, auth_type=%s",
                 p_cfg_http->http_url.buf,
                 GW_CFG_HTTP_AUTH_TYPE_STR_BEARER);
-            LOG_DBG("http_init_client_config: Bearer token: %s", p_cfg_http->auth.auth_bearer.token.buf);
+            LOG_DBG("http_client_config_init: Bearer token: %s", p_cfg_http->auth.auth_bearer.token.buf);
             break;
         case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
             LOG_DBG(
-                "http_init_client_config: URL=%s, auth_type=%s",
+                "http_client_config_init: URL=%s, auth_type=%s",
                 p_cfg_http->http_url.buf,
                 GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN);
-            LOG_DBG("http_init_client_config: Token: %s", p_cfg_http->auth.auth_token.token.buf);
+            LOG_DBG("http_client_config_init: Token: %s", p_cfg_http->auth.auth_token.token.buf);
             break;
         case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
             LOG_DBG(
-                "http_init_client_config: URL=%s, auth_type=%s",
+                "http_client_config_init: URL=%s, auth_type=%s",
                 p_cfg_http->http_url.buf,
                 GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY);
-            LOG_DBG("http_init_client_config: api_key: %s", p_cfg_http->auth.auth_apikey.api_key.buf);
+            LOG_DBG("http_client_config_init: api_key: %s", p_cfg_http->auth.auth_apikey.api_key.buf);
             break;
     }
 }
@@ -227,7 +227,7 @@ http_send_advs_internal(
 #endif
 
     http_client_config_t* const p_http_cli_cfg = &p_http_async_info->http_client_config;
-    if (!http_init_client_config_for_http_target(
+    if (!http_client_config_init_for_http_target(
             p_http_cli_cfg,
             p_cfg_http,
             p_params,
