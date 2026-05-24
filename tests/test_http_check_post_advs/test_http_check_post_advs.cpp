@@ -764,7 +764,7 @@ TEST_F(TestHttpCheckPostAdvs, test_url_null)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: p_url is NULL\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -786,7 +786,12 @@ TEST_F(TestHttpCheckPostAdvs, test_url_too_long)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ(
+        "E http: URL is too long: "
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+        esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -817,7 +822,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_none_ok)
     ASSERT_EQ(nullptr, cfg.cb_query_stream_reader);
     ASSERT_EQ(nullptr, cfg.cb_extra_headers_stream_reader);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -843,7 +848,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_basic_ok)
     ASSERT_STREQ("user1", this->m_captured_auth.auth_basic.user.buf);
     ASSERT_STREQ("pass1", this->m_captured_auth.auth_basic.password.buf);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -863,7 +868,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_basic_null_user)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_check_post_advs_prep_auth_basic failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -883,7 +888,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_basic_null_pass)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_check_post_advs_prep_auth_basic failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -904,7 +909,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_basic_user_too_long)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_check_post_advs_prep_auth_basic failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -925,7 +930,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_basic_pass_too_long)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_check_post_advs_prep_auth_basic failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -950,7 +955,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_bearer_ok)
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_BEARER, this->m_captured_auth_type);
     ASSERT_STREQ("my_bearer_token", this->m_captured_auth.auth_bearer.token.buf);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -970,7 +975,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_bearer_null_token)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_check_post_advs_prep_auth_bearer failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -991,7 +996,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_bearer_token_too_long)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_check_post_advs_prep_auth_bearer failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1016,7 +1021,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_token_ok)
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_TOKEN, this->m_captured_auth_type);
     ASSERT_STREQ("my_token", this->m_captured_auth.auth_token.token.buf);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1036,7 +1041,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_token_null)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_check_post_advs_prep_auth_token failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1057,7 +1062,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_token_too_long)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_check_post_advs_prep_auth_token failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1082,7 +1087,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_apikey_ok)
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_APIKEY, this->m_captured_auth_type);
     ASSERT_STREQ("my_api_key", this->m_captured_auth.auth_apikey.api_key.buf);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1102,7 +1107,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_apikey_null)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_check_post_advs_prep_auth_apikey failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1123,7 +1128,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_apikey_too_long)
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_check_post_advs_prep_auth_apikey failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1146,7 +1151,7 @@ TEST_F(TestHttpCheckPostAdvs, test_post_to_ruuvi_default_url)
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_FALSE(this->m_mock_http_handle_add_auth_called);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1167,7 +1172,10 @@ TEST_F(TestHttpCheckPostAdvs, test_http_client_init_fail)
     http_server_resp_t resp                  = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ(
+        "E http: HTTP POST to URL=https://myserver.com/api: Can't init http client\n"
+        "E http: http_post_advs failed\n",
+        esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1188,7 +1196,7 @@ TEST_F(TestHttpCheckPostAdvs, test_http_send_async_fail)
     http_server_resp_t resp             = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_post_advs failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1217,7 +1225,7 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_client_cert_ok)
     ASSERT_STREQ("-----BEGIN PRIVATE KEY-----\nfake_key\n-----END PRIVATE KEY-----", this->m_freed_client_key.c_str());
     ASSERT_STREQ("", this->m_freed_server_cert.c_str());
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1239,7 +1247,7 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_client_cert_missing)
     http_server_resp_t resp      = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_post_advs failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1261,7 +1269,7 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_client_key_missing)
     http_server_resp_t resp      = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_post_advs failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1289,7 +1297,7 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_server_cert_ok)
     ASSERT_STREQ("", this->m_freed_client_cert.c_str());
     ASSERT_STREQ("", this->m_freed_client_key.c_str());
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1310,7 +1318,7 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_server_cert_missing)
     http_server_resp_t resp      = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_post_advs failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1339,7 +1347,7 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_flags)
     ASSERT_NE(nullptr, cfg.cb_extra_headers_stream_reader);
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, (const char*)cfg.cb_extra_headers_stream_reader_param);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1366,7 +1374,7 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_path_only)
     ASSERT_EQ(nullptr, cfg.cb_query_stream_reader);
     ASSERT_EQ(nullptr, cfg.cb_extra_headers_stream_reader);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1393,7 +1401,7 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_query_only)
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_QUERY, (const char*)cfg.cb_query_stream_reader_param);
     ASSERT_EQ(nullptr, cfg.cb_extra_headers_stream_reader);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1420,7 +1428,7 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_headers_only)
     ASSERT_NE(nullptr, cfg.cb_extra_headers_stream_reader);
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, (const char*)cfg.cb_extra_headers_stream_reader_param);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1443,7 +1451,7 @@ TEST_F(TestHttpCheckPostAdvs, test_resp_429_treated_as_200)
     // http_post_helper converts 429 -> 200
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1465,7 +1473,7 @@ TEST_F(TestHttpCheckPostAdvs, test_resp_500)
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1493,7 +1501,7 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_client_and_server_cert_ok)
     ASSERT_STREQ("fake_client_key", this->m_freed_client_key.c_str());
     ASSERT_STREQ("fake_server_cert", this->m_freed_server_cert.c_str());
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1524,7 +1532,7 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_basic_with_ssl_client_cert)
     ASSERT_STREQ("fake_key", this->m_freed_client_key.c_str());
     ASSERT_STREQ("", this->m_freed_server_cert.c_str());
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1548,7 +1556,7 @@ TEST_F(TestHttpCheckPostAdvs, test_post_to_ruuvi_url_with_ssl_cert_flags_fails_w
     http_server_resp_t resp = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_post_advs failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1578,7 +1586,7 @@ TEST_F(TestHttpCheckPostAdvs, test_post_to_ruuvi_url_without_ssl_flags)
     ASSERT_NE(nullptr, cfg.cb_extra_headers_stream_reader);
     ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, (const char*)cfg.cb_extra_headers_stream_reader_param);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1600,7 +1608,10 @@ TEST_F(TestHttpCheckPostAdvs, test_json_stream_gen_fail)
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     ASSERT_TRUE(this->m_flag_gateway_restart_low_memory);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ(
+        "E http: Not enough memory to create http_json_create_stream_gen_advs\n"
+        "E http: http_post_advs failed\n",
+        esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1624,7 +1635,7 @@ TEST_F(TestHttpCheckPostAdvs, test_calloc_fail_for_cfg_http)
     http_server_resp_t resp    = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: Can't allocate memory for ruuvi_gw_cfg_http_t\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
@@ -1649,6 +1660,6 @@ TEST_F(TestHttpCheckPostAdvs, test_http_handle_add_auth_fail)
     ASSERT_STREQ("user1", this->m_captured_auth.auth_basic.user.buf);
     ASSERT_STREQ("pass1", this->m_captured_auth.auth_basic.password.buf);
     http_server_resp_free(&resp);
-    esp_log_wrapper_clear();
+    ASSERT_EQ("E http: http_post_advs failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
