@@ -6,6 +6,9 @@
  */
 
 #include "http.h"
+#include "http_client_config.h"
+#include "http_stream_reader_nvs.h"
+#include "http_post_event_handler.h"
 #include <cstring>
 #include <cstdarg>
 #include <cstdio>
@@ -67,30 +70,22 @@ protected:
         this->m_alloc_free_call_count       = 0;
         this->m_flag_alloc_counting_enabled = true;
 
-        this->m_mock_gw_status_relaying_via_http    = false;
-        this->m_mock_esp_http_client_handle         = reinterpret_cast<esp_http_client_handle_t>(0x12345678);
-        this->m_mock_esp_http_client_init_result    = this->m_mock_esp_http_client_handle;
-        this->m_mock_http_send_async_result         = true;
-        this->m_mock_http_wait_resp_code            = HTTP_RESP_CODE_200;
-        this->m_mock_http_wait_resp_body            = "{}";
-        this->m_mock_ssl_client_cert                = "";
-        this->m_mock_ssl_client_key                 = "";
-        this->m_mock_ssl_server_cert                = "";
-        this->m_mock_http_client_config_init_result = true;
-        this->m_mock_http_handle_add_auth_result    = true;
-        this->m_mock_json_stream_gen                = reinterpret_cast<json_stream_gen_t*>(0xDEADBEEF);
+        this->m_mock_gw_status_relaying_via_http = false;
+        this->m_mock_esp_http_client_handle      = reinterpret_cast<esp_http_client_handle_t>(0x12345678);
+        this->m_mock_esp_http_client_init_result = this->m_mock_esp_http_client_handle;
+        this->m_mock_http_send_async_result      = true;
+        this->m_mock_http_wait_resp_code         = HTTP_RESP_CODE_200;
+        this->m_mock_http_wait_resp_body         = "{}";
+        this->m_mock_ssl_client_cert             = "";
+        this->m_mock_ssl_client_key              = "";
+        this->m_mock_ssl_server_cert             = "";
+        this->m_mock_esp_http_client_config_set_from_url_result = true;
+        this->m_mock_http_handle_add_auth_result                = true;
+        this->m_mock_json_stream_gen                            = reinterpret_cast<json_stream_gen_t*>(0xDEADBEEF);
 
         this->m_mock_http_handle_add_auth_called = false;
         this->m_captured_auth_type               = GW_CFG_HTTP_AUTH_TYPE_NONE;
         memset(&this->m_captured_auth, 0, sizeof(this->m_captured_auth));
-
-        this->m_mock_http_client_config_init_called = false;
-        this->m_captured_server_cert.clear();
-        this->m_captured_client_cert.clear();
-        this->m_captured_client_key.clear();
-        this->m_captured_extra_http_path.clear();
-        this->m_captured_extra_http_query.clear();
-        this->m_captured_extra_http_headers.clear();
     }
 
     void
@@ -128,7 +123,7 @@ public:
     int32_t                  m_mock_esp_http_client_cleanup_called;
     int32_t                  m_mock_http_async_info_free_data_called;
     bool                     m_flag_gateway_restart_low_memory;
-    bool                     m_mock_http_client_config_init_result;
+    bool                     m_mock_esp_http_client_config_set_from_url_result;
     bool                     m_mock_http_handle_add_auth_result;
     json_stream_gen_t*       m_mock_json_stream_gen;
 
@@ -136,13 +131,9 @@ public:
     gw_cfg_http_auth_type_e  m_captured_auth_type;
     ruuvi_gw_cfg_http_auth_t m_captured_auth;
 
-    bool   m_mock_http_client_config_init_called;
-    string m_captured_server_cert;
-    string m_captured_client_cert;
-    string m_captured_client_key;
-    string m_captured_extra_http_path;
-    string m_captured_extra_http_query;
-    string m_captured_extra_http_headers;
+    string m_freed_server_cert;
+    string m_freed_client_cert;
+    string m_freed_client_key;
 };
 
 TestHttpCheckPostAdvs::TestHttpCheckPostAdvs()
@@ -161,13 +152,12 @@ TestHttpCheckPostAdvs::TestHttpCheckPostAdvs()
     , m_mock_esp_http_client_cleanup_called(0)
     , m_mock_http_async_info_free_data_called(0)
     , m_flag_gateway_restart_low_memory(false)
-    , m_mock_http_client_config_init_result(true)
+    , m_mock_esp_http_client_config_set_from_url_result(true)
     , m_mock_http_handle_add_auth_result(true)
     , m_mock_json_stream_gen(nullptr)
     , m_mock_http_handle_add_auth_called(false)
     , m_captured_auth_type(GW_CFG_HTTP_AUTH_TYPE_NONE)
     , m_captured_auth()
-    , m_mock_http_client_config_init_called(false)
     , Test()
 {
 }
@@ -382,6 +372,28 @@ esp_http_client_cleanup(esp_http_client_handle_t client)
     return ESP_OK;
 }
 
+bool
+esp_http_client_config_set_from_url(esp_http_client_config_t* const p_cfg, char* const url)
+{
+    if (nullptr != g_pTestClass)
+    {
+        return g_pTestClass->m_mock_esp_http_client_config_set_from_url_result;
+    }
+    return false;
+}
+
+esp_err_t
+http_post_event_handler(esp_http_client_event_t* p_evt)
+{
+    return ESP_OK;
+}
+
+ssize_t
+http_stream_reader_nvs(const http_stream_reader_cmd_e cmd, const http_stream_reader_arg_t arg, void* const p_ctx)
+{
+    return -1;
+}
+
 const mac_address_str_t*
 gw_cfg_get_nrf52_mac_addr(void)
 {
@@ -435,6 +447,21 @@ http_send_async(http_async_info_t* const p_http_async_info)
 void
 http_async_info_free_data(http_async_info_t* const p_http_async_info)
 {
+    if (nullptr != g_pTestClass)
+    {
+        g_pTestClass->m_freed_server_cert = (NULL
+                                             != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
+                                                ? p_http_async_info->http_client_config.esp_http_client_config.cert_pem
+                                                : "";
+        g_pTestClass->m_freed_client_cert
+            = (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem)
+                  ? p_http_async_info->http_client_config.esp_http_client_config.client_cert_pem
+                  : "";
+        g_pTestClass->m_freed_client_key
+            = (NULL != p_http_async_info->http_client_config.esp_http_client_config.client_key_pem)
+                  ? p_http_async_info->http_client_config.esp_http_client_config.client_key_pem
+                  : "";
+    }
     if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
     {
         os_free(p_http_async_info->http_client_config.esp_http_client_config.cert_pem);
@@ -486,37 +513,6 @@ http_json_create_stream_gen_advs(
         return g_pTestClass->m_mock_json_stream_gen;
     }
     return nullptr;
-}
-
-bool
-http_client_config_init(
-    http_client_config_t* const                   p_http_client_config,
-    const http_client_config_init_params_t* const p_params,
-    void* const                                   p_user_data)
-{
-    if (nullptr == g_pTestClass)
-    {
-        return false;
-    }
-    g_pTestClass->m_mock_http_client_config_init_called = true;
-    g_pTestClass->m_captured_server_cert        = (nullptr != p_params->p_server_cert) ? p_params->p_server_cert : "";
-    g_pTestClass->m_captured_client_cert        = (nullptr != p_params->p_client_cert) ? p_params->p_client_cert : "";
-    g_pTestClass->m_captured_client_key         = (nullptr != p_params->p_client_key) ? p_params->p_client_key : "";
-    g_pTestClass->m_captured_extra_http_path    = (nullptr != p_params->p_filename_extra_http_path)
-                                                      ? p_params->p_filename_extra_http_path
-                                                      : "";
-    g_pTestClass->m_captured_extra_http_query   = (nullptr != p_params->p_filename_extra_http_query)
-                                                      ? p_params->p_filename_extra_http_query
-                                                      : "";
-    g_pTestClass->m_captured_extra_http_headers = (nullptr != p_params->p_filename_extra_http_headers)
-                                                      ? p_params->p_filename_extra_http_headers
-                                                      : "";
-    // Store cert pointers in config so http_async_info_free_data can free them later,
-    // as the real implementation does.
-    p_http_client_config->esp_http_client_config.cert_pem        = p_params->p_server_cert;
-    p_http_client_config->esp_http_client_config.client_cert_pem = p_params->p_client_cert;
-    p_http_client_config->esp_http_client_config.client_key_pem  = p_params->p_client_key;
-    return g_pTestClass->m_mock_http_client_config_init_result;
 }
 
 static http_async_info_t g_test_http_async_info;
@@ -813,13 +809,13 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_none_ok)
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_TRUE(this->m_mock_http_handle_add_auth_called);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, this->m_captured_auth_type);
-    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
-    ASSERT_STREQ("", this->m_captured_client_cert.c_str());
-    ASSERT_STREQ("", this->m_captured_client_key.c_str());
-    ASSERT_STREQ("", this->m_captured_server_cert.c_str());
-    ASSERT_STREQ("", this->m_captured_extra_http_path.c_str());
-    ASSERT_STREQ("", this->m_captured_extra_http_query.c_str());
-    ASSERT_STREQ("", this->m_captured_extra_http_headers.c_str());
+    const esp_http_client_config_t& cfg = g_test_http_async_info.http_client_config.esp_http_client_config;
+    ASSERT_EQ(nullptr, cfg.client_cert_pem);
+    ASSERT_EQ(nullptr, cfg.client_key_pem);
+    ASSERT_EQ(nullptr, cfg.cert_pem);
+    ASSERT_EQ(nullptr, cfg.cb_path_stream_reader);
+    ASSERT_EQ(nullptr, cfg.cb_query_stream_reader);
+    ASSERT_EQ(nullptr, cfg.cb_extra_headers_stream_reader);
     http_server_resp_free(&resp);
     esp_log_wrapper_clear();
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1215,14 +1211,11 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_client_cert_ok)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ(
         "-----BEGIN CERTIFICATE-----\nfake_cert\n-----END CERTIFICATE-----",
-        this->m_captured_client_cert.c_str());
-    ASSERT_STREQ(
-        "-----BEGIN PRIVATE KEY-----\nfake_key\n-----END PRIVATE KEY-----",
-        this->m_captured_client_key.c_str());
-    ASSERT_STREQ("", this->m_captured_server_cert.c_str());
+        this->m_freed_client_cert.c_str());
+    ASSERT_STREQ("-----BEGIN PRIVATE KEY-----\nfake_key\n-----END PRIVATE KEY-----", this->m_freed_client_key.c_str());
+    ASSERT_STREQ("", this->m_freed_server_cert.c_str());
     http_server_resp_free(&resp);
     esp_log_wrapper_clear();
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1290,12 +1283,11 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_server_cert_ok)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
     ASSERT_STREQ(
         "-----BEGIN CERTIFICATE-----\nfake_server_cert\n-----END CERTIFICATE-----",
-        this->m_captured_server_cert.c_str());
-    ASSERT_STREQ("", this->m_captured_client_cert.c_str());
-    ASSERT_STREQ("", this->m_captured_client_key.c_str());
+        this->m_freed_server_cert.c_str());
+    ASSERT_STREQ("", this->m_freed_client_cert.c_str());
+    ASSERT_STREQ("", this->m_freed_client_key.c_str());
     http_server_resp_free(&resp);
     esp_log_wrapper_clear();
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1339,10 +1331,13 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_flags)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
-    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_PATH, this->m_captured_extra_http_path.c_str());
-    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_QUERY, this->m_captured_extra_http_query.c_str());
-    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, this->m_captured_extra_http_headers.c_str());
+    const esp_http_client_config_t& cfg = g_test_http_async_info.http_client_config.esp_http_client_config;
+    ASSERT_NE(nullptr, cfg.cb_path_stream_reader);
+    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_PATH, (const char*)cfg.cb_path_stream_reader_param);
+    ASSERT_NE(nullptr, cfg.cb_query_stream_reader);
+    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_QUERY, (const char*)cfg.cb_query_stream_reader_param);
+    ASSERT_NE(nullptr, cfg.cb_extra_headers_stream_reader);
+    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, (const char*)cfg.cb_extra_headers_stream_reader_param);
     http_server_resp_free(&resp);
     esp_log_wrapper_clear();
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1365,10 +1360,11 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_path_only)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
-    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_PATH, this->m_captured_extra_http_path.c_str());
-    ASSERT_STREQ("", this->m_captured_extra_http_query.c_str());
-    ASSERT_STREQ("", this->m_captured_extra_http_headers.c_str());
+    const esp_http_client_config_t& cfg = g_test_http_async_info.http_client_config.esp_http_client_config;
+    ASSERT_NE(nullptr, cfg.cb_path_stream_reader);
+    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_PATH, (const char*)cfg.cb_path_stream_reader_param);
+    ASSERT_EQ(nullptr, cfg.cb_query_stream_reader);
+    ASSERT_EQ(nullptr, cfg.cb_extra_headers_stream_reader);
     http_server_resp_free(&resp);
     esp_log_wrapper_clear();
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1391,10 +1387,11 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_query_only)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
-    ASSERT_STREQ("", this->m_captured_extra_http_path.c_str());
-    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_QUERY, this->m_captured_extra_http_query.c_str());
-    ASSERT_STREQ("", this->m_captured_extra_http_headers.c_str());
+    const esp_http_client_config_t& cfg = g_test_http_async_info.http_client_config.esp_http_client_config;
+    ASSERT_EQ(nullptr, cfg.cb_path_stream_reader);
+    ASSERT_NE(nullptr, cfg.cb_query_stream_reader);
+    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_QUERY, (const char*)cfg.cb_query_stream_reader_param);
+    ASSERT_EQ(nullptr, cfg.cb_extra_headers_stream_reader);
     http_server_resp_free(&resp);
     esp_log_wrapper_clear();
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1417,10 +1414,11 @@ TEST_F(TestHttpCheckPostAdvs, test_extra_http_headers_only)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
-    ASSERT_STREQ("", this->m_captured_extra_http_path.c_str());
-    ASSERT_STREQ("", this->m_captured_extra_http_query.c_str());
-    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, this->m_captured_extra_http_headers.c_str());
+    const esp_http_client_config_t& cfg = g_test_http_async_info.http_client_config.esp_http_client_config;
+    ASSERT_EQ(nullptr, cfg.cb_path_stream_reader);
+    ASSERT_EQ(nullptr, cfg.cb_query_stream_reader);
+    ASSERT_NE(nullptr, cfg.cb_extra_headers_stream_reader);
+    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, (const char*)cfg.cb_extra_headers_stream_reader_param);
     http_server_resp_free(&resp);
     esp_log_wrapper_clear();
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1491,10 +1489,9 @@ TEST_F(TestHttpCheckPostAdvs, test_ssl_client_and_server_cert_ok)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
-    ASSERT_STREQ("fake_client_cert", this->m_captured_client_cert.c_str());
-    ASSERT_STREQ("fake_client_key", this->m_captured_client_key.c_str());
-    ASSERT_STREQ("fake_server_cert", this->m_captured_server_cert.c_str());
+    ASSERT_STREQ("fake_client_cert", this->m_freed_client_cert.c_str());
+    ASSERT_STREQ("fake_client_key", this->m_freed_client_key.c_str());
+    ASSERT_STREQ("fake_server_cert", this->m_freed_server_cert.c_str());
     http_server_resp_free(&resp);
     esp_log_wrapper_clear();
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1523,10 +1520,9 @@ TEST_F(TestHttpCheckPostAdvs, test_auth_basic_with_ssl_client_cert)
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_BASIC, this->m_captured_auth_type);
     ASSERT_STREQ("admin", this->m_captured_auth.auth_basic.user.buf);
     ASSERT_STREQ("secret", this->m_captured_auth.auth_basic.password.buf);
-    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
-    ASSERT_STREQ("fake_cert", this->m_captured_client_cert.c_str());
-    ASSERT_STREQ("fake_key", this->m_captured_client_key.c_str());
-    ASSERT_STREQ("", this->m_captured_server_cert.c_str());
+    ASSERT_STREQ("fake_cert", this->m_freed_client_cert.c_str());
+    ASSERT_STREQ("fake_key", this->m_freed_client_key.c_str());
+    ASSERT_STREQ("", this->m_freed_server_cert.c_str());
     http_server_resp_free(&resp);
     esp_log_wrapper_clear();
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1574,10 +1570,13 @@ TEST_F(TestHttpCheckPostAdvs, test_post_to_ruuvi_url_without_ssl_flags)
     this->m_mock_http_wait_resp_body = "{}";
     http_server_resp_t resp          = http_check_post_advs(&params, 10);
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
-    ASSERT_TRUE(this->m_mock_http_client_config_init_called);
-    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_PATH, this->m_captured_extra_http_path.c_str());
-    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_QUERY, this->m_captured_extra_http_query.c_str());
-    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, this->m_captured_extra_http_headers.c_str());
+    const esp_http_client_config_t& cfg = g_test_http_async_info.http_client_config.esp_http_client_config;
+    ASSERT_NE(nullptr, cfg.cb_path_stream_reader);
+    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_PATH, (const char*)cfg.cb_path_stream_reader_param);
+    ASSERT_NE(nullptr, cfg.cb_query_stream_reader);
+    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_QUERY, (const char*)cfg.cb_query_stream_reader_param);
+    ASSERT_NE(nullptr, cfg.cb_extra_headers_stream_reader);
+    ASSERT_STREQ(GW_CFG_STORAGE_HTTP_HEADERS, (const char*)cfg.cb_extra_headers_stream_reader_param);
     http_server_resp_free(&resp);
     esp_log_wrapper_clear();
     ASSERT_EQ(0, this->m_alloc_free_call_count);

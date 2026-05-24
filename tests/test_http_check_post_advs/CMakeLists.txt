@@ -10,6 +10,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/tls_shared_buf.h
         ${RUUVI_GW_SRC}/http_post_helper.c
         ${RUUVI_GW_SRC}/http_post_helper.h
+        ${RUUVI_GW_SRC}/http_client_config.c
+        ${RUUVI_GW_SRC}/http_client_config.h
         ${RUUVI_ESP_WRAPPERS_INC}/str_buf.h
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
         ${RUUVI_ESP_WRAPPERS}/src/os_malloc.c
@@ -27,12 +29,9 @@ target_include_directories(${ProjectId} PUBLIC
         ${RUUVI_GW_SRC}
         include
         ../include
-#        ${COMPONENTS}/bootloader_support/include
-#        ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
         ${COMPONENTS}/esp_http_client/include
         ${COMPONENTS}/mbedtls/mbedtls/include
         ${COMPONENTS}/mbedtls/mbedtls/library
-#        ${COMPONENTS}/tcp_transport/include
         ${COMPONENTS}/esp-tls
         ${COMPONENTS}/esp32-wifi-manager/src/include
         ${COMPONENTS}/nvs_flash/include
