@@ -115,7 +115,7 @@ http_server_cb_on_delete(
     (void)flag_access_from_lan;
     (void)p_resp_auth;
     LOG_INFO("DELETE /%s, params=%s", p_file_name, (NULL != p_uri_params) ? p_uri_params : "");
-    if (fw_update_is_in_progress())
+    if (ruuvi_gw_fw_update_is_in_progress())
     {
         LOG_ERR(
             "FW update in progress, cannot handle DELETE request: /%s, params=%s",

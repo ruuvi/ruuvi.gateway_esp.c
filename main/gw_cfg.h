@@ -485,6 +485,9 @@ gw_cfg_get_ntp_use(void);
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void);
 
+str_buf_t
+gw_cfg_get_coordinates_str_buf(void);
+
 const ruuvi_esp32_fw_ver_str_t*
 gw_cfg_get_esp32_fw_ver(void);
 

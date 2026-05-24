@@ -330,9 +330,15 @@ http_server_resp_history(const char* const p_params)
 
     adv_table_history_read(p_reports, cur_time, flag_use_timestamps, filter, flag_use_filter);
 
-    const bool      flag_use_nonce = false;
-    const uint32_t  nonce          = 0;
-    const gw_cfg_t* p_gw_cfg       = gw_cfg_lock_ro();
+    const bool     flag_use_nonce = false;
+    const uint32_t nonce          = 0;
+
+    str_buf_t coordinates_str_buf = gw_cfg_get_coordinates_str_buf();
+    if (NULL == coordinates_str_buf.buf)
+    {
+        os_free(p_reports);
+        return http_server_resp_503();
+    }
 
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = true,
@@ -342,10 +348,10 @@ http_server_resp_history(const char* const p_params)
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
-        .p_coordinates       = &p_gw_cfg->ruuvi_cfg.coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(p_reports, &params);
-    gw_cfg_unlock_ro(&p_gw_cfg);
+    str_buf_free_buf(&coordinates_str_buf);
     os_free(p_reports);
     if (NULL == p_gen)
     {
@@ -542,7 +548,7 @@ http_server_cb_on_get(
     }
     if (0 == strcmp(p_path, "validate_url"))
     {
-        if (fw_update_is_in_progress())
+        if (ruuvi_gw_fw_update_is_in_progress())
         {
             LOG_ERR(
                 "FW update in progress, cannot handle GET request: /%s%s%s",

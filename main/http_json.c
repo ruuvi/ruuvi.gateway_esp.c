@@ -9,6 +9,7 @@
 #include <string.h>
 #include "os_malloc.h"
 #include "runtime_stat.h"
+#include "ruuvi_endpoint_ca_uart.h"
 #include "ruuvi_endpoint_5.h"
 #include "ruuvi_endpoint_6.h"
 #include "ruuvi_endpoint_e0.h"
@@ -454,7 +455,7 @@ http_json_create_stream_gen_advs(
     p_ctx->timestamp           = p_params->cur_time;
     p_ctx->nonce               = p_params->nonce;
     p_ctx->gw_mac              = *p_params->p_mac_addr;
-    p_ctx->coordinates         = *p_params->p_coordinates;
+    snprintf(p_ctx->coordinates.buf, sizeof(p_ctx->coordinates), "%s", p_params->coordinates_str_buf.buf);
     if (NULL == p_reports)
     {
         p_ctx->reports.num_of_advs = 0;

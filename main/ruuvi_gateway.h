@@ -154,6 +154,12 @@ start_wifi_ap_without_blocking_req_from_lan(void);
 void
 ruuvi_log_heap_usage(void);
 
+bool
+ruuvi_gw_mark_app_valid_cancel_rollback(void);
+
+bool
+ruuvi_gw_fw_update_is_in_progress(void);
+
 #ifdef __cplusplus
 }
 #endif

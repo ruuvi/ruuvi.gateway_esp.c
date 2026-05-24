@@ -8,6 +8,7 @@
 #include "http.h"
 #include <string.h>
 #include <esp_task_wdt.h>
+#include <esp_system.h>
 #include "os_malloc.h"
 #include "http_server_resp.h"
 #include "adv_post.h"
@@ -196,7 +197,8 @@ http_send_advs_internal(
     }
 
     p_http_async_info->use_json_stream_gen = true;
-    const gw_cfg_t* p_gw_cfg               = gw_cfg_lock_ro();
+
+    str_buf_t coordinates_str_buf = gw_cfg_get_coordinates_str_buf();
 
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
@@ -206,10 +208,10 @@ http_send_advs_internal(
         .flag_use_nonce      = true,
         .nonce               = p_params->nonce,
         .p_mac_addr          = gw_cfg_get_nrf52_mac_addr(),
-        .p_coordinates       = &p_gw_cfg->ruuvi_cfg.coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
     p_http_async_info->select.p_gen = http_json_create_stream_gen_advs(p_reports, &params);
-    gw_cfg_unlock_ro(&p_gw_cfg);
+    str_buf_free_buf(&coordinates_str_buf);
     if (NULL == p_http_async_info->select.p_gen)
     {
         LOG_ERR("Not enough memory to create http_json_create_stream_gen_advs");

@@ -38,6 +38,7 @@
 #include "ruuvi_gateway.h"
 #include "http_post_helper.h"
 #include "http_download.h"
+#include "fw_update.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -952,7 +953,7 @@ adv_post_nrf52_cfg_update(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_g
 }
 
 bool
-fw_update_is_in_progress(void)
+ruuvi_gw_fw_update_is_in_progress(void)
 {
     return g_pTestClass->m_fw_update_is_in_progress;
 }

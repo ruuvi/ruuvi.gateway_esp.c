@@ -19,7 +19,6 @@
 #include "hmac_sha256.h"
 #include "adv_post_timers.h"
 #include "adv_post_async_comm.h"
-#include "fw_update.h"
 #include "str_buf.h"
 #include "reset_info.h"
 #include "os_sema.h"
@@ -31,7 +30,8 @@
 #include "network_timeout.h"
 #include "tls_shared_buf.h"
 #include "gw_cfg_default.h"
-#include "gw_cfg_storage.h"
+#include "esp_attr.h"
+#include "nvs.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -931,7 +931,7 @@ http_async_poll(void)
 
     if (flag_success && (HTTP_POST_RECIPIENT_STATS != p_http_async_info->recipient))
     {
-        if (!fw_update_mark_app_valid_cancel_rollback()) // NOSONAR
+        if (!ruuvi_gw_mark_app_valid_cancel_rollback()) // NOSONAR
         {
             LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
         }
