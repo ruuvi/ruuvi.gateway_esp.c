@@ -19,6 +19,7 @@
 - Each `test_<module>/` directory contains:
   - `CMakeLists.txt` — Builds a test executable, compiles selected `../main/*.c` files directly plus stubs
   - `test_<module>.cpp` — Google Test file with `TEST_F` / `TEST` macros
+  - `sdkconfig.h` — SDK config header (copy from an existing test directory, e.g., `test_ruuvi_nvs/sdkconfig.h`)
   - C function stubs wrapped in `extern "C" {}` blocks
 - Test binaries are named `ruuvi_gateway_esp-test-<module>`.
 - Test modules include: `test_adv_table`, `test_adv_mqtt_*`, `test_adv_post_*`, `test_gw_cfg*`, `test_http_json`, `test_http_server_cb`, `test_leds*`, `test_nrf52fw`, `test_nrf52swd`, `test_mqtt_json`, `test_bin2hex`, `test_cjson_wrap`, `test_event_mgr`, `test_flashfatfs`, `test_hmac_sha256`, `test_json_ruuvi`, `test_metrics`, `test_ruuvi_auth`, `test_time_str`, `test_url_encode`, and more.
@@ -76,6 +77,138 @@ lcov --list cmake-build-unit-tests/coverage_<module>.info
 - FreeRTOS primitives (tasks, queues, semaphores, timers) are provided by `posix_gcc_simulator/` using pthreads.
 - Linker wraps for `malloc/calloc/free` are used in some tests for memory-leak detection.
 - Each test file typically wraps C function stubs in `extern "C" {}` blocks at the top.
+
+## Creating a new test module — step-by-step checklist
+
+When adding a new test module `test_<module>` for `main/<module>.c`, **all** of the following
+steps are required. Missing any step will cause a CMake or build failure.
+
+### Step 1: Create the test directory with three files
+
+```
+tests/test_<module>/
+├── CMakeLists.txt
+├── sdkconfig.h
+└── test_<module>.cpp
+```
+
+- **`sdkconfig.h`** — Copy from an existing test (e.g., `test_ruuvi_nvs/sdkconfig.h`).
+  All tests share the same SDK config.
+- **`CMakeLists.txt`** — Use an existing test as template. Key elements:
+  ```cmake
+  cmake_minimum_required(VERSION 3.13)
+
+  project(ruuvi_gateway_esp-test-<module>)
+  set(ProjectId ruuvi_gateway_esp-test-<module>)
+
+  add_executable(${ProjectId}
+          test_<module>.cpp
+          ${RUUVI_GW_SRC}/<module>.c
+          ${RUUVI_GW_SRC}/<module>.h
+          ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
+          ${RUUVI_ESP_WRAPPERS_INC}/str_buf.h
+          ${RUUVI_ESP_WRAPPERS}/src/snprintf_with_esp_err_desc.c
+          ${RUUVI_ESP_WRAPPERS}/include/snprintf_with_esp_err_desc.h
+          ${RUUVI_ESP_WRAPPERS}/include/wrap_esp_err_to_name_r.h
+  )
+
+  set_target_properties(${ProjectId} PROPERTIES
+          C_STANDARD 11
+          CXX_STANDARD 14
+  )
+
+  target_include_directories(${ProjectId} PUBLIC
+          ${gtest_SOURCE_DIR}/include
+          ${gtest_SOURCE_DIR}
+          ${RUUVI_GW_SRC}
+          include
+          ../include
+          ${COMPONENTS}/nvs_flash/include
+          ${COMPONENTS}/spi_flash/include
+          ${CMAKE_CURRENT_SOURCE_DIR}
+          $ENV{IDF_PATH}/components/esp_common/include
+          $ENV{IDF_PATH}/components/spi_flash/include
+  )
+
+  target_compile_definitions(${ProjectId} PUBLIC
+          RUUVI_TESTS_<MODULE_UPPER>=1
+  )
+
+  target_compile_options(${ProjectId} PUBLIC
+          -g3
+          -ggdb
+          -fprofile-arcs
+          -ftest-coverage
+  )
+
+  target_link_options(${ProjectId} PUBLIC
+          --coverage
+  )
+
+  target_link_libraries(${ProjectId}
+          gtest
+          gtest_main
+          gcov
+          ruuvi_esp_wrappers-common_test_funcs
+  )
+  ```
+  If the source file under test uses headers from other components (e.g.,
+  `esp_http_client_stream.h`), add the corresponding component include path:
+  ```cmake
+  ${COMPONENTS}/esp_http_client/include
+  ```
+  The `${COMPONENTS}` variable points to `../components/`. Available component include
+  directories include: `nvs_flash/include`, `spi_flash/include`, `esp_http_client/include`,
+  `esp-tls`, `fatfs/src`, `mqtt/esp-mqtt/include`, `mbedtls/mbedtls/include`, etc.
+
+### Step 2: Register in top-level `tests/CMakeLists.txt` — TWO separate entries
+
+**⚠ CRITICAL: Both entries below are required. Missing either one will cause CMake failure.**
+
+The top-level `tests/CMakeLists.txt` has **two separate blocks** and both must be updated:
+
+1. **`add_subdirectory()` block** (approximately lines 58–101) — Defines and builds the target.
+   Add in **alphabetical order** alongside existing entries:
+   ```cmake
+   add_subdirectory(test_<module>)
+   ```
+
+2. **`add_test()` block** (approximately lines 102+) — Registers the target with CTest.
+   Add alongside existing entries:
+   ```cmake
+   add_test(NAME test_<module>
+           COMMAND ruuvi_gateway_esp-test-<module>
+               --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-<module>>/gtestresults.xml
+   )
+   ```
+
+If `add_subdirectory()` is missing but `add_test()` is present, CMake will fail with:
+```
+CMake Error: Error evaluating generator expression:
+  $<TARGET_FILE_DIR:ruuvi_gateway_esp-test-<module>>
+  No target "ruuvi_gateway_esp-test-<module>"
+```
+
+### Step 3: Build and verify
+
+Always do a **clean cmake reconfigure** after adding a new test module:
+```bash
+source ~/esp-idf-env.sh
+cd tests
+rm -rf cmake-build-unit-tests
+cmake -S . -B cmake-build-unit-tests -G Ninja
+cmake --build cmake-build-unit-tests --target ruuvi_gateway_esp-test-<module>
+ctest --test-dir cmake-build-unit-tests -R test_<module> --output-on-failure
+```
+
+### Step 4: Check code coverage
+```bash
+lcov --capture --directory cmake-build-unit-tests/test_<module> \
+     --output-file cmake-build-unit-tests/coverage_<module>_all.info
+lcov --extract cmake-build-unit-tests/coverage_<module>_all.info '*/main/<module>.c' \
+     --output-file cmake-build-unit-tests/coverage_<module>.info
+lcov --list cmake-build-unit-tests/coverage_<module>.info
+```
 
 ## Project conventions
 - Use `os_*` wrappers (`os_mutex`, `os_timer`, `os_malloc`, `os_task`) from `ruuvi.esp_wrappers.c` instead of raw OS/libc APIs.
@@ -328,3 +461,5 @@ Key assertions to include in every test:
 
 For public API functions returning `str_buf_t` (heap-allocated buffer), always call
 `str_buf_free_buf(&result)` before the memory leak assertion.
+
+

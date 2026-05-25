@@ -126,7 +126,9 @@ Each test file wraps C function stubs in `extern "C" {}` blocks.
 Test binaries are named `ruuvi_gateway_esp-test-<module>`.
 
 The `tests/` directory is an **independent CMake project** that can be opened separately in an IDE.
-See `tests/AGENTS.md` for details.
+See `tests/AGENTS.md` for details including test patterns, mock infrastructure, and a
+**step-by-step checklist for creating new test modules** (directory structure, CMakeLists.txt
+template, and the two required registrations in the top-level `tests/CMakeLists.txt`).
 
 ## Code Style
 
