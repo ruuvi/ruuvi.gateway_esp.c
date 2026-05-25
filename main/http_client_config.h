@@ -18,7 +18,14 @@ extern "C" {
 
 typedef struct http_client_config_t
 {
-    esp_http_client_config_t     esp_http_client_config;
+    esp_http_client_config_t esp_http_client_config;
+    /**
+     * @brief A mutable copy of the original URL.
+     * @note esp_http_client_config_set_from_url() parses this buffer by inserting null terminators in-place,
+     *       so the fields in esp_http_client_config (host, path, query, etc.) point directly into this buffer.
+     *       The original URL is not modified — only this copy is mutated.
+     *       This buffer must remain valid for the lifetime of esp_http_client_config usage.
+     */
     ruuvi_gw_cfg_http_url_t      http_url_copy;
     ruuvi_gw_cfg_http_user_t     http_user;
     ruuvi_gw_cfg_http_password_t http_pass;
