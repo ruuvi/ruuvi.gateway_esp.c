@@ -71,7 +71,7 @@ http_post_event_handler_on_header(const esp_http_client_event_t* const p_evt)
 static void
 http_post_event_handler_on_data(const esp_http_client_event_t* const p_evt)
 {
-    LOG_ERR("HTTP_EVENT_ON_DATA, len=%d: %.*s", p_evt->data_len, p_evt->data_len, (char*)p_evt->data);
+    LOG_DBG("HTTP_EVENT_ON_DATA, len=%d: %.*s", p_evt->data_len, p_evt->data_len, (char*)p_evt->data);
     if (NULL != p_evt->user_data)
     {
         http_resp_cb_info_t* const p_cb_info = p_evt->user_data;
@@ -99,8 +99,8 @@ http_post_event_handler(esp_http_client_event_t* p_evt) // NOSONAR
             LOG_DBG("HTTP_EVENT_ON_CONNECTED");
             break;
 
-        case HTTP_EVENT_HEADER_SENT:
-            LOG_DBG("HTTP_EVENT_HEADER_SENT");
+        case HTTP_EVENT_HEADERS_SENT:
+            LOG_DBG("HTTP_EVENT_HEADERS_SENT");
             break;
 
         case HTTP_EVENT_ON_HEADER:
