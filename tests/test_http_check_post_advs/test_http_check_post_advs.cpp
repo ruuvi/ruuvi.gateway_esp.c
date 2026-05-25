@@ -1173,7 +1173,7 @@ TEST_F(TestHttpCheckPostAdvs, test_http_client_init_fail)
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
     ASSERT_EQ(
-        "E http: HTTP POST to URL=https://myserver.com/api: Can't init http client\n"
+        "E http: HTTP POST to Base URL=https://myserver.com/api: Can't init http client\n"
         "E http: http_post_advs failed\n",
         esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1683,7 +1683,7 @@ TEST_F(TestHttpCheckPostAdvs, test_http_client_config_init_url_parse_fail)
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
     ASSERT_EQ(
-        "E http: esp_http_client_config_set_from_url failed for URL: https://myserver.com/api\n"
+        "E http: esp_http_client_config_set_from_url failed for Base URL: https://myserver.com/api\n"
         "E http: http_post_advs failed\n",
         esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
@@ -1711,7 +1711,7 @@ TEST_F(TestHttpCheckPostAdvs, test_http_client_config_init_url_parse_fail_with_s
     ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
     http_server_resp_free(&resp);
     ASSERT_EQ(
-        "E http: esp_http_client_config_set_from_url failed for URL: https://myserver.com/api\n"
+        "E http: esp_http_client_config_set_from_url failed for Base URL: https://myserver.com/api\n"
         "E http: http_post_advs failed\n",
         esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);

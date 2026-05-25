@@ -244,7 +244,7 @@ http_send_advs_internal(
     p_http_async_info->p_http_client_handle = esp_http_client_init(&p_http_cli_cfg->esp_http_client_config);
     if (NULL == p_http_async_info->p_http_client_handle)
     {
-        LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_cli_cfg->http_url_copy.buf);
+        LOG_ERR("HTTP POST to Base URL=%s: Can't init http client", p_http_cli_cfg->http_url_copy.buf);
         http_async_info_free_data(p_http_async_info);
         return false;
     }

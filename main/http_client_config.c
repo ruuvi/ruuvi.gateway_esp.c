@@ -143,7 +143,7 @@ http_client_config_init(
             &p_http_client_config->esp_http_client_config,
             p_http_client_config->http_url_copy.buf))
     {
-        LOG_ERR("esp_http_client_config_set_from_url failed for URL: %s", p_http_client_config->http_url_copy.buf);
+        LOG_ERR("esp_http_client_config_set_from_url failed for Base URL: %s", p_http_client_config->http_url_copy.buf);
         return false;
     }
 
