@@ -175,12 +175,12 @@ http_client_config_init(
 
     http_client_config_init_log(p_params, p_http_client_config);
 
-    if (p_cli_cfg->path && p_cli_cfg->cb_path_stream_reader)
+    if ((NULL != p_cli_cfg->path) && (NULL != p_cli_cfg->cb_path_stream_reader))
     {
         LOG_ERR("HTTP client config error: both path and cb_path_stream_reader are set");
         return false;
     }
-    if (p_cli_cfg->query && p_cli_cfg->cb_query_stream_reader)
+    if ((NULL != p_cli_cfg->query) && (NULL != p_cli_cfg->cb_query_stream_reader))
     {
         LOG_ERR("HTTP client config error: both query and cb_query_stream_reader are set");
         return false;
