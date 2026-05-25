@@ -42,6 +42,44 @@ http_client_config_init(
         p_http_client_config->http_pass.buf[0] = '\0';
     }
 
+    esp_http_client_auth_type_t const auth_type = ('\0' != p_http_client_config->http_user.buf[0])
+                                                      ? HTTP_AUTH_TYPE_BASIC
+                                                      : HTTP_AUTH_TYPE_NONE;
+
+    http_stream_reader_t const cb_path_stream_reader = p_params->p_filename_extra_http_path ? &http_stream_reader_nvs
+                                                                                            : NULL;
+
+    void* const cb_path_stream_reader_param = p_params->p_filename_extra_http_path
+                                                  ? (void*)p_params->p_filename_extra_http_path
+                                                  : NULL;
+
+    size_t const cb_path_stream_reader_ctx_size = p_params->p_filename_extra_http_path
+                                                      ? sizeof(http_stream_reader_nvs_ctx_t)
+                                                      : 0;
+
+    http_stream_reader_t const cb_query_stream_reader = p_params->p_filename_extra_http_query ? &http_stream_reader_nvs
+                                                                                              : NULL;
+
+    void* const cb_query_stream_reader_param = p_params->p_filename_extra_http_query
+                                                   ? (void*)p_params->p_filename_extra_http_query
+                                                   : NULL;
+
+    size_t const cb_query_stream_reader_ctx_size = p_params->p_filename_extra_http_query
+                                                       ? sizeof(http_stream_reader_nvs_ctx_t)
+                                                       : 0;
+
+    http_stream_reader_t const cb_extra_headers_stream_reader = p_params->p_filename_extra_http_headers
+                                                                    ? &http_stream_reader_nvs
+                                                                    : NULL;
+
+    void* const cb_extra_headers_stream_reader_param = p_params->p_filename_extra_http_headers
+                                                           ? (void*)p_params->p_filename_extra_http_headers
+                                                           : NULL;
+
+    size_t const cb_extra_headers_stream_reader_ctx_size = p_params->p_filename_extra_http_headers
+                                                               ? sizeof(http_stream_reader_nvs_ctx_t)
+                                                               : 0;
+
     p_http_client_config->esp_http_client_config = (esp_http_client_config_t) {
         // clang-format off
         .url = NULL,
@@ -49,18 +87,18 @@ http_client_config_init(
         .port = 0,
         .username = &p_http_client_config->http_user.buf[0],
         .password = &p_http_client_config->http_pass.buf[0],
-        .auth_type = ('\0' != p_http_client_config->http_user.buf[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
+        .auth_type = auth_type,
         .path = NULL,
-        .cb_path_stream_reader = p_params->p_filename_extra_http_path ? &http_stream_reader_nvs : NULL,
-        .cb_path_stream_reader_param = p_params->p_filename_extra_http_path ? (void*)p_params->p_filename_extra_http_path : NULL,
-        .cb_path_stream_reader_ctx_size = p_params->p_filename_extra_http_path ? sizeof(http_stream_reader_nvs_ctx_t) : 0,
+        .cb_path_stream_reader = cb_path_stream_reader,
+        .cb_path_stream_reader_param = cb_path_stream_reader_param,
+        .cb_path_stream_reader_ctx_size = cb_path_stream_reader_ctx_size,
         .query = NULL,
-        .cb_query_stream_reader = p_params->p_filename_extra_http_query ? &http_stream_reader_nvs : NULL,
-        .cb_query_stream_reader_param = p_params->p_filename_extra_http_query ? (void*)p_params->p_filename_extra_http_query : NULL,
-        .cb_query_stream_reader_ctx_size = p_params->p_filename_extra_http_query ? sizeof(http_stream_reader_nvs_ctx_t) : 0,
-        .cb_extra_headers_stream_reader = p_params->p_filename_extra_http_headers ? &http_stream_reader_nvs : NULL,
-        .cb_extra_headers_stream_reader_param = p_params->p_filename_extra_http_headers ? (void*)p_params->p_filename_extra_http_headers : NULL,
-        .cb_extra_headers_stream_reader_ctx_size = p_params->p_filename_extra_http_headers ? sizeof(http_stream_reader_nvs_ctx_t) : 0,
+        .cb_query_stream_reader = cb_query_stream_reader,
+        .cb_query_stream_reader_param = cb_query_stream_reader_param,
+        .cb_query_stream_reader_ctx_size = cb_query_stream_reader_ctx_size,
+        .cb_extra_headers_stream_reader = cb_extra_headers_stream_reader,
+        .cb_extra_headers_stream_reader_param = cb_extra_headers_stream_reader_param,
+        .cb_extra_headers_stream_reader_ctx_size = cb_extra_headers_stream_reader_ctx_size,
         .cert_pem = p_params->p_server_cert,
         .client_cert_pem = p_params->p_client_cert,
         .client_key_pem = p_params->p_client_key,
