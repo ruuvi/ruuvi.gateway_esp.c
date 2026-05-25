@@ -205,6 +205,7 @@ gw_cfg_log_wifi_cfg_sta(const wifiman_config_sta_t* const p_wifi_cfg_sta, const 
 static bool
 gw_cfg_log_print_file_info(const char* const p_file_name, const bool is_blob, void* const p_user_data)
 {
+    (void)p_user_data;
     size_t     file_size = 0;
     const bool is_exist  = gw_cfg_storage_check_file(p_file_name, is_blob, &file_size);
     char       buf[GW_CFG_LOG_FILE_INFO_BUF_SIZE];

@@ -228,11 +228,9 @@ http_send_async_from_json_stream_gen(http_async_info_t* const p_http_async_info)
     return true;
 }
 
-bool
-http_send_async(http_async_info_t* const p_http_async_info)
+static void
+http_post_log_url(const esp_http_client_config_t* const p_http_config)
 {
-    const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
-
     LOG_INFO(
         "### HTTP POST to URL=http%s://%s:%u/%s%s%s",
         (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
@@ -245,7 +243,32 @@ http_send_async(http_async_info_t* const p_http_async_info)
         (NULL != p_http_config->query)
             ? p_http_config->query
             : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
+}
 
+static void
+http_post_err_log(const esp_http_client_config_t* const p_http_config, const esp_err_t err)
+{
+    LOG_ERR_ESP(
+        err,
+        "### HTTP POST to URL=http%s://%s:%u/%s%s%s: request failed",
+        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+        p_http_config->host,
+        p_http_config->port,
+        (NULL != p_http_config->path)
+            ? p_http_config->path
+            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+        (NULL != p_http_config->query)
+            ? p_http_config->query
+            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
+}
+
+bool
+http_send_async(http_async_info_t* const p_http_async_info)
+{
+    const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
+
+    http_post_log_url(p_http_config);
     ruuvi_log_heap_usage();
 
     if (p_http_async_info->use_json_stream_gen)
@@ -283,19 +306,7 @@ http_send_async(http_async_info_t* const p_http_async_info)
     const esp_err_t err = esp_http_client_perform(p_http_async_info->p_http_client_handle);
     if (ESP_ERR_HTTP_EAGAIN != err)
     {
-        LOG_ERR_ESP(
-            err,
-            "### HTTP POST to URL=http%s://%s:%u/%s%s%s: request failed",
-            (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
-            p_http_config->host,
-            p_http_config->port,
-            (NULL != p_http_config->path)
-                ? p_http_config->path
-                : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
-            ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
-            (NULL != p_http_config->query)
-                ? p_http_config->query
-                : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
+        http_post_err_log(p_http_config, err);
         LOG_DBG("esp_http_client_cleanup");
         if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
         {
@@ -556,19 +567,8 @@ http_async_poll(void)
     {
         const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config
                                                                    .esp_http_client_config;
-        LOG_ERR_ESP(
-            err,
-            "### HTTP POST to URL=http%s://%s:%u/%s%s%s: failed",
-            (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
-            p_http_config->host,
-            p_http_config->port,
-            (NULL != p_http_config->path)
-                ? p_http_config->path
-                : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
-            ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
-            (NULL != p_http_config->query)
-                ? p_http_config->query
-                : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
+
+        http_post_err_log(p_http_config, err);
         if (esp_tls_err_is_ssl_alloc_failed(err))
         {
             // In case if esp_http_client_perform fails with MBEDTLS_ERR_SSL_ALLOC_FAILED

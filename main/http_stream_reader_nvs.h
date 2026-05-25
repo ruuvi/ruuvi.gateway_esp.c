@@ -19,7 +19,7 @@ extern "C" {
 /**
  * @brief Context structure for file-based HTTP stream reader.
  */
-typedef struct http_stream_reader_nvs_ctx
+typedef struct http_stream_reader_nvs_ctx_t
 {
     const char*  p_filename;  /*!< The source file to read from */
     nvs_handle_t handle;      /*!< NVS handle for the opened file */

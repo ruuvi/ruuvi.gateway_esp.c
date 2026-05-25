@@ -16,13 +16,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <inttypes.h>
 
 #include "esp_netif.h"
 #include "lwip/sockets.h"
 #include "mbedtls/md5.h"
 #include "esp_tls_crypto.h"
 
-#include "esp_system.h"
 #include "esp_log.h"
 
 #include "http_utils.h"

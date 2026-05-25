@@ -240,13 +240,13 @@ http_server_cb_on_post_extra_cfg(const char* const p_body, const char* const p_u
         LOG_ERR("HTTP extra_cfg: can't find 'file' in params: %s", p_uri_params);
         return http_server_resp_400();
     }
-    if (LOG_LOCAL_LEVEL >= LOG_LEVEL_INFO)
+    if (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG)
     {
         LOG_DBG("Content (length: %zu): %s", strlen(p_body), p_body);
     }
     else
     {
-        LOG_DBG("Content length: %zu", strlen(p_body));
+        LOG_INFO("Content length: %zu", strlen(p_body));
     }
     bool is_blob = false;
     if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf, &is_blob))

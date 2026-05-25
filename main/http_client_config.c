@@ -18,6 +18,63 @@ static const char TAG[] = "http";
 #warning Debug log level prints out the passwords as a "plaintext".
 #endif
 
+typedef struct stream_reader_info_t
+{
+    http_stream_reader_t const p_cb;
+    void* const                p_cb_param;
+    size_t const               ctx_size;
+} stream_reader_info_t;
+
+static stream_reader_info_t
+stream_reader_info_init(const char* const p_filename)
+{
+    return (stream_reader_info_t) {
+        .p_cb       = (NULL != p_filename) ? &http_stream_reader_nvs : NULL,
+        .p_cb_param = (NULL != p_filename) ? (void*)p_filename : NULL, // NOSONAR
+        .ctx_size   = (NULL != p_filename) ? sizeof(http_stream_reader_nvs_ctx_t) : 0,
+    };
+}
+
+static void
+http_client_config_init_log(
+    const http_client_config_init_params_t* const p_params,
+    const http_client_config_t* const             p_http_client_config)
+{
+    (void)p_params;
+    (void)p_http_client_config;
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    LOG_DBG(
+        "filename_extra_http_path=%s",
+        (NULL != p_params->p_filename_extra_http_path) ? p_params->p_filename_extra_http_path : "<NULL>");
+    LOG_DBG(
+        "filename_extra_http_query=%s",
+        (NULL != p_params->p_filename_extra_http_query) ? p_params->p_filename_extra_http_query : "<NULL>");
+    LOG_DBG(
+        "p_filename_extra_http_headers=%s",
+        (NULL != p_params->p_filename_extra_http_headers) ? p_params->p_filename_extra_http_headers : "<NULL>");
+    const esp_http_client_config_t* const p_http_config = &p_http_client_config->esp_http_client_config;
+    LOG_DBG(
+        "path=%s%s",
+        (NULL != p_http_config->path) ? "/" : "",
+        (NULL != p_http_config->path) ? p_http_config->path : "<NULL>");
+    LOG_DBG("query=%s", (NULL != p_http_config->query) ? p_http_config->query : "<NULL>");
+    LOG_DBG(
+        "URL: http%s://%s:%u/%s%s%s",
+        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+        (NULL != p_http_config->host) ? p_http_config->host : "<NULL>",
+        p_http_config->port,
+        (NULL != p_http_config->path)
+            ? p_http_config->path
+            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+        (NULL != p_http_config->query)
+            ? p_http_config->query
+            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
+    LOG_DBG("user=%s", p_http_client_config->http_user.buf);
+    LOG_DBG("pass=%s", p_http_client_config->http_pass.buf);
+#endif
+}
+
 bool
 http_client_config_init(
     http_client_config_t* const                   p_http_client_config,
@@ -46,39 +103,9 @@ http_client_config_init(
                                                       ? HTTP_AUTH_TYPE_BASIC
                                                       : HTTP_AUTH_TYPE_NONE;
 
-    http_stream_reader_t const cb_path_stream_reader = p_params->p_filename_extra_http_path ? &http_stream_reader_nvs
-                                                                                            : NULL;
-
-    void* const cb_path_stream_reader_param = p_params->p_filename_extra_http_path
-                                                  ? (void*)p_params->p_filename_extra_http_path
-                                                  : NULL;
-
-    size_t const cb_path_stream_reader_ctx_size = p_params->p_filename_extra_http_path
-                                                      ? sizeof(http_stream_reader_nvs_ctx_t)
-                                                      : 0;
-
-    http_stream_reader_t const cb_query_stream_reader = p_params->p_filename_extra_http_query ? &http_stream_reader_nvs
-                                                                                              : NULL;
-
-    void* const cb_query_stream_reader_param = p_params->p_filename_extra_http_query
-                                                   ? (void*)p_params->p_filename_extra_http_query
-                                                   : NULL;
-
-    size_t const cb_query_stream_reader_ctx_size = p_params->p_filename_extra_http_query
-                                                       ? sizeof(http_stream_reader_nvs_ctx_t)
-                                                       : 0;
-
-    http_stream_reader_t const cb_extra_headers_stream_reader = p_params->p_filename_extra_http_headers
-                                                                    ? &http_stream_reader_nvs
-                                                                    : NULL;
-
-    void* const cb_extra_headers_stream_reader_param = p_params->p_filename_extra_http_headers
-                                                           ? (void*)p_params->p_filename_extra_http_headers
-                                                           : NULL;
-
-    size_t const cb_extra_headers_stream_reader_ctx_size = p_params->p_filename_extra_http_headers
-                                                               ? sizeof(http_stream_reader_nvs_ctx_t)
-                                                               : 0;
+    const stream_reader_info_t stream_reader_path    = stream_reader_info_init(p_params->p_filename_extra_http_path);
+    const stream_reader_info_t stream_reader_query   = stream_reader_info_init(p_params->p_filename_extra_http_query);
+    const stream_reader_info_t stream_reader_headers = stream_reader_info_init(p_params->p_filename_extra_http_headers);
 
     p_http_client_config->esp_http_client_config = (esp_http_client_config_t) {
         // clang-format off
@@ -89,16 +116,16 @@ http_client_config_init(
         .password = &p_http_client_config->http_pass.buf[0],
         .auth_type = auth_type,
         .path = NULL,
-        .cb_path_stream_reader = cb_path_stream_reader,
-        .cb_path_stream_reader_param = cb_path_stream_reader_param,
-        .cb_path_stream_reader_ctx_size = cb_path_stream_reader_ctx_size,
+        .cb_path_stream_reader = stream_reader_path.p_cb,
+        .cb_path_stream_reader_param = stream_reader_path.p_cb_param,
+        .cb_path_stream_reader_ctx_size = stream_reader_path.ctx_size,
         .query = NULL,
-        .cb_query_stream_reader = cb_query_stream_reader,
-        .cb_query_stream_reader_param = cb_query_stream_reader_param,
-        .cb_query_stream_reader_ctx_size = cb_query_stream_reader_ctx_size,
-        .cb_extra_headers_stream_reader = cb_extra_headers_stream_reader,
-        .cb_extra_headers_stream_reader_param = cb_extra_headers_stream_reader_param,
-        .cb_extra_headers_stream_reader_ctx_size = cb_extra_headers_stream_reader_ctx_size,
+        .cb_query_stream_reader = stream_reader_query.p_cb,
+        .cb_query_stream_reader_param = stream_reader_query.p_cb_param,
+        .cb_query_stream_reader_ctx_size = stream_reader_query.ctx_size,
+        .cb_extra_headers_stream_reader = stream_reader_headers.p_cb,
+        .cb_extra_headers_stream_reader_param = stream_reader_headers.p_cb_param,
+        .cb_extra_headers_stream_reader_ctx_size = stream_reader_headers.ctx_size,
         .cert_pem = p_params->p_server_cert,
         .client_cert_pem = p_params->p_client_cert,
         .client_key_pem = p_params->p_client_key,
@@ -139,51 +166,21 @@ http_client_config_init(
 
     LOG_DBG("Base URL=%s", p_http_client_config->http_url_copy.buf);
 
-    if (!esp_http_client_config_set_from_url(
-            &p_http_client_config->esp_http_client_config,
-            p_http_client_config->http_url_copy.buf))
+    esp_http_client_config_t* const p_cli_cfg = &p_http_client_config->esp_http_client_config;
+    if (!esp_http_client_config_set_from_url(p_cli_cfg, p_http_client_config->http_url_copy.buf))
     {
         LOG_ERR("esp_http_client_config_set_from_url failed for Base URL: %s", p_http_client_config->http_url_copy.buf);
         return false;
     }
 
-#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    LOG_DBG(
-        "filename_extra_http_path=%s",
-        p_params->p_filename_extra_http_path ? p_params->p_filename_extra_http_path : "<NULL>");
-    LOG_DBG(
-        "filename_extra_http_query=%s",
-        p_params->p_filename_extra_http_query ? p_params->p_filename_extra_http_query : "<NULL>");
-    LOG_DBG(
-        "p_filename_extra_http_headers=%s",
-        p_params->p_filename_extra_http_headers ? p_params->p_filename_extra_http_headers : "<NULL>");
-    const esp_http_client_config_t* const p_http_config = &p_http_client_config->esp_http_client_config;
-    LOG_DBG("path=%s%s", p_http_config->path ? "/" : "", p_http_config->path ? p_http_config->path : "<NULL>");
-    LOG_DBG("query=%s", p_http_config->query ? p_http_config->query : "<NULL>");
-    LOG_DBG(
-        "URL: http%s://%s:%u/%s%s%s",
-        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
-        p_http_config->host ? p_http_config->host : "<NULL>",
-        p_http_config->port,
-        (NULL != p_http_config->path)
-            ? p_http_config->path
-            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
-        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
-        (NULL != p_http_config->query)
-            ? p_http_config->query
-            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
-    LOG_DBG("user=%s", p_http_client_config->http_user.buf);
-    LOG_DBG("pass=%s", p_http_client_config->http_pass.buf);
-#endif
+    http_client_config_init_log(p_params, p_http_client_config);
 
-    if (p_http_client_config->esp_http_client_config.path
-        && p_http_client_config->esp_http_client_config.cb_path_stream_reader)
+    if (p_cli_cfg->path && p_cli_cfg->cb_path_stream_reader)
     {
         LOG_ERR("HTTP client config error: both path and cb_path_stream_reader are set");
         return false;
     }
-    if (p_http_client_config->esp_http_client_config.query
-        && p_http_client_config->esp_http_client_config.cb_query_stream_reader)
+    if (p_cli_cfg->query && p_cli_cfg->cb_query_stream_reader)
     {
         LOG_ERR("HTTP client config error: both query and cb_query_stream_reader are set");
         return false;

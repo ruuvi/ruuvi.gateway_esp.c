@@ -64,7 +64,7 @@ gw_cfg_json_add_number(cJSON* const p_json_root, const char* const p_item_name, 
     return true;
 }
 
-typedef struct gw_cfg_json_add_item_device_info_storage_files_ctx
+typedef struct gw_cfg_json_add_item_device_info_storage_files_ctx_t
 {
     cJSON* p_storage;
     bool   is_ok;

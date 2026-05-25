@@ -11,7 +11,7 @@
 
 #define GW_CFG_STORAGE_NUM_ALLOWED_FILES (15U)
 
-typedef struct gw_cfg_storage_file_info
+typedef struct gw_cfg_storage_file_info_t
 {
     const char* p_file_name;
     bool        is_blob;
@@ -94,7 +94,7 @@ gw_cfg_storage_files_iterate(gw_cfg_storage_files_iterate_cb_t cb, void* const p
     }
 }
 
-typedef struct gw_cfg_storage_files_iterate_cb_is_known_ctx
+typedef struct gw_cfg_storage_files_iterate_cb_is_known_ctx_t
 {
     const char* p_file_name_to_check;
     bool        is_known;

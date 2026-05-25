@@ -1,5 +1,5 @@
 /**
- * @file tcp_transport_stub.c
+ * @file tcp_transport_stub.h
  * @author TheSomeMan
  * @date 2026-04-11
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
