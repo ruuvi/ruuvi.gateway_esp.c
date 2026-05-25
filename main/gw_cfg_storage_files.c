@@ -123,6 +123,9 @@ gw_cfg_storage_is_known_filename(const char* const p_file_name, bool* const p_is
         .is_blob              = false,
     };
     gw_cfg_storage_files_iterate(&gw_cfg_storage_files_iterate_cb_is_known, &ctx);
-    *p_is_blob = ctx.is_blob;
+    if ((NULL != p_is_blob) && ctx.is_known)
+    {
+        *p_is_blob = ctx.is_blob;
+    }
     return ctx.is_known;
 }

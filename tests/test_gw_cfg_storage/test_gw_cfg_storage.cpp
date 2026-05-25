@@ -360,6 +360,61 @@ TEST_F(TestGwCfgStorage, test_gw_cfg_storage_check_fail_nvs_open) // NOLINT
 }
 
 // ============================================================================================
+// gw_cfg_storage_is_known_filename
+// ============================================================================================
+
+TEST_F(TestGwCfgStorage, test_is_known_filename_string_file) // NOLINT
+{
+    bool       is_blob = true; // initialize to opposite of expected
+    const bool result  = gw_cfg_storage_is_known_filename(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, &is_blob);
+
+    ASSERT_TRUE(result);
+    ASSERT_FALSE(is_blob);
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgStorage, test_is_known_filename_blob_file) // NOLINT
+{
+    bool       is_blob = false; // initialize to opposite of expected
+    const bool result  = gw_cfg_storage_is_known_filename(GW_CFG_STORAGE_HTTP_PATH, &is_blob);
+
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(is_blob);
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgStorage, test_is_known_filename_unknown) // NOLINT
+{
+    bool       is_blob = true; // should not be modified
+    const bool result  = gw_cfg_storage_is_known_filename("unknown_file", &is_blob);
+
+    ASSERT_FALSE(result);
+    ASSERT_TRUE(is_blob); // must remain unchanged because filename is unknown
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgStorage, test_is_known_filename_null_p_is_blob_known) // NOLINT
+{
+    const bool result = gw_cfg_storage_is_known_filename(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, nullptr);
+
+    ASSERT_TRUE(result);
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestGwCfgStorage, test_is_known_filename_null_p_is_blob_unknown) // NOLINT
+{
+    const bool result = gw_cfg_storage_is_known_filename("unknown_file", nullptr);
+
+    ASSERT_FALSE(result);
+    ASSERT_EQ("", esp_log_wrapper_get_logs());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+// ============================================================================================
 // gw_cfg_storage_check_file
 // ============================================================================================
 

@@ -6,6 +6,7 @@ set(ProjectId ruuvi_gateway_esp-test-gw_cfg_storage)
 add_executable(${ProjectId}
         test_gw_cfg_storage.cpp
         ${RUUVI_GW_SRC}/gw_cfg_storage.c
+        ${RUUVI_GW_SRC}/gw_cfg_storage_files.c
         ${RUUVI_GW_SRC}/gw_cfg_storage.h
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
         ${RUUVI_ESP_WRAPPERS_INC}/str_buf.h
