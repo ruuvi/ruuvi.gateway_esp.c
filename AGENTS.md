@@ -100,6 +100,8 @@ idf.py build
 ./build_release.sh
 
 # Unit tests (host-side, Google Test, NOT on target)
+# IMPORTANT: always build inside tests/cmake-build-unit-tests — never create
+# a "build" directory, and never create the build directory in the project root.
 cd tests
 cmake -S . -B cmake-build-unit-tests -G Ninja
 cmake --build cmake-build-unit-tests

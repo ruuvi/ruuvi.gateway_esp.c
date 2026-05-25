@@ -43,7 +43,10 @@ ctest --test-dir cmake-build-unit-tests --output-on-failure
 ```bash
 ctest --test-dir cmake-build-unit-tests -R test_gw_cfg --output-on-failure
 ```
-- Alternative build directory names: `build/` (Makefiles) or `cmake-build-unit-tests/` (Ninja).
+- **Build directory rule:** Always use `cmake-build-unit-tests` as the build directory name,
+  created inside `tests/` (i.e., `tests/cmake-build-unit-tests/`). Never use `build/` or any
+  other name, and never create the build directory outside `tests/` (e.g., in the project root).
+  This matches both local convention and CI (`.github/workflows/google-tests.yml`).
 
 ## Code coverage
 - Coverage is **already enabled** in every test target — each `test_*/CMakeLists.txt` adds `-fprofile-arcs -ftest-coverage --coverage` via `target_compile_options` and links with `gcov --coverage`. No extra CMake flags are needed.
