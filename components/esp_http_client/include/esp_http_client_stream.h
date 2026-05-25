@@ -60,7 +60,7 @@ typedef union http_stream_reader_arg {
  */
 typedef struct http_stream_reader_string_ctx {
     const char *p_str; /*!< The source string to read from */
-    size_t data_offset; /*!< The current offset in the source string */;
+    size_t data_offset; /*!< The current offset in the source string */
 } http_stream_reader_string_ctx_t;
 
 /**
