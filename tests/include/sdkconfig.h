@@ -6,6 +6,9 @@
 
 #include <stdbool.h>
 
+#define CONFIG_LOG_TIMESTAMP_SOURCE_RTOS 1
+#define CONFIG_ESP_TLS_USING_MBEDTLS     1
+
 #define CONFIG_IDF_TARGET_ESP32                        1
 #define CONFIG_IDF_CMAKE                               1
 #define CONFIG_IDF_TARGET                              "esp32"
@@ -172,7 +175,7 @@
 #define CONFIG_HEAP_TRACING_OFF                        1
 #define CONFIG_LOG_DEFAULT_LEVEL_INFO                  1
 #define CONFIG_LOG_DEFAULT_LEVEL                       3
-#define CONFIG_LOG_COLORS                              1
+#define CONFIG_LOG_COLORS                              0
 #define CONFIG_LWIP_LOCAL_HOSTNAME                     "espressif"
 #define CONFIG_LWIP_TIMERS_ONDEMAND                    1
 #define CONFIG_LWIP_MAX_SOCKETS                        10

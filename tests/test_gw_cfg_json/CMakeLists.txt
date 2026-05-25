@@ -5,7 +5,6 @@ set(ProjectId ruuvi_gateway_esp-test-gw_cfg_json)
 
 add_executable(${ProjectId}
         test_gw_cfg_json.cpp
-        sdkconfig.h
         ${RUUVI_GW_SRC}/gw_cfg.c
         ${RUUVI_GW_SRC}/gw_cfg.h
         ${RUUVI_GW_SRC}/gw_cfg_blob.c
@@ -87,8 +86,9 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
-        ${WIFI_MANAGER_INC}
         include
+        ../include
+        ${WIFI_MANAGER_INC}
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/app_update/include
         $ENV{IDF_PATH}/components/spi_flash/include

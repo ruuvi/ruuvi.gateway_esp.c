@@ -60,8 +60,9 @@ target_include_directories(${ProjectId} PUBLIC
         ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix/FreeRTOS_Kernel/include
         ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
         ${RUUVI_GW_SRC}
-        ${WIFI_MANAGER_INC}
         include
+        ../include
+        ${WIFI_MANAGER_INC}
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/lwip/include/apps
         $ENV{IDF_PATH}/components/lwip/include/apps/sntp

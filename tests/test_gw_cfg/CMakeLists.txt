@@ -60,6 +60,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${RUUVI_GW_SRC}
         ${WIFI_MANAGER_INC}
         include
+        ../include
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/app_update/include
         $ENV{IDF_PATH}/components/spi_flash/include

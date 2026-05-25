@@ -84,8 +84,9 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
-        ${WIFI_MANAGER_INC}
         include
+        ../include
+        ${WIFI_MANAGER_INC}
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/include
         ${CMAKE_CURRENT_SOURCE_DIR}

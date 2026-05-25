@@ -22,6 +22,8 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
+        include
+        ../include
         ${WIFI_MANAGER_INC}
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/esp_wifi/include
