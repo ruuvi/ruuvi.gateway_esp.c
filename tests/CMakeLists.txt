@@ -84,6 +84,7 @@ add_subdirectory(test_gw_cfg_storage)
 add_subdirectory(test_hmac_sha256)
 add_subdirectory(test_http_json)
 add_subdirectory(test_http_check_post_advs)
+add_subdirectory(test_http_check_post_stat)
 add_subdirectory(test_http_server_cb)
 add_subdirectory(test_leds)
 add_subdirectory(test_leds_blinking)
@@ -243,6 +244,11 @@ add_test(NAME test_http_json
 add_test(NAME test_http_check_post_advs
         COMMAND ruuvi_gateway_esp-test-http_check_post_advs
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_check_post_advs>/gtestresults.xml
+)
+
+add_test(NAME test_http_check_post_stat
+        COMMAND ruuvi_gateway_esp-test-http_check_post_stat
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_check_post_stat>/gtestresults.xml
 )
 
 add_test(NAME test_http_server_cb
