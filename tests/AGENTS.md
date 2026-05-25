@@ -60,6 +60,14 @@ lcov --extract cmake-build-unit-tests/coverage_all.info '*/main/*' \
 lcov --list cmake-build-unit-tests/coverage_main.info
 genhtml cmake-build-unit-tests/coverage_main.info --output-directory cmake-build-unit-tests/coverage_html
 ```
+- Generate coverage for a **single test module** (faster, targeted at one source file):
+```bash
+lcov --capture --directory cmake-build-unit-tests/test_<module> \
+     --output-file cmake-build-unit-tests/coverage_<module>_all.info
+lcov --extract cmake-build-unit-tests/coverage_<module>_all.info '*/main/<module>.c' \
+     --output-file cmake-build-unit-tests/coverage_<module>.info
+lcov --list cmake-build-unit-tests/coverage_<module>.info
+```
 - CI uses `gcovr -r . --sonarqube` for SonarCloud integration (not `lcov`).
 
 ## Test patterns to reuse
@@ -96,3 +104,227 @@ Key CI details for reproducing locally:
 - Required system packages: `gcc g++ cmake make ninja-build mtools git wget libncurses-dev flex bison gperf ccache libffi-dev libssl-dev`.
 - The `de_DE.UTF-8` locale is required by certain tests — install locally with `sudo locale-gen de_DE.UTF-8` if missing.
 
+---
+
+## Log assertion technique
+
+**Always use `esp_log_wrapper_get_logs()` to assert log output** — it fetches *all* pending records as a
+single string and clears the queue in one call. Do **not** use `ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD` /
+`esp_log_wrapper_pop()` (per-record popping is brittle and verbose).
+
+The format produced by `esp_log_wrapper_get_logs()` is:
+```
+"LEVEL tag: parsed_message\n"
+```
+where `LEVEL` is a single character (`E`, `W`, `I`, `D`, `V`).
+
+### Log format by macro
+
+| Macro | Level char | Format of `parsed_message` |
+|---|---|---|
+| `LOG_ERR(fmt, ...)` | `E` | `fmt` expanded (no file/line in message body) |
+| `LOG_WARN(fmt, ...)` | `W` | `fmt` expanded |
+| `LOG_INFO(fmt, ...)` | `I` | `fmt` expanded |
+| `LOG_DBG(fmt, ...)` | `D` | `fmt` expanded (only emitted when `LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG`) |
+| `LOG_ERR_ESP(err, fmt, ...)` | `E` | `"fmt, err=CODE (Error 0xHEX(DEC))"` |
+
+`LOG_DUMP_DBG` / `LOG_DUMP_INFO` etc. are only emitted when the corresponding level is active.
+At `LOG_LOCAL_LEVEL = LOG_LEVEL_INFO` (the default for production source), `LOG_DBG` and
+`LOG_DUMP_DBG` produce **no log records** — do not assert them.
+
+### LOG_ERR_ESP error string format
+
+The `wrap_esp_err_to_name_r` mock (required in every test file that uses `LOG_ERR_ESP`) produces:
+```c
+"Error 0x%x(%d)"   // e.g., "Error 0x1102(4354)"
+```
+So `LOG_ERR_ESP(esp_err, "Some message '%s'", key)` produces the parsed message:
+```
+"Some message 'key', err=4354 (Error 0x1102(4354))"
+```
+
+### Common NVS error codes used in assertions
+
+| Constant | Hex | Decimal |
+|---|---|---|
+| `ESP_ERR_NVS_NOT_FOUND` | `0x1102` | `4354` |
+| `ESP_ERR_NVS_NOT_ENOUGH_SPACE` | `0x1105` | `4357` |
+
+### Example assertion pattern
+
+```cpp
+ASSERT_EQ(
+    "I gw_cfg: Read file 'cfg.json' as string from NVS\n"
+    "E gw_cfg: Can't find string key 'cfg.json' in flash, err=4354 (Error 0x1102(4354))\n"
+    "E gw_cfg: Failed to read file 'cfg.json' (string) from NVS\n",
+    esp_log_wrapper_get_logs());
+```
+
+For success paths with no expected logs use `ASSERT_EQ("", esp_log_wrapper_get_logs())`.
+
+---
+
+## Memory leak detection pattern
+
+Use a `MemAllocTrace` helper class (tracks all live `os_malloc`/`os_calloc` pointers) together with
+`os_malloc` / `os_free_internal` / `os_calloc` mocks that call `m_mem_alloc_trace.add()` /
+`.remove()`. After every test assert:
+```cpp
+ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+```
+This catches any allocation that was not freed (e.g., early return without `str_buf_free_buf`).
+
+`MemAllocTrace` uses `assert()` internally, so a double-free or invalid-free will abort the test
+immediately with a clear failure.
+
+### Malloc failure injection
+
+The test class holds two counters:
+```cpp
+uint32_t m_malloc_cnt {};        // incremented on every os_malloc/os_calloc call
+uint32_t m_malloc_fail_on_cnt {}; // if non-zero: return nullptr when cnt reaches this value
+```
+Set `m_malloc_fail_on_cnt = 1` to fail the **first** allocation in the call under test.
+Set `m_malloc_fail_on_cnt = 2` to fail the **second**, etc.
+
+**Important:** `LOG_ERR_ESP` internally calls `esp_err_to_name_with_alloc_str_buf` which does one
+`os_malloc(120)` + one `os_free`. Count these allocations when choosing `m_malloc_fail_on_cnt`.
+For functions that call `LOG_ERR` (without `_ESP`) no extra allocation occurs.
+
+---
+
+## In-memory NVS mock pattern
+
+When testing modules that use NVS (`nvs_get_str`, `nvs_set_str`, `nvs_get_blob`, `nvs_set_blob`,
+`nvs_erase_key`, `nvs_close`, `ruuvi_nvs_open_gw_cfg_storage`, etc.), implement a full in-memory
+NVS simulation backed by a `std::map<std::string, std::string>` on the test class.
+
+### Required test-class fields
+
+```cpp
+// In-memory NVS storage (key -> data string)
+std::map<std::string, std::string> m_nvs_storage;
+
+// Control flags
+bool     m_nvs_open_fail {};           // make ruuvi_nvs_open_gw_cfg_storage return false
+uint32_t m_nvs_get_str_call_cnt {};
+uint32_t m_nvs_get_str_fail_on_cnt {}; // fail nvs_get_str on this call (0 = never)
+uint32_t m_nvs_get_blob_call_cnt {};
+uint32_t m_nvs_get_blob_fail_on_cnt {};
+bool     m_nvs_set_str_fail {};        // make nvs_set_str return ESP_ERR_NVS_NOT_ENOUGH_SPACE
+bool     m_nvs_set_blob_fail {};
+bool     m_nvs_erase_key_fail {};      // make nvs_erase_key return ESP_ERR_NVS_NOT_FOUND
+
+// Tracking counters (verify calls were made)
+uint32_t m_nvs_close_call_cnt {};
+uint32_t m_ruuvi_nvs_deinit_call_cnt {};
+uint32_t m_ruuvi_nvs_erase_call_cnt {};
+uint32_t m_ruuvi_nvs_init_call_cnt {};
+```
+
+Reset all fields to zero/false in `SetUp()`.
+
+### Mock handle
+
+```cpp
+static const nvs_handle_t MOCK_NVS_VALID_HANDLE = 0xABCDEF42U;
+```
+
+`ruuvi_nvs_open_gw_cfg_storage` writes this into `*p_handle` on success.
+`nvs_close` asserts the handle equals this value and increments `m_nvs_close_call_cnt`.
+
+### Two-phase NVS read mocks
+
+Both `nvs_get_str` and `nvs_get_blob` are called **twice** by the production code:
+1. **Size probe**: `out_value == NULL` → write `*length` and return `ESP_OK` (or error if not found)
+2. **Data read**: `out_value != NULL` → copy data and return `ESP_OK`
+
+Key difference between string and blob:
+
+| | `nvs_get_str` | `nvs_get_blob` |
+|---|---|---|
+| `*length` on probe | `val.size() + 1` (includes `\0`) | `val.size()` (no `\0`) |
+| Null terminator | included in the stored data's length | caller adds `+1` manually |
+
+Use `m_nvs_get_str_fail_on_cnt = 2` (or blob equivalent) to test the second-read failure path.
+
+### `ruuvi_nvs_erase_gw_cfg_storage` mock
+
+Must call `m_nvs_storage.clear()` to simulate erasing the NVS partition. This is essential for
+testing functions like `gw_cfg_storage_deinit_erase_init` that rely on the partition being empty
+after erase and written fresh afterwards.
+
+---
+
+## Static function testing strategy
+
+Functions declared `static` in a `.c` file **cannot be called directly** from a C++ test file and
+**must not** be listed in the public header. Test their code paths only through the **public API**
+functions that call them.
+
+### Decision tree
+
+1. Is the function `static`? → Test only via its public callers.
+2. Remove any direct test cases calling the static function by name.
+3. Identify every error/success branch inside the static function.
+4. For each branch, write a test that uses the public API with mock state that exercises that branch.
+
+### Example: `gw_cfg_storage_read_string_from_nvs` (static)
+
+The function has four branches: key not found, malloc failure, second read failure, success.
+All four are exercised through `gw_cfg_storage_read_file_as_string`:
+
+```cpp
+// malloc failure inside static helper:
+TEST_F(TestGwCfgStorage, test_gw_cfg_storage_read_file_as_string_malloc_fail)
+{
+    this->m_nvs_storage["my_key"] = "hello";
+    this->m_malloc_fail_on_cnt    = 1;  // fail first malloc (file content)
+
+    str_buf_t result = gw_cfg_storage_read_file_as_string("my_key");
+
+    ASSERT_EQ(nullptr, result.buf);
+    ASSERT_EQ(1U, this->m_nvs_close_call_cnt);
+    ASSERT_EQ(
+        "I gw_cfg: Read file 'my_key' as string from NVS\n"
+        "E gw_cfg: Can't allocate 6 bytes for file\n"
+        "E gw_cfg: Failed to read file 'my_key' (string) from NVS\n",
+        esp_log_wrapper_get_logs());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+```
+
+---
+
+## Typical test anatomy
+
+```cpp
+TEST_F(TestModule, test_function_scenario) // NOLINT
+{
+    // 1. Arrange — set mock state
+    this->m_nvs_storage["key"] = "value";
+    this->m_nvs_set_str_fail   = true;
+
+    // 2. Act — call the function under test
+    const bool result = function_under_test("key", "new_value");
+
+    // 3. Assert — verify return value, side effects, logs, no leaks
+    ASSERT_FALSE(result);
+    ASSERT_EQ(1U, this->m_nvs_close_call_cnt);
+    ASSERT_EQ(
+        "I tag: Info log message\n"
+        "E tag: Error log message, err=4357 (Error 0x1105(4357))\n",
+        esp_log_wrapper_get_logs());
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+```
+
+Key assertions to include in every test:
+- **Return value** — most important
+- **NVS state** — verify `m_nvs_storage` entries were added/removed/unchanged
+- **Call counts** — verify `m_nvs_close_call_cnt`, `m_ruuvi_nvs_*_call_cnt` as appropriate
+- **Logs** — `ASSERT_EQ("...\n", esp_log_wrapper_get_logs())` — verifies exact log output and clears queue
+- **Memory** — `ASSERT_TRUE(this->m_mem_alloc_trace.is_empty())` — verifies no leaks
+
+For public API functions returning `str_buf_t` (heap-allocated buffer), always call
+`str_buf_free_buf(&result)` before the memory leak assertion.
