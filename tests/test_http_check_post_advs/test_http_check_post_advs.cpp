@@ -1663,3 +1663,56 @@ TEST_F(TestHttpCheckPostAdvs, test_http_handle_add_auth_fail)
     ASSERT_EQ("E http: http_post_advs failed\n", esp_log_wrapper_get_logs());
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
+
+TEST_F(TestHttpCheckPostAdvs, test_http_client_config_init_url_parse_fail)
+{
+    const http_check_params_t params = {
+        .p_url                  = "https://myserver.com/api",
+        .auth_type              = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_user                 = NULL,
+        .p_pass                 = NULL,
+        .use_ssl_client_cert    = false,
+        .use_ssl_server_cert    = false,
+        .use_extra_http_path    = false,
+        .use_extra_http_query   = false,
+        .use_extra_http_headers = false,
+    };
+    // Make esp_http_client_config_set_from_url fail, which causes http_client_config_init to return false
+    this->m_mock_esp_http_client_config_set_from_url_result = false;
+    http_server_resp_t resp                                 = http_check_post_advs(&params, 10);
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    http_server_resp_free(&resp);
+    ASSERT_EQ(
+        "E http: esp_http_client_config_set_from_url failed for URL: https://myserver.com/api\n"
+        "E http: http_post_advs failed\n",
+        esp_log_wrapper_get_logs());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpCheckPostAdvs, test_http_client_config_init_url_parse_fail_with_ssl_certs)
+{
+    const http_check_params_t params = {
+        .p_url                  = "https://myserver.com/api",
+        .auth_type              = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_user                 = NULL,
+        .p_pass                 = NULL,
+        .use_ssl_client_cert    = true,
+        .use_ssl_server_cert    = true,
+        .use_extra_http_path    = false,
+        .use_extra_http_query   = false,
+        .use_extra_http_headers = false,
+    };
+    this->m_mock_ssl_client_cert = "fake_client_cert";
+    this->m_mock_ssl_client_key  = "fake_client_key";
+    this->m_mock_ssl_server_cert = "fake_server_cert";
+    // Make esp_http_client_config_set_from_url fail inside http_client_config_init
+    this->m_mock_esp_http_client_config_set_from_url_result = false;
+    http_server_resp_t resp                                 = http_check_post_advs(&params, 10);
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    http_server_resp_free(&resp);
+    ASSERT_EQ(
+        "E http: esp_http_client_config_set_from_url failed for URL: https://myserver.com/api\n"
+        "E http: http_post_advs failed\n",
+        esp_log_wrapper_get_logs());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}

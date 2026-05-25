@@ -116,7 +116,10 @@ http_client_config_init_for_http_target(
         .ssl_buf_cfg.ssl_out_content_len = RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN,
     };
 
-    http_client_config_init(p_http_client_config, &http_cli_cfg_params, p_user_data);
+    if (!http_client_config_init(p_http_client_config, &http_cli_cfg_params, p_user_data))
+    {
+        return false;
+    }
 
     return true;
 }

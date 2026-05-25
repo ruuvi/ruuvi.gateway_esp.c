@@ -77,7 +77,11 @@ http_send_statistics_internal(
         .ssl_buf_cfg.ssl_out_content_len = RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN,
     };
 
-    http_client_config_init(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data);
+    if (!http_client_config_init(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data))
+    {
+        http_async_info_free_data(p_http_async_info);
+        return false;
+    }
 
     p_http_async_info->p_http_client_handle = esp_http_client_init(
         &p_http_async_info->http_client_config.esp_http_client_config);
