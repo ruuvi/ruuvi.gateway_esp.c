@@ -43,12 +43,16 @@ http_stream_reader_nvs(const http_stream_reader_cmd_e cmd, const http_stream_rea
             if (ESP_OK != esp_err)
             {
                 LOG_ERR_ESP(esp_err, "Can't find key '%s' in NVS", p_context->p_filename);
+                nvs_close(p_context->handle);
+                p_context->handle = 0;
                 return -1;
             }
             LOG_DBG("File '%s' size=%zu", p_context->p_filename, p_context->file_size);
             if (0 == p_context->file_size)
             {
                 LOG_ERR("File '%s' is empty", p_context->p_filename);
+                nvs_close(p_context->handle);
+                p_context->handle = 0;
                 return -1;
             }
 

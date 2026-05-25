@@ -95,6 +95,7 @@ add_subdirectory(test_nrf52fw)
 add_subdirectory(test_nrf52swd)
 add_subdirectory(test_ruuvi_auth)
 add_subdirectory(test_ruuvi_nvs)
+add_subdirectory(test_http_stream_reader_nvs)
 add_subdirectory(test_time_str)
 add_subdirectory(test_time_task)
 add_subdirectory(test_url_encode)
@@ -297,6 +298,11 @@ add_test(NAME test_ruuvi_auth
 add_test(NAME test_ruuvi_nvs
         COMMAND ruuvi_gateway_esp-test-ruuvi_nvs
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-ruuvi_nvs>/gtestresults.xml
+)
+
+add_test(NAME test_http_stream_reader_nvs
+        COMMAND ruuvi_gateway_esp-test-http_stream_reader_nvs
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_stream_reader_nvs>/gtestresults.xml
 )
 
 add_test(NAME test_time_str
