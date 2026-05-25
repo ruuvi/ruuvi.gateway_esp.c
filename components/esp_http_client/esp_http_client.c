@@ -1861,7 +1861,7 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t const cli
             }
             if (wret <= 0) {
                 if (client->is_async && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
-                    return ESP_ERR_HTTP_EAGAIN; // In case of EAGAIN error, we return ESP_ERR_HTTP_WRITE_DATA
+                    return ESP_ERR_HTTP_EAGAIN;
                 }
                 ESP_LOGE(TAG, "Error write request");
                 esp_http_client_close(client);
