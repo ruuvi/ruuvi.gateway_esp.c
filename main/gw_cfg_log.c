@@ -309,6 +309,28 @@ gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t* const p_remote)
 }
 
 static void
+gw_cfg_log_extra_http_option(const bool is_enabled, const char* const p_storage_name, const char* const p_label)
+{
+    if (is_enabled)
+    {
+        size_t     file_size    = 0;
+        const bool is_cfg_exist = gw_cfg_storage_check_file(p_storage_name, true, &file_size);
+        if (is_cfg_exist)
+        {
+            LOG_INFO("config: use extra http %s: %s (%zu bytes)", p_label, "yes", file_size);
+        }
+        else
+        {
+            LOG_WARN("config: use extra http %s: %s", p_label, "yes, but file does not exist");
+        }
+    }
+    else
+    {
+        LOG_INFO("config: use extra http %s: %s", p_label, "no");
+    }
+}
+
+static void
 gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
 {
     LOG_INFO("config: use http ruuvi: %d", p_http->use_http_ruuvi);
@@ -316,57 +338,9 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
     if (p_http->use_http)
     {
         LOG_INFO("config: http url: %s", p_http->http_url.buf);
-        if (p_http->http_use_extra_http_path)
-        {
-            size_t     file_size    = 0;
-            const bool is_cfg_exist = gw_cfg_storage_check_file(GW_CFG_STORAGE_HTTP_PATH, true, &file_size);
-            if (is_cfg_exist)
-            {
-                LOG_INFO("config: use extra http path: %s (%zu bytes)", "yes", file_size);
-            }
-            else
-            {
-                LOG_WARN("config: use extra http path: %s", "yes, but file does not exist");
-            }
-        }
-        else
-        {
-            LOG_INFO("config: use extra http path: %s", "no");
-        }
-        if (p_http->http_use_extra_http_query)
-        {
-            size_t     file_size    = 0;
-            const bool is_cfg_exist = gw_cfg_storage_check_file(GW_CFG_STORAGE_HTTP_QUERY, true, &file_size);
-            if (is_cfg_exist)
-            {
-                LOG_INFO("config: use extra http query: %s (%zu bytes)", "yes", file_size);
-            }
-            else
-            {
-                LOG_WARN("config: use extra http query: %s", "yes, but file does not exist");
-            }
-        }
-        else
-        {
-            LOG_INFO("config: use extra http query: %s", "no");
-        }
-        if (p_http->http_use_extra_http_headers)
-        {
-            size_t     file_size    = 0;
-            const bool is_cfg_exist = gw_cfg_storage_check_file(GW_CFG_STORAGE_HTTP_HEADERS, true, &file_size);
-            if (is_cfg_exist)
-            {
-                LOG_INFO("config: use extra http headers: %s (%zu bytes)", "yes", file_size);
-            }
-            else
-            {
-                LOG_WARN("config: use extra http headers: %s", "yes, but file does not exist");
-            }
-        }
-        else
-        {
-            LOG_INFO("config: use extra http headers: %s", "no");
-        }
+        gw_cfg_log_extra_http_option(p_http->http_use_extra_http_path, GW_CFG_STORAGE_HTTP_PATH, "path");
+        gw_cfg_log_extra_http_option(p_http->http_use_extra_http_query, GW_CFG_STORAGE_HTTP_QUERY, "query");
+        gw_cfg_log_extra_http_option(p_http->http_use_extra_http_headers, GW_CFG_STORAGE_HTTP_HEADERS, "headers");
         LOG_INFO("config: http period: %lu", (printf_ulong_t)p_http->http_period);
         switch (p_http->data_format)
         {
