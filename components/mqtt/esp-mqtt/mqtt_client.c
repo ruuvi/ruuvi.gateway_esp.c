@@ -105,6 +105,7 @@ typedef enum {
     MQTT_STATE_DISCONNECTED,
     MQTT_STATE_CONNECTED,
     MQTT_STATE_WAIT_RECONNECT,
+    MQTT_STATE_RESOURCES_FREED, /*!< Internal resources have been freed; handle is still valid but unusable until destroy */
 } mqtt_client_state_t;
 
 struct esp_mqtt_client {
@@ -808,9 +809,12 @@ esp_mqtt_client_handle_t esp_mqtt_client_init(const esp_mqtt_client_config_t *co
     mqtt_msg_init(&client->mqtt_state.mqtt_connection, client->mqtt_state.out_buffer,
                   client->mqtt_state.out_buffer_length);
 
+    client->state = MQTT_STATE_INIT;
+
     return client;
 _mqtt_init_failed:
     esp_mqtt_client_free_resources(client);
+    free(client);
     return NULL;
 }
 
@@ -819,23 +823,34 @@ static void esp_mqtt_client_free_resources(esp_mqtt_client_handle_t client)
     if (client == NULL) {
         return;
     }
+    if (client->state == MQTT_STATE_RESOURCES_FREED) {
+        return;
+    }
     esp_mqtt_destroy_config(client);
     if (client->transport_list) {
         esp_transport_list_destroy(client->transport_list);
+        client->transport_list = NULL;
     }
+    client->transport = NULL;
     if (client->outbox) {
         outbox_destroy(client->outbox);
+        client->outbox = NULL;
     }
     if (client->status_bits) {
         vEventGroupDelete(client->status_bits);
+        client->status_bits = NULL;
     }
     free(client->mqtt_state.in_buffer);
+    client->mqtt_state.in_buffer = NULL;
     free(client->mqtt_state.out_buffer);
+    client->mqtt_state.out_buffer = NULL;
     if (client->api_lock) {
         vSemaphoreDelete(client->api_lock);
+        client->api_lock = NULL;
     }
     free(client->event.error_handle);
-    free(client);
+    client->event.error_handle = NULL;
+    client->state = MQTT_STATE_RESOURCES_FREED;
 }
 
 
@@ -844,18 +859,21 @@ esp_err_t esp_mqtt_client_destroy(esp_mqtt_client_handle_t client)
     if (client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (client->api_lock) {
-        const esp_err_t err = esp_mqtt_client_stop(client);
-        if (ESP_OK != err) {
-            // The MQTT task is still running (e.g. called from the MQTT task
-            // itself, or stop timed out). We must not free resources that the
-            // task is still using — the caller should handle this error
-            // (e.g. by restarting the system).
-            ESP_LOGE(TAG, "esp_mqtt_client_stop failed with err=%d, cannot free resources", err);
-            return err;
+    if (client->state != MQTT_STATE_RESOURCES_FREED) {
+        if (client->api_lock) {
+            const esp_err_t err = esp_mqtt_client_stop(client);
+            if (ESP_OK != err) {
+                // The MQTT task is still running (e.g. called from the MQTT task
+                // itself, or stop timed out). We must not free resources that the
+                // task is still using — the caller should handle this error
+                // (e.g. by restarting the system).
+                ESP_LOGE(TAG, "esp_mqtt_client_stop failed with err=%d, cannot free resources", err);
+                return err;
+            }
         }
+        esp_mqtt_client_free_resources(client);
     }
-    esp_mqtt_client_free_resources(client);
+    free(client);
     return ESP_OK;
 }
 
@@ -1421,18 +1439,6 @@ static void esp_mqtt_task(void *pv)
     outbox_tick_t msg_tick = 0;
     client->run = true;
 
-    //get transport by scheme
-    client->transport = esp_transport_list_get_transport(client->transport_list, client->config->scheme);
-
-    if (client->transport == NULL) {
-        ESP_LOGE(TAG, "There are no transports valid, stop mqtt client, config scheme = %s", client->config->scheme);
-        client->run = false;
-    }
-    //default port
-    if (client->config->port == 0) {
-        client->config->port = esp_transport_get_default_port(client->transport);
-    }
-
     client->state = MQTT_STATE_INIT;
     xEventGroupClearBits(client->status_bits, STOPPED_BIT);
     while (client->run) {
@@ -1468,7 +1474,7 @@ static void esp_mqtt_task(void *pv)
                 esp_mqtt_abort_connection(client);
                 break;
             }
-            ESP_LOGD(TAG, "Transport connected to %s://%s:%d", client->config->scheme, client->config->host, client->config->port);
+            ESP_LOGI(TAG, "Transport connected to %s://%s:%d", client->config->scheme, client->config->host, client->config->port);
             if (esp_mqtt_connect(client, client->config->network_timeout_ms) != ESP_OK) {
                 ESP_LOGE(TAG, "MQTT connect failed");
                 esp_mqtt_abort_connection(client);
@@ -1544,13 +1550,13 @@ static void esp_mqtt_task(void *pv)
             if (!client->config->auto_reconnect) {
                 client->run = false;
                 client->state = MQTT_STATE_DISCONNECTED;
-                ESP_LOGD(TAG, "MQTT client disconnected.");
+                ESP_LOGI(TAG, "MQTT client disconnected.");
                 break;
             }
             if (platform_tick_get_ms() - client->reconnect_tick > client->wait_timeout_ms) {
                 client->state = MQTT_STATE_INIT;
                 client->reconnect_tick = platform_tick_get_ms();
-                ESP_LOGD(TAG, "Reconnecting...");
+                ESP_LOGI(TAG, "Reconnecting...");
                 break;
             }
             MQTT_API_UNLOCK(client);
@@ -1562,15 +1568,19 @@ static void esp_mqtt_task(void *pv)
             ESP_LOGE(TAG, "MQTT client error, client is in an unrecoverable state.");
             break;
         }
+        const mqtt_client_state_t client_state = client->state;
         MQTT_API_UNLOCK(client);
-        if (MQTT_STATE_CONNECTED == client->state) {
+        if (MQTT_STATE_CONNECTED == client_state) {
             if (esp_transport_poll_read(client->transport, MQTT_POLL_READ_TIMEOUT_MS) < 0) {
                 ESP_LOGE(TAG, "Poll read error: %d, aborting connection", errno);
                 esp_mqtt_abort_connection(client);
             }
         }
-
+        else if (MQTT_STATE_DISCONNECTED == client_state) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
     }
+    ESP_LOGI(TAG, "MQTT task stopped");
     esp_transport_close(client->transport);
     outbox_delete_all_items(client->outbox);
     xEventGroupSetBits(client->status_bits, STOPPED_BIT);
@@ -1582,9 +1592,25 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client)
 {
     if (!client) {
         ESP_LOGE(TAG, "Client was not initialized");
+        esp_mqtt_client_free_resources(client);
         return ESP_ERR_INVALID_ARG;
     }
     MQTT_API_LOCK(client);
+
+    //get transport by scheme
+    client->transport = esp_transport_list_get_transport(client->transport_list, client->config->scheme);
+
+    if (client->transport == NULL) {
+        ESP_LOGE(TAG, "There are no transports valid, stop mqtt client, config scheme = %s", client->config->scheme);
+        MQTT_API_UNLOCK(client);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    //default port
+    if (client->config->port == 0) {
+        client->config->port = esp_transport_get_default_port(client->transport);
+    }
+
     if (client->state != MQTT_STATE_INIT && client->state != MQTT_STATE_DISCONNECTED) {
         ESP_LOGE(TAG, "Client has already started, current state=%d", client->state);
         MQTT_API_UNLOCK(client);
@@ -1647,6 +1673,7 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
     }
     MQTT_API_LOCK(client);
     if (client->run) {
+        ESP_LOGI(TAG, "Stop Client %p", client);
         /* A running client cannot be stopped from the MQTT task/event handler */
         TaskHandle_t running_task = xTaskGetCurrentTaskHandle();
         if (running_task == client->task_handle) {
@@ -1658,6 +1685,7 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
         // Only send the disconnect message if the client is connected
         if (client->state == MQTT_STATE_CONNECTED) {
             // Notify the broker we are disconnecting
+            ESP_LOGI(TAG, "Send MQTT disconnect command");
             client->mqtt_state.outbound_message = mqtt_msg_disconnect(&client->mqtt_state.mqtt_connection);
             if (client->mqtt_state.outbound_message->length == 0) {
                 ESP_LOGE(TAG, "Disconnect message cannot be created");
@@ -1669,6 +1697,7 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
             }
         }
 
+        ESP_LOGI(TAG, "Signaling MQTT task to stop");
         client->run = false;
         client->state = MQTT_STATE_DISCONNECTED;
         MQTT_API_UNLOCK(client);
@@ -1693,6 +1722,7 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
             EventBits_t bits = xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true,
                                                    pdMS_TO_TICKS(1000));
             if (bits & STOPPED_BIT) {
+                ESP_LOGI(TAG, "Client stopped");
                 return ESP_OK;
             }
             ESP_LOGW(TAG, "Waiting for mqtt task to stop (%d/%d)...", attempt + 1, ESP_MQTT_CLIENT_STOP_TIMEOUT_SECONDS);
@@ -1709,7 +1739,7 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
         ESP_LOGE(TAG, "MQTT task did not stop within the expected time");
         return ESP_ERR_TIMEOUT;
     } else {
-        ESP_LOGW(TAG, "Client asked to stop, but was not started");
+        ESP_LOGW(TAG, "Client %p asked to stop, but was not started", client);
         MQTT_API_UNLOCK(client);
         return ESP_OK;
     }
