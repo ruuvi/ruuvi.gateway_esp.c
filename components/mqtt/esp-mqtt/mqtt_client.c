@@ -832,6 +832,7 @@ esp_mqtt_client_handle_t esp_mqtt_client_init(const esp_mqtt_client_config_t *co
                   client->mqtt_state.out_buffer_length);
 
     client->state = MQTT_STATE_INIT;
+    xEventGroupSetBits(client->status_bits, STOPPED_BIT);
 
     return client;
 _mqtt_init_failed:
@@ -1709,6 +1710,46 @@ esp_err_t esp_mqtt_client_reconnect(esp_mqtt_client_handle_t client)
     return ESP_OK;
 }
 
+static bool esp_mqtt_wait_client_stopped(esp_mqtt_client_handle_t client)
+{
+    // Wait for the MQTT task to stop using short intervals (1 second) and
+    // feed the task watchdog on each iteration to prevent it from triggering
+    // (the watchdog is typically configured for 3-5 seconds).
+    bool transport_closed = false;
+
+#if defined(CONFIG_ESP_TASK_WDT)
+    // Check if the calling task is subscribed to the task watchdog.
+    // If so, we need to feed it periodically during the wait.
+    const bool is_task_wdt_subscribed = (esp_task_wdt_status(NULL) == ESP_OK);
+#endif
+
+    for (int attempt = 0; attempt < ESP_MQTT_CLIENT_STOP_TIMEOUT_SECONDS; attempt++) {
+#if defined(CONFIG_ESP_TASK_WDT)
+        if (is_task_wdt_subscribed) {
+            esp_task_wdt_reset();
+        }
+#endif
+        const EventBits_t bits = xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true,
+                                                     pdMS_TO_TICKS(1000));
+        if (0 != (bits & STOPPED_BIT)) {
+            MQTT_LOGI("Client stopped");
+            return true;
+        }
+        MQTT_LOGW("Waiting for mqtt task to stop (%d/%d)...", attempt + 1, ESP_MQTT_CLIENT_STOP_TIMEOUT_SECONDS);
+        if (!transport_closed && client->transport) {
+            // Force-close the transport once to unblock any pending I/O
+            // (connect/read/write/poll). The MQTT task will also call
+            // esp_transport_close after exiting its loop, which is safe
+            // on an already-closed transport.
+            MQTT_LOGW("Force-closing transport to unblock mqtt task");
+            esp_transport_close(client->transport);
+            transport_closed = true;
+        }
+    }
+    MQTT_LOGE("MQTT task did not stop within the expected time");
+    return false;
+}
+
 esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
 {
     if (!client) {
@@ -1744,56 +1785,14 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
         MQTT_LOGI("Signaling MQTT task to stop");
         client->run = false;
         client->state = MQTT_STATE_DISCONNECTED;
-        MQTT_API_UNLOCK(client);
-
-        // Wait for the MQTT task to stop using short intervals (1 second) and
-        // feed the task watchdog on each iteration to prevent it from triggering
-        // (the watchdog is typically configured for 3-5 seconds).
-        bool transport_closed = false;
-
-#if defined(CONFIG_ESP_TASK_WDT)
-        // Check if the calling task is subscribed to the task watchdog.
-        // If so, we need to feed it periodically during the wait.
-        const bool is_task_wdt_subscribed = (esp_task_wdt_status(NULL) == ESP_OK);
-#endif
-
-        for (int attempt = 0; attempt < ESP_MQTT_CLIENT_STOP_TIMEOUT_SECONDS; attempt++) {
-#if defined(CONFIG_ESP_TASK_WDT)
-            if (is_task_wdt_subscribed) {
-                esp_task_wdt_reset();
-            }
-#endif
-            EventBits_t bits = xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true,
-                                                   pdMS_TO_TICKS(1000));
-            if (bits & STOPPED_BIT) {
-                MQTT_LOGI("Client stopped");
-                return ESP_OK;
-            }
-            MQTT_LOGW("Waiting for mqtt task to stop (%d/%d)...", attempt + 1, ESP_MQTT_CLIENT_STOP_TIMEOUT_SECONDS);
-            if (!transport_closed && client->transport) {
-                // Force-close the transport once to unblock any pending I/O
-                // (connect/read/write/poll). The MQTT task will also call
-                // esp_transport_close after exiting its loop, which is safe
-                // on an already-closed transport.
-                MQTT_LOGW("Force-closing transport to unblock mqtt task");
-                esp_transport_close(client->transport);
-                transport_closed = true;
-            }
-        }
-        MQTT_LOGE("MQTT task did not stop within the expected time");
-        return ESP_ERR_TIMEOUT;
     } else {
         MQTT_LOGW("Client %p asked to stop, but it was not started or is in the process of stopping", client);
-        MQTT_API_UNLOCK(client);
-        const EventBits_t bits = xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true,
-                                          pdMS_TO_TICKS(3U * 1000U));
-        if (0 == (bits & STOPPED_BIT)) {
-            MQTT_LOGE("Client did not stop within the expected time");
-            return ESP_ERR_TIMEOUT;
-        }
-        MQTT_LOGI("Client stopped");
-        return ESP_OK;
     }
+    MQTT_API_UNLOCK(client);
+    if (!esp_mqtt_wait_client_stopped(client)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    return ESP_OK;
 }
 
 static esp_err_t esp_mqtt_client_ping(esp_mqtt_client_handle_t client)
