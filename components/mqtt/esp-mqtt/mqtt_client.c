@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include "platform.h"
 
@@ -151,15 +152,6 @@ static char *create_string(const char *ptr, int len);
 static int mqtt_message_receive(esp_mqtt_client_handle_t client, int read_poll_timeout_ms);
 static void esp_mqtt_client_dispatch_transport_error(esp_mqtt_client_handle_t client);
 
-
-#if MQTT_ENABLE_SSL
-enum esp_mqtt_ssl_cert_key_api {
-    MQTT_SSL_DATA_API_CA_CERT,
-    MQTT_SSL_DATA_API_CLIENT_CERT,
-    MQTT_SSL_DATA_API_CLIENT_KEY,
-    MQTT_SSL_DATA_API_MAX,
-};
-
 static const char*
 get_task_name(void)
 {
@@ -174,6 +166,14 @@ get_task_name(void)
     }
     return task_name;
 }
+
+#if MQTT_ENABLE_SSL
+enum esp_mqtt_ssl_cert_key_api {
+    MQTT_SSL_DATA_API_CA_CERT,
+    MQTT_SSL_DATA_API_CLIENT_CERT,
+    MQTT_SSL_DATA_API_CLIENT_KEY,
+    MQTT_SSL_DATA_API_MAX,
+};
 
 static esp_err_t esp_mqtt_set_cert_key_data(esp_transport_handle_t ssl, enum esp_mqtt_ssl_cert_key_api what,
                                             const char *cert_key_data, int cert_key_len)
@@ -1913,14 +1913,12 @@ static inline int mqtt_client_enqueue_priv(esp_mqtt_client_handle_t client, cons
         // by default store as QUEUED (not transmitted yet) only for messages which would fit outbound buffer
         if (client->mqtt_state.mqtt_connection.message.fragmented_msg_total_length == 0) {
             if (!mqtt_enqueue(client)) {
-                MQTT_LOGE("[%s/%d] Failed to enqueue, outbox max size reached, msg_id=%d",
-                         pcTaskGetTaskName(NULL), uxTaskPriorityGet(NULL), pending_msg_id);
+                MQTT_LOGE("Failed to enqueue, outbox max size reached, msg_id=%d", pending_msg_id);
             }
         } else {
             int first_fragment = client->mqtt_state.outbound_message->length - client->mqtt_state.outbound_message->fragmented_msg_data_offset;
             if (!mqtt_enqueue_oversized(client, ((uint8_t *)data) + first_fragment, len - first_fragment)) {
-                MQTT_LOGE("[%s/%d] Failed to enqueue oversized, outbox max size reached, msg_id=%d",
-                         pcTaskGetTaskName(NULL), uxTaskPriorityGet(NULL), pending_msg_id);
+                MQTT_LOGE("Failed to enqueue oversized, outbox max size reached, msg_id=%d", pending_msg_id);
             }
             client->mqtt_state.outbound_message->fragmented_msg_total_length = 0;
         }
