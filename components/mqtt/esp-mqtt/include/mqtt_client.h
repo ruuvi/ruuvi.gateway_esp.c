@@ -268,14 +268,14 @@ esp_err_t esp_mqtt_client_disconnect(esp_mqtt_client_handle_t client);
  * @brief Stops mqtt client tasks
  *
  *  * Notes:
- *  - Cannot be called from the mqtt event handler
+ *  - Cannot be called from the mqtt event handler.
  *
- * @param client    mqtt client handle
+ * @param client    mqtt client handle.
  *
- * @return ESP_OK on success or if client is not started
- *         ESP_ERR_INVALID_ARG on wrong initialization
- *         ESP_FAIL if client is in invalid state
- *         ESP_ERR_TIMEOUT if the client does not stop within the bounded wait
+ * @return ESP_OK on success or if the client is not started.
+ *         ESP_ERR_INVALID_ARG on a wrong initialization.
+ *         ESP_FAIL if the client is in an invalid state or the function is called from the MQTT event handler.
+ *         ESP_ERR_TIMEOUT if the client does not stop within the bounded wait.
  */
 esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client);
 
@@ -360,15 +360,17 @@ int esp_mqtt_client_publish(esp_mqtt_client_handle_t client, const char *topic, 
 int esp_mqtt_client_enqueue(esp_mqtt_client_handle_t client, const char *topic, const char *data, int len, int qos, int retain, bool store);
 
 /**
- * @brief Destroys the client handle
+ * @brief Destroys the client handle.
  *
  * Notes:
- *  - Cannot be called from the mqtt event handler
+ *  - Cannot be called from the mqtt event handler.
  *
- * @param client    mqtt client handle
+ * @param client    mqtt client handle.
  *
  * @return ESP_OK
- *         ESP_ERR_INVALID_ARG on wrong initialization
+ *         ESP_ERR_INVALID_ARG on wrong initialization.
+ *         ESP_FAIL if the client is in an invalid state or the function is called from the MQTT event handler.
+ *         ESP_ERR_TIMEOUT if the client does not stop within the bounded wait.
  */
 esp_err_t esp_mqtt_client_destroy(esp_mqtt_client_handle_t client);
 
