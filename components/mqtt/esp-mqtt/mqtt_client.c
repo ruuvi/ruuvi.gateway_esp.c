@@ -1639,6 +1639,12 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client)
         return ESP_FAIL;
     }
 
+    if (0 != (xEventGroupGetBits(client->status_bits) & STARTED_BIT)) {
+        MQTT_LOGE("MQTT task is in started state");
+        MQTT_API_UNLOCK(client);
+        return ESP_FAIL;
+    }
+
     //get transport by scheme
     client->transport = esp_transport_list_get_transport(client->transport_list, client->config->scheme);
 
@@ -1653,7 +1659,6 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client)
         client->config->port = esp_transport_get_default_port(client->transport);
     }
 
-    xEventGroupClearBits(client->status_bits, STARTED_BIT);
     MQTT_LOGI("Create MQTT client task and wait until it starts...");
 
     esp_err_t err = ESP_OK;
