@@ -235,8 +235,6 @@ esp_err_t esp_mqtt_client_set_uri(esp_mqtt_client_handle_t client, const char *u
  *
  * @param client    mqtt client handle
  *
- * @note If an error is returned, then the caller must call `esp_mqtt_client_destroy` to free the client handle.
- *
  * @return ESP_OK on success
  *         ESP_ERR_INVALID_ARG on wrong initialization
  *         ESP_FAIL on other error
