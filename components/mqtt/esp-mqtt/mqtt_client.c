@@ -132,6 +132,7 @@ struct esp_mqtt_client {
 const static int STOPPED_BIT = (1 << 0);
 const static int RECONNECT_BIT = (1 << 1);
 const static int DISCONNECT_BIT = (1 << 2);
+const static int STARTED_BIT = (1 << 3);
 
 static esp_err_t esp_mqtt_dispatch_event(esp_mqtt_client_handle_t client);
 static esp_err_t esp_mqtt_dispatch_event_with_msgid(esp_mqtt_client_handle_t client);
@@ -670,7 +671,7 @@ static esp_err_t esp_mqtt_connect(esp_mqtt_client_handle_t client, int timeout_m
     client->mqtt_state.in_buffer_read_len = 0;
     connect_rsp_code = mqtt_get_connect_return_code(client->mqtt_state.in_buffer);
     if (connect_rsp_code == MQTT_CONNECTION_ACCEPTED) {
-        ESP_LOGD(TAG, "Connected");
+        ESP_LOGI(TAG, "Connected");
         return ESP_OK;
     }
     switch (connect_rsp_code) {
@@ -709,7 +710,7 @@ static void esp_mqtt_abort_connection(esp_mqtt_client_handle_t client)
     client->wait_timeout_ms = client->config->reconnect_timeout_ms;
     client->reconnect_tick = platform_tick_get_ms();
     client->state = MQTT_STATE_WAIT_RECONNECT;
-    ESP_LOGD(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
+    ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
     client->event.event_id = MQTT_EVENT_DISCONNECTED;
     client->wait_for_ping_resp = false;
     esp_mqtt_dispatch_event_with_msgid(client);
@@ -1441,6 +1442,8 @@ static void esp_mqtt_task(void *pv)
 
     client->state = MQTT_STATE_INIT;
     xEventGroupClearBits(client->status_bits, STOPPED_BIT);
+    ESP_LOGI(TAG, "MQTT task started");
+    xEventGroupSetBits(client->status_bits, STARTED_BIT);
     while (client->run) {
         MQTT_API_LOCK(client);
         switch (client->state) {
@@ -1583,6 +1586,7 @@ static void esp_mqtt_task(void *pv)
     ESP_LOGI(TAG, "MQTT task stopped");
     esp_transport_close(client->transport);
     outbox_delete_all_items(client->outbox);
+    xEventGroupClearBits(client->status_bits, STARTED_BIT);
     xEventGroupSetBits(client->status_bits, STOPPED_BIT);
 
     vTaskDelete(NULL);
@@ -1622,6 +1626,9 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client)
         client->config->port = esp_transport_get_default_port(client->transport);
     }
 
+    xEventGroupClearBits(client->status_bits, STARTED_BIT);
+    ESP_LOGI(TAG, "Create MQTT client task and wait until it started...");
+
     esp_err_t err = ESP_OK;
 #if MQTT_CORE_SELECTION_ENABLED
     ESP_LOGD(TAG, "Core selection enabled on %u", MQTT_TASK_CORE);
@@ -1636,6 +1643,18 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client)
         err = ESP_FAIL;
     }
 #endif
+
+    const EventBits_t bits = xEventGroupWaitBits(client->status_bits, STARTED_BIT, false, true,
+                                                  portMAX_DELAY);
+    if (0 != (bits & STARTED_BIT)) {
+        ESP_LOGI(TAG, "MQTT Client task started");
+    } else {
+        ESP_LOGE(TAG, "MQTT Client task failed to start");
+        assert(0 != (bits & STARTED_BIT));
+        MQTT_API_UNLOCK(client);
+        return ESP_FAIL;
+    }
+
     MQTT_API_UNLOCK(client);
     return err;
 }

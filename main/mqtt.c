@@ -762,6 +762,7 @@ mqtt_app_stop(void)
                 "%s failed, err=%d - the MQTT task is still running, restart required",
                 "esp_mqtt_client_destroy",
                 err);
+            mqtt_mutex_unlock(&p_mqtt_data);
             gateway_restart("MQTT failed");
             return;
         }
