@@ -604,16 +604,18 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
         return false;
     }
 
-    esp_err_t err = esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
+    const esp_err_t err = esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed, err=%d", "esp_mqtt_client_start", err);
-        err = esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
-        if (ESP_OK != err)
+        const esp_err_t destroy_err = esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        if (ESP_OK != destroy_err)
         {
-            LOG_ERR("%s failed, err=%d", "esp_mqtt_client_destroy", err);
+            LOG_ERR("%s failed, err=%d", "esp_mqtt_client_destroy", destroy_err);
+            // In case if it's not possible to stop MQTT client and free resources,
+            // restart the gateway to avoid being in a broken state.
+            gateway_restart("MQTT failed");
         }
-        assert(ESP_OK == err);
         p_mqtt_data->p_mqtt_client = NULL;
         return false;
     }
