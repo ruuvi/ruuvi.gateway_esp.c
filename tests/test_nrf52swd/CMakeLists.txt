@@ -19,10 +19,11 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
+        include
+        ../include
         ${WIFI_MANAGER_INC}
         ../../components/libSWD-esp32/include
         ../../components/ruuvi.boards.c
-        include
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/driver/include
         $ENV{IDF_PATH}/components/soc/include

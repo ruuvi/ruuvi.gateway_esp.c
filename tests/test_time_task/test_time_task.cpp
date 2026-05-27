@@ -363,8 +363,12 @@ gw_cfg_storage_check(void)
 }
 
 bool
-gw_cfg_storage_check_file(const char* const p_file_name)
+gw_cfg_storage_check_file(const char* const p_file_name, const bool is_blob, size_t* const p_file_size)
 {
+    if (nullptr != p_file_size)
+    {
+        *p_file_size = 0;
+    }
     return false;
 }
 

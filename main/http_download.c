@@ -116,8 +116,8 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
             p_cb_info->offset = 0;
             break;
 
-        case HTTP_EVENT_HEADER_SENT:
-            LOG_INFO("HTTP_EVENT_HEADER_SENT");
+        case HTTP_EVENT_HEADERS_SENT:
+            LOG_INFO("HTTP_EVENT_HEADERS_SENT");
             http_feed_task_watchdog_if_needed(p_cb_info->flag_feed_task_watchdog);
             break;
 
@@ -170,6 +170,24 @@ http_download_event_handler(esp_http_client_event_t* p_evt)
     return ESP_OK;
 }
 
+static void
+http_download_log_resp(const http_server_resp_t* const p_resp)
+{
+    (void)p_resp;
+#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
+    size_t      len    = 0;
+    const char* p_json = (const char*)http_server_resp_get_content_ptr_if_in_memory(p_resp, &len);
+    if (NULL != p_json)
+    {
+        LOG_DBG("Resp: resp_code=%d, content: %.*s", p_resp->http_resp_code, (printf_int_t)len, p_json);
+    }
+    else
+    {
+        LOG_DBG("Resp: resp_code=%d, content: <NULL>", p_resp->http_resp_code);
+    }
+#endif
+}
+
 static http_server_resp_t
 http_download_by_handle(
     esp_http_client_handle_t p_http_handle,
@@ -210,22 +228,14 @@ http_download_by_handle(
     }
 
     LOG_DBG("http_wait_until_async_req_completed");
-    http_server_resp_t resp = http_wait_until_async_req_completed(
+    const http_server_resp_t resp = http_wait_until_async_req_completed(
         p_http_handle,
         NULL,
         flag_feed_task_watchdog,
         timeout_seconds);
     LOG_DBG("http_wait_until_async_req_completed: finished, http_resp_code=%d", resp.http_resp_code);
 
-#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
-    const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
-                             ? (const char*)resp.select_location.memory.p_buf
-                             : NULL;
-    LOG_DBG("Resp: resp_code=%d, content: %s", resp.http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
-#endif
+    http_download_log_resp(&resp);
 
     return resp;
 }
@@ -391,15 +401,7 @@ http_download_or_check_stage_5(
     LOG_DBG("Call http_download_by_handle");
     const http_server_resp_t resp = http_download_by_handle(http_handle, flag_feed_task_watchdog, timeout_seconds);
 
-#if LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG
-    const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
-                                   || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
-    const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
-                             ? (const char*)resp.select_location.memory.p_buf
-                             : NULL;
-    LOG_DBG("Resp: resp_code=%d, content: %s", resp.http_resp_code, (NULL != p_json) ? p_json : "<NULL>");
-#endif
+    http_download_log_resp(&resp);
 
     return resp;
 }
@@ -707,12 +709,10 @@ http_check_with_auth(const http_download_param_with_auth_t* const p_param, http_
 
     http_server_resp_t resp = http_download_or_check(HTTP_METHOD_HEAD, p_param, NULL, NULL, flag_use_big_tls_buf);
 
-    *p_http_resp_code = resp.http_resp_code;
-    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
-    {
-        os_free(resp.select_location.memory.p_buf);
-    }
-    return (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
+    *p_http_resp_code     = resp.http_resp_code;
+    const bool is_success = (HTTP_RESP_CODE_200 == resp.http_resp_code) ? true : false;
+    http_server_resp_free(&resp);
+    return is_success;
 }
 
 #endif
@@ -728,20 +728,19 @@ http_download(
 
     http_server_resp_t resp = http_download_with_auth(p_param, p_cb_on_data, p_user_data, flag_use_big_tls_buf);
 
-    if ((HTTP_CONTENT_LOCATION_HEAP == resp.content_location) && (NULL != resp.select_location.memory.p_buf))
-    {
-        os_free(resp.select_location.memory.p_buf);
-    }
     if (NULL != p_flag_allow_retry)
     {
         *p_flag_allow_retry = (HTTP_RESP_CODE_502 == resp.http_resp_code) ? true : false;
     }
     const bool is_range_used = (0 != p_param->base.range_start) || (0 != p_param->base.range_end);
+    const bool is_success    = ((HTTP_RESP_CODE_200 == resp.http_resp_code)
+                             || (is_range_used && (HTTP_RESP_CODE_206 == resp.http_resp_code)))
+                                   ? true
+                                   : false;
 
-    return ((HTTP_RESP_CODE_200 == resp.http_resp_code)
-            || (is_range_used && (HTTP_RESP_CODE_206 == resp.http_resp_code)))
-               ? true
-               : false;
+    http_server_resp_free(&resp);
+
+    return is_success;
 }
 
 static bool
@@ -844,12 +843,8 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
         info.is_error       = true;
         info.http_resp_code = resp.http_resp_code;
 
-        const bool flag_is_in_memory = (HTTP_CONTENT_LOCATION_FLASH_MEM == resp.content_location)
-                                       || (HTTP_CONTENT_LOCATION_STATIC_MEM == resp.content_location)
-                                       || (HTTP_CONTENT_LOCATION_HEAP == resp.content_location);
-        const char* p_json = (flag_is_in_memory && (NULL != resp.select_location.memory.p_buf))
-                                 ? (const char*)resp.select_location.memory.p_buf
-                                 : NULL;
+        size_t            len    = 0;
+        const char* const p_json = (const char*)http_server_resp_get_content_ptr_if_in_memory(&resp, &len);
         if (NULL != p_json)
         {
             if (NULL != info.p_json_buf)
@@ -858,15 +853,17 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
                 info.p_json_buf = NULL;
             }
             LOG_ERR(
-                "http_download failed for URL: %s, resp_code=%d, content: %s",
+                "http_download failed for URL: %s, resp_code=%d, content: %.*s",
                 p_params->base.p_url,
                 resp.http_resp_code,
+                (printf_int_t)len,
                 p_json);
-            str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json);
-            info.p_json_buf   = str_buf.buf;
+            const str_buf_t str_buf = str_buf_printf_with_alloc("%.*s", (printf_int_t)len, p_json);
+            info.p_json_buf         = str_buf.buf;
         }
         else
         {
+            LOG_ERR("Invalid content location: %d", (printf_int_t)resp.content_location);
             LOG_ERR(
                 "http_download failed for URL: %s, resp_code=%d, content: %s",
                 p_params->base.p_url,
@@ -895,6 +892,7 @@ http_download_json(const http_download_param_with_auth_t* const p_params)
     {
         // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
     }
+    http_server_resp_free(&resp);
     if (info.is_error && (HTTP_RESP_CODE_200 == info.http_resp_code))
     {
         info.http_resp_code = HTTP_RESP_CODE_400;

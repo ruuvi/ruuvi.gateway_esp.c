@@ -9,19 +9,31 @@
 #include <string.h>
 #include "os_malloc.h"
 #include "runtime_stat.h"
+#include "ruuvi_endpoint_ca_uart.h"
 #include "ruuvi_endpoint_5.h"
 #include "ruuvi_endpoint_6.h"
 #include "ruuvi_endpoint_e0.h"
 #include "ruuvi_endpoint_e1.h"
 #include "ruuvi_endpoint_f0.h"
 #include "adv_decode.h"
-
 #if defined(RUUVI_TESTS)
 #define LOG_LOCAL_DISABLED 1
 #endif
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 static const char TAG[] = "http";
+
+static void*
+http_json_malloc(size_t size)
+{
+    return os_malloc(size);
+}
+
+static void
+http_json_free(void* ptr)
+{
+    os_free(ptr);
+}
 
 #define BYTE_MASK (0xFFU)
 
@@ -425,8 +437,8 @@ http_json_create_stream_gen_advs(
         .indentation_mark    = ' ',
         .indentation         = 2,
         .max_nesting_level   = 4,
-        .p_malloc            = &os_malloc,
-        .p_free              = &os_free_internal,
+        .p_malloc            = &http_json_malloc,
+        .p_free              = &http_json_free,
         .p_localeconv        = NULL,
     };
     http_json_stream_gen_advs_ctx_t* p_ctx = NULL;
@@ -443,7 +455,7 @@ http_json_create_stream_gen_advs(
     p_ctx->timestamp           = p_params->cur_time;
     p_ctx->nonce               = p_params->nonce;
     p_ctx->gw_mac              = *p_params->p_mac_addr;
-    p_ctx->coordinates         = *p_params->p_coordinates;
+    snprintf(p_ctx->coordinates.buf, sizeof(p_ctx->coordinates), "%s", p_params->coordinates_str_buf.buf);
     if (NULL == p_reports)
     {
         p_ctx->reports.num_of_advs = 0;

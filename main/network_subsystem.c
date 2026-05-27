@@ -25,6 +25,7 @@
 #include "event_mgr.h"
 #include "ruuvi_gateway.h"
 #include "reset_task.h"
+#include "fw_update.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"

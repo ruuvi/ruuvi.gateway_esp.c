@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.13)
 
 project(ruuvi_gateway_esp-test-http_server_cb)
 set(ProjectId ruuvi_gateway_esp-test-http_server_cb)
@@ -55,6 +55,10 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_json_parse_wifi.h
         ${RUUVI_GW_SRC}/gw_cfg_json_generate.c
         ${RUUVI_GW_SRC}/gw_cfg_json_generate.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_internal.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_internal.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_remote.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_remote.h
         ${RUUVI_GW_SRC}/gw_cfg_log.c
         ${RUUVI_GW_SRC}/gw_cfg_log.h
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.c
@@ -70,6 +74,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/http_server_cb.h
         ${RUUVI_GW_SRC}/http_server_cb_on_get.c
         ${RUUVI_GW_SRC}/http_server_cb_on_post.c
+        ${RUUVI_GW_SRC}/http_post_helper.c
+        ${RUUVI_GW_SRC}/http_post_helper.h
         ${RUUVI_GW_SRC}/http_json.c
         ${RUUVI_GW_SRC}/http_json.h
         ${RUUVI_GW_SRC}/json_ruuvi.c
@@ -115,6 +121,8 @@ add_executable(${ProjectId}
         ${RUUVI_ESP_WRAPPERS}/src/os_str.c
         ${RUUVI_ESP_WRAPPERS}/src/snprintf_with_esp_err_desc.c
         ${RUUVI_ESP_WRAPPERS}/src/str_buf.c
+        ${RUUVI_ESP_WRAPPERS}/src/os_malloc.c
+        ${RUUVI_ESP_WRAPPERS_INC}/os_malloc.h
         ${WIFI_MANAGER_SRC}/http_server_auth.c
         ${WIFI_MANAGER_SRC}/http_server_auth.h
         ${WIFI_MANAGER_SRC}/http_server_auth_type.c
@@ -180,6 +188,8 @@ target_compile_definitions(${ProjectId} PUBLIC
         CONFIG_DEFAULT_AP_SSID=\"RuuviGateway\"
         GW_GWUI_PARTITION="fatfs_gwui"
         GW_NRF_PARTITION="fatfs_nrf52"
+        OS_MALLOC_TRACE=1
+        OS_MALLOC_TRACE_DISABLE_TIMESTAMP=1
 )
 
 target_compile_options(${ProjectId} PUBLIC
@@ -190,15 +200,19 @@ target_compile_options(${ProjectId} PUBLIC
         --coverage
 )
 
-# CMake has a target_link_options starting from version 3.13
-#target_link_options(${ProjectId} PUBLIC
-#        --coverage
-#)
+target_link_options(${ProjectId} PUBLIC
+        --coverage
+)
 
 target_link_libraries(${ProjectId}
         gtest
         gtest_main
         gcov
         ruuvi_esp_wrappers-common_test_funcs
-        --coverage
+)
+
+target_link_options(${ProjectId} PRIVATE
+        "-Wl,--wrap=malloc"
+        "-Wl,--wrap=calloc"
+        "-Wl,--wrap=free"
 )

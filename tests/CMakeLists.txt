@@ -71,6 +71,7 @@ add_subdirectory(test_adv_post_signals)
 add_subdirectory(test_adv_table)
 add_subdirectory(test_bin2hex)
 add_subdirectory(test_cjson_wrap)
+add_subdirectory(test_esp_http_client)
 add_subdirectory(test_event_mgr)
 add_subdirectory(test_flashfatfs)
 add_subdirectory(test_json_ruuvi)
@@ -79,8 +80,12 @@ add_subdirectory(test_gw_cfg_blob)
 add_subdirectory(test_gw_cfg_default)
 add_subdirectory(test_gw_cfg_json)
 add_subdirectory(test_gw_cfg_ruuvi_json_generate)
+add_subdirectory(test_gw_cfg_storage)
 add_subdirectory(test_hmac_sha256)
 add_subdirectory(test_http_json)
+add_subdirectory(test_http_check_post_advs)
+add_subdirectory(test_http_check_post_stat)
+add_subdirectory(test_http_post_event_handler)
 add_subdirectory(test_http_server_cb)
 add_subdirectory(test_leds)
 add_subdirectory(test_leds_blinking)
@@ -91,6 +96,8 @@ add_subdirectory(test_mqtt_json)
 add_subdirectory(test_nrf52fw)
 add_subdirectory(test_nrf52swd)
 add_subdirectory(test_ruuvi_auth)
+add_subdirectory(test_ruuvi_nvs)
+add_subdirectory(test_http_stream_reader_nvs)
 add_subdirectory(test_time_str)
 add_subdirectory(test_time_task)
 add_subdirectory(test_url_encode)
@@ -175,6 +182,11 @@ add_test(NAME test_cjson_wrap
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-cjson_wrap>/gtestresults.xml
 )
 
+add_test(NAME test_esp_http_client
+        COMMAND ruuvi_gateway_esp-test-esp_http_client
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-esp_http_client>/gtestresults.xml
+)
+
 add_test(NAME test_event_mgr
         COMMAND ruuvi_gateway_esp-test-event_mgr
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-event_mgr>/gtestresults.xml
@@ -215,6 +227,11 @@ add_test(NAME test_gw_cfg_ruuvi_json_generate
         --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-gw_cfg_ruuvi_json_generate>/gtestresults.xml
 )
 
+add_test(NAME test_gw_cfg_storage
+        COMMAND ruuvi_gateway_esp-test-gw_cfg_storage
+        --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-gw_cfg_storage>/gtestresults.xml
+)
+
 add_test(NAME test_hmac_sha256
         COMMAND ruuvi_gateway_esp-test-hmac_sha256
         --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-hmac_sha256>/gtestresults.xml
@@ -223,6 +240,21 @@ add_test(NAME test_hmac_sha256
 add_test(NAME test_http_json
         COMMAND ruuvi_gateway_esp-test-http_json
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_json>/gtestresults.xml
+)
+
+add_test(NAME test_http_check_post_advs
+        COMMAND ruuvi_gateway_esp-test-http_check_post_advs
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_check_post_advs>/gtestresults.xml
+)
+
+add_test(NAME test_http_check_post_stat
+        COMMAND ruuvi_gateway_esp-test-http_check_post_stat
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_check_post_stat>/gtestresults.xml
+)
+
+add_test(NAME test_http_post_event_handler
+        COMMAND ruuvi_gateway_esp-test-http_post_event_handler
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_post_event_handler>/gtestresults.xml
 )
 
 add_test(NAME test_http_server_cb
@@ -273,6 +305,16 @@ add_test(NAME test_nrf52swd
 add_test(NAME test_ruuvi_auth
         COMMAND ruuvi_gateway_esp-test-ruuvi_auth
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-ruuvi_auth>/gtestresults.xml
+)
+
+add_test(NAME test_ruuvi_nvs
+        COMMAND ruuvi_gateway_esp-test-ruuvi_nvs
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-ruuvi_nvs>/gtestresults.xml
+)
+
+add_test(NAME test_http_stream_reader_nvs
+        COMMAND ruuvi_gateway_esp-test-http_stream_reader_nvs
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-http_stream_reader_nvs>/gtestresults.xml
 )
 
 add_test(NAME test_time_str
