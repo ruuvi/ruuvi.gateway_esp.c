@@ -22,7 +22,7 @@ ssize_t esp_mbedtls_write(esp_tls_t *tls, const char *data, size_t datalen);
 /**
  * Internal Callback for mbedtls_handshake
  */
-int esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg);
+esp_tls_async_conn_result_e esp_mbedtls_handshake(esp_tls_t *tls, const esp_tls_cfg_t *cfg);
 
 /**
  * Internal Callback for mbedtls_cleanup , frees up all the memory used by mbedtls

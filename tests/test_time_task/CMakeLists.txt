@@ -15,6 +15,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_log.c
         ${RUUVI_GW_SRC}/gw_cfg_log.h
+        ${RUUVI_GW_SRC}/gw_cfg_storage_files.c
+        ${RUUVI_GW_SRC}/gw_cfg_storage.h
         ${RUUVI_GW_SRC}/event_mgr.c
         ${RUUVI_GW_SRC}/event_mgr.h
         ${WIFI_MANAGER_SRC}/http_server_auth_type.c
@@ -58,8 +60,9 @@ target_include_directories(${ProjectId} PUBLIC
         ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix/FreeRTOS_Kernel/include
         ${Posix_GCC_Simulator_SOURCE_DIR}/FreeRTOS_Posix/FreeRTOS_Kernel/portable/GCC/Posix
         ${RUUVI_GW_SRC}
-        ${WIFI_MANAGER_INC}
         include
+        ../include
+        ${WIFI_MANAGER_INC}
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/lwip/include/apps
         $ENV{IDF_PATH}/components/lwip/include/apps/sntp

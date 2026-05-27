@@ -118,6 +118,18 @@ ruuvi_gw_cfg_http_cmp(const ruuvi_gw_cfg_http_t* const p_http1, const ruuvi_gw_c
     {
         return false;
     }
+    if (p_http1->http_use_extra_http_path != p_http2->http_use_extra_http_path)
+    {
+        return false;
+    }
+    if (p_http1->http_use_extra_http_query != p_http2->http_use_extra_http_query)
+    {
+        return false;
+    }
+    if (p_http1->http_use_extra_http_headers != p_http2->http_use_extra_http_headers)
+    {
+        return false;
+    }
     if (0 != strcmp(p_http1->http_url.buf, p_http2->http_url.buf))
     {
         return false;

@@ -107,6 +107,10 @@ idf_component_register(
         gw_cfg_json_parse_wifi.h
         gw_cfg_json_generate.c
         gw_cfg_json_generate.h
+        gw_cfg_json_generate_internal.c
+        gw_cfg_json_generate_internal.h
+        gw_cfg_json_generate_remote.c
+        gw_cfg_json_generate_remote.h
         gw_cfg_log.c
         gw_cfg_log.h
         gw_cfg_ruuvi_json.c
@@ -126,6 +130,12 @@ idf_component_register(
         hmac_sha256.h
         http.c
         http.h
+        http_client_config.c
+        http_client_config.h
+        http_post_event_handler.c
+        http_post_event_handler.h
+        http_stream_reader_nvs.c
+        http_stream_reader_nvs.h
         http_check_mqtt.c
         http_json.c
         http_json.h

@@ -38,6 +38,7 @@
 #include "ruuvi_gateway.h"
 #include "http_post_helper.h"
 #include "http_download.h"
+#include "fw_update.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,6 +57,16 @@ using namespace std;
 
 class TestHttpServerCb;
 static TestHttpServerCb* g_pTestClass;
+
+static struct
+{
+    const char* p_file_name;
+    bool        flag_file_exists;
+    size_t      file_size;
+    const char* p_content;
+    bool        flag_write_success;
+    bool        flag_delete_success;
+} g_extra_cfg_storage;
 
 struct flash_fat_fs_t
 {
@@ -199,7 +210,37 @@ gw_status_resume_http_relaying(void)
 http_server_resp_t
 http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsSeconds_t timeout_seconds)
 {
-    if ((0 == strcmp(p_params->p_url, "https://myserver.com/")) && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_params->auth_type))
+    if ((0 == strcmp(p_params->p_url, "https://myserver.com/")) && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_params->auth_type)
+        && (!p_params->use_extra_http_path) && (!p_params->use_extra_http_query) && (!p_params->use_extra_http_headers))
+    {
+        static const char resp_content[]
+            = "{\n"
+              "\t\"status\":\t200,\n"
+              "\t\"message\":\t\"{}\"\n"
+              "}";
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", resp_content);
+        assert(NULL != str_buf.buf);
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_HEAP,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_APPLICATION_JSON,
+            .p_content_type_param = NULL,
+            .content_len          = strlen(str_buf.buf),
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+            .select_location = {
+                .heap = {
+                    .p_buf = (uint8_t*)str_buf.buf,
+                },
+            },
+        };
+        return resp;
+    }
+    else if (
+        (0 == strcmp(p_params->p_url, "https://myserver.com:8000"))
+        && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_params->auth_type) && (p_params->use_extra_http_path)
+        && (p_params->use_extra_http_query) && (p_params->use_extra_http_headers))
     {
         static const char resp_content[]
             = "{\n"
@@ -311,27 +352,66 @@ gw_cfg_storage_check(void)
 }
 
 bool
-gw_cfg_storage_check_file(const char* const p_file_name)
+gw_cfg_storage_check_file(const char* const p_file_name, const bool is_blob, size_t* const p_file_size)
 {
+    if (nullptr != p_file_size)
+    {
+        *p_file_size = 0;
+    }
+    if ((nullptr != g_extra_cfg_storage.p_file_name) && (0 == strcmp(p_file_name, g_extra_cfg_storage.p_file_name)))
+    {
+        if (g_extra_cfg_storage.flag_file_exists)
+        {
+            if (nullptr != p_file_size)
+            {
+                *p_file_size = g_extra_cfg_storage.file_size;
+            }
+            return true;
+        }
+        return false;
+    }
     return false;
 }
 
 str_buf_t
-gw_cfg_storage_read_file(const char* const p_file_name)
+gw_cfg_storage_read_file_as_string(const char* const p_file_name)
 {
     return str_buf_init_null();
 }
 
-bool
-gw_cfg_storage_write_file(const char* const p_file_name, const char* const p_content)
+str_buf_t
+gw_cfg_storage_read_file_as_blob(const char* const p_file_name)
 {
-    return false;
+    if ((nullptr != g_extra_cfg_storage.p_file_name) && (0 == strcmp(p_file_name, g_extra_cfg_storage.p_file_name))
+        && (nullptr != g_extra_cfg_storage.p_content))
+    {
+        const char* const p_content = g_extra_cfg_storage.p_content;
+        char*             p_buf     = static_cast<char*>(os_malloc(strlen(p_content) + 1));
+        if (nullptr != p_buf)
+        {
+            strcpy(p_buf, p_content);
+            return str_buf_init(p_buf, strlen(p_content) + 1);
+        }
+    }
+    return str_buf_init_null();
+}
+
+bool
+gw_cfg_storage_write_file_as_string(const char* const p_file_name, const char* const p_content)
+{
+    return g_extra_cfg_storage.flag_write_success;
+}
+
+bool
+gw_cfg_storage_write_file_as_blob(const char* const p_file_name, const uint8_t* const p_content, const size_t len)
+{
+    return g_extra_cfg_storage.flag_write_success;
 }
 
 bool
 gw_cfg_storage_delete_file(const char* const p_file_name)
 {
-    return false;
+    return g_extra_cfg_storage.flag_delete_success;
 }
 
 bool
@@ -418,6 +498,8 @@ protected:
         this->m_mock_esp_http_client_cleanup_called   = false;
         this->m_mock_http_async_info_free_data_called = false;
         this->m_mock_http_download_with_auth          = nullptr;
+
+        memset(&g_extra_cfg_storage, 0, sizeof(g_extra_cfg_storage));
     }
 
     void
@@ -871,7 +953,7 @@ adv_post_nrf52_cfg_update(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_g
 }
 
 bool
-fw_update_is_in_progress(void)
+ruuvi_gw_fw_update_is_in_progress(void)
 {
     return g_pTestClass->m_fw_update_is_in_progress;
 }
@@ -4868,6 +4950,255 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__no_file_param) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_get("extra_cfg", "param=abc", false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__unknown_file) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_get("extra_cfg", "file=unknown_file", false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__non_blob_file_access_denied) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_get(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
+        false,
+        nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_403, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__blob_file_not_exist) // NOLINT
+{
+    g_extra_cfg_storage.p_file_name      = GW_CFG_STORAGE_HTTP_PATH;
+    g_extra_cfg_storage.flag_file_exists = false;
+    const http_server_resp_t resp        = http_server_cb_on_get(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_PATH,
+        false,
+        nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__blob_file_read_fail) // NOLINT
+{
+    g_extra_cfg_storage.p_file_name      = GW_CFG_STORAGE_HTTP_PATH;
+    g_extra_cfg_storage.flag_file_exists = true;
+    g_extra_cfg_storage.file_size        = 10;
+    g_extra_cfg_storage.p_content        = nullptr;
+    const http_server_resp_t resp        = http_server_cb_on_get(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_PATH,
+        false,
+        nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__blob_file_ok) // NOLINT
+{
+    g_extra_cfg_storage.p_file_name      = GW_CFG_STORAGE_HTTP_PATH;
+    g_extra_cfg_storage.flag_file_exists = true;
+    g_extra_cfg_storage.file_size        = 14;
+    g_extra_cfg_storage.p_content        = "/my/extra/path";
+    http_server_resp_t resp = http_server_cb_on_get("extra_cfg", "file=" GW_CFG_STORAGE_HTTP_PATH, false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_PLAIN, resp.content_type);
+    ASSERT_EQ(14, resp.content_len);
+    ASSERT_EQ(string("/my/extra/path"), string((const char*)resp.select_location.heap.p_buf, resp.content_len));
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__no_file_param) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_post("extra_cfg", "param=abc", "content", false);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__unknown_file) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_post("extra_cfg", "file=unknown_file", "content", false);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__blob_write_ok) // NOLINT
+{
+    g_extra_cfg_storage.flag_write_success = true;
+    http_server_resp_t resp                = http_server_cb_on_post(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_PATH,
+        "/my/extra/path",
+        false);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__blob_write_fail) // NOLINT
+{
+    g_extra_cfg_storage.flag_write_success = false;
+    const http_server_resp_t resp          = http_server_cb_on_post(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_PATH,
+        "/my/extra/path",
+        false);
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__http_headers_without_crlf) // NOLINT
+{
+    g_extra_cfg_storage.flag_write_success = true;
+    const http_server_resp_t resp          = http_server_cb_on_post(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_HEADERS,
+        "X-My-Header: value",
+        false);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__http_headers_with_crlf_ok) // NOLINT
+{
+    g_extra_cfg_storage.flag_write_success = true;
+    http_server_resp_t resp                = http_server_cb_on_post(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_HEADERS,
+        "X-My-Header: value\r\n",
+        false);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__string_write_ok) // NOLINT
+{
+    g_extra_cfg_storage.flag_write_success = true;
+    http_server_resp_t resp                = http_server_cb_on_post(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
+        "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----\n",
+        false);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_delete_extra_cfg__blob_file_ok) // NOLINT
+{
+    g_extra_cfg_storage.flag_delete_success = true;
+    http_server_resp_t resp = http_server_cb_on_delete("extra_cfg", "file=" GW_CFG_STORAGE_HTTP_PATH, false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_delete_extra_cfg__no_file_param) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_delete("extra_cfg", "param=abc", false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_delete_extra_cfg__unknown_file) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_delete("extra_cfg", "file=unknown_file", false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_delete_extra_cfg__delete_fail) // NOLINT
+{
+    g_extra_cfg_storage.flag_delete_success = false;
+    const http_server_resp_t resp           = http_server_cb_on_delete(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_PATH,
+        false,
+        nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
 TEST_F(TestHttpServerCb, test_http_download_is_url_valid) // NOLINT
 {
     ASSERT_FALSE(http_download_is_url_valid(""));
@@ -4948,6 +5279,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5029,6 +5363,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5110,6 +5447,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5191,6 +5531,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5272,6 +5615,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5353,6 +5699,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5442,6 +5791,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5533,6 +5885,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5622,6 +5977,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5711,6 +6069,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5802,6 +6163,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5891,6 +6255,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5959,6 +6326,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6025,6 +6395,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6088,6 +6461,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6151,6 +6527,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6214,6 +6593,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6278,6 +6660,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6341,6 +6726,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6405,6 +6793,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6464,6 +6855,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6521,6 +6915,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6596,6 +6993,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6674,6 +7074,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6753,6 +7156,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6832,6 +7238,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6909,6 +7318,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -6933,8 +7345,14 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
     const char* const expected_json = "{\n\t\"status\":\t200,\n\t\"message\":\t\"{}\"\n}";
 
     const char* const p_uri_params
-        = "validate_type=check_post_advs&url=https://myserver.com/"
-          "&auth_type=none&use_ssl_client_cert=false&use_ssl_server_cert=false";
+        = "validate_type=check_post_advs"
+          "&url=https://myserver.com/"
+          "&auth_type=none"
+          "&use_ssl_client_cert=false"
+          "&use_ssl_server_cert=false"
+          "&use_extra_http_path=false"
+          "&use_extra_http_query=false"
+          "&use_extra_http_headers=false";
 
     http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
@@ -6949,8 +7367,14 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
 
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get "
-        "/validate_url?validate_type=check_post_advs&url=https://myserver.com/"
-        "&auth_type=none&use_ssl_client_cert=false&use_ssl_server_cert=false\n"
+        "/validate_url?validate_type=check_post_advs"
+        "&url=https://myserver.com/"
+        "&auth_type=none&"
+        "use_ssl_client_cert=false"
+        "&use_ssl_server_cert=false"
+        "&use_extra_http_path=false"
+        "&use_extra_http_query=false"
+        "&use_extra_http_headers=false\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
         "D http_server: HTTP params: auth_type=none\n"
         "D http_server: HTTP params: key 'auth_type=': value (encoded): none\n"
@@ -6967,6 +7391,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
         "E http_server: Can't find key: use_saved_password=\n"
         "I http_server: Found use_ssl_client_cert: false\n"
         "I http_server: Found use_ssl_server_cert: false\n"
+        "I http_server: Found use_extra_http_path: false\n"
+        "I http_server: Found use_extra_http_query: false\n"
+        "I http_server: Found use_extra_http_headers: false\n"
         "D http_server: Got URL from params: https://myserver.com/\n"
         "I http_server: Found validate_type: check_post_advs\n"
         "I http_server: Validate URL (POST advs): https://myserver.com/\n"
@@ -6976,7 +7403,88 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
         "D http_server: Validate URL (POST advs): saved_password=\n"
         "D http_server: Validate URL (POST advs): password=NULL\n"
         "I http_server: Validate URL (POST advs): use_ssl_client_cert=0\n"
-        "I http_server: Validate URL (POST advs): use_ssl_server_cert=0\n",
+        "I http_server: Validate URL (POST advs): use_ssl_server_cert=0\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_path=0\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_query=0\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_headers=0\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(
+    TestHttpServerCb,
+    http_server_cb_on_get_validate_url_check_post_advs__custom_http_with_extra_path_query_and_headers) // NOLINT
+{
+    const char* const expected_json = "{\n\t\"status\":\t200,\n\t\"message\":\t\"{}\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_post_advs"
+          "&url=https://myserver.com:8000"
+          "&auth_type=none"
+          "&use_ssl_client_cert=false"
+          "&use_ssl_server_cert=false"
+          "&use_extra_http_path=true"
+          "&use_extra_http_query=true"
+          "&use_extra_http_headers=true";
+
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+
+    ASSERT_EQ(
+        "D http_server: http_server_cb_on_get "
+        "/validate_url"
+        "?validate_type=check_post_advs"
+        "&url=https://myserver.com:8000"
+        "&auth_type=none&"
+        "use_ssl_client_cert=false"
+        "&use_ssl_server_cert=false"
+        "&use_extra_http_path=true"
+        "&use_extra_http_query=true"
+        "&use_extra_http_headers=true\n"
+        "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
+        "D http_server: HTTP params: auth_type=none\n"
+        "D http_server: HTTP params: key 'auth_type=': value (encoded): none\n"
+        "D http_server: HTTP params: key 'auth_type=': value (decoded): none\n"
+        "D http_server: HTTP params: url=https://myserver.com:8000\n"
+        "D http_server: HTTP params: key 'url=': value (encoded): https://myserver.com:8000\n"
+        "D http_server: HTTP params: key 'url=': value (decoded): https://myserver.com:8000\n"
+        "D http_server: Can't find key 'user=' in URL params\n"
+        "E http_server: HTTP params: Can't find 'user='\n"
+        "D http_server: Can't find key 'encrypted_password=' in URL params\n"
+        "E http_server: HTTP params: Can't find 'encrypted_password='\n"
+        "D http_server: Can't find key 'use_saved_password=' in URL params\n"
+        "E http_server: HTTP params: Can't find 'use_saved_password='\n"
+        "E http_server: Can't find key: use_saved_password=\n"
+        "I http_server: Found use_ssl_client_cert: false\n"
+        "I http_server: Found use_ssl_server_cert: false\n"
+        "I http_server: Found use_extra_http_path: true\n"
+        "I http_server: Found use_extra_http_query: true\n"
+        "I http_server: Found use_extra_http_headers: true\n"
+        "D http_server: Got URL from params: https://myserver.com:8000\n"
+        "I http_server: Found validate_type: check_post_advs\n"
+        "I http_server: Validate URL (POST advs): https://myserver.com:8000\n"
+        "I http_server: Validate URL (POST advs): auth_type=none\n"
+        "I http_server: Validate URL (POST advs): user=NULL\n"
+        "I http_server: Validate URL (POST advs): use_saved_password=0\n"
+        "D http_server: Validate URL (POST advs): saved_password=\n"
+        "D http_server: Validate URL (POST advs): password=NULL\n"
+        "I http_server: Validate URL (POST advs): use_ssl_client_cert=0\n"
+        "I http_server: Validate URL (POST advs): use_ssl_server_cert=0\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_path=1\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_query=1\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_headers=1\n",
         esp_log_wrapper_get_logs());
     http_server_resp_free(&resp);
     os_malloc_trace_dump();

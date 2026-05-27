@@ -13,7 +13,6 @@
 #include <time.h>
 #include "mac_addr.h"
 #include "gw_cfg.h"
-#include "ruuvi_endpoint_ca_uart.h"
 #include "ruuvi_gateway.h"
 
 #ifdef __cplusplus
@@ -38,17 +37,17 @@ typedef uint32_t adv_counter_t;
 
 typedef struct adv_report_t
 {
-    time_t               timestamp;
-    adv_counter_t        samples_counter;
-    mac_address_bin_t    tag_mac;
-    wifi_rssi_t          rssi;
-    re_ca_uart_ble_phy_e primary_phy : 4;
-    re_ca_uart_ble_phy_e secondary_phy : 4;
-    uint8_t              ch_index;
-    bool                 is_coded_phy;
-    int8_t               tx_power;
-    ble_data_len_t       data_len;
-    uint8_t              data_buf[ADV_DATA_MAX_LEN];
+    time_t            timestamp;
+    adv_counter_t     samples_counter;
+    mac_address_bin_t tag_mac;
+    wifi_rssi_t       rssi;
+    uint8_t           primary_phy : 4;   //<! \ref re_ca_uart_ble_phy_e from ruuvi_endpoint_ca_uart.h
+    uint8_t           secondary_phy : 4; //<! \ref re_ca_uart_ble_phy_e from ruuvi_endpoint_ca_uart.h
+    uint8_t           ch_index;
+    bool              is_coded_phy;
+    int8_t            tx_power;
+    ble_data_len_t    data_len;
+    uint8_t           data_buf[ADV_DATA_MAX_LEN];
 } adv_report_t;
 
 typedef uint32_t num_of_advs_t;

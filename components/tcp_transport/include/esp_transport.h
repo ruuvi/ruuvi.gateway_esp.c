@@ -24,15 +24,54 @@ typedef struct esp_transport_keepalive {
     int             keep_alive_count;       /*!< Keep-alive packet retry send count */
 } esp_transport_keep_alive_t;
 
+typedef enum esp_transport_sync_connect_result {
+    ESP_TRANSPORT_SYNC_CONNECT_RESULT_CONNECTED = 0,
+    ESP_TRANSPORT_SYNC_CONNECT_RESULT_ERROR = -1,
+} esp_transport_sync_connect_result_e;
+
+typedef enum esp_transport_async_connect_result {
+    ESP_TRANSPORT_ASYNC_CONNECT_RESULT_CONNECTED = 1,
+    ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS = 0,
+    ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR = -1,
+} esp_transport_async_connect_result_e;
+
 typedef struct esp_transport_list_t* esp_transport_list_handle_t;
 typedef struct esp_transport_item_t* esp_transport_handle_t;
 
-typedef int (*connect_func)(esp_transport_handle_t t, const char *host, int port, int timeout_ms);
+/**
+ * @brief Callback function to perform a synchronous connection establishment
+ *
+ * @param[in] t             ESP transport handle for the connection
+ * @param[in] host          Remote host name or IP address
+ * @param[in] port          Remote port number
+ * @param[in] timeout_ms    Connection timeout in milliseconds
+ *
+ * @return \c ESP_TRANSPORT_SYNC_CONNECT_RESULT_CONNECTED if the connection successfully established
+ * @return \c ESP_TRANSPORT_SYNC_CONNECT_RESULT_ERROR on error (connection failed)
+ */
+typedef esp_transport_sync_connect_result_e (*connect_func)(esp_transport_handle_t t,
+                                                            const char *host, int port, int timeout_ms);
+
 typedef int (*io_func)(esp_transport_handle_t t, const char *buffer, int len, int timeout_ms);
 typedef int (*io_read_func)(esp_transport_handle_t t, char *buffer, int len, int timeout_ms);
 typedef int (*trans_func)(esp_transport_handle_t t);
 typedef int (*poll_func)(esp_transport_handle_t t, int timeout_ms);
-typedef int (*connect_async_func)(esp_transport_handle_t t, const char *host, int port, int timeout_ms);
+
+/**
+ * @brief Callback function to perform an asynchronous connection establishment
+ *
+ * @param[in] t             ESP transport handle for the connection
+ * @param[in] host          Remote host name or IP address
+ * @param[in] port          Remote port number
+ * @param[in] timeout_ms    Connection timeout in milliseconds
+ *
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_CONNECTED if the connection successfully established
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS if the connection is in progress (call again to continue)
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR on error (connection failed)
+ */
+typedef esp_transport_async_connect_result_e (*connect_async_func)(esp_transport_handle_t t,
+                                                                   const char *host, int port, int timeout_ms);
+
 typedef esp_transport_handle_t (*payload_transfer_func)(esp_transport_handle_t);
 
 typedef struct esp_tls_last_error* esp_tls_error_handle_t;
@@ -154,10 +193,11 @@ esp_err_t esp_transport_set_default_port(esp_transport_handle_t t, int port);
  * @param[in]  timeout_ms  The timeout milliseconds (-1 indicates wait forever)
  *
  * @return
- * - 0 in case of successful connection
- * - (-1) if there are any errors, should check errno
+ * - \c ESP_TRANSPORT_SYNC_CONNECT_RESULT_CONNECTED in case of successful connection
+ * - \c ESP_TRANSPORT_SYNC_CONNECT_RESULT_ERROR if there are any errors, should check errno
  */
-int esp_transport_connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms);
+esp_transport_sync_connect_result_e esp_transport_connect(esp_transport_handle_t t,
+                                                          const char *host, int port, int timeout_ms);
 
 /**
  * @brief      Non-blocking transport connection function, to make a connection to server
@@ -168,12 +208,12 @@ int esp_transport_connect(esp_transport_handle_t t, const char *host, int port, 
  * @param[in]  timeout_ms  The timeout milliseconds (-1 indicates wait forever)
  *
  * @return
- *             - -1      If connection establishment fails.
- *             -  0      If connection establishment is in progress.
- *             -  1      If connection establishment is successful.
+ *    - \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR        If a connection establishment fails.
+ *    - \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS  If a connection establishment is in progress.
+ *    - \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_CONNECTED    If a connection establishment is successful.
  *
  */
-int esp_transport_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms);
+esp_transport_async_connect_result_e esp_transport_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms);
 
 /**
  * @brief      Transport read function

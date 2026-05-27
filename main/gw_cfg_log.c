@@ -23,6 +23,8 @@
 
 static const char TAG[] = "gw_cfg";
 
+#define GW_CFG_LOG_FILE_INFO_BUF_SIZE (24U)
+
 static const char*
 gw_cfg_log_get_sta_password_for_logging(const wifi_sta_config_t* const p_wifi_cfg_sta)
 {
@@ -200,6 +202,25 @@ gw_cfg_log_wifi_cfg_sta(const wifiman_config_sta_t* const p_wifi_cfg_sta, const 
     LOG_INFO("config: Host info: nrf52_fw_ver: %s", p_wifi_cfg_sta->hostinfo.nrf52_fw_ver.buf);
 }
 
+static bool
+gw_cfg_log_print_file_info(const char* const p_file_name, const bool is_blob, void* const p_user_data)
+{
+    (void)p_user_data;
+    size_t     file_size = 0;
+    const bool is_exist  = gw_cfg_storage_check_file(p_file_name, is_blob, &file_size);
+    char       buf[GW_CFG_LOG_FILE_INFO_BUF_SIZE];
+    if (!is_exist)
+    {
+        snprintf(buf, sizeof(buf), "%s", "N/A");
+    }
+    else
+    {
+        snprintf(buf, sizeof(buf), "%zu bytes", file_size);
+    }
+    LOG_INFO("config: device_info: storage: %s (%s): %s", p_file_name, is_blob ? "blob" : "string", buf);
+    return false;
+}
+
 void
 gw_cfg_log_device_info(const gw_cfg_device_info_t* const p_dev_info, const char* const p_title)
 {
@@ -219,57 +240,7 @@ gw_cfg_log_device_info(const gw_cfg_device_info_t* const p_dev_info, const char*
     LOG_INFO("config: device_info: storage_ready: %d", (printf_int_t)is_storage_ready);
     if (is_storage_ready)
     {
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_HTTP_CLI_KEY,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_HTTP_SRV_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT));
-
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_STAT_CLI_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_CERT));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_STAT_CLI_KEY,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_CLI_KEY));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_STAT_SRV_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT));
-
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_MQTT_CLI_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_MQTT_CLI_KEY,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_MQTT_SRV_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT));
-
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY));
-        LOG_INFO(
-            "config: device_info: storage: %s: %d",
-            GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT,
-            (printf_int_t)gw_cfg_storage_check_file(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT));
+        gw_cfg_storage_files_iterate(&gw_cfg_log_print_file_info, NULL);
     }
 }
 
@@ -339,6 +310,28 @@ gw_cfg_log_ruuvi_cfg_remote(const ruuvi_gw_cfg_remote_t* const p_remote)
 }
 
 static void
+gw_cfg_log_extra_http_option(const bool is_enabled, const char* const p_storage_name, const char* const p_label)
+{
+    if (is_enabled)
+    {
+        size_t     file_size    = 0;
+        const bool is_cfg_exist = gw_cfg_storage_check_file(p_storage_name, true, &file_size);
+        if (is_cfg_exist)
+        {
+            LOG_INFO("config: use extra http %s: %s (%zu bytes)", p_label, "yes", file_size);
+        }
+        else
+        {
+            LOG_WARN("config: use extra http %s: %s", p_label, "yes, but file does not exist");
+        }
+    }
+    else
+    {
+        LOG_INFO("config: use extra http %s: %s", p_label, "no");
+    }
+}
+
+static void
 gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
 {
     LOG_INFO("config: use http ruuvi: %d", p_http->use_http_ruuvi);
@@ -346,6 +339,9 @@ gw_cfg_log_ruuvi_cfg_http(const ruuvi_gw_cfg_http_t* const p_http)
     if (p_http->use_http)
     {
         LOG_INFO("config: http url: %s", p_http->http_url.buf);
+        gw_cfg_log_extra_http_option(p_http->http_use_extra_http_path, GW_CFG_STORAGE_HTTP_PATH, "path");
+        gw_cfg_log_extra_http_option(p_http->http_use_extra_http_query, GW_CFG_STORAGE_HTTP_QUERY, "query");
+        gw_cfg_log_extra_http_option(p_http->http_use_extra_http_headers, GW_CFG_STORAGE_HTTP_HEADERS, "headers");
         LOG_INFO("config: http period: %lu", (printf_ulong_t)p_http->http_period);
         switch (p_http->data_format)
         {

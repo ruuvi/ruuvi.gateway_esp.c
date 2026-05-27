@@ -44,24 +44,24 @@ http_send_statistics_internal(
         return false;
     }
 
-    p_http_async_info->http_client_config.http_url  = p_cfg_http_stat->http_stat_url;
-    p_http_async_info->http_client_config.http_user = p_cfg_http_stat->http_stat_user;
-    p_http_async_info->http_client_config.http_pass = p_cfg_http_stat->http_stat_pass;
+    p_http_async_info->http_client_config.http_url_copy = p_cfg_http_stat->http_stat_url;
+    p_http_async_info->http_client_config.http_user     = p_cfg_http_stat->http_stat_user;
+    p_http_async_info->http_client_config.http_pass     = p_cfg_http_stat->http_stat_pass;
 
     str_buf_t str_buf_server_cert_stat = str_buf_init_null();
     str_buf_t str_buf_client_cert      = str_buf_init_null();
     str_buf_t str_buf_client_key       = str_buf_init_null();
     if (use_ssl_client_cert)
     {
-        str_buf_client_cert = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_STAT_CLI_CERT);
-        str_buf_client_key  = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_STAT_CLI_KEY);
+        str_buf_client_cert = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_STAT_CLI_CERT);
+        str_buf_client_key  = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_STAT_CLI_KEY);
     }
     if (use_ssl_server_cert)
     {
-        str_buf_server_cert_stat = gw_cfg_storage_read_file(GW_CFG_STORAGE_SSL_STAT_SRV_CERT);
+        str_buf_server_cert_stat = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_SSL_STAT_SRV_CERT);
     }
 
-    const http_init_client_config_params_t http_cli_cfg_params = {
+    const http_client_config_init_params_t http_cli_cfg_params = {
         .p_url         = &p_cfg_http_stat->http_stat_url,
         .p_user        = &p_cfg_http_stat->http_stat_user,
         .p_password    = &p_cfg_http_stat->http_stat_pass,
@@ -77,13 +77,19 @@ http_send_statistics_internal(
         .ssl_buf_cfg.ssl_out_content_len = RUUVI_HTTPS_POST_TLS_OUT_CONTENT_LEN,
     };
 
-    http_init_client_config(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data);
+    if (!http_client_config_init(&p_http_async_info->http_client_config, &http_cli_cfg_params, p_user_data))
+    {
+        http_async_info_free_data(p_http_async_info);
+        return false;
+    }
 
     p_http_async_info->p_http_client_handle = esp_http_client_init(
         &p_http_async_info->http_client_config.esp_http_client_config);
     if (NULL == p_http_async_info->p_http_client_handle)
     {
-        LOG_ERR("HTTP POST to URL=%s: Can't init http client", p_http_async_info->http_client_config.http_url.buf);
+        LOG_ERR(
+            "HTTP POST to Base URL=%s: Can't init http client",
+            p_http_async_info->http_client_config.http_url_copy.buf);
         http_async_info_free_data(p_http_async_info);
         return false;
     }

@@ -151,6 +151,10 @@ public:
     bool m_flag_storage_stat_srv_cert { false };
     bool m_flag_storage_mqtt_srv_cert { false };
     bool m_flag_storage_remote_cfg_srv_cert { false };
+
+    bool m_flag_storage_http_path { false };
+    bool m_flag_storage_http_query { false };
+    bool m_flag_storage_http_headers { false };
 };
 
 TestGwCfg::TestGwCfg()
@@ -267,57 +271,95 @@ gw_cfg_storage_check(void)
 }
 
 bool
-gw_cfg_storage_check_file(const char* const p_file_name)
+gw_cfg_storage_check_file(const char* const p_file_name, const bool is_blob, size_t* const p_file_size)
 {
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, p_file_name))
+    if (nullptr != p_file_size)
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_cert;
+        *p_file_size = 0;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, p_file_name))
+    if (!is_blob)
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_key;
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_key;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_key;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_key;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_key;
+        }
+
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_srv_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_srv_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_srv_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_srv_cert;
+        }
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, p_file_name))
+    else
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_key;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_key;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_key;
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_PATH, p_file_name))
+        {
+            const bool result = g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_path;
+            if (result && (nullptr != p_file_size))
+            {
+                *p_file_size = 10;
+            }
+            return result;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_QUERY, p_file_name))
+        {
+            const bool result = g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_query;
+            if (result && (nullptr != p_file_size))
+            {
+                *p_file_size = 20;
+            }
+            return result;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_HEADERS, p_file_name))
+        {
+            const bool result = g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_headers;
+            if (result && (nullptr != p_file_size))
+            {
+                *p_file_size = 30;
+            }
+            return result;
+        }
     }
 
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_srv_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_srv_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_srv_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_srv_cert;
-    }
     return false;
 }
 
@@ -461,6 +503,10 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_and_gw_cfg_stroage_is_ready) // NO
     this->m_flag_storage_mqtt_srv_cert       = false;
     this->m_flag_storage_remote_cfg_srv_cert = false;
 
+    this->m_flag_storage_http_path    = false;
+    this->m_flag_storage_http_query   = false;
+    this->m_flag_storage_http_headers = false;
+
     const gw_cfg_t gw_cfg = get_gateway_config_default();
     gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
 
@@ -474,18 +520,21 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_and_gw_cfg_stroage_is_ready) // NO
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_cert: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_key: 1"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_srv_cert: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_cert: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_key: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_srv_cert: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_cert: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_key: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_srv_cert: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_cert: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_key: 0"));
-    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_srv_cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_cert (string): 0 bytes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_key (string): 0 bytes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_path (blob): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_query (blob): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_headers (blob): N/A"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
@@ -620,6 +669,9 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_with_http_custom) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: http://my_server1.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use extra http path: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use extra http query: no"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use extra http headers: no"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http period: 15"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http data format: ruuvi"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http auth_type: none"));
@@ -699,6 +751,162 @@ TEST_F(TestGwCfg, gw_cfg_print_to_log_default_with_http_custom) // NOLINT
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: fw_ver: v1.10.0"));
     TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Host info: nrf52_fw_ver: v0.7.2"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+}
+
+TEST_F(TestGwCfg, gw_cfg_print_to_log_http_custom_with_extra_http_files_exist) // NOLINT
+{
+    this->m_flag_storage_ready        = true;
+    this->m_flag_storage_http_path    = true;
+    this->m_flag_storage_http_query   = true;
+    this->m_flag_storage_http_headers = true;
+
+    gw_cfg_t gw_cfg = get_gateway_config_default();
+
+    gw_cfg.ruuvi_cfg.http.use_http_ruuvi              = false;
+    gw_cfg.ruuvi_cfg.http.use_http                    = true;
+    gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert    = false;
+    gw_cfg.ruuvi_cfg.http.http_use_ssl_server_cert    = false;
+    gw_cfg.ruuvi_cfg.http.http_use_extra_http_path    = true;
+    gw_cfg.ruuvi_cfg.http.http_use_extra_http_query   = true;
+    gw_cfg.ruuvi_cfg.http.http_use_extra_http_headers = true;
+    snprintf(gw_cfg.ruuvi_cfg.http.http_url.buf, sizeof(gw_cfg.ruuvi_cfg.http.http_url.buf), "http://my_server1.com");
+    gw_cfg.ruuvi_cfg.http.http_period = 15;
+    gw_cfg.ruuvi_cfg.http.data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+    gw_cfg.ruuvi_cfg.http.auth_type   = GW_CFG_HTTP_AUTH_TYPE_NONE;
+
+    esp_log_wrapper_clear();
+
+    gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
+
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_path (blob): 10 bytes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_query (blob): 20 bytes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_headers (blob): 30 bytes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: GW: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS1: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: http://my_server1.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use extra http path: yes (10 bytes)"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use extra http query: yes (20 bytes)"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use extra http headers: yes (30 bytes)"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http period: 15"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http data format: ruuvi"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http: use SSL server cert: 0"));
+    // Skip remaining log records (mqtt, ntp, auth, etc.)
+    esp_log_wrapper_clear();
+}
+
+TEST_F(TestGwCfg, gw_cfg_print_to_log_http_custom_with_extra_http_files_not_exist) // NOLINT
+{
+    this->m_flag_storage_ready        = true;
+    this->m_flag_storage_http_path    = false;
+    this->m_flag_storage_http_query   = false;
+    this->m_flag_storage_http_headers = false;
+
+    gw_cfg_t gw_cfg = get_gateway_config_default();
+
+    gw_cfg.ruuvi_cfg.http.use_http_ruuvi              = false;
+    gw_cfg.ruuvi_cfg.http.use_http                    = true;
+    gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert    = false;
+    gw_cfg.ruuvi_cfg.http.http_use_ssl_server_cert    = false;
+    gw_cfg.ruuvi_cfg.http.http_use_extra_http_path    = true;
+    gw_cfg.ruuvi_cfg.http.http_use_extra_http_query   = true;
+    gw_cfg.ruuvi_cfg.http.http_use_extra_http_headers = true;
+    snprintf(gw_cfg.ruuvi_cfg.http.http_url.buf, sizeof(gw_cfg.ruuvi_cfg.http.http_url.buf), "http://my_server1.com");
+    gw_cfg.ruuvi_cfg.http.http_period = 15;
+    gw_cfg.ruuvi_cfg.http.data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+    gw_cfg.ruuvi_cfg.http.auth_type   = GW_CFG_HTTP_AUTH_TYPE_NONE;
+
+    esp_log_wrapper_clear();
+
+    gw_cfg_log(&gw_cfg, "Gateway SETTINGS", true);
+
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("Gateway SETTINGS:"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: WiFi AP SSID: my_ssid1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: Hostname: RuuviGatewayAABB"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 fw ver: v1.10.0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 WiFi MAC ADDR: AA:BB:CC:DD:EE:11"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: ESP32 Eth MAC ADDR: AA:BB:CC:DD:EE:22"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 fw ver: v0.7.2"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 MAC ADDR: AA:BB:CC:DD:EE:FF"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: NRF52 DEVICE ID: 11:22:33:44:55:66:77:88"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage_ready: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_cli_key (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: stat_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: mqtt_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: rcfg_srv_cert (string): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_path (blob): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_query (blob): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: device_info: storage: http_headers (blob): N/A"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: Use eth: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: use DHCP: yes"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: static IP: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: netmask: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: GW: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS1: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: eth: DNS2: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use remote cfg: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: URL: "));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: use SSL server cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: remote cfg: refresh_interval_minutes: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http ruuvi: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: use http: 1"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http url: http://my_server1.com"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("config: use extra http path: yes, but file does not exist"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("config: use extra http query: yes, but file does not exist"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_WARN, string("config: use extra http headers: yes, but file does not exist"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http period: 15"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http data format: ruuvi"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http auth_type: none"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http: use SSL client cert: 0"));
+    TEST_CHECK_LOG_RECORD(ESP_LOG_INFO, string("config: http: use SSL server cert: 0"));
+    // Skip remaining log records (mqtt, ntp, auth, etc.)
+    esp_log_wrapper_clear();
 }
 
 TEST_F(TestGwCfg, gw_cfg_print_to_log_default_remote_enabled_auth_no) // NOLINT

@@ -32,8 +32,9 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
-        ${WIFI_MANAGER_INC}
         include
+        ../include
+        ${WIFI_MANAGER_INC}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${COMPONENTS}/mbedtls/mbedtls/include
         $ENV{IDF_PATH}/components/esp_rom/include

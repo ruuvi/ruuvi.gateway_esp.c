@@ -1436,10 +1436,13 @@ static void esp_mqtt_task(void *pv)
             }
 #endif
 
-            if (esp_transport_connect(client->transport,
-                                      client->config->host,
-                                      client->config->port,
-                                      client->config->network_timeout_ms) < 0) {
+            if (esp_transport_connect(
+                    client->transport,
+                    client->config->host,
+                    client->config->port,
+                    client->config->network_timeout_ms)
+                != ESP_TRANSPORT_SYNC_CONNECT_RESULT_CONNECTED)
+            {
                 ESP_LOGE(TAG, "Error transport connect");
                 esp_mqtt_client_dispatch_transport_error(client);
                 esp_mqtt_abort_connection(client);

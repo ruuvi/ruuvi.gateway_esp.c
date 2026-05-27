@@ -655,3 +655,15 @@ ruuvi_log_heap_usage(void)
         (printf_uint_t)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC),
         (printf_uint_t)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT | MALLOC_CAP_EXEC));
 }
+
+bool
+ruuvi_gw_mark_app_valid_cancel_rollback(void)
+{
+    return fw_update_mark_app_valid_cancel_rollback();
+}
+
+bool
+ruuvi_gw_fw_update_is_in_progress(void)
+{
+    return fw_update_is_in_progress();
+}

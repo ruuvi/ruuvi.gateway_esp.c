@@ -44,6 +44,9 @@ typedef struct validate_url_params_t
     const bool                    flag_use_saved_password;
     const bool                    use_ssl_client_cert;
     const bool                    use_ssl_server_cert;
+    const bool                    use_extra_http_path;
+    const bool                    use_extra_http_query;
+    const bool                    use_extra_http_headers;
 } validate_url_params_t;
 
 static bool
@@ -157,42 +160,26 @@ validate_url_get_validate_type_from_params(const char* const p_params)
 }
 
 static bool
-validate_url_get_use_ssl_client_cert(const char* const p_params)
+validate_url_get_bool_param(const char* const p_params, const char* const p_prefix, const bool flag_log_err_if_missing)
 {
-    const char* const p_prefix   = "use_ssl_client_cert=";
     const size_t      prefix_len = strlen(p_prefix);
     const char* const p_param    = strstr(p_params, p_prefix);
     if (NULL == p_param)
     {
-        LOG_ERR("Can't find prefix '%s'", p_prefix);
+        if (flag_log_err_if_missing)
+        {
+            LOG_ERR("Can't find prefix '%s'", p_prefix);
+        }
+        else
+        {
+            LOG_DBG("Can't find prefix '%s'", p_prefix);
+        }
         return false;
     }
     const char* const p_value = &p_param[prefix_len];
     const char* const p_end   = strchr(p_value, '&');
     const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(p_end - p_value);
-    LOG_INFO("Found use_ssl_client_cert: %.*s", val_len, p_value);
-    if (0 == strncmp(p_value, "true", val_len))
-    {
-        return true;
-    }
-    return false;
-}
-
-static bool
-validate_url_get_use_ssl_server_cert(const char* const p_params)
-{
-    const char* const p_prefix   = "use_ssl_server_cert=";
-    const size_t      prefix_len = strlen(p_prefix);
-    const char* const p_param    = strstr(p_params, p_prefix);
-    if (NULL == p_param)
-    {
-        LOG_ERR("Can't find prefix '%s'", p_prefix);
-        return false;
-    }
-    const char* const p_value = &p_param[prefix_len];
-    const char* const p_end   = strchr(p_value, '&');
-    const size_t      val_len = (NULL == p_end) ? strlen(p_value) : (size_t)(p_end - p_value);
-    LOG_INFO("Found use_ssl_server_cert: %.*s", val_len, p_value);
+    LOG_INFO("Found %.*s: %.*s", (printf_int_t)(prefix_len - 1), p_prefix, (printf_int_t)val_len, p_value);
     if (0 == strncmp(p_value, "true", val_len))
     {
         return true;
@@ -254,12 +241,15 @@ validate_url_post_advs(const validate_url_params_t* const p_params)
         return http_server_resp_500();
     }
     const http_check_params_t params = {
-        .p_url               = p_params->url.buf,
-        .auth_type           = p_params->auth_type,
-        .p_user              = p_params->user.buf,
-        .p_pass              = p_params->flag_use_saved_password ? saved_password.buf : p_params->password.buf,
-        .use_ssl_client_cert = p_params->use_ssl_client_cert,
-        .use_ssl_server_cert = p_params->use_ssl_server_cert,
+        .p_url                  = p_params->url.buf,
+        .auth_type              = p_params->auth_type,
+        .p_user                 = p_params->user.buf,
+        .p_pass                 = p_params->flag_use_saved_password ? saved_password.buf : p_params->password.buf,
+        .use_ssl_client_cert    = p_params->use_ssl_client_cert,
+        .use_ssl_server_cert    = p_params->use_ssl_server_cert,
+        .use_extra_http_path    = p_params->use_extra_http_path,
+        .use_extra_http_query   = p_params->use_extra_http_query,
+        .use_extra_http_headers = p_params->use_extra_http_headers,
     };
     LOG_INFO("Validate URL (POST advs): %s", params.p_url);
     LOG_INFO("Validate URL (POST advs): auth_type=%s", validate_url_auth_type_to_str(params.auth_type));
@@ -269,6 +259,9 @@ validate_url_post_advs(const validate_url_params_t* const p_params)
     LOG_DBG("Validate URL (POST advs): password=%s", (NULL != params.p_pass) ? params.p_pass : "NULL");
     LOG_INFO("Validate URL (POST advs): use_ssl_client_cert=%d", p_params->use_ssl_client_cert);
     LOG_INFO("Validate URL (POST advs): use_ssl_server_cert=%d", p_params->use_ssl_server_cert);
+    LOG_INFO("Validate URL (POST advs): use_extra_http_path=%d", p_params->use_extra_http_path);
+    LOG_INFO("Validate URL (POST advs): use_extra_http_query=%d", p_params->use_extra_http_query);
+    LOG_INFO("Validate URL (POST advs): use_extra_http_headers=%d", p_params->use_extra_http_headers);
     const http_server_resp_t http_resp = http_check_post_advs(&params, HTTP_DOWNLOAD_TIMEOUT_SECONDS);
     str_buf_free_buf(&saved_password);
     return http_resp;
@@ -1115,8 +1108,11 @@ validate_url(const char* const p_url_params)
         .password                = validate_url_get_password_from_params(p_url_params),
         .auth_type               = auth_type,
         .flag_use_saved_password = validate_url_get_bool_from_params(p_url_params, "use_saved_password="),
-        .use_ssl_client_cert     = validate_url_get_use_ssl_client_cert(p_url_params),
-        .use_ssl_server_cert     = validate_url_get_use_ssl_server_cert(p_url_params),
+        .use_ssl_client_cert     = validate_url_get_bool_param(p_url_params, "use_ssl_client_cert=", true),
+        .use_ssl_server_cert     = validate_url_get_bool_param(p_url_params, "use_ssl_server_cert=", true),
+        .use_extra_http_path     = validate_url_get_bool_param(p_url_params, "use_extra_http_path=", false),
+        .use_extra_http_query    = validate_url_get_bool_param(p_url_params, "use_extra_http_query=", false),
+        .use_extra_http_headers  = validate_url_get_bool_param(p_url_params, "use_extra_http_headers=", false),
     };
     if (NULL == params.url.buf)
     {

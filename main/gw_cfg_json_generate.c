@@ -6,6 +6,8 @@
  */
 
 #include "gw_cfg_json_generate.h"
+#include "gw_cfg_json_generate_internal.h"
+#include "gw_cfg_json_generate_remote.h"
 #include <string.h>
 #include "gw_cfg_default.h"
 #include "gw_cfg_storage.h"
@@ -31,51 +33,36 @@
 
 static const char TAG[] = "gw_cfg";
 
-static bool
-gw_cfg_json_add_bool(cJSON* const p_json_root, const char* const p_item_name, const bool val)
+typedef struct gw_cfg_json_add_item_device_info_storage_files_ctx_t
 {
-    if (NULL == cJSON_AddBoolToObject(p_json_root, p_item_name, val))
-    {
-        LOG_ERR("Can't add json item: %s", p_item_name);
-        return false;
-    }
-    return true;
-}
+    cJSON* p_storage;
+    bool   is_ok;
+} gw_cfg_json_add_item_device_info_storage_files_ctx_t;
 
 static bool
-gw_cfg_json_add_string(cJSON* const p_json_root, const char* const p_item_name, const char* p_val)
+gw_cfg_json_add_item_device_info_storage_files(
+    const char* const p_file_name,
+    const bool        is_blob,
+    void* const       p_user_data)
 {
-    if (NULL == cJSON_AddStringToObject(p_json_root, p_item_name, p_val))
+    gw_cfg_json_add_item_device_info_storage_files_ctx_t* const p_ctx = p_user_data;
+    if (!gw_cfg_json_add_bool(p_ctx->p_storage, p_file_name, gw_cfg_storage_check_file(p_file_name, is_blob, NULL)))
     {
-        LOG_ERR("Can't add json item: %s", p_item_name);
-        return false;
+        p_ctx->is_ok = false;
+        return true; // Stop iterating if failed to add json item.
     }
-    return true;
-}
-
-static bool
-gw_cfg_json_add_number(cJSON* const p_json_root, const char* const p_item_name, const cjson_number_t val)
-{
-    if (NULL == cJSON_AddNumberToObject(p_json_root, p_item_name, val))
-    {
-        LOG_ERR("Can't add json item: %s", p_item_name);
-        return false;
-    }
-    return true;
+    return false;
 }
 
 static bool
 gw_cfg_json_add_items_device_info_storage_files(cJSON* p_storage)
 {
-    for (int32_t i = 0; i < GW_CFG_STORAGE_NUM_ALLOWED_FILES; ++i)
-    {
-        const char* const p_file_name = g_gw_cfg_storage_list_of_allowed_files[i];
-        if (!gw_cfg_json_add_bool(p_storage, p_file_name, gw_cfg_storage_check_file(p_file_name)))
-        {
-            return false;
-        }
-    }
-    return true;
+    gw_cfg_json_add_item_device_info_storage_files_ctx_t ctx = {
+        .p_storage = p_storage,
+        .is_ok     = true,
+    };
+    gw_cfg_storage_files_iterate(&gw_cfg_json_add_item_device_info_storage_files, &ctx);
+    return ctx.is_ok;
 }
 
 static bool
@@ -187,153 +174,6 @@ gw_cfg_json_add_items_eth(cJSON* const p_json_root, const gw_cfg_eth_t* const p_
         return false;
     }
     if (!gw_cfg_json_add_string(p_json_root, "eth_dns2", p_cfg_eth->eth_dns2.buf))
-    {
-        return false;
-    }
-    return true;
-}
-
-static bool
-gw_cfg_json_add_items_remote_auth_basic(
-    cJSON* const                       p_json_root,
-    const ruuvi_gw_cfg_remote_t* const p_cfg_remote,
-    const bool                         flag_hide_passwords)
-{
-    if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_HTTP_AUTH_TYPE_STR_BASIC))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_basic_user", p_cfg_remote->auth.auth_basic.user.buf))
-    {
-        return false;
-    }
-    if ((!flag_hide_passwords)
-        && (!gw_cfg_json_add_string(
-            p_json_root,
-            "remote_cfg_auth_basic_pass",
-            p_cfg_remote->auth.auth_basic.password.buf)))
-    {
-        return false;
-    }
-    return true;
-}
-
-static bool
-gw_cfg_json_add_items_remote_auth_bearer(
-    cJSON* const                       p_json_root,
-    const ruuvi_gw_cfg_remote_t* const p_cfg_remote,
-    const bool                         flag_hide_passwords)
-{
-    if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_HTTP_AUTH_TYPE_STR_BEARER))
-    {
-        return false;
-    }
-    if ((!flag_hide_passwords)
-        && (!gw_cfg_json_add_string(
-            p_json_root,
-            "remote_cfg_auth_bearer_token",
-            p_cfg_remote->auth.auth_bearer.token.buf)))
-    {
-        return false;
-    }
-    return true;
-}
-
-static bool
-gw_cfg_json_add_items_remote_auth_token(
-    cJSON* const                       p_json_root,
-    const ruuvi_gw_cfg_remote_t* const p_cfg_remote,
-    const bool                         flag_hide_passwords)
-{
-    if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN))
-    {
-        return false;
-    }
-    if ((!flag_hide_passwords)
-        && (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_token", p_cfg_remote->auth.auth_token.token.buf)))
-    {
-        return false;
-    }
-    return true;
-}
-
-static bool
-gw_cfg_json_add_items_remote_auth_apikey(
-    cJSON* const                       p_json_root,
-    const ruuvi_gw_cfg_remote_t* const p_cfg_remote,
-    const bool                         flag_hide_passwords)
-{
-    if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY))
-    {
-        return false;
-    }
-    if ((!flag_hide_passwords)
-        && (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_apikey", p_cfg_remote->auth.auth_apikey.api_key.buf)))
-    {
-        return false;
-    }
-    return true;
-}
-
-static bool
-gw_cfg_json_add_items_remote(
-    cJSON* const                       p_json_root,
-    const ruuvi_gw_cfg_remote_t* const p_cfg_remote,
-    const bool                         flag_hide_passwords)
-{
-    if (!gw_cfg_json_add_bool(p_json_root, "remote_cfg_use", p_cfg_remote->use_remote_cfg))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_url", p_cfg_remote->url.buf))
-    {
-        return false;
-    }
-    switch (p_cfg_remote->auth_type)
-    {
-        case GW_CFG_HTTP_AUTH_TYPE_NONE:
-            if (!gw_cfg_json_add_string(p_json_root, "remote_cfg_auth_type", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
-            {
-                return false;
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-            if (!gw_cfg_json_add_items_remote_auth_basic(p_json_root, p_cfg_remote, flag_hide_passwords))
-            {
-                return false;
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-            if (!gw_cfg_json_add_items_remote_auth_bearer(p_json_root, p_cfg_remote, flag_hide_passwords))
-            {
-                return false;
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-            if (!gw_cfg_json_add_items_remote_auth_token(p_json_root, p_cfg_remote, flag_hide_passwords))
-            {
-                return false;
-            }
-            break;
-        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
-            if (!gw_cfg_json_add_items_remote_auth_apikey(p_json_root, p_cfg_remote, flag_hide_passwords))
-            {
-                return false;
-            }
-            break;
-    }
-    if (!gw_cfg_json_add_bool(p_json_root, "remote_cfg_use_ssl_client_cert", p_cfg_remote->use_ssl_client_cert))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(p_json_root, "remote_cfg_use_ssl_server_cert", p_cfg_remote->use_ssl_server_cert))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_number(
-            p_json_root,
-            "remote_cfg_refresh_interval_minutes",
-            p_cfg_remote->refresh_interval_minutes))
     {
         return false;
     }
@@ -453,6 +293,18 @@ gw_cfg_json_add_items_http_custom_params(
         return false;
     }
     if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_server_cert", p_cfg_http->http_use_ssl_server_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_path", p_cfg_http->http_use_extra_http_path))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_query", p_cfg_http->http_use_extra_http_query))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_headers", p_cfg_http->http_use_extra_http_headers))
     {
         return false;
     }

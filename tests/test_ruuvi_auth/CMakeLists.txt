@@ -14,6 +14,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_log.c
         ${RUUVI_GW_SRC}/gw_cfg_log.h
+        ${RUUVI_GW_SRC}/gw_cfg_storage_files.c
+        ${RUUVI_GW_SRC}/gw_cfg_storage.h
         ${RUUVI_GW_SRC}/event_mgr.h
         ${RUUVI_ESP_WRAPPERS}/src/mac_addr.c
         ${RUUVI_ESP_WRAPPERS}/include/mac_addr.h
@@ -50,16 +52,16 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
+        include
+        ../include
         ${WIFI_MANAGER_INC}
+        ${WIFI_MANAGER_SRC}
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/include
         $ENV{IDF_PATH}/components/esp_wifi/include
         $ENV{IDF_PATH}/components/esp_common/include
         $ENV{IDF_PATH}/components/esp_event/include
-        include
-        ../../components/esp32-wifi-manager/src/include
-        ../../components/esp32-wifi-manager/src
         ${RUUVI_JSON_STREAM_GEN_INC}
 )
 

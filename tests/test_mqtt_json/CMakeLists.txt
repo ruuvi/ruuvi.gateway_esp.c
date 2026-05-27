@@ -43,6 +43,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
         include
+        ../include
         ${WIFI_MANAGER_INC}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src

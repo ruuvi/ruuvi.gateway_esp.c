@@ -265,7 +265,8 @@ void esp_transport_ssl_clear_saved_session_tickets(void)
         if (!p_slot->is_valid) {
             continue;
         }
-        ESP_TRANSPORT_LOGI("[%s] Clear TLS session ticket (slot %d)", p_slot->session.saved_session.ticket_hostname.buf, i);
+        ESP_TRANSPORT_LOGI("[%s] Clear TLS session ticket (slot %d)",
+                           p_slot->session.saved_session.ticket_hostname.buf, i);
         mbedtls_ssl_session_free(&p_slot->session.saved_session);
         mbedtls_ssl_session_init(&p_slot->session.saved_session);
         p_slot->is_valid = false;
@@ -295,26 +296,30 @@ static inline transport_esp_tls_t *ssl_get_context_data(esp_transport_handle_t t
  * @param[in] timeout_ms    Connection timeout in milliseconds
  * @param[in] is_plain_tcp  If true, establishes plain TCP connection; if false, establishes TLS connection
  *
- * @return  1 if connection successfully established
- * @return  0 if connection is in progress (call again to continue)
- * @return <0 on error (connection failed)
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_CONNECTED if connection successfully established
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS if connection is in progress (call again to continue)
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR on error (connection failed)
  *
  * @note This function maintains internal state across multiple calls to perform non-blocking connection
  * @note For TLS connections, attempts to reuse saved session tickets if available
  * @note Socket descriptor is obtained and stored once connection progresses past initial state
  */
-static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms, bool is_plain_tcp)
+static esp_transport_async_connect_result_e esp_tls_connect_async(esp_transport_handle_t const t,
+                                                                  const char * const host, const int port,
+                                                                  const int timeout_ms, const bool is_plain_tcp)
 {
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
     if (ssl->conn_state == TRANS_SSL_INIT) {
-        ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_INIT[%s:%d] timeout=%d ms, is_plain_tcp=%d", host, port, timeout_ms, is_plain_tcp);
+        ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_INIT[%s:%d] timeout=%d ms, is_plain_tcp=%d",
+                                host, port, timeout_ms, is_plain_tcp);
         ssl->cfg.timeout_ms = timeout_ms;
         ssl->cfg.is_plain_tcp = is_plain_tcp;
         ssl->cfg.non_block = true;
         if (!is_plain_tcp) {
             ssl->cfg.client_session = get_saved_session_info_for_host(host);
             if (NULL != ssl->cfg.client_session) {
-                ESP_TRANSPORT_LOGI("[%s:%d] Reuse saved TLS session ticket for host (ssl=%p): %p", host, port, ssl, ssl->cfg.client_session);
+                ESP_TRANSPORT_LOGI("[%s:%d] Reuse saved TLS session ticket for host (ssl=%p): %p",
+                                   host, port, ssl, ssl->cfg.client_session);
             } else {
                 ESP_TRANSPORT_LOGI("[%s:%d] There is no saved TLS session ticket for host (ssl=%p)", host, port, ssl);
             }
@@ -324,22 +329,23 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
         ESP_LOGD(TAG, "%s: esp_tls_init, tls=%p", __func__, ssl->tls);
         if (!ssl->tls) {
             ESP_TRANSPORT_LOGE_FUNC("[%s:%d] esp_tls_init failed", host, port);
-            return -1;
+            return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR;
         }
         ssl->conn_state = TRANS_SSL_CONNECTING;
         ssl->sockfd = INVALID_SOCKET;
     }
     if (ssl->conn_state == TRANS_SSL_CONNECTING) {
         ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_CONNECTING[%s:%d]", host, port);
-        int progress = esp_tls_conn_new_async(host, strlen(host), port, &ssl->cfg, ssl->tls);
+        const esp_tls_async_conn_result_e progress = esp_tls_conn_new_async(host, strlen(host), port,
+                                                                            &ssl->cfg, ssl->tls);
         ESP_TRANSPORT_LOGD_FUNC("esp_tls_conn_new_async: progress=%d", progress);
-        if (progress >= 0) {
+        if ((ESP_TLS_ASYNC_CONN_IN_PROGRESS == progress) || (ESP_TLS_ASYNC_CONN_SUCCESS == progress)) {
             if (esp_tls_get_conn_sockfd(ssl->tls, &ssl->sockfd) != ESP_OK) {
                 ESP_TRANSPORT_LOGE_FUNC("[%s:%d] Error in obtaining socket fd for the session", host, port);
                 esp_tls_conn_destroy(ssl->tls);
-                return -1;
+                return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR;
             }
-            if (0 == progress) {
+            if (ESP_TLS_ASYNC_CONN_IN_PROGRESS == progress) {
                 ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_CONNECTING[%s:%d] esp_tls_conn_new_async: In progress", host, port);
             } else {
                 ESP_TRANSPORT_LOGD_FUNC("TRANS_SSL_CONNECTING[%s:%d] esp_tls_conn_new_async: Connected", host, port);
@@ -348,23 +354,44 @@ static int esp_tls_connect_async(esp_transport_handle_t t, const char *host, int
             esp_tls_error_handle_t esp_tls_error_handle;
             esp_tls_get_error_handle(ssl->tls, &esp_tls_error_handle);
             str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(esp_tls_error_handle->esp_tls_error_code);
-            ESP_TRANSPORT_LOGE_FUNC("[%s:%d] esp_tls_conn_new_async: Failed, res=%d, last_error=%d, esp_tls_error_code=-0x%04X(%d) (%s)",
+            ESP_TRANSPORT_LOGE_FUNC(
+                "[%s:%d] esp_tls_conn_new_async: Failed, res=%d, last_error=%d, esp_tls_error_code=-0x%04X(%d) (%s)",
                 host, port, progress, esp_tls_error_handle->last_error, -esp_tls_error_handle->esp_tls_error_code,
                 esp_tls_error_handle->esp_tls_error_code, (NULL != err_desc.buf) ? err_desc.buf : "");
             str_buf_free_buf(&err_desc);
             ESP_LOGD(TAG, "%s: esp_transport_set_errors", __func__);
             esp_transport_set_errors(t, esp_tls_error_handle);
         }
-        return progress;
-
+        switch (progress) {
+            case ESP_TLS_ASYNC_CONN_SUCCESS:
+                return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_CONNECTED;
+            case ESP_TLS_ASYNC_CONN_IN_PROGRESS:
+                return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS;
+            case ESP_TLS_ASYNC_CONN_ERROR:
+                return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR;
+        }
+        return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR;
     }
-    return 0;
+    return ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS;
 }
 
-static int ssl_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
+/**
+ * @brief Perform an asynchronous connection establishment
+ *
+ * @param[in] t             ESP transport handle for the connection
+ * @param[in] host          Remote host name or IP address
+ * @param[in] port          Remote port number
+ * @param[in] timeout_ms    Connection timeout in milliseconds
+ *
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_CONNECTED if the connection successfully established
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS if the connection is in progress (call again to continue)
+ * @return \c ESP_TRANSPORT_ASYNC_CONNECT_RESULT_ERROR on error (connection failed)
+ */
+static esp_transport_async_connect_result_e ssl_connect_async(
+    esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
-    const int ret = esp_tls_connect_async(t, host, port, timeout_ms, false);
-    if (0 != ret) {
+    const esp_transport_async_connect_result_e ret = esp_tls_connect_async(t, host, port, timeout_ms, false);
+    if (ESP_TRANSPORT_ASYNC_CONNECT_RESULT_IN_PROGRESS != ret) {
         // Unlock the saved session if connection failed or successful handshake
         transport_esp_tls_t *ssl = ssl_get_context_data(t);
         ESP_TRANSPORT_LOGD_FUNC("[%s] unlock_saved_session", host);
@@ -373,7 +400,8 @@ static int ssl_connect_async(esp_transport_handle_t t, const char *host, int por
     return ret;
 }
 
-static inline int tcp_connect_async(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
+static inline esp_transport_async_connect_result_e tcp_connect_async(
+    esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
     return esp_tls_connect_async(t, host, port, timeout_ms, true);
 }
@@ -392,7 +420,8 @@ static int ssl_connect(esp_transport_handle_t t, const char *host, int port, int
         capture_tcp_transport_error(t, ERR_TCP_TRANSPORT_NO_MEM);
         return -1;
     }
-    if (esp_tls_conn_new_sync(host, strlen(host), port, &ssl->cfg, ssl->tls) <= 0) {
+    const esp_tls_sync_conn_result_e res = esp_tls_conn_new_sync(host, strlen(host), port, &ssl->cfg, ssl->tls);
+    if ((ESP_TLS_SYNC_CONN_TIMEOUT == res) || (ESP_TLS_SYNC_CONN_ERROR == res)) {
         ESP_TRANSPORT_LOGE_FUNC("[%s] Failed to open a new connection", host);
         unlock_saved_session(ssl);
         log_heap_info();
@@ -417,7 +446,8 @@ exit_failure:
         return -1;
 }
 
-static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
+static esp_transport_sync_connect_result_e tcp_connect(esp_transport_handle_t t,
+                                                       const char *host, int port, int timeout_ms)
 {
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
     esp_tls_last_error_t *err_handle = esp_transport_get_error_handle(t);
@@ -425,7 +455,8 @@ static int tcp_connect(esp_transport_handle_t t, const char *host, int port, int
     ESP_TRANSPORT_LOGI_FUNC("[%s:%d] Connect to host with timeout %d ms", host, port, timeout_ms);
 
     ssl->cfg.timeout_ms = timeout_ms;
-    esp_err_t err = esp_tls_plain_tcp_connect(host, strlen(host), port, &ssl->cfg, err_handle, &ssl->sockfd);
+    const esp_err_t err = esp_tls_plain_tcp_connect(host, strlen(host), port,
+                                                    &ssl->cfg, err_handle, &ssl->sockfd);
     if (err != ESP_OK) {
         str_buf_t err_desc = esp_err_to_name_with_alloc_str_buf(err);
         ESP_TRANSPORT_LOGE_FUNC("[%s:%d] failed to connect: %d (%s)",
@@ -464,7 +495,8 @@ static int base_poll_read(esp_transport_handle_t t, int timeout_ms)
         }
     }
     ESP_LOGD(TAG, "%s: select timeout=%d ms", __func__, timeout_ms);
-    ret = select(ssl->sockfd + 1, &readset, NULL, &errset, esp_transport_utils_ms_to_timeval(timeout_ms, &timeout));
+    ret = select(ssl->sockfd + 1, &readset, NULL, &errset,
+          esp_transport_utils_ms_to_timeval(timeout_ms, &timeout));
     ESP_LOGD(TAG, "%s: select, ret=%d", __func__, ret);
     if (ret > 0 && FD_ISSET(ssl->sockfd, &errset)) {
         int sock_errno = 0;
@@ -495,7 +527,8 @@ static int base_poll_write(esp_transport_handle_t t, int timeout_ms)
     FD_ZERO(&errset);
     FD_SET(ssl->sockfd, &writeset);
     FD_SET(ssl->sockfd, &errset);
-    ret = select(ssl->sockfd + 1, NULL, &writeset, &errset, esp_transport_utils_ms_to_timeval(timeout_ms, &timeout));
+    ret = select(ssl->sockfd + 1, NULL, &writeset, &errset,
+          esp_transport_utils_ms_to_timeval(timeout_ms, &timeout));
     if (ret > 0 && FD_ISSET(ssl->sockfd, &errset)) {
         int sock_errno = 0;
         uint32_t optlen = sizeof(sock_errno);
@@ -555,21 +588,25 @@ static int ssl_write(esp_transport_handle_t t, const char *buffer, int len, int 
             if (ret == ESP_TLS_ERR_SSL_WANT_WRITE || ret == ESP_TLS_ERR_SSL_TIMEOUT) {
                 if (!ssl->cfg.non_block) {
                     if (ret == ESP_TLS_ERR_SSL_WANT_WRITE) {
-                        ESP_TRANSPORT_LOGD_FUNC("[sock=%d][%s] esp_tls_conn_write error, ret=-0x%x (ESP_TLS_ERR_SSL_WANT_READ)",
-                                                ssl->sockfd, esp_tls_get_hostname(ssl->tls), -ret);
+                        ESP_TRANSPORT_LOGD_FUNC(
+                            "[sock=%d][%s] esp_tls_conn_write error, ret=-0x%x (ESP_TLS_ERR_SSL_WANT_READ)",
+                            ssl->sockfd, esp_tls_get_hostname(ssl->tls), -ret);
                         continue;
                     }
-                    ESP_TRANSPORT_LOGE_FUNC("[sock=%d][%s] esp_tls_conn_write error, ret=-0x%x (ESP_TLS_ERR_SSL_TIMEOUT)",
-                                            ssl->sockfd, esp_tls_get_hostname(ssl->tls), -ret);
+                    ESP_TRANSPORT_LOGE_FUNC(
+                        "[sock=%d][%s] esp_tls_conn_write error, ret=-0x%x (ESP_TLS_ERR_SSL_TIMEOUT)",
+                        ssl->sockfd, esp_tls_get_hostname(ssl->tls), -ret);
                     errno = ETIMEDOUT;
                     return ret;
                 }
                 const uint32_t delta_ticks = xTaskGetTickCount() - ssl->timer_start;
-                ESP_TRANSPORT_LOGD_FUNC("[sock=%d][%s] timer delta_ticks: %u, timeout: %d",
-                                        ssl->sockfd, esp_tls_get_hostname(ssl->tls), delta_ticks, pdMS_TO_TICKS(timeout_ms));
+                ESP_TRANSPORT_LOGD_FUNC(
+                    "[sock=%d][%s] timer delta_ticks: %u, timeout: %d",
+                    ssl->sockfd, esp_tls_get_hostname(ssl->tls), delta_ticks, pdMS_TO_TICKS(timeout_ms));
                 if (delta_ticks > pdMS_TO_TICKS(timeout_ms)) {
-                    ESP_TRANSPORT_LOGE_FUNC("[sock=%d][%s] timeout: delta_ticks=%u, timeout=%d",
-                                            ssl->sockfd, esp_tls_get_hostname(ssl->tls), delta_ticks, pdMS_TO_TICKS(timeout_ms));
+                    ESP_TRANSPORT_LOGE_FUNC(
+                        "[sock=%d][%s] timeout: delta_ticks=%u, timeout=%d",
+                        ssl->sockfd, esp_tls_get_hostname(ssl->tls), delta_ticks, pdMS_TO_TICKS(timeout_ms));
                     errno = ETIMEDOUT;
                     ret = ETIMEDOUT;
                 } else {
@@ -615,7 +652,8 @@ static int tcp_write(esp_transport_handle_t t, const char *buffer, int len, int 
 {
     transport_esp_tls_t *ssl = ssl_get_context_data(t);
 
-    ESP_TRANSPORT_LOGD_FUNC("[sock=%d] len=%d, non_block=%d, timeout=%d ms", ssl->sockfd, len, ssl->cfg.non_block, timeout_ms);
+    ESP_TRANSPORT_LOGD_FUNC("[sock=%d] len=%d, non_block=%d, timeout=%d ms",
+                            ssl->sockfd, len, ssl->cfg.non_block, timeout_ms);
     if (!ssl->cfg.non_block) {
         ESP_TRANSPORT_LOGD_FUNC("[sock=%d] esp_transport_poll_write: timeout=%d ms", ssl->sockfd, timeout_ms);
         const int poll = esp_transport_poll_write(t, timeout_ms);
@@ -634,13 +672,14 @@ static int tcp_write(esp_transport_handle_t t, const char *buffer, int len, int 
         }
     }
     ESP_TRANSPORT_LOGD_FUNC("[sock=%d] send: len=%d", ssl->sockfd, len);
-    int ret = send(ssl->sockfd, (const unsigned char *) buffer, len, 0);
+    const int ret = send(ssl->sockfd, (const unsigned char *) buffer, len, 0);
     ESP_TRANSPORT_LOGD_FUNC("[sock=%d] send: ret=%d", ssl->sockfd, len);
     if (ret < 0) {
         if (errno == EAGAIN) {
             ESP_TRANSPORT_LOGD_FUNC("[sock=%d] tcp_write error, errno=%d (EAGAIN)", ssl->sockfd, errno);
             const uint32_t delta_ticks = xTaskGetTickCount() - ssl->timer_start;
-            ESP_TRANSPORT_LOGD_FUNC("[sock=%d] timer delta_ticks: %u, timeout: %d", ssl->sockfd, delta_ticks, pdMS_TO_TICKS(timeout_ms));
+            ESP_TRANSPORT_LOGD_FUNC("[sock=%d] timer delta_ticks: %u, timeout: %d",
+                ssl->sockfd, delta_ticks, pdMS_TO_TICKS(timeout_ms));
             if (delta_ticks > pdMS_TO_TICKS(timeout_ms))
             {
                 ESP_TRANSPORT_LOGE_FUNC("[sock=%d] timeout: delta_ticks=%u, timeout=%d",
@@ -722,12 +761,14 @@ static int ssl_read(esp_transport_handle_t t, char *buffer, int len, int timeout
                     return ret;
                 }
                 const uint32_t delta_ticks = xTaskGetTickCount() - ssl->timer_start;
-                ESP_TRANSPORT_LOGD_FUNC("[sock=%d][%s] timer delta_ticks: %u, timeout: %d",
-                                        ssl->sockfd, esp_tls_get_hostname(ssl->tls), delta_ticks, pdMS_TO_TICKS(timeout_ms));
+                ESP_TRANSPORT_LOGD_FUNC(
+                    "[sock=%d][%s] timer delta_ticks: %u, timeout: %d",
+                    ssl->sockfd, esp_tls_get_hostname(ssl->tls), delta_ticks, pdMS_TO_TICKS(timeout_ms));
                 if (delta_ticks > pdMS_TO_TICKS(timeout_ms))
                 {
-                    ESP_TRANSPORT_LOGE_FUNC("[sock=%d][%s] timeout: delta_ticks=%u, timeout=%d",
-                                            ssl->sockfd, esp_tls_get_hostname(ssl->tls), delta_ticks, pdMS_TO_TICKS(timeout_ms));
+                    ESP_TRANSPORT_LOGE_FUNC(
+                        "[sock=%d][%s] timeout: delta_ticks=%u, timeout=%d",
+                        ssl->sockfd, esp_tls_get_hostname(ssl->tls), delta_ticks, pdMS_TO_TICKS(timeout_ms));
                     errno = ETIMEDOUT;
                     ret = ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;
                 } else {
@@ -783,7 +824,8 @@ static int tcp_read(esp_transport_handle_t t, char *buffer, int len, int timeout
         ESP_TRANSPORT_LOGD_FUNC("[sock=%d] esp_transport_poll_read: timeout=%d ms", ssl->sockfd, timeout_ms);
         int flag_poll = esp_transport_poll_read(t, timeout_ms);
         if (flag_poll == -1) {
-            ESP_TRANSPORT_LOGE_FUNC("[sock=%d] esp_transport_poll_read: ERR_TCP_TRANSPORT_CONNECTION_FAILED", ssl->sockfd);
+            ESP_TRANSPORT_LOGE_FUNC("[sock=%d] esp_transport_poll_read: ERR_TCP_TRANSPORT_CONNECTION_FAILED",
+                                    ssl->sockfd);
             return ERR_TCP_TRANSPORT_CONNECTION_FAILED;
         }
         if (flag_poll == 0) {
@@ -806,7 +848,8 @@ static int tcp_read(esp_transport_handle_t t, char *buffer, int len, int timeout
         if (errno == EAGAIN) {
             ESP_TRANSPORT_LOGD_FUNC("[sock=%d] tcp_read error, errno=%d (EAGAIN)", ssl->sockfd, errno);
             const uint32_t delta_ticks = xTaskGetTickCount() - ssl->timer_start;
-            ESP_TRANSPORT_LOGD_FUNC("[sock=%d] timer delta_ticks: %u, timeout: %d", ssl->sockfd, delta_ticks, pdMS_TO_TICKS(timeout_ms));
+            ESP_TRANSPORT_LOGD_FUNC("[sock=%d] timer delta_ticks: %u, timeout: %d",
+                                    ssl->sockfd, delta_ticks, pdMS_TO_TICKS(timeout_ms));
             if (delta_ticks > pdMS_TO_TICKS(timeout_ms))
             {
                 ESP_TRANSPORT_LOGE_FUNC("[sock=%d] timeout: delta_ticks=%u, timeout=%d",
@@ -1066,7 +1109,8 @@ bool esp_transport_ssl_set_buffer(esp_transport_handle_t t, const esp_transport_
     }
 #if defined(MBEDTLS_SSL_VARIABLE_BUFFER_LENGTH)
     if (p_buf_cfg->ssl_in_content_len < 1024) {
-        ESP_TRANSPORT_LOGE_FUNC("ssl_in_content_len=%zu is too small, must be at least 1024", p_buf_cfg->ssl_in_content_len);
+        ESP_TRANSPORT_LOGE_FUNC("ssl_in_content_len=%zu is too small, must be at least 1024",
+                                p_buf_cfg->ssl_in_content_len);
         return false;
     }
     if (p_buf_cfg->ssl_in_buf_len < MBEDTLS_SSL_IN_BUFFER_LEN_CALC(p_buf_cfg->ssl_in_content_len)) {
@@ -1076,7 +1120,8 @@ bool esp_transport_ssl_set_buffer(esp_transport_handle_t t, const esp_transport_
         return false;
     }
     if (p_buf_cfg->ssl_out_content_len < 1024) {
-        ESP_TRANSPORT_LOGE_FUNC("ssl_out_content_len=%zu is too small, must be at least 1024", p_buf_cfg->ssl_out_content_len);
+        ESP_TRANSPORT_LOGE_FUNC("ssl_out_content_len=%zu is too small, must be at least 1024",
+                                p_buf_cfg->ssl_out_content_len);
         return false;
     }
     if (p_buf_cfg->ssl_out_buf_len < MBEDTLS_SSL_OUT_BUFFER_LEN_CALC(p_buf_cfg->ssl_out_content_len)) {
@@ -1153,7 +1198,15 @@ esp_transport_handle_t esp_transport_ssl_init(void)
         return NULL;
     }
     ((transport_esp_tls_t *)ssl_transport->data)->cfg.is_plain_tcp = false;
-    esp_transport_set_func(ssl_transport, ssl_connect, ssl_read, ssl_write, base_close, base_poll_read, base_poll_write, base_destroy);
+    esp_transport_set_func(
+        ssl_transport,
+        ssl_connect,
+        ssl_read,
+        ssl_write,
+        base_close,
+        base_poll_read,
+        base_poll_write,
+        base_destroy);
     esp_transport_set_async_connect_func(ssl_transport, ssl_connect_async);
     ssl_transport->_get_socket = base_get_socket;
     return ssl_transport;
@@ -1167,7 +1220,15 @@ esp_transport_handle_t esp_transport_tcp_init(void)
         return NULL;
     }
     ((transport_esp_tls_t *)tcp_transport->data)->cfg.is_plain_tcp = true;
-    esp_transport_set_func(tcp_transport, tcp_connect, tcp_read, tcp_write, base_close, base_poll_read, base_poll_write, base_destroy);
+    esp_transport_set_func(
+        tcp_transport,
+        tcp_connect,
+        tcp_read,
+        tcp_write,
+        base_close,
+        base_poll_read,
+        base_poll_write,
+        base_destroy);
     esp_transport_set_async_connect_func(tcp_transport, tcp_connect_async);
     tcp_transport->_get_socket = base_get_socket;
     return tcp_transport;

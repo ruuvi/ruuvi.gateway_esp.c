@@ -14,6 +14,8 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_log.c
         ${RUUVI_GW_SRC}/gw_cfg_log.h
+        ${RUUVI_GW_SRC}/gw_cfg_storage_files.c
+        ${RUUVI_GW_SRC}/gw_cfg_storage.h
         ${RUUVI_GW_SRC}/event_mgr.h
         ${WIFI_MANAGER_SRC}/wifiman_config.c
         ${WIFI_MANAGER_SRC}/wifiman_config.h
@@ -45,8 +47,9 @@ target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
-        ${WIFI_MANAGER_INC}
         include
+        ../include
+        ${WIFI_MANAGER_INC}
         $ENV{IDF_PATH}/components/mbedtls/mbedtls/include
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/esp_wifi/include

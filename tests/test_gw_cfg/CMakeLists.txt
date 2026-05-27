@@ -14,6 +14,10 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_json_generate.c
         ${RUUVI_GW_SRC}/gw_cfg_json_generate.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_internal.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_internal.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_remote.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_remote.h
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.c
         ${RUUVI_GW_SRC}/gw_cfg_ruuvi_json.h
         ${RUUVI_GW_SRC}/gw_cfg_storage_files.c
@@ -60,6 +64,7 @@ target_include_directories(${ProjectId} PUBLIC
         ${RUUVI_GW_SRC}
         ${WIFI_MANAGER_INC}
         include
+        ../include
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/app_update/include
         $ENV{IDF_PATH}/components/spi_flash/include

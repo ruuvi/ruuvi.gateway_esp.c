@@ -9,6 +9,7 @@
 #include <cstring>
 #include "gtest/gtest.h"
 #include "os_malloc.h"
+#include "ruuvi_endpoint_ca_uart.h"
 
 using namespace std;
 
@@ -195,6 +196,8 @@ TEST_F(TestHttpJson, test_df_5_with_raw_data) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -203,10 +206,11 @@ TEST_F(TestHttpJson, test_df_5_with_raw_data) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -282,6 +286,8 @@ TEST_F(TestHttpJson, test_df_5_with_raw_and_decoded_data) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -290,10 +296,11 @@ TEST_F(TestHttpJson, test_df_5_with_raw_and_decoded_data) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -382,6 +389,8 @@ TEST_F(TestHttpJson, test_df_5_without_raw_and_with_decoded) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -390,10 +399,11 @@ TEST_F(TestHttpJson, test_df_5_without_raw_and_with_decoded) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -495,6 +505,8 @@ TEST_F(TestHttpJson, test_df_6_with_raw_data) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -503,10 +515,11 @@ TEST_F(TestHttpJson, test_df_6_with_raw_data) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -596,6 +609,8 @@ TEST_F(TestHttpJson, test_df_6_with_raw_and_decoded_data) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -604,10 +619,11 @@ TEST_F(TestHttpJson, test_df_6_with_raw_and_decoded_data) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -712,6 +728,8 @@ TEST_F(TestHttpJson, test_df_6_without_raw_and_with_decoded_data) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -720,10 +738,11 @@ TEST_F(TestHttpJson, test_df_6_without_raw_and_with_decoded_data) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -832,6 +851,8 @@ TEST_F(TestHttpJson, test_df_e1_with_raw_data) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -840,10 +861,11 @@ TEST_F(TestHttpJson, test_df_e1_with_raw_data) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -939,6 +961,8 @@ TEST_F(TestHttpJson, test_df_e1_with_raw_and_decoded_data) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -947,10 +971,11 @@ TEST_F(TestHttpJson, test_df_e1_with_raw_and_decoded_data) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -1066,6 +1091,8 @@ TEST_F(TestHttpJson, test_df_e1_without_raw_and_with_decoded_data) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -1074,10 +1101,11 @@ TEST_F(TestHttpJson, test_df_e1_without_raw_and_with_decoded_data) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -1169,6 +1197,8 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -1177,10 +1207,11 @@ TEST_F(TestHttpJson, test_1_without_timestamp) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");
@@ -1266,6 +1297,8 @@ TEST_F(TestHttpJson, test_2) // NOLINT
     const bool     flag_use_nonce      = true;
     const uint32_t nonce               = 12345678;
 
+    str_buf_t coordinates_str_buf = str_buf_printf_with_alloc("%s", coordinates.buf);
+    assert(nullptr != coordinates_str_buf.buf);
     const http_json_create_stream_gen_advs_params_t params = {
         .flag_raw_data       = flag_raw_data,
         .flag_decode         = flag_decode,
@@ -1274,10 +1307,11 @@ TEST_F(TestHttpJson, test_2) // NOLINT
         .flag_use_nonce      = flag_use_nonce,
         .nonce               = nonce,
         .p_mac_addr          = &gw_mac_addr,
-        .p_coordinates       = &coordinates,
+        .coordinates_str_buf = coordinates_str_buf,
     };
 
     json_stream_gen_t* p_gen = http_json_create_stream_gen_advs(&adv_table, &params);
+    str_buf_free_buf(&coordinates_str_buf);
     ASSERT_NE(nullptr, p_gen);
 
     string json_str("");

@@ -220,6 +220,27 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
             {
                 LOG_WARN("Can't find key '%s' in config-json", "http_period");
             }
+            if (!gw_cfg_json_get_bool_val(
+                    p_json_root,
+                    "http_use_extra_http_path",
+                    &p_gw_cfg_http->http_use_extra_http_path))
+            {
+                LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_path");
+            }
+            if (!gw_cfg_json_get_bool_val(
+                    p_json_root,
+                    "http_use_extra_http_query",
+                    &p_gw_cfg_http->http_use_extra_http_query))
+            {
+                LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_query");
+            }
+            if (!gw_cfg_json_get_bool_val(
+                    p_json_root,
+                    "http_use_extra_http_headers",
+                    &p_gw_cfg_http->http_use_extra_http_headers))
+            {
+                LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_headers");
+            }
             gw_cfg_json_parse_http_ssl_certs(p_json_root, p_gw_cfg_http);
         }
     }

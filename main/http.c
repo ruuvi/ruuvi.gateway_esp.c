@@ -7,17 +7,17 @@
 
 #include "http.h"
 #include <string.h>
+#include <errno.h>
 #include <esp_task_wdt.h>
 #include "cjson_wrap.h"
 #include "esp_http_client.h"
 #include "mbedtls/ssl_misc.h"
 #include "ruuvi_gateway.h"
+#include "ruuvi_nvs.h"
 #include "leds.h"
 #include "os_str.h"
 #include "hmac_sha256.h"
 #include "adv_post_timers.h"
-#include "adv_post_async_comm.h"
-#include "fw_update.h"
 #include "str_buf.h"
 #include "reset_info.h"
 #include "os_sema.h"
@@ -37,8 +37,6 @@ static const char TAG[] = "http";
 #warning Debug log level prints out the passwords as a "plaintext".
 #endif
 
-#define BASE_10 (10U)
-
 #define HTTP_POST_MAX_LEN_TO_PRINT_LOG (4U * 1024U)
 
 typedef int esp_http_client_len_t;
@@ -56,173 +54,6 @@ http_get_async_info(void)
         os_sema_signal(p_http_async_info->p_http_async_sema);
     }
     return p_http_async_info;
-}
-
-static void
-http_post_event_handler_on_header(const esp_http_client_event_t* const p_evt)
-{
-    LOG_DBG(
-        "HTTP_EVENT_ON_HEADER, key=%s, value=%s, user_data=%p",
-        p_evt->header_key,
-        p_evt->header_value,
-        p_evt->user_data);
-    if (0 == strcasecmp("Ruuvi-HMAC-KEY", p_evt->header_key))
-    {
-        if (!adv_post_set_hmac_sha256_key(p_evt->header_value))
-        {
-            LOG_ERR("Failed to update Ruuvi-HMAC-KEY");
-        }
-    }
-    else if (0 == strcasecmp("X-Ruuvi-Gateway-Rate", p_evt->header_key))
-    {
-        uint32_t period_seconds = os_str_to_uint32_cptr(p_evt->header_value, NULL, BASE_10);
-        if ((0 == period_seconds) || (period_seconds > (TIME_UNITS_MINUTES_PER_HOUR * TIME_UNITS_SECONDS_PER_MINUTE)))
-        {
-            LOG_WARN("X-Ruuvi-Gateway-Rate: Got incorrect value: %s", p_evt->header_value);
-            period_seconds = ADV_POST_DEFAULT_INTERVAL_SECONDS;
-        }
-        adv_post_set_default_period(period_seconds * TIME_UNITS_MS_PER_SECOND);
-    }
-    else if ((0 == strcasecmp("Content-Length", p_evt->header_key)) && (NULL != p_evt->user_data))
-    {
-        http_resp_cb_info_t* const p_cb_info = p_evt->user_data;
-        p_cb_info->content_length            = os_str_to_uint32_cptr(p_evt->header_value, NULL, BASE_10);
-        p_cb_info->offset                    = 0;
-        p_cb_info->p_buf                     = os_malloc(p_cb_info->content_length + 1);
-        if (NULL == p_cb_info->p_buf)
-        {
-            LOG_ERR("Can't allocate %lu bytes for HTTP response", (printf_ulong_t)p_cb_info->content_length);
-        }
-        else
-        {
-            p_cb_info->p_buf[0] = '\0';
-        }
-    }
-    else
-    {
-        // MISRA C:2012, 15.7 - All if...else if constructs shall be terminated with an else statement
-    }
-}
-
-static void
-http_post_event_handler_on_data(const esp_http_client_event_t* const p_evt)
-{
-    LOG_ERR("HTTP_EVENT_ON_DATA, len=%d: %.*s", p_evt->data_len, p_evt->data_len, (char*)p_evt->data);
-    if (NULL != p_evt->user_data)
-    {
-        http_resp_cb_info_t* const p_cb_info = p_evt->user_data;
-        if (NULL != p_cb_info->p_buf)
-        {
-            const uint32_t remaining_buf = p_cb_info->content_length - p_cb_info->offset;
-            const uint32_t len           = (p_evt->data_len <= remaining_buf) ? p_evt->data_len : remaining_buf;
-            memcpy(&p_cb_info->p_buf[p_cb_info->offset], p_evt->data, len);
-            p_cb_info->offset += len;
-            p_cb_info->p_buf[p_cb_info->offset] = '\0';
-        }
-    }
-}
-
-static esp_err_t
-http_post_event_handler(esp_http_client_event_t* p_evt) // NOSONAR
-{
-    switch (p_evt->event_id)
-    {
-        case HTTP_EVENT_ERROR:
-            LOG_ERR("HTTP_EVENT_ERROR");
-            break;
-
-        case HTTP_EVENT_ON_CONNECTED:
-            LOG_DBG("HTTP_EVENT_ON_CONNECTED");
-            break;
-
-        case HTTP_EVENT_HEADER_SENT:
-            LOG_DBG("HTTP_EVENT_HEADER_SENT");
-            break;
-
-        case HTTP_EVENT_ON_HEADER:
-            http_post_event_handler_on_header(p_evt);
-            break;
-
-        case HTTP_EVENT_ON_DATA:
-            http_post_event_handler_on_data(p_evt);
-            break;
-
-        case HTTP_EVENT_ON_FINISH:
-            LOG_DBG("HTTP_EVENT_ON_FINISH");
-            break;
-
-        case HTTP_EVENT_DISCONNECTED:
-            LOG_DBG("HTTP_EVENT_DISCONNECTED");
-            break;
-
-        default:
-            break;
-    }
-    return ESP_OK;
-}
-
-void
-http_init_client_config(
-    http_client_config_t* const                   p_http_client_config,
-    const http_init_client_config_params_t* const p_params,
-    void* const                                   p_user_data)
-{
-    LOG_DBG("p_user_data=%p", p_user_data);
-    p_http_client_config->http_url = *p_params->p_url;
-    if (NULL != p_params->p_user)
-    {
-        p_http_client_config->http_user = *p_params->p_user;
-    }
-    else
-    {
-        p_http_client_config->http_user.buf[0] = '\0';
-    }
-    if (NULL != p_params->p_password)
-    {
-        p_http_client_config->http_pass = *p_params->p_password;
-    }
-    else
-    {
-        p_http_client_config->http_pass.buf[0] = '\0';
-    }
-    LOG_DBG("URL=%s", p_http_client_config->http_url.buf);
-    LOG_DBG("user=%s", p_http_client_config->http_user.buf);
-    LOG_DBG("pass=%s", p_http_client_config->http_pass.buf);
-
-    p_http_client_config->esp_http_client_config = (esp_http_client_config_t) {
-        // clang-format off
-        .url = &p_http_client_config->http_url.buf[0],
-        .host = NULL,
-        .port = 0,
-        .username = &p_http_client_config->http_user.buf[0],
-        .password = &p_http_client_config->http_pass.buf[0],
-        .auth_type = ('\0' != p_http_client_config->http_user.buf[0]) ? HTTP_AUTH_TYPE_BASIC : HTTP_AUTH_TYPE_NONE,
-        .path = NULL,
-        .query = NULL,
-        .cert_pem = p_params->p_server_cert,
-        .client_cert_pem = p_params->p_client_cert,
-        .client_key_pem = p_params->p_client_key,
-        .user_agent = NULL,
-        .method = HTTP_METHOD_POST,
-        .timeout_ms = 0,
-        .disable_auto_redirect = false,
-        .max_redirection_count = 0,
-        .max_authorization_retries = 0,
-        .event_handler = &http_post_event_handler,
-        .transport_type = HTTP_TRANSPORT_UNKNOWN,
-        .buffer_size = 0,
-        .buffer_size_tx = 0,
-        .user_data = p_user_data,
-        .is_async = true,
-        .use_global_ca_store = false,
-        .skip_cert_common_name_check = false,
-        .keep_alive_enable = false,
-        .keep_alive_idle = 0,
-        .keep_alive_interval = 0,
-        .keep_alive_count = 0,
-        .ssl_buf_cfg = p_params->ssl_buf_cfg,
-        // clang-format on
-    };
 }
 
 static http_server_resp_t
@@ -303,7 +134,6 @@ http_wait_until_async_req_completed(
         }
         if (ESP_ERR_HTTP_EAGAIN != err)
         {
-            LOG_ERR_ESP(err, "%s failed", "esp_http_client_perform");
             if ((NULL != p_cb_info) && (NULL != p_cb_info->p_buf))
             {
                 os_free(p_cb_info->p_buf);
@@ -398,13 +228,47 @@ http_send_async_from_json_stream_gen(http_async_info_t* const p_http_async_info)
     return true;
 }
 
+static void
+http_post_log_url(const esp_http_client_config_t* const p_http_config)
+{
+    LOG_INFO(
+        "### HTTP POST to URL=http%s://%s:%u/%s%s%s",
+        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+        p_http_config->host,
+        p_http_config->port,
+        (NULL != p_http_config->path)
+            ? p_http_config->path
+            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+        (NULL != p_http_config->query)
+            ? p_http_config->query
+            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
+}
+
+static void
+http_post_err_log(const esp_http_client_config_t* const p_http_config, const esp_err_t err)
+{
+    LOG_ERR_ESP(
+        err,
+        "### HTTP POST to URL=http%s://%s:%u/%s%s%s: request failed",
+        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+        p_http_config->host,
+        p_http_config->port,
+        (NULL != p_http_config->path)
+            ? p_http_config->path
+            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+        (NULL != p_http_config->query)
+            ? p_http_config->query
+            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
+}
+
 bool
 http_send_async(http_async_info_t* const p_http_async_info)
 {
     const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
 
-    LOG_INFO("### HTTP POST to URL=%s", p_http_config->url);
-
+    http_post_log_url(p_http_config);
     ruuvi_log_heap_usage();
 
     if (p_http_async_info->use_json_stream_gen)
@@ -442,7 +306,7 @@ http_send_async(http_async_info_t* const p_http_async_info)
     const esp_err_t err = esp_http_client_perform(p_http_async_info->p_http_client_handle);
     if (ESP_ERR_HTTP_EAGAIN != err)
     {
-        LOG_ERR_ESP(err, "### HTTP POST to URL=%s: request failed", p_http_config->url);
+        http_post_err_log(p_http_config, err);
         LOG_DBG("esp_http_client_cleanup");
         if (NULL != p_http_async_info->http_client_config.esp_http_client_config.cert_pem)
         {
@@ -555,9 +419,19 @@ http_async_poll_handle_resp_ok(
     const http_async_info_t* const           p_http_async_info,
     const esp_http_client_http_status_code_t http_status)
 {
+    const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
     LOG_INFO(
-        "### HTTP POST to URL=%s: STATUS=%d",
-        p_http_async_info->http_client_config.esp_http_client_config.url,
+        "### HTTP POST to URL=http%s://%s:%u/%s%s%s: STATUS=%d",
+        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+        p_http_config->host,
+        p_http_config->port,
+        (NULL != p_http_config->path)
+            ? p_http_config->path
+            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+        (NULL != p_http_config->query)
+            ? p_http_config->query
+            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""),
         http_status);
     switch (p_http_async_info->recipient)
     {
@@ -577,9 +451,19 @@ http_async_poll_handle_resp_err(
     const http_async_info_t* const           p_http_async_info,
     const esp_http_client_http_status_code_t http_status)
 {
+    const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config.esp_http_client_config;
     LOG_ERR(
-        "### HTTP POST to URL=%s: STATUS=%d",
-        p_http_async_info->http_client_config.esp_http_client_config.url,
+        "### HTTP POST to URL=http%s://%s:%u/%s%s%s: STATUS=%d",
+        (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+        p_http_config->host,
+        p_http_config->port,
+        (NULL != p_http_config->path)
+            ? p_http_config->path
+            : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+        ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+        (NULL != p_http_config->query)
+            ? p_http_config->query
+            : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""),
         http_status);
     if (HTTP_RESP_CODE_429 == http_status)
     {
@@ -681,10 +565,10 @@ http_async_poll(void)
     }
     else
     {
-        LOG_ERR_ESP(
-            err,
-            "### HTTP POST to URL=%s: failed",
-            p_http_async_info->http_client_config.esp_http_client_config.url);
+        const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config
+                                                                   .esp_http_client_config;
+
+        http_post_err_log(p_http_config, err);
         if (esp_tls_err_is_ssl_alloc_failed(err))
         {
             // In case if esp_http_client_perform fails with MBEDTLS_ERR_SSL_ALLOC_FAILED
@@ -703,7 +587,7 @@ http_async_poll(void)
 
     if (flag_success && (HTTP_POST_RECIPIENT_STATS != p_http_async_info->recipient))
     {
-        if (!fw_update_mark_app_valid_cancel_rollback()) // NOSONAR
+        if (!ruuvi_gw_mark_app_valid_cancel_rollback()) // NOSONAR
         {
             LOG_ERR("%s failed", "fw_update_mark_app_valid_cancel_rollback");
         }
@@ -763,10 +647,21 @@ http_abort_any_req_during_processing(void)
     LOG_DBG("os_sema_wait_immediate: p_http_async_sema");
     if (!os_sema_wait_immediate(p_http_async_info->p_http_async_sema))
     {
+        const esp_http_client_config_t* const p_http_config = &p_http_async_info->http_client_config
+                                                                   .esp_http_client_config;
         LOG_WARN(
-            "### Abort HTTP %s to URL=%s",
+            "### Abort HTTP %s to URL=http%s://%s:%u/%s%s%s",
             http_method_to_str(p_http_async_info),
-            p_http_async_info->http_client_config.esp_http_client_config.url);
+            (HTTP_TRANSPORT_OVER_SSL == p_http_config->transport_type) ? "s" : "",
+            p_http_config->host,
+            p_http_config->port,
+            (NULL != p_http_config->path)
+                ? p_http_config->path
+                : ((NULL != p_http_config->cb_path_stream_reader) ? "[path from stream reader]" : ""),
+            ((NULL != p_http_config->query) || (NULL != p_http_config->cb_query_stream_reader)) ? "?" : "",
+            (NULL != p_http_config->query)
+                ? p_http_config->query
+                : ((NULL != p_http_config->cb_query_stream_reader) ? "[query from stream reader]" : ""));
 
         if (p_http_async_info->p_task != os_task_get_cur_task_handle())
         {

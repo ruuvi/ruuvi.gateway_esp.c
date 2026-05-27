@@ -33,11 +33,11 @@ bool
 gw_cfg_default_json_read(gw_cfg_t* const p_gw_cfg_default)
 {
     LOG_INFO("Read default gw_cfg from NVS by key '%s'", GW_CFG_STORAGE_GW_CFG_DEFAULT);
-    str_buf_t str_buf_gw_cfg_def = gw_cfg_storage_read_file(GW_CFG_STORAGE_GW_CFG_DEFAULT);
+    str_buf_t str_buf_gw_cfg_def = gw_cfg_storage_read_file_as_string(GW_CFG_STORAGE_GW_CFG_DEFAULT);
 
     if (NULL == str_buf_gw_cfg_def.buf)
     {
-        LOG_ERR("Failed to read default gw_cfg_def from NVS");
+        LOG_ERR("Failed to read default '%s' from NVS", GW_CFG_STORAGE_GW_CFG_DEFAULT);
         return false;
     }
     LOG_INFO("Default gw_cfg was successfully read from NVS");
