@@ -7,7 +7,6 @@
 
 #include "mqtt.h"
 #include <esp_attr.h>
-#include <esp_task_wdt.h>
 #include "esp_err.h"
 #include "mbedtls/ssl_misc.h"
 #include "cJSON.h"
@@ -26,6 +25,7 @@
 #include "gw_cfg_storage.h"
 #include "event_mgr.h"
 #include "tls_shared_buf.h"
+#include "reset_task.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -594,7 +594,10 @@ mqtt_create_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg
 }
 
 static bool
-mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_protected_data_t* const p_mqtt_data)
+mqtt_app_start_internal2(
+    const esp_mqtt_client_config_t* const p_mqtt_cfg,
+    mqtt_protected_data_t* const          p_mqtt_data,
+    bool* const                           p_flag_critical_error)
 {
     p_mqtt_data->p_mqtt_client = esp_mqtt_client_init(p_mqtt_cfg);
     if (NULL == p_mqtt_data->p_mqtt_client)
@@ -606,7 +609,15 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
     const esp_err_t err = esp_mqtt_client_start(p_mqtt_data->p_mqtt_client);
     if (ESP_OK != err)
     {
-        esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        LOG_ERR("%s failed, err=%d", "esp_mqtt_client_start", err);
+        const esp_err_t destroy_err = esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        if (ESP_OK != destroy_err)
+        {
+            LOG_ERR("%s failed, err=%d", "esp_mqtt_client_destroy", destroy_err);
+            // If it's not possible to stop MQTT client and free resources,
+            // restart the gateway to avoid being in a broken state.
+            *p_flag_critical_error = true;
+        }
         p_mqtt_data->p_mqtt_client = NULL;
         return false;
     }
@@ -614,7 +625,10 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
 }
 
 static bool
-mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
+mqtt_app_start_internal(
+    mqtt_protected_data_t*           p_mqtt_data,
+    const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg,
+    bool* const                      p_flag_critical_error)
 {
     gw_status_clear_mqtt_connected_and_error();
     p_mqtt_data->err_msg[0] = '\0';
@@ -674,7 +688,8 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
         return false;
     }
 
-    const bool is_success = mqtt_app_start_internal2(p_mqtt_cli_cfg, p_mqtt_data);
+    *p_flag_critical_error = false;
+    const bool is_success  = mqtt_app_start_internal2(p_mqtt_cli_cfg, p_mqtt_data, p_flag_critical_error);
     if (is_success)
     {
         gw_status_set_mqtt_started();
@@ -700,19 +715,24 @@ mqtt_app_start(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
 {
     LOG_INFO("%s", __func__);
 
-    mqtt_protected_data_t* p_mqtt_data = mqtt_mutex_lock();
+    bool                   flag_critical_error = false;
+    mqtt_protected_data_t* p_mqtt_data         = mqtt_mutex_lock();
     if (NULL != p_mqtt_data->p_mqtt_client)
     {
         LOG_INFO("MQTT client is already running");
     }
     else
     {
-        if (!mqtt_app_start_internal(p_mqtt_data, p_mqtt_cfg))
+        if (!mqtt_app_start_internal(p_mqtt_data, p_mqtt_cfg, &flag_critical_error))
         {
             LOG_ERR("MQTT client start failed");
         }
     }
     mqtt_mutex_unlock(&p_mqtt_data);
+    if (flag_critical_error)
+    {
+        gateway_restart("MQTT critical error");
+    }
 }
 
 void
@@ -743,29 +763,25 @@ mqtt_app_stop(void)
             mqtt_publish_state_offline(p_mqtt_data);
             vTaskDelay(pdMS_TO_TICKS(500));
         }
-        LOG_INFO("TaskWatchdog: Unregister current thread");
-        const bool flag_task_wdt_used = (ESP_OK == esp_task_wdt_delete(xTaskGetCurrentTaskHandle())) ? true : false;
-
         LOG_INFO("MQTT destroy");
 
-        // Calling esp_mqtt_client_destroy can take quite a long time (more than 5 seconds),
-        // depending on how quickly the server responds (it seems that esp_mqtt_client_stop takes most of the time).
-        // So, the only way to prevent the task watchdog from triggering is to disable it.
-        // If esp_mqtt_client_destroy is refactored in the future in an asynchronous manner,
-        // then this will allow us to opt out of disabling the task watchdog.
-
-        // TODO: Need to refactor esp_mqtt_client_destroy in an asynchronous manner, see issue:
-        // https://github.com/ruuvi/ruuvi.gateway_esp.c/issues/577
-
-        esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        // esp_mqtt_client_stop (called from esp_mqtt_client_destroy) uses bounded waiting
+        // with periodic task watchdog feeding and force-closes the transport to unblock
+        // the MQTT task. If it still fails (e.g. timeout), the MQTT task is still running
+        // and resources cannot be freed — a system restart is required.
+        const esp_err_t err = esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
+        if (ESP_OK != err)
+        {
+            LOG_ERR(
+                "%s failed, err=%d - the MQTT task is still running, restart required",
+                "esp_mqtt_client_destroy",
+                err);
+            mqtt_mutex_unlock(&p_mqtt_data);
+            gateway_restart("MQTT failed");
+            return;
+        }
 
         LOG_INFO("MQTT destroyed");
-
-        if (flag_task_wdt_used)
-        {
-            LOG_INFO("TaskWatchdog: Register current thread");
-            esp_task_wdt_add(xTaskGetCurrentTaskHandle());
-        }
 
         if (NULL != p_mqtt_data->p_tls_shared_buf_mqtts)
         {
