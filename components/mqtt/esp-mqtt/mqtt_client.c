@@ -1783,8 +1783,15 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
         MQTT_LOGE("MQTT task did not stop within the expected time");
         return ESP_ERR_TIMEOUT;
     } else {
-        MQTT_LOGW("Client %p asked to stop, but was not started", client);
+        MQTT_LOGW("Client %p asked to stop, but it was not started or is in the process of stopping", client);
         MQTT_API_UNLOCK(client);
+        const EventBits_t bits = xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true,
+                                          pdMS_TO_TICKS(3U * 1000U));
+        if (0 == (bits & STOPPED_BIT)) {
+            MQTT_LOGE("Client did not stop within the expected time");
+            return ESP_ERR_TIMEOUT;
+        }
+        MQTT_LOGI("Client stopped");
         return ESP_OK;
     }
 }

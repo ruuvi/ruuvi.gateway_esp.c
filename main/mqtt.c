@@ -595,7 +595,10 @@ mqtt_create_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg
 }
 
 static bool
-mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_protected_data_t* const p_mqtt_data)
+mqtt_app_start_internal2(
+    const esp_mqtt_client_config_t* const p_mqtt_cfg,
+    mqtt_protected_data_t* const          p_mqtt_data,
+    bool* const                           p_flag_critical_error)
 {
     p_mqtt_data->p_mqtt_client = esp_mqtt_client_init(p_mqtt_cfg);
     if (NULL == p_mqtt_data->p_mqtt_client)
@@ -614,7 +617,7 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
             LOG_ERR("%s failed, err=%d", "esp_mqtt_client_destroy", destroy_err);
             // In case if it's not possible to stop MQTT client and free resources,
             // restart the gateway to avoid being in a broken state.
-            gateway_restart("MQTT failed");
+            *p_flag_critical_error = true;
         }
         p_mqtt_data->p_mqtt_client = NULL;
         return false;
@@ -623,7 +626,10 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
 }
 
 static bool
-mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
+mqtt_app_start_internal(
+    mqtt_protected_data_t*           p_mqtt_data,
+    const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg,
+    bool* const                      p_flag_critical_error)
 {
     gw_status_clear_mqtt_connected_and_error();
     p_mqtt_data->err_msg[0] = '\0';
@@ -683,7 +689,8 @@ mqtt_app_start_internal(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg_m
         return false;
     }
 
-    const bool is_success = mqtt_app_start_internal2(p_mqtt_cli_cfg, p_mqtt_data);
+    *p_flag_critical_error = false;
+    const bool is_success  = mqtt_app_start_internal2(p_mqtt_cli_cfg, p_mqtt_data, p_flag_critical_error);
     if (is_success)
     {
         gw_status_set_mqtt_started();
@@ -709,19 +716,24 @@ mqtt_app_start(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg)
 {
     LOG_INFO("%s", __func__);
 
-    mqtt_protected_data_t* p_mqtt_data = mqtt_mutex_lock();
+    bool                   flag_critical_error = false;
+    mqtt_protected_data_t* p_mqtt_data         = mqtt_mutex_lock();
     if (NULL != p_mqtt_data->p_mqtt_client)
     {
         LOG_INFO("MQTT client is already running");
     }
     else
     {
-        if (!mqtt_app_start_internal(p_mqtt_data, p_mqtt_cfg))
+        if (!mqtt_app_start_internal(p_mqtt_data, p_mqtt_cfg, &flag_critical_error))
         {
             LOG_ERR("MQTT client start failed");
         }
     }
     mqtt_mutex_unlock(&p_mqtt_data);
+    if (flag_critical_error)
+    {
+        gateway_restart("MQTT critical error");
+    }
 }
 
 void
