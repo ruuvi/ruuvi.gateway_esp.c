@@ -6,7 +6,6 @@
  */
 
 #include "mqtt.h"
-#include <assert.h>
 #include <esp_attr.h>
 #include "esp_err.h"
 #include "mbedtls/ssl_misc.h"

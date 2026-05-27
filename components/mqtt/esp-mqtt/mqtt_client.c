@@ -1756,17 +1756,18 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client)
         MQTT_LOGE("Client was not initialized");
         return ESP_ERR_INVALID_ARG;
     }
+    MQTT_LOGI("Stop Client %p", client);
     MQTT_API_LOCK(client);
-    if (client->run) {
-        MQTT_LOGI("Stop Client %p", client);
-        /* A running client cannot be stopped from the MQTT task/event handler */
-        TaskHandle_t running_task = xTaskGetCurrentTaskHandle();
-        if (running_task == client->task_handle) {
-            MQTT_API_UNLOCK(client);
-            MQTT_LOGE("Client cannot be stopped from MQTT task");
-            return ESP_FAIL;
-        }
 
+    /* A running client cannot be stopped from the MQTT task/event handler */
+    TaskHandle_t const running_task = xTaskGetCurrentTaskHandle();
+    if (running_task == client->task_handle) {
+        MQTT_API_UNLOCK(client);
+        MQTT_LOGE("Client cannot be stopped from MQTT task");
+        return ESP_FAIL;
+    }
+
+    if (client->run) {
         // Only send the disconnect message if the client is connected
         if (client->state == MQTT_STATE_CONNECTED) {
             // Notify the broker we are disconnecting
