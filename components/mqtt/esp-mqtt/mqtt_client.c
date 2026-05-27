@@ -1650,7 +1650,7 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client)
     }
 
     xEventGroupClearBits(client->status_bits, STARTED_BIT);
-    MQTT_LOGI("Create MQTT client task and wait until it started...");
+    MQTT_LOGI("Create MQTT client task and wait until it starts...");
 
     esp_err_t err = ESP_OK;
 #if MQTT_CORE_SELECTION_ENABLED

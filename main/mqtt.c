@@ -614,7 +614,7 @@ mqtt_app_start_internal2(
         if (ESP_OK != destroy_err)
         {
             LOG_ERR("%s failed, err=%d", "esp_mqtt_client_destroy", destroy_err);
-            // In case if it's not possible to stop MQTT client and free resources,
+            // If it's not possible to stop MQTT client and free resources,
             // restart the gateway to avoid being in a broken state.
             *p_flag_critical_error = true;
         }

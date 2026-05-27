@@ -364,6 +364,7 @@ int esp_mqtt_client_enqueue(esp_mqtt_client_handle_t client, const char *topic, 
  *
  * Notes:
  *  - Cannot be called from the mqtt event handler.
+ *  - If an attempt to stop the running MQTT task fails, the resources will not be freed.
  *
  * @param client    mqtt client handle.
  *
