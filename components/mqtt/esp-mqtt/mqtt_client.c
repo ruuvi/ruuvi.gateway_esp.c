@@ -837,6 +837,10 @@ esp_mqtt_client_handle_t esp_mqtt_client_init(const esp_mqtt_client_config_t *co
     return client;
 _mqtt_init_failed:
     esp_mqtt_client_free_resources(client);
+    if (client->api_lock) {
+        vSemaphoreDelete(client->api_lock);
+        client->api_lock = NULL;
+    }
     free(client);
     return NULL;
 }
@@ -867,10 +871,6 @@ static void esp_mqtt_client_free_resources(esp_mqtt_client_handle_t client)
     client->mqtt_state.in_buffer = NULL;
     free(client->mqtt_state.out_buffer);
     client->mqtt_state.out_buffer = NULL;
-    if (client->api_lock) {
-        vSemaphoreDelete(client->api_lock);
-        client->api_lock = NULL;
-    }
     free(client->event.error_handle);
     client->event.error_handle = NULL;
     client->state = MQTT_STATE_RESOURCES_FREED;
@@ -895,6 +895,10 @@ esp_err_t esp_mqtt_client_destroy(esp_mqtt_client_handle_t client)
             }
         }
         esp_mqtt_client_free_resources(client);
+    }
+    if (client->api_lock) {
+        vSemaphoreDelete(client->api_lock);
+        client->api_lock = NULL;
     }
     free(client);
     return ESP_OK;
