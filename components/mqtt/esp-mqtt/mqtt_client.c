@@ -329,11 +329,11 @@ static esp_err_t esp_mqtt_set_ssl_transport_properties(esp_transport_list_handle
 #if defined(CONFIG_MBEDTLS_SSL_ALPN) || defined(CONFIG_WOLFSSL_HAVE_ALPN)
         esp_transport_ssl_set_alpn_protocol(ssl, (const char **)cfg->alpn_protos);
 #else
-        MQTT_LOGE("APLN configured but not enabled in menuconfig: Please enable MBEDTLS_SSL_ALPN or WOLFSSL_HAVE_ALPN option");
+        MQTT_LOGE("ALPN configured but not enabled in menuconfig: Please enable MBEDTLS_SSL_ALPN or WOLFSSL_HAVE_ALPN option");
         goto esp_mqtt_set_transport_failed;
 #endif
 #else
-        MQTT_LOGE("APLN is not available in IDF version %s", IDF_VER);
+        MQTT_LOGE("ALPN is not available in IDF version %s", IDF_VER);
         goto esp_mqtt_set_transport_failed;
 #endif
     }
@@ -709,7 +709,7 @@ static esp_err_t esp_mqtt_connect(esp_mqtt_client_handle_t client, int timeout_m
         MQTT_LOGW("Connection refused, not authorized");
         break;
     default:
-        MQTT_LOGW("Connection refused, Unknow reason");
+        MQTT_LOGW("Connection refused, Unknown reason");
         break;
     }
     /* propagate event with connection refused error */
@@ -1666,15 +1666,16 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client)
     }
 #endif
 
-    const EventBits_t bits = xEventGroupWaitBits(client->status_bits, STARTED_BIT, false, true,
-                                                  portMAX_DELAY);
-    if (0 != (bits & STARTED_BIT)) {
-        MQTT_LOGI("MQTT Client task started");
-    } else {
-        MQTT_LOGE("MQTT Client task failed to start");
-        assert(0 != (bits & STARTED_BIT));
-        MQTT_API_UNLOCK(client);
-        return ESP_FAIL;
+    if (ESP_OK == err) {
+        const EventBits_t bits = xEventGroupWaitBits(client->status_bits, STARTED_BIT, false, true,
+                                                     portMAX_DELAY);
+        if (0 != (bits & STARTED_BIT)) {
+            MQTT_LOGI("MQTT Client task started");
+        } else {
+            MQTT_LOGE("MQTT Client task failed to start");
+            assert(0 != (bits & STARTED_BIT));
+            err = ESP_FAIL;
+        }
     }
 
     MQTT_API_UNLOCK(client);
