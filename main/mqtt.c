@@ -607,8 +607,6 @@ mqtt_app_start_internal2(const esp_mqtt_client_config_t* const p_mqtt_cfg, mqtt_
     if (ESP_OK != err)
     {
         LOG_ERR("%s failed, err=%d", "esp_mqtt_client_start", err);
-        // esp_mqtt_client_start frees internal resources on failure.
-        // Call esp_mqtt_client_destroy to free the client handle itself.
         err = esp_mqtt_client_destroy(p_mqtt_data->p_mqtt_client);
         if (ESP_OK != err)
         {

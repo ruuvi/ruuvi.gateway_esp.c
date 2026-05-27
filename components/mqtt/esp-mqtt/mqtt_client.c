@@ -1592,10 +1592,21 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client)
 {
     if (!client) {
         ESP_LOGE(TAG, "Client was not initialized");
-        esp_mqtt_client_free_resources(client);
         return ESP_ERR_INVALID_ARG;
     }
     MQTT_API_LOCK(client);
+
+    if (client->state == MQTT_STATE_RESOURCES_FREED) {
+        ESP_LOGE(TAG, "Client resources already freed, cannot start");
+        MQTT_API_UNLOCK(client);
+        return ESP_FAIL;
+    }
+
+    if (client->state != MQTT_STATE_INIT && client->state != MQTT_STATE_DISCONNECTED) {
+        ESP_LOGE(TAG, "Client has already started, current state=%d", client->state);
+        MQTT_API_UNLOCK(client);
+        return ESP_FAIL;
+    }
 
     //get transport by scheme
     client->transport = esp_transport_list_get_transport(client->transport_list, client->config->scheme);
@@ -1611,11 +1622,6 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client)
         client->config->port = esp_transport_get_default_port(client->transport);
     }
 
-    if (client->state != MQTT_STATE_INIT && client->state != MQTT_STATE_DISCONNECTED) {
-        ESP_LOGE(TAG, "Client has already started, current state=%d", client->state);
-        MQTT_API_UNLOCK(client);
-        return ESP_FAIL;
-    }
     esp_err_t err = ESP_OK;
 #if MQTT_CORE_SELECTION_ENABLED
     ESP_LOGD(TAG, "Core selection enabled on %u", MQTT_TASK_CORE);
@@ -1631,10 +1637,6 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client)
     }
 #endif
     MQTT_API_UNLOCK(client);
-    if (ESP_OK != err) {
-        // Task was not created, free all client resources to avoid leaks.
-        esp_mqtt_client_free_resources(client);
-    }
     return err;
 }
 
