@@ -1805,9 +1805,14 @@ int mbedtls_ssl_set_session(mbedtls_ssl_context *ssl, const mbedtls_ssl_session 
     if (ssl == NULL ||
         session == NULL ||
         ssl->session_negotiate == NULL ||
+        ssl->conf == NULL ||
         ssl->conf->endpoint != MBEDTLS_SSL_IS_CLIENT) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: Bad input param", __func__);
+        ESP_LOGE(TAG, "%s: Bad input param: ssl=%p, session=%p, ssl->session_negotiate=%p, ssl->conf=%p, ssl->conf->endpoint=%u",
+                 __func__, ssl, session,
+                 (NULL != ssl) ? ssl->session_negotiate : NULL,
+                 (NULL != ssl) ? ssl->conf : NULL,
+                 (unsigned)(((NULL != ssl) && (NULL != ssl->conf)) ? ssl->conf->endpoint : 0));
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
