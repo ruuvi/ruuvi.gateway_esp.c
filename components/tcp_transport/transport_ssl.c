@@ -1080,14 +1080,14 @@ bool esp_transport_ssl_set_buffer(esp_transport_handle_t t, const esp_transport_
         ESP_TRANSPORT_LOGE_FUNC("Pointer to buffer configuration is NULL");
         return false;
     }
-    ESP_TRANSPORT_LOGD("[%s] Configure TLS I/O buffers: in_buf=%p %zu bytes (content len %zu), out_buf=%p %zu bytes (content len %zu)",
+    ESP_TRANSPORT_LOGI("[%s] Configure TLS I/O buffers: in_buf %zu bytes (content len %zu), out_buf %zu bytes (content len %zu)",
                        esp_tls_get_hostname(ssl->tls),
-                       p_buf_cfg->p_ssl_in_buf,
                        p_buf_cfg->ssl_in_buf_len,
                        p_buf_cfg->ssl_in_content_len,
-                       p_buf_cfg->p_ssl_out_buf,
                        p_buf_cfg->ssl_out_buf_len,
                        p_buf_cfg->ssl_out_content_len);
+    ESP_TRANSPORT_LOGD("[%s] Configure TLS I/O buffers: in_buf=%p, out_buf=%p",
+                       esp_tls_get_hostname(ssl->tls), p_buf_cfg->p_ssl_in_buf, p_buf_cfg->p_ssl_out_buf);
     if ((NULL == p_buf_cfg->p_ssl_in_buf) && (NULL == p_buf_cfg->p_ssl_out_buf) && (0 == p_buf_cfg->ssl_in_buf_len)
             && (0 == p_buf_cfg->ssl_out_buf_len) && (0 == p_buf_cfg->ssl_in_content_len)
             && (0 == p_buf_cfg->ssl_out_content_len)) {

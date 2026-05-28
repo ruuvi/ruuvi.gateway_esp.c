@@ -36,6 +36,11 @@
 #include "psa/crypto.h"
 #include "md_psa.h"
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+static const char TAG[] = "ssl_tls13_keys";
+#endif
+
 /* Define a local translating function to save code size by not using too many
  * arguments in each translating place. */
 static int local_err_translation(psa_status_t status)
@@ -181,6 +186,9 @@ int mbedtls_ssl_tls13_hkdf_expand_label(
     }
 
     if (!PSA_ALG_IS_HASH(hash_alg)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: The algorithm 0x%x is not a hash algorithm", __func__, hash_alg);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -362,6 +370,9 @@ int mbedtls_ssl_tls13_evolve_secret(
         PSA_KEY_DERIVATION_OPERATION_INIT;
 
     if (!PSA_ALG_IS_HASH(hash_alg)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: The algorithm 0x%x is not a hash algorithm", __func__, hash_alg);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -966,6 +977,9 @@ int mbedtls_ssl_tls13_populate_transform(
     if (ciphersuite_info == NULL) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("ciphersuite info for %d not found",
                                   ciphersuite));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ciphersuite info for %d not found", __func__, ciphersuite);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -974,6 +988,9 @@ int mbedtls_ssl_tls13_populate_transform(
     if (cipher_info == NULL) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("cipher info for %u not found",
                                   ciphersuite_info->cipher));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: cipher info for %u not found", __func__, ciphersuite_info->cipher);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 

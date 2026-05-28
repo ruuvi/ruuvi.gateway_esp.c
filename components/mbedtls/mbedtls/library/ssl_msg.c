@@ -48,6 +48,11 @@
 #include "mbedtls/oid.h"
 #endif
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+static const char TAG[] = "ssl_msg";
+#endif
+
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 /* Define a local translating function to save code size by not using too many
  * arguments in each translating place. */
@@ -977,6 +982,10 @@ int mbedtls_ssl_encrypt_buf(mbedtls_ssl_context *ssl,
                                   " too large, maximum %" MBEDTLS_PRINTF_SIZET,
                                   rec->data_len,
                                   (size_t) ssl_out_content_len));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Record content %" MBEDTLS_PRINTF_SIZET " too large, maximum %" MBEDTLS_PRINTF_SIZET,
+                 __func__, rec->data_len, (size_t) ssl_out_content_len);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2174,11 +2183,17 @@ int mbedtls_ssl_fetch_input(mbedtls_ssl_context *ssl, size_t nb_want)
 
     if (ssl->f_recv == NULL && ssl->f_recv_timeout == NULL) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Bad usage of mbedtls_ssl_set_bio() "));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Bad usage of mbedtls_ssl_set_bio()", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     if (nb_want > in_buf_len - (size_t) (ssl->in_hdr - ssl->in_buf)) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("requesting more data than fits"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: requesting more data than fits", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2372,6 +2387,9 @@ int mbedtls_ssl_flush_output(mbedtls_ssl_context *ssl)
 
     if (ssl->f_send == NULL) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Bad usage of mbedtls_ssl_set_bio() "));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Bad usage of mbedtls_ssl_set_bio()", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2869,6 +2887,11 @@ int mbedtls_ssl_write_handshake_msg_ext(mbedtls_ssl_context *ssl,
                                           MBEDTLS_PRINTF_SIZET,
                                           hs_len,
                                           (size_t) (ssl_out_content_len - 12)));
+#ifdef ESP_PLATFORM
+                ESP_LOGE(TAG, "%s: DTLS handshake message too large: " "size %" MBEDTLS_PRINTF_SIZET
+                         ", maximum %" MBEDTLS_PRINTF_SIZET,
+                         __func__, hs_len, (size_t) (ssl_out_content_len - 12));
+#endif
                 return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
             }
 
@@ -5111,6 +5134,9 @@ int mbedtls_ssl_send_alert_message(mbedtls_ssl_context *ssl,
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
 
     if (ssl == NULL || ssl->conf == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ssl == NULL || ssl->conf == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -5688,6 +5714,9 @@ int mbedtls_ssl_read(mbedtls_ssl_context *ssl, unsigned char *buf, size_t len)
     size_t n;
 
     if (ssl == NULL || ssl->conf == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ssl == NULL || ssl->conf == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -5910,6 +5939,11 @@ static int ssl_write_real(mbedtls_ssl_context *ssl,
                                       "maximum fragment length: %" MBEDTLS_PRINTF_SIZET
                                       " > %" MBEDTLS_PRINTF_SIZET,
                                       len, max_len));
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: fragment larger than the (negotiated) "
+                     "maximum fragment length: %" MBEDTLS_PRINTF_SIZET " > %" MBEDTLS_PRINTF_SIZET,
+                     __func__, len, max_len);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         } else
 #endif
@@ -5958,6 +5992,9 @@ int mbedtls_ssl_write(mbedtls_ssl_context *ssl, const unsigned char *buf, size_t
     MBEDTLS_SSL_DEBUG_MSG(2, ("=> write"));
 
     if (ssl == NULL || ssl->conf == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ssl == NULL || ssl->conf == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -5990,6 +6027,9 @@ int mbedtls_ssl_close_notify(mbedtls_ssl_context *ssl)
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
 
     if (ssl == NULL || ssl->conf == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ssl == NULL || ssl->conf == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 

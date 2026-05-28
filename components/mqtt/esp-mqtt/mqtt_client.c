@@ -236,10 +236,12 @@ static esp_err_t esp_mqtt_set_ssl_transport_properties(esp_transport_list_handle
 {
     esp_transport_handle_t ssl = esp_transport_list_get_transport(transport_list, "mqtts");
 
-    MQTT_LOGD("%s: esp_transport_ssl_set_buffer: ssl_in_buf=%p %zu bytes (content %zu bytes), ssl_out_buf=%p %zu bytes (content %zu bytes)",
+    MQTT_LOGI("%s: esp_transport_ssl_set_buffer: ssl_in_buf %zu bytes (content %zu bytes), ssl_out_buf %zu bytes (content %zu bytes)",
              __func__,
-             cfg->ssl_buf_cfg.p_ssl_in_buf, cfg->ssl_buf_cfg.ssl_in_buf_len, cfg->ssl_buf_cfg.ssl_in_content_len,
-             cfg->ssl_buf_cfg.p_ssl_out_buf, cfg->ssl_buf_cfg.ssl_out_buf_len, cfg->ssl_buf_cfg.ssl_out_content_len);
+             cfg->ssl_buf_cfg.ssl_in_buf_len, cfg->ssl_buf_cfg.ssl_in_content_len,
+             cfg->ssl_buf_cfg.ssl_out_buf_len, cfg->ssl_buf_cfg.ssl_out_content_len);
+    MQTT_LOGD("%s: esp_transport_ssl_set_buffer: ssl_in_buf=%p, ssl_out_buf=%p",
+             __func__, cfg->ssl_buf_cfg.p_ssl_in_buf, cfg->ssl_buf_cfg.p_ssl_out_buf);
     if (!esp_transport_ssl_set_buffer(ssl, &cfg->ssl_buf_cfg)) {
         MQTT_LOGE("%s: esp_transport_ssl_set_buffer: ssl_in_buf=%p %zu bytes (content %zu bytes), ssl_out_buf=%p %zu bytes (content %zu bytes)",
                  __func__,

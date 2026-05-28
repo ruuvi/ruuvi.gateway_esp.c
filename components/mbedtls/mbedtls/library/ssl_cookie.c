@@ -35,6 +35,11 @@
 
 #include <string.h>
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+static const char TAG[] = "ssl_cookie";
+#endif
+
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 #include "md_psa.h"
 /* Define a local translating function to save code size by not using too many
@@ -123,6 +128,9 @@ int mbedtls_ssl_cookie_setup(mbedtls_ssl_cookie_ctx *ctx,
 
     alg = mbedtls_md_psa_alg_from_type(COOKIE_MD);
     if (alg == 0) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: alg == 0", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -208,6 +216,9 @@ int mbedtls_ssl_cookie_write(void *p_ctx,
     unsigned long t;
 
     if (ctx == NULL || cli_id == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ctx == NULL || cli_id == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -299,6 +310,9 @@ int mbedtls_ssl_cookie_check(void *p_ctx,
     unsigned long cur_time, cookie_time;
 
     if (ctx == NULL || cli_id == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ctx == NULL || cli_id == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
