@@ -1808,11 +1808,24 @@ int mbedtls_ssl_set_session(mbedtls_ssl_context *ssl, const mbedtls_ssl_session 
         ssl->conf == NULL ||
         ssl->conf->endpoint != MBEDTLS_SSL_IS_CLIENT) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: Bad input param: ssl=%p, session=%p, ssl->session_negotiate=%p, ssl->conf=%p, ssl->conf->endpoint=%u",
-                 __func__, ssl, session,
-                 (NULL != ssl) ? ssl->session_negotiate : NULL,
-                 (NULL != ssl) ? ssl->conf : NULL,
-                 (unsigned)(((NULL != ssl) && (NULL != ssl->conf)) ? ssl->conf->endpoint : 0));
+        if (session == NULL) {
+            ESP_LOGE(TAG, "%s: session is NULL", __func__);
+        }
+        if (ssl == NULL) {
+            ESP_LOGE(TAG, "%s: ssl is NULL", __func__);
+        } else {
+            if (ssl->session_negotiate == NULL) {
+                ESP_LOGE(TAG, "%s: ssl->session_negotiate is NULL", __func__);
+            }
+            if (ssl->conf == NULL) {
+                ESP_LOGE(TAG, "%s: ssl->conf is NULL", __func__);
+            } else {
+                if (ssl->conf->endpoint != MBEDTLS_SSL_IS_CLIENT) {
+                    ESP_LOGE(TAG, "%s: ssl->conf->endpoint %u != %u",
+                             __func__, (unsigned)ssl->conf->endpoint, (unsigned)MBEDTLS_SSL_IS_CLIENT);
+                }
+            }
+        }
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
@@ -4117,11 +4130,6 @@ int mbedtls_ssl_handshake_step(mbedtls_ssl_context *ssl)
     }
 
 cleanup:
-    if (MBEDTLS_ERR_SSL_BAD_INPUT_DATA == ret) {
-#ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: MBEDTLS_ERR_SSL_BAD_INPUT_DATA", __func__);
-#endif
-    }
     return ret;
 }
 
