@@ -2614,7 +2614,9 @@ static int ssl_tls13_session_save(const mbedtls_ssl_session *session,
 
     if (session->resumption_key_len > MBEDTLS_SSL_TLS1_3_TICKET_RESUMPTION_KEY_LEN) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: session->resumption_key_len > %d", __func__, MBEDTLS_SSL_TLS1_3_TICKET_RESUMPTION_KEY_LEN);
+        ESP_LOGE(TAG, "%s: session->resumption_key_len %u > %u",
+                 __func__, (unsigned)session->resumption_key_len,
+                 (unsigned)MBEDTLS_SSL_TLS1_3_TICKET_RESUMPTION_KEY_LEN);
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
