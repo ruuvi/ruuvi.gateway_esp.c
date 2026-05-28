@@ -33,6 +33,11 @@
 
 #include <string.h>
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+static const char TAG[] = "ssl_cache";
+#endif
+
 void mbedtls_ssl_cache_init(mbedtls_ssl_cache_context *cache)
 {
     memset(cache, 0, sizeof(mbedtls_ssl_cache_context));
@@ -303,6 +308,10 @@ int mbedtls_ssl_cache_set(void *data,
     }
 
     if (session_id_len > sizeof(cur->session_id)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: session_id_len > sizeof(cur->session_id): %zu > %zu",
+                 __func__, session_id_len, sizeof(cur->session_id));
+#endif
         ret = MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         goto exit;
     }

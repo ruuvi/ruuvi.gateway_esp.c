@@ -153,6 +153,9 @@ static int ssl_tls13_parse_alpn_ext(mbedtls_ssl_context *ssl,
 
     /* If we didn't send it, the server shouldn't send it */
     if (ssl->conf->alpn_list == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: alpn_list is NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -186,6 +189,10 @@ static int ssl_tls13_parse_alpn_ext(mbedtls_ssl_context *ssl,
         }
     }
 
+#ifdef ESP_PLATFORM
+    ESP_LOGE(TAG, "%s: The server chosen protocol '%.*s' is not in our list",
+             __func__, (int)protocol_name_len, (const char*)p);
+#endif
     return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
 }
 #endif /* MBEDTLS_SSL_ALPN */
@@ -3076,6 +3083,9 @@ int mbedtls_ssl_tls13_handshake_client_step(mbedtls_ssl_context *ssl)
 
         default:
             MBEDTLS_SSL_DEBUG_MSG(1, ("invalid state %d", ssl->state));
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: invalid state %d", __func__, ssl->state);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 

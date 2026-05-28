@@ -35,6 +35,11 @@
 #include "ssl_tls13_keys.h"
 #include "ssl_debug_helpers.h"
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+static const char TAG[] = "ssl_client";
+#endif
+
 #if defined(MBEDTLS_SSL_SERVER_NAME_INDICATION)
 MBEDTLS_CHECK_RETURN_CRITICAL
 static int ssl_write_hostname_ext(mbedtls_ssl_context *ssl,
@@ -921,6 +926,9 @@ static int ssl_prepare_client_hello(mbedtls_ssl_context *ssl)
             MBEDTLS_SSL_DEBUG_MSG(
                 1, ("Hostname mismatch the session ticket, "
                     "disable session resumption."));
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: Hostname mismatch the session ticket, disable session resumption.", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
     } else {

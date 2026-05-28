@@ -52,7 +52,7 @@
 
 #ifdef ESP_PLATFORM
 #include "esp_log.h"
-static const char *TAG = "ssl_tls";
+static const char TAG[] = "ssl_tls";
 #endif
 
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
@@ -101,11 +101,17 @@ int mbedtls_ssl_conf_cid(mbedtls_ssl_config *conf,
                          int ignore_other_cid)
 {
     if (len > MBEDTLS_SSL_CID_IN_LEN_MAX) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: len > %u", __func__, MBEDTLS_SSL_CID_IN_LEN_MAX);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     if (ignore_other_cid != MBEDTLS_SSL_UNEXPECTED_CID_FAIL &&
         ignore_other_cid != MBEDTLS_SSL_UNEXPECTED_CID_IGNORE) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ignore_other_cid = %d", __func__, ignore_other_cid);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -120,6 +126,9 @@ int mbedtls_ssl_set_cid(mbedtls_ssl_context *ssl,
                         size_t own_cid_len)
 {
     if (ssl->conf->transport != MBEDTLS_SSL_TRANSPORT_DATAGRAM) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: conf->transport != %d", __func__, MBEDTLS_SSL_TRANSPORT_DATAGRAM);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -135,6 +144,10 @@ int mbedtls_ssl_set_cid(mbedtls_ssl_context *ssl,
         MBEDTLS_SSL_DEBUG_MSG(3, ("CID length %u does not match CID length %u in config",
                                   (unsigned) own_cid_len,
                                   (unsigned) ssl->conf->cid_len));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: CID length %u does not match CID length %u in config",
+                 __func__, (unsigned) own_cid_len, (unsigned) ssl->conf->cid_len);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -154,6 +167,9 @@ int mbedtls_ssl_get_own_cid(mbedtls_ssl_context *ssl,
     *enabled = MBEDTLS_SSL_CID_DISABLED;
 
     if (ssl->conf->transport != MBEDTLS_SSL_TRANSPORT_DATAGRAM) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: conf->transport != %d", __func__, MBEDTLS_SSL_TRANSPORT_DATAGRAM);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -185,6 +201,10 @@ int mbedtls_ssl_get_peer_cid(mbedtls_ssl_context *ssl,
 
     if (ssl->conf->transport != MBEDTLS_SSL_TRANSPORT_DATAGRAM ||
         mbedtls_ssl_is_handshake_over(ssl) == 0) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: conf->transport != %d or mbedtls_ssl_is_handshake_over == 0",
+                 __func__, MBEDTLS_SSL_TRANSPORT_DATAGRAM);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -1783,6 +1803,9 @@ int mbedtls_ssl_set_session(mbedtls_ssl_context *ssl, const mbedtls_ssl_session 
         session == NULL ||
         ssl->session_negotiate == NULL ||
         ssl->conf->endpoint != MBEDTLS_SSL_IS_CLIENT) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Bad input param", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -1801,6 +1824,9 @@ int mbedtls_ssl_set_session(mbedtls_ssl_context *ssl, const mbedtls_ssl_session 
                 MBEDTLS_SSL_VERSION_TLS1_3) != 0) {
             MBEDTLS_SSL_DEBUG_MSG(4, ("%d is not a valid TLS 1.3 ciphersuite.",
                                       session->ciphersuite));
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: %d is not a valid TLS 1.3 ciphersuite", __func__, session->ciphersuite);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
     }
@@ -2059,11 +2085,17 @@ int mbedtls_ssl_set_hs_ecjpake_password(mbedtls_ssl_context *ssl,
     psa_status_t status;
 
     if (ssl->handshake == NULL || ssl->conf == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ssl->handshake == NULL || ssl->conf == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     /* Empty password is not valid  */
     if ((pw == NULL) || (pw_len == 0)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Empty password is not valid", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2094,10 +2126,16 @@ int mbedtls_ssl_set_hs_ecjpake_password_opaque(mbedtls_ssl_context *ssl,
     psa_status_t status;
 
     if (ssl->handshake == NULL || ssl->conf == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ssl->handshake == NULL || ssl->conf == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     if (mbedtls_svc_key_id_is_null(pwd)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: mbedtls_svc_key_id_is_null", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2117,11 +2155,17 @@ int mbedtls_ssl_set_hs_ecjpake_password(mbedtls_ssl_context *ssl,
     mbedtls_ecjpake_role role;
 
     if (ssl->handshake == NULL || ssl->conf == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ssl->handshake == NULL || ssl->conf == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     /* Empty password is not valid  */
     if ((pw == NULL) || (pw_len == 0)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Empty password is not valid", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2199,6 +2243,9 @@ static int ssl_conf_set_psk_identity(mbedtls_ssl_config *conf,
         psk_identity_len           == 0    ||
         (psk_identity_len >> 16) != 0    ||
         psk_identity_len > mbedtls_ssl_conf_get_out_content_len(conf)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Bad psk_identity, psk_identity_len=%zu", __func__, psk_identity_len);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2226,12 +2273,21 @@ int mbedtls_ssl_conf_psk(mbedtls_ssl_config *conf,
 
     /* Check and set raw PSK */
     if (psk == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: psk == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     if (psk_len == 0) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: psk_len == 0", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     if (psk_len > MBEDTLS_PSK_MAX_LEN) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: psk_len > %d", __func__, MBEDTLS_PSK_MAX_LEN);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2282,10 +2338,16 @@ int mbedtls_ssl_set_hs_psk(mbedtls_ssl_context *ssl,
 #endif /* MBEDTLS_USE_PSA_CRYPTO */
 
     if (psk == NULL || ssl->handshake == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: psk == NULL || ssl->handshake == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     if (psk_len > MBEDTLS_PSK_MAX_LEN) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: psk_len > %d", __func__, MBEDTLS_PSK_MAX_LEN);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2349,6 +2411,9 @@ int mbedtls_ssl_conf_psk_opaque(mbedtls_ssl_config *conf,
 
     /* Check and set opaque PSK */
     if (mbedtls_svc_key_id_is_null(psk)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: mbedtls_svc_key_id_is_null", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     conf->psk_opaque = psk;
@@ -2368,6 +2433,9 @@ int mbedtls_ssl_set_hs_psk_opaque(mbedtls_ssl_context *ssl,
 {
     if ((mbedtls_svc_key_id_is_null(psk)) ||
         (ssl->handshake == NULL)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: mbedtls_svc_key_id_is_null || ssl->handshake == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -2542,6 +2610,9 @@ static int ssl_tls13_session_save(const mbedtls_ssl_session *session,
     *olen = 0;
 
     if (session->resumption_key_len > MBEDTLS_SSL_TLS1_3_TICKET_RESUMPTION_KEY_LEN) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: session->resumption_key_len > %d", __func__, MBEDTLS_SSL_TLS1_3_TICKET_RESUMPTION_KEY_LEN);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     needed += session->resumption_key_len;  /* resumption_key */
@@ -2562,6 +2633,10 @@ static int ssl_tls13_session_save(const mbedtls_ssl_session *session,
 
         /* Check size_t overflow */
         if (session->ticket_len > SIZE_MAX - needed) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: session->ticket_len %zu > %zu",
+                     __func__, session->ticket_len, (size_t)(SIZE_MAX - needed));
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -2616,6 +2691,10 @@ static int ssl_tls13_session_save(const mbedtls_ssl_session *session,
 
         if (session->ticket_len > 0) {
             if (session->ticket_len > sizeof(session->ticket.buf)) {
+#ifdef ESP_PLATFORM
+                ESP_LOGE(TAG, "%s: session->ticket_len %zu > sizeof(session->ticket.buf) %zu",
+                         __func__, session->ticket_len, sizeof(session->ticket.buf));
+#endif
                 return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
             }
             memcpy(p, session->ticket.buf, session->ticket_len);
@@ -2635,6 +2714,9 @@ static int ssl_tls13_session_load(mbedtls_ssl_session *session,
     const unsigned char *end = buf + len;
 
     if (end - p < 9) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: end - p < 9", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     session->endpoint = p[0];
@@ -2647,10 +2729,17 @@ static int ssl_tls13_session_load(mbedtls_ssl_session *session,
     p += 9;
 
     if (end - p < session->resumption_key_len) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: end - p < session->resumption_key_len", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     if (sizeof(session->resumption_key) < session->resumption_key_len) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: sizeof(session->resumption_key) < session->resumption_key_len: %zu < %zu",
+                 __func__, sizeof(session->resumption_key), (size_t)session->resumption_key_len);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     memcpy(session->resumption_key, p, session->resumption_key_len);
@@ -2659,6 +2748,9 @@ static int ssl_tls13_session_load(mbedtls_ssl_session *session,
 #if defined(MBEDTLS_HAVE_TIME) && defined(MBEDTLS_SSL_SRV_C)
     if (session->endpoint == MBEDTLS_SSL_IS_SERVER) {
         if (end - p < 8) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: end - p < 8", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         session->start = MBEDTLS_GET_UINT64_BE(p, 0);
@@ -2672,15 +2764,25 @@ static int ssl_tls13_session_load(mbedtls_ssl_session *session,
         defined(MBEDTLS_SSL_SESSION_TICKETS)
         /* load host name */
         if (end - p < 2) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: end - p < 2", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         const size_t hostname_len_with_null = MBEDTLS_GET_UINT16_BE(p, 0);
         p += 2;
 
         if (end - p < (long int) hostname_len_with_null) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: end - p < hostname_len_with_null %zu", __func__, hostname_len_with_null);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         if (hostname_len_with_null > (MBEDTLS_SSL_MAX_HOST_NAME_LEN+1)) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: hostname_len_with_null %zu > %zu",
+                     __func__, hostname_len_with_null, (size_t)(MBEDTLS_SSL_MAX_HOST_NAME_LEN+1));
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         if (hostname_len_with_null > 0) {
@@ -2694,24 +2796,36 @@ static int ssl_tls13_session_load(mbedtls_ssl_session *session,
 
 #if defined(MBEDTLS_HAVE_TIME)
         if (end - p < 8) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: end - p < 8", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         session->ticket_received = MBEDTLS_GET_UINT64_BE(p, 0);
         p += 8;
 #endif
         if (end - p < 4) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: end - p < 4", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         session->ticket_lifetime = MBEDTLS_GET_UINT32_BE(p, 0);
         p += 4;
 
         if (end - p <  2) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: end - p < 2", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         session->ticket_len = MBEDTLS_GET_UINT16_BE(p, 0);
         p += 2;
 
         if (end - p < (long int) session->ticket_len) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: end - p < ticket_len %zu", __func__, session->ticket_len);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         if (session->ticket_len > 0) {
@@ -3026,6 +3140,10 @@ int mbedtls_ssl_set_hostname(mbedtls_ssl_context *ssl, const char *hostname)
         hostname_len = strlen(hostname);
 
         if (hostname_len > MBEDTLS_SSL_MAX_HOST_NAME_LEN) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: hostname_len > MBEDTLS_SSL_MAX_HOST_NAME_LEN: %zu > %zu",
+                     __func__, hostname_len, (size_t)MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
     }
@@ -3076,6 +3194,9 @@ int mbedtls_ssl_conf_alpn_protocols(mbedtls_ssl_config *conf, const char **proto
         if ((cur_len == 0) ||
             (cur_len > MBEDTLS_SSL_MAX_ALPN_NAME_LEN) ||
             (tot_len > MBEDTLS_SSL_MAX_ALPN_LIST_LEN)) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: Bad len: cur_len %zu, tot_len %zu", __func__, cur_len, tot_len);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
     }
@@ -3103,6 +3224,9 @@ int mbedtls_ssl_dtls_srtp_set_mki_value(mbedtls_ssl_context *ssl,
                                         uint16_t mki_len)
 {
     if (mki_len > MBEDTLS_TLS_SRTP_MAX_MKI_LENGTH) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: mki_len %u > %u", __func__, (unsigned)mki_len, (unsigned)MBEDTLS_TLS_SRTP_MAX_MKI_LENGTH);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -3137,6 +3261,9 @@ int mbedtls_ssl_conf_dtls_srtp_protection_profiles(mbedtls_ssl_config *conf,
     if (list_size > MBEDTLS_TLS_SRTP_MAX_PROFILE_LIST_LENGTH) {
         conf->dtls_srtp_profile_list = NULL;
         conf->dtls_srtp_profile_list_len = 0;
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: list_size %zu > %zu", __func__, list_size, (size_t)MBEDTLS_TLS_SRTP_MAX_PROFILE_LIST_LENGTH);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -3200,6 +3327,9 @@ int mbedtls_ssl_conf_max_frag_len(mbedtls_ssl_config *conf, unsigned char mfl_co
 {
     if (mfl_code >= MBEDTLS_SSL_MAX_FRAG_LEN_INVALID ||
         ssl_mfl_code_to_length(mfl_code) > MBEDTLS_TLS_EXT_ADV_CONTENT_LEN) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Bad mfl_code: %u", __func__, (unsigned)mfl_code);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -3537,6 +3667,9 @@ int mbedtls_ssl_get_session(const mbedtls_ssl_context *ssl,
         dst == NULL ||
         ssl->session == NULL ||
         ssl->conf->endpoint != MBEDTLS_SSL_IS_CLIENT) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Bad params", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -3718,6 +3851,10 @@ static int ssl_session_save(const mbedtls_ssl_session *session,
 #if defined(MBEDTLS_SSL_PROTO_TLS1_2)
         case MBEDTLS_SSL_VERSION_TLS1_2:
             if (session->ticket_len > sizeof(session->ticket.buf)) {
+#ifdef ESP_PLATFORM
+                ESP_LOGE(TAG, "%s: session->ticket_len > sizeof(session->ticket.buf): %zu > %zu",
+                         __func__, session->ticket_len, sizeof(session->ticket.buf));
+#endif
                 return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
             }
             used += ssl_tls12_session_save(session, p, remaining_len);
@@ -3784,6 +3921,9 @@ static int ssl_session_load(mbedtls_ssl_session *session,
          */
 
         if ((size_t) (end - p) < sizeof(ssl_serialized_session_header)) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: (end - p) < sizeof(ssl_serialized_session_header)", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -3798,6 +3938,9 @@ static int ssl_session_load(mbedtls_ssl_session *session,
      * TLS version identifier
      */
     if (1 > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: 1 > (size_t) (end - p)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     session->tls_version = (mbedtls_ssl_protocol_version) (0x0300 | *p++);
@@ -3816,6 +3959,9 @@ static int ssl_session_load(mbedtls_ssl_session *session,
 #endif /* MBEDTLS_SSL_PROTO_TLS1_3 */
 
         default:
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: Unknown tls_version=%u", __func__, session->tls_version);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 }
@@ -3883,6 +4029,9 @@ int mbedtls_ssl_handshake_step(mbedtls_ssl_context *ssl)
         ssl->conf      == NULL                       ||
         ssl->handshake == NULL                       ||
         ssl->state == MBEDTLS_SSL_HANDSHAKE_OVER) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Bad params", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -3958,6 +4107,11 @@ int mbedtls_ssl_handshake_step(mbedtls_ssl_context *ssl)
     }
 
 cleanup:
+    if (MBEDTLS_ERR_SSL_BAD_INPUT_DATA == ret) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: MBEDTLS_ERR_SSL_BAD_INPUT_DATA", __func__);
+#endif
+    }
     return ret;
 }
 
@@ -3971,6 +4125,9 @@ int mbedtls_ssl_handshake(mbedtls_ssl_context *ssl)
     /* Sanity checks */
 
     if (ssl == NULL || ssl->conf == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ssl == NULL || ssl->conf == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -3979,6 +4136,9 @@ int mbedtls_ssl_handshake(mbedtls_ssl_context *ssl)
         (ssl->f_set_timer == NULL || ssl->f_get_timer == NULL)) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("You must use "
                                   "mbedtls_ssl_set_timer_cb() for DTLS"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: You must use mbedtls_ssl_set_timer_cb() for DTLS", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 #endif /* MBEDTLS_SSL_PROTO_DTLS */
@@ -4080,6 +4240,9 @@ int mbedtls_ssl_renegotiate(mbedtls_ssl_context *ssl)
     int ret = MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE;
 
     if (ssl == NULL || ssl->conf == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ssl == NULL || ssl->conf == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4087,6 +4250,9 @@ int mbedtls_ssl_renegotiate(mbedtls_ssl_context *ssl)
     /* On server, just send the request */
     if (ssl->conf->endpoint == MBEDTLS_SSL_IS_SERVER) {
         if (mbedtls_ssl_is_handshake_over(ssl) == 0) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: mbedtls_ssl_is_handshake_over(ssl) == 0", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -4108,6 +4274,9 @@ int mbedtls_ssl_renegotiate(mbedtls_ssl_context *ssl)
      */
     if (ssl->renego_status != MBEDTLS_SSL_RENEGOTIATION_IN_PROGRESS) {
         if (mbedtls_ssl_is_handshake_over(ssl) == 0) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: mbedtls_ssl_is_handshake_over(ssl) == 0", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -4419,45 +4588,72 @@ int mbedtls_ssl_context_save(mbedtls_ssl_context *ssl,
     /* The initial handshake must be over */
     if (mbedtls_ssl_is_handshake_over(ssl) == 0) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Initial handshake isn't over"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Initial handshake isn't over", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     if (ssl->handshake != NULL) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Handshake isn't completed"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Handshake isn't completed", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     /* Double-check that sub-structures are indeed ready */
     if (ssl->transform == NULL || ssl->session == NULL) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Serialised structures aren't ready"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Serialised structures aren't ready", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     /* There must be no pending incoming or outgoing data */
     if (mbedtls_ssl_check_pending(ssl) != 0) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("There is pending incoming data"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: There is pending incoming data", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     if (ssl->out_left != 0) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("There is pending outgoing data"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: There is pending outgoing data", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     /* Protocol must be DTLS, not TLS */
     if (ssl->conf->transport != MBEDTLS_SSL_TRANSPORT_DATAGRAM) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Only DTLS is supported"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Only DTLS is supported", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     /* Version must be 1.2 */
     if (ssl->tls_version != MBEDTLS_SSL_VERSION_TLS1_2) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Only version 1.2 supported"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Only version 1.2 supported", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     /* We must be using an AEAD ciphersuite */
     if (mbedtls_ssl_transform_uses_aead(ssl->transform) != 1) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Only AEAD ciphersuites supported"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Only AEAD ciphersuites supported", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     /* Renegotiation must not be enabled */
 #if defined(MBEDTLS_SSL_RENEGOTIATION)
     if (ssl->conf->disable_renegotiation != MBEDTLS_SSL_RENEGOTIATION_DISABLED) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("Renegotiation must not be enabled"));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Renegotiation must not be enabled", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 #endif
@@ -4618,6 +4814,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
      */
     if (ssl->state != MBEDTLS_SSL_HELLO_REQUEST ||
         ssl->session != NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: Bad context", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4633,6 +4832,10 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
         ssl->conf->max_tls_version < MBEDTLS_SSL_VERSION_TLS1_2 ||
         ssl->conf->min_tls_version > MBEDTLS_SSL_VERSION_TLS1_2
         ) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: transport=%u, max_tls_version=%u, min_tls_version=%u",
+                 __func__, ssl->conf->transport, ssl->conf->max_tls_version, ssl->conf->min_tls_version);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4642,6 +4845,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
      * Check version identifier
      */
     if ((size_t) (end - p) < sizeof(ssl_serialized_context_header)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < sizeof(ssl_serialized_context_header)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4655,6 +4861,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
      * Session
      */
     if ((size_t) (end - p) < 4) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < 4", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4669,6 +4878,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
     ssl->session_negotiate = NULL;
 
     if ((size_t) (end - p) < session_len) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < session_len", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4696,11 +4908,17 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
 #if defined(MBEDTLS_SSL_PROTO_TLS1_2)
     prf_func = ssl_tls12prf_from_cs(ssl->session->ciphersuite);
     if (prf_func == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: prf_func == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     /* Read random bytes and populate structure */
     if ((size_t) (end - p) < sizeof(ssl->transform->randbytes)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < sizeof(ssl->transform->randbytes)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4724,12 +4942,18 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
 #if defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
     /* Read connection IDs and store them */
     if ((size_t) (end - p) < 1) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < 1", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     ssl->transform->in_cid_len = *p++;
 
     if ((size_t) (end - p) < ssl->transform->in_cid_len + 1u) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < ssl->transform->in_cid_len + 1u", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4739,6 +4963,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
     ssl->transform->out_cid_len = *p++;
 
     if ((size_t) (end - p) < ssl->transform->out_cid_len) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < ssl->transform->out_cid_len", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4750,6 +4977,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
      * Saved fields from top-level ssl_context structure
      */
     if ((size_t) (end - p) < 4) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < 4", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4758,6 +4988,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
 
 #if defined(MBEDTLS_SSL_DTLS_ANTI_REPLAY)
     if ((size_t) (end - p) < 16) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < 16", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4770,6 +5003,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
 
 #if defined(MBEDTLS_SSL_PROTO_DTLS)
     if ((size_t) (end - p) < 1) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < 1", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4777,6 +5013,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
 #endif /* MBEDTLS_SSL_PROTO_DTLS */
 
     if ((size_t) (end - p) < sizeof(ssl->cur_out_ctr)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < sizeof(ssl->cur_out_ctr)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
     memcpy(ssl->cur_out_ctr, p, sizeof(ssl->cur_out_ctr));
@@ -4784,6 +5023,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
 
 #if defined(MBEDTLS_SSL_PROTO_DTLS)
     if ((size_t) (end - p) < 2) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: (end - p) < 2", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -4797,6 +5039,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
         const char **cur;
 
         if ((size_t) (end - p) < 1) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: (end - p) < 1", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -4815,6 +5060,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
 
         /* can only happen on conf mismatch */
         if (alpn_len != 0 && ssl->alpn_chosen == NULL) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: alpn_len != 0 && ssl->alpn_chosen == NULL", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -4853,6 +5101,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
      * Done - should have consumed entire buffer
      */
     if (p != end) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: p != end", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -6822,6 +7073,9 @@ int mbedtls_ssl_psk_derive_premaster(mbedtls_ssl_context *ssl, mbedtls_key_excha
 #if defined(MBEDTLS_KEY_EXCHANGE_PSK_ENABLED)
     if (key_ex == MBEDTLS_KEY_EXCHANGE_PSK) {
         if (end - p < 2) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: end - p < 2", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -6829,6 +7083,9 @@ int mbedtls_ssl_psk_derive_premaster(mbedtls_ssl_context *ssl, mbedtls_key_excha
         p += 2;
 
         if (end < p || (size_t) (end - p) < psk_len) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: end < p || (size_t) (end - p) < psk_len", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -6843,6 +7100,9 @@ int mbedtls_ssl_psk_derive_premaster(mbedtls_ssl_context *ssl, mbedtls_key_excha
          * and is 48 bytes long
          */
         if (end - p < 2) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: end - p < 2", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -6895,6 +7155,9 @@ int mbedtls_ssl_psk_derive_premaster(mbedtls_ssl_context *ssl, mbedtls_key_excha
 
     /* opaque psk<0..2^16-1>; */
     if (end - p < 2) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: end - p < 2", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -6902,6 +7165,9 @@ int mbedtls_ssl_psk_derive_premaster(mbedtls_ssl_context *ssl, mbedtls_key_excha
     p += 2;
 
     if (end < p || (size_t) (end - p) < psk_len) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: end < p || (size_t) (end - p) < psk_len", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -8263,6 +8529,9 @@ static int ssl_tls12_populate_transform(mbedtls_ssl_transform *transform,
     if (ciphersuite_info == NULL) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("ciphersuite info for %d not found",
                                   ciphersuite));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ciphersuite info for %d not found", __func__, ciphersuite);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -8292,6 +8561,9 @@ static int ssl_tls12_populate_transform(mbedtls_ssl_transform *transform,
     if (cipher_info == NULL) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("cipher info for %u not found",
                                   ciphersuite_info->cipher));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: cipher info for %u not found", __func__, ciphersuite_info->cipher);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 #endif /* MBEDTLS_USE_PSA_CRYPTO */
@@ -8301,6 +8573,9 @@ static int ssl_tls12_populate_transform(mbedtls_ssl_transform *transform,
     if (mac_alg == 0) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("mbedtls_md_psa_alg_from_type for %u not found",
                                   (unsigned) ciphersuite_info->mac));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: mbedtls_md_psa_alg_from_type for %u not found", __func__, (unsigned) ciphersuite_info->mac);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 #else
@@ -8308,6 +8583,9 @@ static int ssl_tls12_populate_transform(mbedtls_ssl_transform *transform,
     if (md_info == NULL) {
         MBEDTLS_SSL_DEBUG_MSG(1, ("mbedtls_md info for %u not found",
                                   (unsigned) ciphersuite_info->mac));
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: mbedtls_md info for %u not found", __func__, (unsigned) ciphersuite_info->mac);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 #endif /* MBEDTLS_USE_PSA_CRYPTO */
@@ -9088,6 +9366,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
      */
 #if defined(MBEDTLS_HAVE_TIME)
     if (8 > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: 8 > (size_t) (end - p)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -9101,6 +9382,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
      * Basic mandatory fields
      */
     if (2 + 1 + 32 + 48 + 4 > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: 2 + 1 + 32 + 48 + 4 > (size_t) (end - p)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -9137,6 +9421,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
 #if defined(MBEDTLS_SSL_KEEP_PEER_CERTIFICATE)
     /* Deserialize CRT from the end of the ticket. */
     if (3 > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: 3 > (size_t) (end - p)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -9147,6 +9434,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
         int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
 
         if (cert_len > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: cert_len > (size_t) (end - p)", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -9178,6 +9468,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
 #else /* MBEDTLS_SSL_KEEP_PEER_CERTIFICATE */
     /* Deserialize CRT digest from the end of the ticket. */
     if (2 > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: 2 > (size_t) (end - p)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -9188,13 +9481,22 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
         const mbedtls_md_info_t *md_info =
             mbedtls_md_info_from_type(session->peer_cert_digest_type);
         if (md_info == NULL) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: md_info == NULL", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         if (session->peer_cert_digest_len != mbedtls_md_get_size(md_info)) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: session->peer_cert_digest_len != mbedtls_md_get_size(md_info)", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
         if (session->peer_cert_digest_len > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: session->peer_cert_digest_len > (size_t) (end - p)", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
 
@@ -9216,6 +9518,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
      */
 #if defined(MBEDTLS_SSL_SESSION_TICKETS) && defined(MBEDTLS_SSL_CLI_C)
     if (3 > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: 3 > (size_t) (end - p)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -9224,6 +9529,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
 
     if (session->ticket_len != 0) {
         if (session->ticket_len > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: session->ticket_len > (size_t) (end - p)", __func__);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
         if (session->ticket_len <= sizeof(session->ticket.buf)) {
@@ -9245,6 +9553,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
     }
 
     if (4 > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: 4 > (size_t) (end - p)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -9257,6 +9568,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
      */
 #if defined(MBEDTLS_SSL_MAX_FRAGMENT_LENGTH)
     if (1 > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: 1 > (size_t) (end - p)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -9265,6 +9579,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
 
 #if defined(MBEDTLS_SSL_ENCRYPT_THEN_MAC)
     if (1 > (size_t) (end - p)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: 1 > (size_t) (end - p)", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -9273,6 +9590,9 @@ static int ssl_tls12_session_load(mbedtls_ssl_session *session,
 
     /* Done, should have consumed entire buffer */
     if (p != end) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: p != end", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -9641,6 +9961,9 @@ int mbedtls_ssl_session_set_hostname(mbedtls_ssl_session *session,
         hostname_len = strlen(p_hostname->buf);
 
         if (hostname_len > MBEDTLS_SSL_MAX_HOST_NAME_LEN) {
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: hostname_len %zu > %zu", __func__, hostname_len, (size_t)MBEDTLS_SSL_MAX_HOST_NAME_LEN);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }
     }
