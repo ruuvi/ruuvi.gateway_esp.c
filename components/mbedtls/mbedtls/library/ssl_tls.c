@@ -169,7 +169,8 @@ int mbedtls_ssl_get_own_cid(mbedtls_ssl_context *ssl,
 
     if (ssl->conf->transport != MBEDTLS_SSL_TRANSPORT_DATAGRAM) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: conf->transport != %d", __func__, MBEDTLS_SSL_TRANSPORT_DATAGRAM);
+        ESP_LOGE(TAG, "%s: conf->transport %u != %u",
+                 __func__, (unsigned)ssl->conf->transport, (unsigned)MBEDTLS_SSL_TRANSPORT_DATAGRAM);
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
@@ -203,8 +204,9 @@ int mbedtls_ssl_get_peer_cid(mbedtls_ssl_context *ssl,
     if (ssl->conf->transport != MBEDTLS_SSL_TRANSPORT_DATAGRAM ||
         mbedtls_ssl_is_handshake_over(ssl) == 0) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: conf->transport != %d or mbedtls_ssl_is_handshake_over == 0",
-                 __func__, MBEDTLS_SSL_TRANSPORT_DATAGRAM);
+        ESP_LOGE(TAG, "%s: conf->transport %u != %u or mbedtls_ssl_is_handshake_over %d == 0",
+                 __func__, (unsigned)ssl->conf->transport, (unsigned)MBEDTLS_SSL_TRANSPORT_DATAGRAM,
+                 mbedtls_ssl_is_handshake_over(ssl));
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
@@ -2287,7 +2289,7 @@ int mbedtls_ssl_conf_psk(mbedtls_ssl_config *conf,
     }
     if (psk_len > MBEDTLS_PSK_MAX_LEN) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: psk_len > %d", __func__, MBEDTLS_PSK_MAX_LEN);
+        ESP_LOGE(TAG, "%s: psk_len %zu > %u", __func__, psk_len, (unsigned)MBEDTLS_PSK_MAX_LEN);
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
@@ -2347,7 +2349,7 @@ int mbedtls_ssl_set_hs_psk(mbedtls_ssl_context *ssl,
 
     if (psk_len > MBEDTLS_PSK_MAX_LEN) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: psk_len > %d", __func__, MBEDTLS_PSK_MAX_LEN);
+        ESP_LOGE(TAG, "%s: psk_len %zu > %u", __func__, psk_len, (unsigned)MBEDTLS_PSK_MAX_LEN);
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
