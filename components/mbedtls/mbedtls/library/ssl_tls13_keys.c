@@ -187,7 +187,7 @@ int mbedtls_ssl_tls13_hkdf_expand_label(
 
     if (!PSA_ALG_IS_HASH(hash_alg)) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: The alg 0x%x is not hash alg", __func__, hash_alg);
+        ESP_LOGE(TAG, "%s: The algorithm 0x%x is not a hash algorithm", __func__, hash_alg);
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
@@ -371,7 +371,7 @@ int mbedtls_ssl_tls13_evolve_secret(
 
     if (!PSA_ALG_IS_HASH(hash_alg)) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: The alg 0x%x is not hash alg", __func__, hash_alg);
+        ESP_LOGE(TAG, "%s: The algorithm 0x%x is not a hash algorithm", __func__, hash_alg);
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }

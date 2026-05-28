@@ -927,7 +927,7 @@ static int ssl_prepare_client_hello(mbedtls_ssl_context *ssl)
                 1, ("Hostname mismatch the session ticket, "
                     "disable session resumption."));
 #ifdef ESP_PLATFORM
-            ESP_LOGE(TAG, "%s: Hostname mismatch the session ticket, disable session resumption.", __func__);
+            ESP_LOGE(TAG, "%s: Hostname mismatch in the session ticket; disable session resumption", __func__);
 #endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         }

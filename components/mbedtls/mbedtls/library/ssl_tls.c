@@ -102,7 +102,7 @@ int mbedtls_ssl_conf_cid(mbedtls_ssl_config *conf,
 {
     if (len > MBEDTLS_SSL_CID_IN_LEN_MAX) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: len > %u", __func__, MBEDTLS_SSL_CID_IN_LEN_MAX);
+        ESP_LOGE(TAG, "%s: len %zu > %u", __func__, len, (unsigned)MBEDTLS_SSL_CID_IN_LEN_MAX);
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
@@ -127,7 +127,8 @@ int mbedtls_ssl_set_cid(mbedtls_ssl_context *ssl,
 {
     if (ssl->conf->transport != MBEDTLS_SSL_TRANSPORT_DATAGRAM) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: conf->transport != %d", __func__, MBEDTLS_SSL_TRANSPORT_DATAGRAM);
+        ESP_LOGE(TAG, "%s: conf->transport %u != %u",
+                 __func__, (unsigned)ssl->conf->transport, (unsigned)MBEDTLS_SSL_TRANSPORT_DATAGRAM);
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
