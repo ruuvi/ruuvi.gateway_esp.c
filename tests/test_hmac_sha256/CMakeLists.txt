@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.22)
 
 project(ruuvi_gateway_esp-test-hmac_sha256)
 set(ProjectId ruuvi_gateway_esp-test-hmac_sha256)
@@ -24,7 +24,7 @@ add_executable(${ProjectId}
 
 set_target_properties(${ProjectId} PROPERTIES
         C_STANDARD 11
-        CXX_STANDARD 14
+        CXX_STANDARD 17
 )
 
 target_include_directories(${ProjectId} PUBLIC
