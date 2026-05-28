@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.22)
 
 project(ruuvi_gateway_esp-test-gw_cfg_ruuvi_json_generate)
 set(ProjectId ruuvi_gateway_esp-test-gw_cfg_ruuvi_json_generate)
