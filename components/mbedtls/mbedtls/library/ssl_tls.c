@@ -204,7 +204,7 @@ int mbedtls_ssl_get_peer_cid(mbedtls_ssl_context *ssl,
     if (ssl->conf->transport != MBEDTLS_SSL_TRANSPORT_DATAGRAM ||
         mbedtls_ssl_is_handshake_over(ssl) == 0) {
 #ifdef ESP_PLATFORM
-        ESP_LOGE(TAG, "%s: conf->transport %u != %u or mbedtls_ssl_is_handshake_over %d == 0",
+        ESP_LOGE(TAG, "%s: invalid state: conf->transport=%u (expected %u), handshake_over=%d",
                  __func__, (unsigned)ssl->conf->transport, (unsigned)MBEDTLS_SSL_TRANSPORT_DATAGRAM,
                  mbedtls_ssl_is_handshake_over(ssl));
 #endif
@@ -3983,7 +3983,7 @@ static int ssl_session_load(mbedtls_ssl_session *session,
 
         default:
 #ifdef ESP_PLATFORM
-            ESP_LOGE(TAG, "%s: Unknown tls_version=%u", __func__, session->tls_version);
+            ESP_LOGE(TAG, "%s: Unknown tls_version=%u", __func__, (unsigned)session->tls_version);
 #endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
@@ -4852,7 +4852,9 @@ static int ssl_context_load(mbedtls_ssl_context *ssl,
         ) {
 #ifdef ESP_PLATFORM
         ESP_LOGE(TAG, "%s: transport=%u, max_tls_version=%u, min_tls_version=%u",
-                 __func__, ssl->conf->transport, ssl->conf->max_tls_version, ssl->conf->min_tls_version);
+                 __func__, (unsigned)ssl->conf->transport,
+                 (unsigned)ssl->conf->max_tls_version,
+                 (unsigned)ssl->conf->min_tls_version);
 #endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
