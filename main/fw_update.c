@@ -587,7 +587,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
         &p_flash_info->running_partition_state);
     if (ESP_OK != err)
     {
-        LOG_ERR_ESP(err, "%s failed", "esp_ota_get_state_partition");
+        LOG_ERR_ESP(err, "%s failed", "esp_ota_get_state_partition_patched");
         // The 'otadata' partition is in invalid state, so we can't determine the state of the running partition.
         // Just try to continue executing code from the running partition
         // and hope that on the next firmware update the 'otadata' partition will be overwritten with valid data.
