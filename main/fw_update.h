@@ -25,7 +25,6 @@ extern "C" {
 
 typedef struct ruuvi_flash_info_t
 {
-    bool                    is_valid;
     bool                    is_ota0_active;
     const esp_app_desc_t*   p_app_desc;
     const esp_partition_t*  p_boot_partition;

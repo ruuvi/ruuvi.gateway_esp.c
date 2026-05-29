@@ -199,16 +199,16 @@ fw_update_log_running_partition_state(const esp_ota_img_states_t running_partiti
             LOG_INFO("Currently running partition state: %s", "VALID");
             break;
         case ESP_OTA_IMG_INVALID:
-            LOG_INFO("Currently running partition state: %s", "INVALID");
+            LOG_WARN("Currently running partition state: %s", "INVALID");
             break;
         case ESP_OTA_IMG_ABORTED:
-            LOG_INFO("Currently running partition state: %s", "ABORTED");
+            LOG_WARN("Currently running partition state: %s", "ABORTED");
             break;
         case ESP_OTA_IMG_UNDEFINED:
-            LOG_INFO("Currently running partition state: %s", "UNDEFINED");
+            LOG_WARN("Currently running partition state: %s", "UNDEFINED");
             break;
         default:
-            LOG_INFO("Currently running partition state: UNKNOWN (%d)", (printf_int_t)running_partition_state);
+            LOG_WARN("Currently running partition state: UNKNOWN (%d)", (printf_int_t)running_partition_state);
             break;
     }
 }
@@ -443,91 +443,112 @@ fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
     return true;
 }
 
-static bool
+static void
 fw_update_set_next_ota_partition(ruuvi_flash_info_t* const p_flash_info)
 {
+    // Precondition: p_flash_info->p_running_partition != NULL
     p_flash_info->p_next_update_partition = esp_ota_get_next_update_partition(p_flash_info->p_running_partition);
     if (NULL == p_flash_info->p_next_update_partition)
     {
         LOG_ERR("Can't find next partition for updating");
-        return false;
     }
-    LOG_INFO(
-        "Next update partition: %s: address 0x%08x, size 0x%x",
-        p_flash_info->p_next_update_partition->label,
-        p_flash_info->p_next_update_partition->address,
-        p_flash_info->p_next_update_partition->size);
+    else
+    {
+        LOG_INFO(
+            "Next update partition: %s: address 0x%08x, size 0x%x",
+            p_flash_info->p_next_update_partition->label,
+            p_flash_info->p_next_update_partition->address,
+            p_flash_info->p_next_update_partition->size);
+    }
     p_flash_info->is_ota0_active = (0 == strcmp("ota_0", p_flash_info->p_running_partition->label)) ? true : false;
-    return true;
 }
 
-static bool
+static void
 fw_update_set_next_gwui_partition(ruuvi_flash_info_t* const p_flash_info)
 {
     const esp_partition_t* const p_gw_gwui = find_data_fat_partition_by_name(GW_GWUI_PARTITION);
     if (NULL == p_gw_gwui)
     {
         LOG_ERR("Can't find first partition for gwui filesystem: %s", GW_GWUI_PARTITION);
-        return false;
     }
     const esp_partition_t* const p_gw_gwui2 = find_data_fat_partition_by_name(GW_GWUI_PARTITION_2);
     if (NULL == p_gw_gwui2)
     {
         LOG_ERR("Can't find second partition for gwui filesystem: %s", GW_GWUI_PARTITION_2);
-        return false;
     }
     p_flash_info->p_cur_fatfs_gwui_partition  = p_flash_info->is_ota0_active ? p_gw_gwui : p_gw_gwui2;
     p_flash_info->p_next_fatfs_gwui_partition = p_flash_info->is_ota0_active ? p_gw_gwui2 : p_gw_gwui;
-    LOG_INFO(
-        "Cur fatfs_gwui partition: %s: address 0x%08x, size 0x%x",
-        p_flash_info->p_cur_fatfs_gwui_partition->label,
-        p_flash_info->p_cur_fatfs_gwui_partition->address,
-        p_flash_info->p_cur_fatfs_gwui_partition->size);
-    LOG_INFO(
-        "Next fatfs_gwui partition: %s: address 0x%08x, size 0x%x",
-        p_flash_info->p_next_fatfs_gwui_partition->label,
-        p_flash_info->p_next_fatfs_gwui_partition->address,
-        p_flash_info->p_next_fatfs_gwui_partition->size);
-
-    return true;
+    if (NULL != p_flash_info->p_cur_fatfs_gwui_partition)
+    {
+        LOG_INFO(
+            "Cur fatfs_gwui partition: %s: address 0x%08x, size 0x%x",
+            p_flash_info->p_cur_fatfs_gwui_partition->label,
+            p_flash_info->p_cur_fatfs_gwui_partition->address,
+            p_flash_info->p_cur_fatfs_gwui_partition->size);
+    }
+    else
+    {
+        LOG_ERR("Cur fatfs_gwui partition: <NULL>");
+    }
+    if (NULL != p_flash_info->p_next_fatfs_gwui_partition)
+    {
+        LOG_INFO(
+            "Next fatfs_gwui partition: %s: address 0x%08x, size 0x%x",
+            p_flash_info->p_next_fatfs_gwui_partition->label,
+            p_flash_info->p_next_fatfs_gwui_partition->address,
+            p_flash_info->p_next_fatfs_gwui_partition->size);
+    }
+    else
+    {
+        LOG_ERR("Next fatfs_gwui partition: <NULL>");
+    }
 }
 
-static bool
+static void
 fw_update_set_next_nrf52_partition(ruuvi_flash_info_t* const p_flash_info)
 {
     const esp_partition_t* const p_gw_nrf = find_data_fat_partition_by_name(GW_NRF_PARTITION);
     if (NULL == p_gw_nrf)
     {
         LOG_ERR("Can't find first partition for nRF52 firmware: %s", GW_NRF_PARTITION);
-        return false;
     }
     const esp_partition_t* const p_gw_nrf2 = find_data_fat_partition_by_name(GW_NRF_PARTITION_2);
     if (NULL == p_gw_nrf2)
     {
         LOG_ERR("Can't find second partition for nRF52 firmware: %s", GW_NRF_PARTITION_2);
-        return false;
     }
     p_flash_info->p_cur_fatfs_nrf52_partition  = p_flash_info->is_ota0_active ? p_gw_nrf : p_gw_nrf2;
     p_flash_info->p_next_fatfs_nrf52_partition = p_flash_info->is_ota0_active ? p_gw_nrf2 : p_gw_nrf;
 
-    LOG_INFO(
-        "Cur fatfs_nrf52 partition: %s: address 0x%08x, size 0x%x",
-        p_flash_info->p_cur_fatfs_nrf52_partition->label,
-        p_flash_info->p_cur_fatfs_nrf52_partition->address,
-        p_flash_info->p_cur_fatfs_nrf52_partition->size);
-    LOG_INFO(
-        "Next fatfs_nrf52 partition: %s: address 0x%08x, size 0x%x",
-        p_flash_info->p_next_fatfs_nrf52_partition->label,
-        p_flash_info->p_next_fatfs_nrf52_partition->address,
-        p_flash_info->p_next_fatfs_nrf52_partition->size);
-    return true;
+    if (NULL != p_flash_info->p_cur_fatfs_nrf52_partition)
+    {
+        LOG_INFO(
+            "Cur fatfs_nrf52 partition: %s: address 0x%08x, size 0x%x",
+            p_flash_info->p_cur_fatfs_nrf52_partition->label,
+            p_flash_info->p_cur_fatfs_nrf52_partition->address,
+            p_flash_info->p_cur_fatfs_nrf52_partition->size);
+    }
+    else
+    {
+        LOG_ERR("Cur fatfs_nrf52 partition: <NULL>");
+    }
+    if (NULL != p_flash_info->p_next_fatfs_nrf52_partition)
+    {
+        LOG_INFO(
+            "Next fatfs_nrf52 partition: %s: address 0x%08x, size 0x%x",
+            p_flash_info->p_next_fatfs_nrf52_partition->label,
+            p_flash_info->p_next_fatfs_nrf52_partition->address,
+            p_flash_info->p_next_fatfs_nrf52_partition->size);
+    }
+    else
+    {
+        LOG_ERR("Next fatfs_nrf52 partition: <NULL>");
+    }
 }
 
 static bool
 fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
 {
-    p_flash_info->is_valid = false;
-
     p_flash_info->running_partition_state = ESP_OTA_IMG_UNDEFINED;
 
     p_flash_info->p_app_desc = esp_ota_get_app_description();
@@ -537,19 +558,26 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
     p_flash_info->p_boot_partition = esp_ota_get_boot_partition();
     if (NULL == p_flash_info->p_boot_partition)
     {
-        LOG_ERR("There is no boot partition info");
-        return false;
+        LOG_ERR("### Boot partition: %s", "N/A");
     }
-    LOG_INFO("### Boot partition: %s", p_flash_info->p_boot_partition->label);
+    else
+    {
+        LOG_INFO(
+            "### Boot partition: %s: address 0x%08x, size 0x%x",
+            p_flash_info->p_boot_partition->label,
+            p_flash_info->p_boot_partition->address,
+            p_flash_info->p_boot_partition->size);
+    }
 
     p_flash_info->p_running_partition = esp_ota_get_running_partition();
     if (NULL == p_flash_info->p_running_partition)
     {
-        LOG_ERR("There is no running partition info");
+        LOG_ERR("### Currently running partition: %s", "Not found");
         return false;
     }
+
     LOG_INFO(
-        "Currently running partition: %s: address 0x%08x, size 0x%x",
+        "### Currently running partition: %s: address 0x%08x, size 0x%x",
         p_flash_info->p_running_partition->label,
         p_flash_info->p_running_partition->address,
         p_flash_info->p_running_partition->size);
@@ -560,26 +588,15 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "%s failed", "esp_ota_get_state_partition");
-        return false;
+        // The 'otadata' partition is in invalid state, so we can't determine the state of the running partition.
+        // Just try to continue executing code from the running partition
+        // and hope that on the next firmware update the 'otadata' partition will be overwritten with valid data.
     }
     fw_update_log_running_partition_state(p_flash_info->running_partition_state);
 
-    if (!fw_update_set_next_ota_partition(p_flash_info))
-    {
-        return false;
-    }
-
-    if (!fw_update_set_next_gwui_partition(p_flash_info))
-    {
-        return false;
-    }
-
-    if (!fw_update_set_next_nrf52_partition(p_flash_info))
-    {
-        return false;
-    }
-
-    p_flash_info->is_valid = true;
+    fw_update_set_next_ota_partition(p_flash_info);
+    fw_update_set_next_gwui_partition(p_flash_info);
+    fw_update_set_next_nrf52_partition(p_flash_info);
     return true;
 }
 
@@ -588,15 +605,28 @@ fw_update_read_flash_info_and_check_signatures(void)
 {
     ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
 
-    fw_update_read_flash_info_internal(p_flash_info);
-
+    if (!fw_update_read_flash_info_internal(p_flash_info))
+    {
+        LOG_ERR("Can't get info about running partition");
+        return false;
+    }
+    if (NULL == p_flash_info->p_cur_fatfs_gwui_partition)
+    {
+        LOG_ERR("Can't find cur fatfs_gwui partition");
+        return false;
+    }
+    if (NULL == p_flash_info->p_cur_fatfs_nrf52_partition)
+    {
+        LOG_ERR("Can't find cur fatfs_nrf52 partition");
+        return false;
+    }
     if (!fw_update_self_check_signature(p_flash_info))
     {
         LOG_ERR("Self check of running partition signature failed");
         return false;
     }
 
-    return p_flash_info->is_valid;
+    return true;
 }
 
 bool
@@ -605,7 +635,9 @@ fw_update_mark_app_valid_cancel_rollback(void)
     ruuvi_flash_info_t* p_flash_info = &g_ruuvi_flash_info;
     if (ESP_OTA_IMG_PENDING_VERIFY == p_flash_info->running_partition_state)
     {
-        LOG_INFO("Mark current OTA partition valid and cancel rollback");
+        LOG_INFO(
+            "Mark current OTA partition '%s' valid and cancel rollback",
+            (NULL != p_flash_info->p_running_partition) ? p_flash_info->p_running_partition->label : "<NULL>");
         const esp_err_t err = esp_ota_mark_app_valid_cancel_rollback();
         if (ESP_OK != err)
         {
@@ -1359,7 +1391,7 @@ fw_update_invalidate_next_ota_partition(
         return false;
     }
     LOG_INFO(
-        "Erase first sector only of OTA partition '%s' (address 0x%08x, size 0x%x)",
+        "Erase first sector of OTA partition '%s' (address 0x%08x, size 0x%x)",
         p_partition_ota->label,
         p_partition_ota->address,
         p_partition_ota->size);
