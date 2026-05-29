@@ -337,6 +337,7 @@ cb_after_nrf52_fw_updating(const bool flag_success)
     main_task_send_sig_deactivate_cfg_mode();
 }
 
+ATTR_NORETURN
 static void
 handle_reset_button_is_pressed_during_boot(void)
 {
@@ -366,7 +367,7 @@ handle_reset_button_is_pressed_during_boot(void)
     {
         vTaskDelay(1);
     }
-    gateway_restart("The CONFIGURE button has been released - restart system");
+    gateway_restart_immediate_no_cleanup("The CONFIGURE button has been released - restart system");
 }
 
 static void
@@ -527,7 +528,7 @@ main_task_init(void)
     if (is_configure_button_pressed)
     {
         handle_reset_button_is_pressed_during_boot();
-        return false;
+        assert(0); // handle_reset_button_is_pressed_during_boot reboots the gateway when CONFIGURE button is released
     }
 
     if (!settings_check_in_flash())
