@@ -319,3 +319,96 @@ esp_ota_end_patched(const esp_ota_handle_t handle, esp_ota_sha256_digest_t* cons
     os_free(p_it);
     return ret;
 }
+
+static uint8_t
+get_ota_partition_count(void)
+{
+    uint16_t ota_app_count = 0;
+    while (esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_MIN + ota_app_count, NULL)
+           != NULL)
+    {
+        assert(ota_app_count < 16 && "must erase the partition before writing to it");
+        ota_app_count++;
+    }
+    return ota_app_count;
+}
+
+// Read otadata partition and fill array from two otadata structures.
+// Also return pointer to otadata info partition.
+static const esp_partition_t*
+read_otadata(esp_ota_select_entry_t* two_otadata)
+{
+    const esp_partition_t* otadata_partition = esp_partition_find_first(
+        ESP_PARTITION_TYPE_DATA,
+        ESP_PARTITION_SUBTYPE_DATA_OTA,
+        NULL);
+
+    if (otadata_partition == NULL)
+    {
+        ESP_LOGE(TAG, "not found otadata");
+        return NULL;
+    }
+
+    spi_flash_mmap_handle_t ota_data_map;
+    const void*             result = NULL;
+    esp_err_t               err    = esp_partition_mmap(
+        otadata_partition,
+        0,
+        otadata_partition->size,
+        SPI_FLASH_MMAP_DATA,
+        &result,
+        &ota_data_map);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "mmap otadata filed. Err=0x%8x", err);
+        return NULL;
+    }
+    else
+    {
+        memcpy(&two_otadata[0], result, sizeof(esp_ota_select_entry_t));
+        memcpy(&two_otadata[1], result + SPI_FLASH_SEC_SIZE, sizeof(esp_ota_select_entry_t));
+        spi_flash_munmap(ota_data_map);
+    }
+    return otadata_partition;
+}
+
+esp_err_t
+esp_ota_get_state_partition_patched(const esp_partition_t* partition, esp_ota_img_states_t* ota_state)
+{
+    if (partition == NULL || ota_state == NULL)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!esp_ota_is_ota_partition(partition))
+    {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    esp_ota_select_entry_t otadata[2];
+    int                    ota_app_count = get_ota_partition_count();
+    if (read_otadata(otadata) == NULL || ota_app_count == 0)
+    {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    int  req_ota_slot = partition->subtype - ESP_PARTITION_SUBTYPE_APP_OTA_MIN;
+    bool not_found    = true;
+    for (int i = 0; i < 2; ++i)
+    {
+        int ota_slot = (otadata[i].ota_seq - 1) % ota_app_count;
+        if (ota_slot == req_ota_slot && otadata[i].crc == bootloader_common_ota_select_crc(&otadata[i]))
+        {
+            *ota_state = otadata[i].ota_state;
+            not_found  = false;
+            break;
+        }
+    }
+
+    if (not_found)
+    {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    return ESP_OK;
+}

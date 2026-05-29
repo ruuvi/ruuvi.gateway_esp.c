@@ -554,7 +554,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
         p_flash_info->p_running_partition->address,
         p_flash_info->p_running_partition->size);
 
-    esp_err_t err = esp_ota_get_state_partition(
+    const esp_err_t err = esp_ota_get_state_partition_patched(
         p_flash_info->p_running_partition,
         &p_flash_info->running_partition_state);
     if (ESP_OK != err)
