@@ -473,25 +473,25 @@ main_task_initial_initialization(void)
     if (!main_loop_init())
     {
         LOG_ERR("%s failed", "main_loop_init");
-        return false;
+        return false; // app_main() will roll back the firmware.
     }
 
     if (!fw_update_read_flash_info_and_check_signatures())
     {
         LOG_ERR("%s failed", "fw_update_read_flash_info");
-        return false;
+        return false; // app_main() will roll back the firmware.
     }
 
     if (!event_mgr_init())
     {
         LOG_ERR("%s failed", "event_mgr_init");
-        return false;
+        return false; // app_main() will roll back the firmware.
     }
 
     if (!gw_status_init())
     {
         LOG_ERR("%s failed", "gw_status_init");
-        return false;
+        return false; // app_main() will roll back the firmware.
     }
 
     gpio_init();
@@ -506,7 +506,7 @@ main_task_init(void)
 
     if (!main_task_initial_initialization())
     {
-        return false;
+        return false; // app_main() will roll back the firmware.
     }
 
     const bool is_configure_button_pressed = (0 == gpio_get_level(RB_BUTTON_RESET_PIN)) ? true : false;
@@ -516,7 +516,7 @@ main_task_init(void)
     if (!reset_task_init())
     {
         LOG_ERR("Can't create thread");
-        return false;
+        return false; // app_main() will roll back the firmware.
     }
 
     ruuvi_nvs_init();
@@ -546,7 +546,7 @@ main_task_init(void)
     if (!ruuvi_init_gw_cfg(NULL, NULL))
     {
         LOG_ERR("%s failed", "ruuvi_init_gw_cfg");
-        return false;
+        return false; // app_main() will roll back the firmware.
     }
 
     main_task_init_timers();
@@ -564,17 +564,9 @@ main_task_init(void)
             true))
     {
         LOG_ERR("%s failed", "nrf52fw_update_fw_if_necessary");
-        if (esp_ota_check_rollback_is_possible())
-        {
-            LOG_ERR("Firmware rollback is possible, so try to do it");
-        }
-        else
-        {
-            LOG_ERR("Firmware rollback is not possible");
-        }
         gw_status_clear_nrf_status();
         leds_notify_nrf52_failure();
-        return false;
+        return false; // app_main() will roll back the firmware.
     }
     gw_status_set_nrf_status();
     leds_notify_nrf52_ready();
@@ -603,7 +595,7 @@ main_task_init(void)
     {
         LOG_ERR("%s failed", "network_subsystem_init");
         gw_cfg_unlock_ro(&p_gw_cfg);
-        return false;
+        return false; // app_main() will roll back the firmware.
     }
     gw_cfg_unlock_ro(&p_gw_cfg);
 
@@ -616,8 +608,17 @@ app_main(void)
 {
     if (!main_task_init())
     {
-        LOG_ERR("main_task_init failed - try to rollback firmware");
-        reset_info_set_sw("Rollback firmware");
+        LOG_ERR("main_task_init failed");
+        if (esp_ota_check_rollback_is_possible())
+        {
+            LOG_ERR("Firmware rollback is possible, so try to do it");
+            reset_info_set_sw("Rollback firmware");
+        }
+        else
+        {
+            LOG_ERR("Firmware rollback is not possible");
+            reset_info_set_sw("Rollback firmware (impossible, plain restart)");
+        }
         const esp_err_t err = esp_ota_mark_app_invalid_rollback_and_reboot();
         if (0 != err)
         {
@@ -629,11 +630,17 @@ app_main(void)
     }
     else
     {
-        if (settings_read_flag_rebooting_after_auto_update())
+        const bool is_upstream_used = gw_cfg_get_http_use_http_ruuvi() || gw_cfg_get_http_use_http()
+                                      || gw_cfg_get_mqtt_use_mqtt(); // Do not take into account statistics endpoint
+        const bool is_rebooted_after_autoupdate = settings_read_flag_rebooting_after_auto_update();
+        if (is_rebooted_after_autoupdate)
         {
-            // If rebooting after auto firmware update, fw_update_mark_app_valid_cancel_rollback should be called by
-            // http_post_advs or mqtt_event_handler after successful network communication with the server.
             settings_write_flag_rebooting_after_auto_update(false);
+        }
+        if (is_upstream_used && is_rebooted_after_autoupdate)
+        {
+            LOG_INFO("Rebooted after firmware autoupdate and upstream is used");
+            LOG_INFO("http_post_advs or mqtt_event_handler will mark app valid and cancel rollback");
         }
         else
         {
