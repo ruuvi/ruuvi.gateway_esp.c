@@ -401,12 +401,12 @@ esp_ota_end_patched(const esp_ota_handle_t handle, esp_ota_sha256_digest_t* cons
 
 static esp_err_t
 rewrite_ota_seq(
-    esp_ota_select_entry_t* two_otadata,
-    uint32_t                seq,
-    uint8_t                 sec_id,
-    const esp_partition_t*  ota_data_partition)
+    esp_ota_select_entry_t* const two_otadata,
+    const uint32_t                seq,
+    const uint8_t                 sec_id,
+    const esp_partition_t* const  ota_data_partition)
 {
-    if (two_otadata == NULL || sec_id > 1)
+    if ((NULL == two_otadata) || (sec_id > 1))
     {
         LOG_ERR("Invalid argument, two_otadata=%p, sec_id=%" PRIu8, two_otadata, sec_id);
         return ESP_ERR_INVALID_ARG;
@@ -427,7 +427,7 @@ rewrite_ota_seq(
         ota_data_partition->address + sec_id * SPI_FLASH_SEC_SIZE);
 
     esp_err_t ret = esp_partition_erase_range(ota_data_partition, sec_id * SPI_FLASH_SEC_SIZE, SPI_FLASH_SEC_SIZE);
-    if (ret != ESP_OK)
+    if (ESP_OK != ret)
     {
         LOG_ERR("Failed to erase otadata[%" PRIu8 "], err=%" PRId32, sec_id, ret);
         return ret;
@@ -437,7 +437,7 @@ rewrite_ota_seq(
         SPI_FLASH_SEC_SIZE * sec_id,
         &two_otadata[sec_id],
         sizeof(esp_ota_select_entry_t));
-    if (ret != ESP_OK)
+    if (ESP_OK != ret)
     {
         LOG_ERR("Failed to write otadata[%" PRIu8 "], err=%" PRId32, sec_id, ret);
     }
@@ -517,16 +517,20 @@ esp_rewrite_ota_data(esp_partition_subtype_t subtype)
     // while making it map to the requested OTA slot.
 
     const esp_partition_t* p_running_partition = esp_ota_get_running_partition();
-    const int32_t          running_partition_ota_slot
+
+    const int32_t running_partition_ota_slot
         = is_ota_partition(p_running_partition)
               ? (int32_t)(p_running_partition->subtype - ESP_PARTITION_SUBTYPE_APP_OTA_MIN)
               : -1;
 
-    int32_t       active_otadata               = bootloader_common_get_active_otadata(otadata);
-    const int32_t bootloader_selected_ota_slot = (-1 != active_otadata) ? esp_ota_calc_slot_from_seq(
-                                                     otadata[active_otadata].ota_seq,
-                                                     ota_app_count)
-                                                                        : -1;
+    int32_t active_otadata = bootloader_common_get_active_otadata(otadata);
+
+    int32_t bootloader_selected_ota_slot = -1;
+    if (-1 != active_otadata)
+    {
+        bootloader_selected_ota_slot = esp_ota_calc_slot_from_seq(otadata[active_otadata].ota_seq, ota_app_count);
+    }
+
     if ((active_otadata != -1) && (running_partition_ota_slot >= 0)
         && (bootloader_selected_ota_slot != running_partition_ota_slot))
     {
@@ -552,15 +556,15 @@ esp_rewrite_ota_data(esp_partition_subtype_t subtype)
             LOG_WARN("No valid otadata entry maps to running OTA slot %" PRIi32, running_partition_ota_slot);
         }
     }
-    if (active_otadata != -1)
+    if (-1 != active_otadata)
     {
-        uint32_t seq = otadata[active_otadata].ota_seq;
-        uint32_t i   = 0;
-        while (seq > (SUB_TYPE_ID(subtype) + 1) % ota_app_count + i * ota_app_count)
+        const uint32_t seq = otadata[active_otadata].ota_seq;
+        uint32_t       i   = 0;
+        while (seq > (((SUB_TYPE_ID(subtype) + 1) % ota_app_count) + (i * ota_app_count)))
         {
             i++;
         }
-        int next_otadata                = (~active_otadata) & 1; // if 0 -> will be next 1. and if 1 -> will be next 0.
+        const int32_t next_otadata      = (~active_otadata) & 1; // if 0 -> will be next 1. and if 1 -> will be next 0.
         otadata[next_otadata].ota_state = set_new_state_otadata();
         return rewrite_ota_seq(
             otadata,
@@ -568,17 +572,14 @@ esp_rewrite_ota_data(esp_partition_subtype_t subtype)
             next_otadata,
             otadata_partition);
     }
-    else
-    {
-        /* Both OTA slots are invalid, probably because unformatted... */
-        int32_t next_otadata            = 0;
-        otadata[next_otadata].ota_state = set_new_state_otadata();
-        LOG_WARN(
-            "Both otadata entries are invalid, writing otadata[%" PRIi32 "] with ota_seq=%" PRIu32,
-            next_otadata,
-            (uint32_t)(SUB_TYPE_ID(subtype) + 1));
-        return rewrite_ota_seq(otadata, SUB_TYPE_ID(subtype) + 1, next_otadata, otadata_partition);
-    }
+    /* Both OTA slots are invalid, probably because unformatted... */
+    const int32_t next_otadata      = 0;
+    otadata[next_otadata].ota_state = set_new_state_otadata();
+    LOG_WARN(
+        "Both otadata entries are invalid, writing otadata[%" PRIi32 "] with ota_seq=%" PRIu32,
+        next_otadata,
+        (uint32_t)(SUB_TYPE_ID(subtype) + 1));
+    return rewrite_ota_seq(otadata, SUB_TYPE_ID(subtype) + 1, next_otadata, otadata_partition);
 }
 
 esp_err_t
