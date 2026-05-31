@@ -46,6 +46,8 @@
 
 #define ESP_OTA_NUM_OTA_SLOTS (2U)
 
+#define SUB_TYPE_ID(i) (i & 0x0F)
+
 typedef struct ota_ops_entry_t
 {
     uint32_t               handle;
@@ -66,12 +68,85 @@ static uint32_t IRAM_ATTR s_ota_ops_last_handle = 0;
 const static char TAG[] = "esp_ota_ops";
 
 /* Return true if this is an OTA app partition */
-bool
-esp_ota_is_ota_partition(const esp_partition_t* p)
+static bool
+is_ota_partition(const esp_partition_t* p)
 {
     return (
         (NULL != p) && (ESP_PARTITION_TYPE_APP == p->type) && (p->subtype >= ESP_PARTITION_SUBTYPE_APP_OTA_0)
         && (p->subtype < ESP_PARTITION_SUBTYPE_APP_OTA_MAX));
+}
+
+bool
+esp_ota_is_ota_partition(const esp_partition_t* p)
+{
+    return is_ota_partition(p);
+}
+
+// Read otadata partition and fill array from two otadata structures.
+// Also return pointer to otadata info partition.
+static const esp_partition_t*
+read_otadata(esp_ota_select_entry_t* two_otadata)
+{
+    const esp_partition_t* otadata_partition = esp_partition_find_first(
+        ESP_PARTITION_TYPE_DATA,
+        ESP_PARTITION_SUBTYPE_DATA_OTA,
+        NULL);
+
+    if (otadata_partition == NULL)
+    {
+        ESP_LOGE(TAG, "not found otadata");
+        return NULL;
+    }
+
+    spi_flash_mmap_handle_t ota_data_map;
+    const void*             result = NULL;
+    esp_err_t               err    = esp_partition_mmap(
+        otadata_partition,
+        0,
+        otadata_partition->size,
+        SPI_FLASH_MMAP_DATA,
+        &result,
+        &ota_data_map);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "mmap otadata filed. Err=0x%8x", err);
+        return NULL;
+    }
+    else
+    {
+        memcpy(&two_otadata[0], result, sizeof(esp_ota_select_entry_t));
+        memcpy(&two_otadata[1], result + SPI_FLASH_SEC_SIZE, sizeof(esp_ota_select_entry_t));
+        spi_flash_munmap(ota_data_map);
+    }
+    return otadata_partition;
+}
+
+static esp_err_t
+image_validate(const esp_partition_t* partition, esp_image_load_mode_t load_mode)
+{
+    esp_image_metadata_t      data;
+    const esp_partition_pos_t part_pos = {
+        .offset = partition->address,
+        .size   = partition->size,
+    };
+
+    if (esp_image_verify(load_mode, &part_pos, &data) != ESP_OK)
+    {
+        return ESP_ERR_OTA_VALIDATE_FAILED;
+    }
+
+    return ESP_OK;
+}
+
+static esp_ota_img_states_t
+set_new_state_otadata(void)
+{
+#ifdef CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE
+    ESP_LOGD(TAG, "Monitoring the first boot of the app is enabled.");
+    return ESP_OTA_IMG_NEW;
+#else
+    return ESP_OTA_IMG_UNDEFINED;
+#endif
 }
 
 esp_err_t
@@ -93,7 +168,7 @@ esp_ota_begin_patched(
         return ESP_ERR_NOT_FOUND;
     }
 
-    if (!esp_ota_is_ota_partition(p_partition_verified))
+    if (!is_ota_partition(p_partition_verified))
     {
         return ESP_ERR_INVALID_ARG;
     }
@@ -106,7 +181,7 @@ esp_ota_begin_patched(
 
 #ifdef CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE
     esp_ota_img_states_t ota_state_running_part = ESP_OTA_IMG_UNDEFINED;
-    if ((ESP_OK == esp_ota_get_state_partition(p_running_partition, &ota_state_running_part))
+    if ((ESP_OK == esp_ota_get_state_partition_patched(p_running_partition, &ota_state_running_part))
         && (ESP_OTA_IMG_PENDING_VERIFY == ota_state_running_part))
     {
         LOG_ERR("Running app has not confirmed state (ESP_OTA_IMG_PENDING_VERIFY)");
@@ -321,6 +396,35 @@ esp_ota_end_patched(const esp_ota_handle_t handle, esp_ota_sha256_digest_t* cons
     return ret;
 }
 
+static esp_err_t
+rewrite_ota_seq(
+    esp_ota_select_entry_t* two_otadata,
+    uint32_t                seq,
+    uint8_t                 sec_id,
+    const esp_partition_t*  ota_data_partition)
+{
+    if (two_otadata == NULL || sec_id > 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    two_otadata[sec_id].ota_seq = seq;
+    two_otadata[sec_id].crc     = bootloader_common_ota_select_crc(&two_otadata[sec_id]);
+    esp_err_t ret = esp_partition_erase_range(ota_data_partition, sec_id * SPI_FLASH_SEC_SIZE, SPI_FLASH_SEC_SIZE);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+    else
+    {
+        return esp_partition_write(
+            ota_data_partition,
+            SPI_FLASH_SEC_SIZE * sec_id,
+            &two_otadata[sec_id],
+            sizeof(esp_ota_select_entry_t));
+    }
+}
+
 static uint8_t
 get_ota_partition_count(void)
 {
@@ -333,6 +437,128 @@ get_ota_partition_count(void)
         ota_app_count++;
     }
     return ota_app_count;
+}
+
+static esp_err_t
+esp_rewrite_ota_data(esp_partition_subtype_t subtype)
+{
+    esp_ota_select_entry_t otadata[2];
+    const esp_partition_t* otadata_partition = read_otadata(otadata);
+    if (otadata_partition == NULL)
+    {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    int ota_app_count = get_ota_partition_count();
+    if (SUB_TYPE_ID(subtype) >= ota_app_count)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    // esp32_idf use two sector for store information about which partition is running
+    // it defined the two sector as ota data partition,two structure esp_ota_select_entry_t is saved in the two sector
+    // named data in first sector as otadata[0], second sector data as otadata[1]
+    // e.g.
+    // if otadata[0].ota_seq == otadata[1].ota_seq == 0xFFFFFFFF,means ota info partition is in init status
+    // so it will boot factory application(if there is),if there's no factory application,it will boot ota[0]
+    // application if otadata[0].ota_seq != 0 and otadata[1].ota_seq != 0,it will choose a max seq ,and get value of
+    // max_seq%max_ota_app_number and boot a subtype (mask 0x0F) value is (max_seq - 1)%max_ota_app_number,so if want
+    // switch to run ota[x],can use next formulas. for example, if otadata[0].ota_seq = 4, otadata[1].ota_seq = 5, and
+    // there are 8 ota application, current running is (5-1)%8 = 4,running ota[4],so if we want to switch to run ota[7],
+    // we should add otadata[0].ota_seq (is 4) to 4 ,(8-1)%8=7,then it will boot ota[7]
+    // if      A=(B - C)%D
+    // then    B=(A + C)%D + D*n ,n= (0,1,2...)
+    // so current ota app sub type id is x , dest bin subtype is y,total ota app count is n
+    // seq will add (x + n*1 + 1 - seq)%n
+
+    int active_otadata = bootloader_common_get_active_otadata(otadata);
+    if (active_otadata != -1)
+    {
+        uint32_t seq = otadata[active_otadata].ota_seq;
+        uint32_t i   = 0;
+        while (seq > (SUB_TYPE_ID(subtype) + 1) % ota_app_count + i * ota_app_count)
+        {
+            i++;
+        }
+        int next_otadata                = (~active_otadata) & 1; // if 0 -> will be next 1. and if 1 -> will be next 0.
+        otadata[next_otadata].ota_state = set_new_state_otadata();
+        return rewrite_ota_seq(
+            otadata,
+            (SUB_TYPE_ID(subtype) + 1) % ota_app_count + i * ota_app_count,
+            next_otadata,
+            otadata_partition);
+    }
+    else
+    {
+        /* Both OTA slots are invalid, probably because unformatted... */
+        int next_otadata                = 0;
+        otadata[next_otadata].ota_state = set_new_state_otadata();
+        return rewrite_ota_seq(otadata, SUB_TYPE_ID(subtype) + 1, next_otadata, otadata_partition);
+    }
+}
+
+esp_err_t
+esp_ota_set_boot_partition_patched(const esp_partition_t* partition)
+{
+    if (partition == NULL)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (image_validate(partition, ESP_IMAGE_VERIFY) != ESP_OK)
+    {
+        return ESP_ERR_OTA_VALIDATE_FAILED;
+    }
+
+    // if set boot partition to factory bin ,just format ota info partition
+    if (partition->type == ESP_PARTITION_TYPE_APP)
+    {
+        if (partition->subtype == ESP_PARTITION_SUBTYPE_APP_FACTORY)
+        {
+            const esp_partition_t* find_partition = esp_partition_find_first(
+                ESP_PARTITION_TYPE_DATA,
+                ESP_PARTITION_SUBTYPE_DATA_OTA,
+                NULL);
+            if (find_partition != NULL)
+            {
+                return esp_partition_erase_range(find_partition, 0, find_partition->size);
+            }
+            else
+            {
+                return ESP_ERR_NOT_FOUND;
+            }
+        }
+        else
+        {
+#ifdef CONFIG_BOOTLOADER_APP_ANTI_ROLLBACK
+            esp_app_desc_t partition_app_desc;
+            esp_err_t      err = esp_ota_get_partition_description(partition, &partition_app_desc);
+            if (err != ESP_OK)
+            {
+                return err;
+            }
+
+            if (esp_efuse_check_secure_version(partition_app_desc.secure_version) == false)
+            {
+                ESP_LOGE(
+                    TAG,
+                    "This a new partition can not be booted due to a secure version is lower than stored in efuse. "
+                    "Partition will be erased.");
+                esp_err_t err = esp_partition_erase_range(partition, 0, partition->size);
+                if (err != ESP_OK)
+                {
+                    return err;
+                }
+                return ESP_ERR_OTA_SMALL_SEC_VER;
+            }
+#endif
+            return esp_rewrite_ota_data(partition->subtype);
+        }
+    }
+    else
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
 }
 
 static const esp_partition_t*
@@ -399,7 +625,7 @@ esp_ota_get_state_partition_patched(const esp_partition_t* const p_partition, es
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (!esp_ota_is_ota_partition(p_partition))
+    if (!is_ota_partition(p_partition))
     {
         return ESP_ERR_NOT_SUPPORTED;
     }

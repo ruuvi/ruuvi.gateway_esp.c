@@ -1533,7 +1533,7 @@ fw_update_do_actions(fw_update_error_message_info_t* const p_error_message_info)
     }
 
     LOG_INFO("esp_ota_set_boot_partition");
-    const esp_err_t err = esp_ota_set_boot_partition(g_ruuvi_flash_info.p_next_update_partition);
+    const esp_err_t err = esp_ota_set_boot_partition_patched(g_ruuvi_flash_info.p_next_update_partition);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "%s failed", "esp_ota_set_boot_partition");
