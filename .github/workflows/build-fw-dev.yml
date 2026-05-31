@@ -15,8 +15,7 @@ jobs:
     name: Build Firmware (dev)
     environment: dev
     runs-on: ubuntu-22.04
-    permissions:
-      contents: write
+    # Default (read-only) GITHUB_TOKEN; release publishing happens in a separate job.
 
     steps:
       - name: Check out code
@@ -142,24 +141,52 @@ jobs:
           echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
           echo "artifact_path=$ARTIFACT_PATH" >> "$GITHUB_OUTPUT"
 
-      - name: Create release and upload asset
+      - name: Upload release zip as workflow artifact
         if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruuvi_gateway_fw-dev-release-zip
+          path: ${{ steps.create_zip.outputs.artifact_path }}
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Publish GitHub Release (dev)
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      ARTIFACT_NAME: ruuvi_gateway_fw-dev_${{ github.ref_name }}
+    steps:
+      - name: Download release zip artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ruuvi_gateway_fw-dev-release-zip
+          path: release_asset
+
+      - name: Create release and upload asset
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
-          ARTIFACT_PATH: ${{ steps.create_zip.outputs.artifact_path }}
         shell: bash
         run: |
           set -xe
           command -v gh >/dev/null 2>&1 || { echo "gh CLI not found"; exit 1; }
-          # create if missing; on failure re-check to tolerate races with the other workflow
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            if ! gh release create "$TAG" --title "$TAG" --notes "Automated release" --prerelease; then
+          ARTIFACT_PATH="$GITHUB_WORKSPACE/release_asset/${ARTIFACT_NAME}.zip"
+          if [ ! -f "$ARTIFACT_PATH" ]; then
+            echo "Artifact not found at $ARTIFACT_PATH"; ls -la "$GITHUB_WORKSPACE/release_asset" || true
+            exit 1
+          fi
+          # create if missing; on failure re-check to tolerate races with the prod workflow
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if ! gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes "Automated release" --prerelease; then
               echo "Create failed; rechecking..."
-              if ! gh release view "$TAG" >/dev/null 2>&1; then
+              if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
                 echo "Release still missing; aborting."
                 exit 1
               fi
             fi
           fi
-          gh release upload "$TAG" "$ARTIFACT_PATH" --clobber
+          gh release upload "$TAG" "$ARTIFACT_PATH" --repo "$GITHUB_REPOSITORY" --clobber
