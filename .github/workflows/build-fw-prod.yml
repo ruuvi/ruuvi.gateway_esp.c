@@ -1,4 +1,4 @@
-name: Build Firmware
+name: Build Firmware (prod)
 
 on:
   push:
@@ -9,9 +9,11 @@ on:
 
 jobs:
   build:
-    name: Build firmware (prod)
+    name: Build Firmware (prod)
     environment: prod
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
 
     steps:
       - name: Check out code
@@ -106,3 +108,55 @@ jobs:
             build/fatfs_nrf52.bin
             build/fatfs_gwui.bin
             build/gw_cfg_def.bin
+
+      - name: Create release zip
+        id: create_zip
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -xeuo pipefail
+          ARTIFACT_NAME="ruuvi_gateway_fw-prod_${TAG}"
+          DST="$ARTIFACT_NAME"
+          mkdir -p "$DST"
+          paths=(
+            "build/ruuvi_gateway_esp.bin"
+            "build/binaries_v1.9.2/bootloader.bin"
+            "build/partition_table/partition-table.bin"
+            "build/ota_data_initial.bin"
+            "build/fatfs_nrf52.bin"
+            "build/fatfs_gwui.bin"
+            "build/gw_cfg_def.bin"
+          )
+          for rel in "${paths[@]}"; do
+            dst_path="$DST/${rel#build/}"
+            mkdir -p "$(dirname "$dst_path")"
+            cp "$rel" "$dst_path"
+          done
+          ARTIFACT_PATH="$GITHUB_WORKSPACE/$ARTIFACT_NAME.zip"
+          zip -r -q "$ARTIFACT_PATH" "$ARTIFACT_NAME"
+          echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+          echo "artifact_path=$ARTIFACT_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Create release and upload asset
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          ARTIFACT_PATH: ${{ steps.create_zip.outputs.artifact_path }}
+        shell: bash
+        run: |
+          set -xe
+          command -v gh >/dev/null 2>&1 || { echo "gh CLI not found"; exit 1; }
+          # create if missing; on failure re-check to tolerate races with the other workflow
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            if ! gh release create "$TAG" --title "$TAG" --notes "Automated release" --prerelease; then
+              echo "Create failed; rechecking..."
+              if ! gh release view "$TAG" >/dev/null 2>&1; then
+                echo "Release still missing; aborting."
+                exit 1
+              fi
+            fi
+          fi
+          gh release upload "$TAG" "$ARTIFACT_PATH" --clobber
