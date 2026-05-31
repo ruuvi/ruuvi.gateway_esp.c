@@ -119,7 +119,11 @@ jobs:
         shell: bash
         run: |
           set -xeuo pipefail
-          ARTIFACT_NAME="ruuvi_gateway_fw-dev_${TAG}"
+          # github.ref_name may contain '/' (e.g. "release/v1.2.3"); sanitize so
+          # the zip filename and uploaded asset name stay a single path component
+          # and the dev/prod naming scheme remains unique.
+          SAFE_TAG="${TAG//\//_}"
+          ARTIFACT_NAME="ruuvi_gateway_fw-dev_${SAFE_TAG}"
           DST="$ARTIFACT_NAME"
           mkdir -p "$DST"
           paths=(
@@ -159,7 +163,8 @@ jobs:
       contents: write
     env:
       TAG: ${{ github.ref_name }}
-      ARTIFACT_NAME: ruuvi_gateway_fw-dev_${{ github.ref_name }}
+      # Keep in sync with the sanitization in the build job's "Create release zip" step.
+      ARTIFACT_NAME: ruuvi_gateway_fw-dev_${{ replace(github.ref_name, '/', '_') }}
     steps:
       - name: Download release zip artifact
         uses: actions/download-artifact@v4
