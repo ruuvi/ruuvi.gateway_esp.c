@@ -1532,18 +1532,6 @@ fw_update_do_actions(fw_update_error_message_info_t* const p_error_message_info)
         return false;
     }
 
-    LOG_INFO("esp_ota_set_boot_partition");
-    const esp_err_t err = esp_ota_set_boot_partition_patched(g_ruuvi_flash_info.p_next_update_partition);
-    if (ESP_OK != err)
-    {
-        LOG_ERR_ESP(err, "%s failed", "esp_ota_set_boot_partition");
-        if (NULL == p_error_message_info->p_message)
-        {
-            p_error_message_info->p_message = "Failed to switch boot partition";
-        }
-        return false;
-    }
-
     g_ruuvi_flash_info.p_boot_partition = g_ruuvi_flash_info.p_next_update_partition;
     g_ruuvi_flash_info.is_ota0_active   = !g_ruuvi_flash_info.is_ota0_active;
 
@@ -1567,7 +1555,6 @@ fw_update_do_actions(fw_update_error_message_info_t* const p_error_message_info)
         fw_update_set_extra_info_for_status_json_update_failed_nrf52("Failed to update nRF52 firmware");
         return false;
     }
-    fw_update_set_extra_info_for_status_json_update_successful();
     return true;
 }
 
@@ -1648,7 +1635,7 @@ fw_update_task(void)
     const bool flag_wait_relaying_completed = true;
     gw_status_suspend_http_relaying(flag_wait_relaying_completed);
 
-    const bool flag_fw_update_successful = fw_update_do_actions(&error_message_info);
+    bool flag_fw_update_successful = fw_update_do_actions(&error_message_info);
 
     if (!flag_fw_update_successful)
     {
@@ -1658,6 +1645,21 @@ fw_update_task(void)
         g_update_progress_stage = FW_UPDATE_STAGE_4;
         fw_update_invalidate_all_next_partitions();
         fw_update_set_extra_info_for_status_json_update_failed(error_message_info.p_message);
+    }
+    else
+    {
+        LOG_INFO("Switch boot partition");
+        const esp_err_t err = esp_ota_set_boot_partition_patched(g_ruuvi_flash_info.p_next_update_partition);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_ota_set_boot_partition");
+            if (NULL == error_message_info.p_message)
+            {
+                error_message_info.p_message = "Failed to switch boot partition";
+            }
+            flag_fw_update_successful = false;
+            fw_update_set_extra_info_for_status_json_update_failed(error_message_info.p_message);
+        }
     }
 
     const char* const p_reboot_reason_msg = fw_update_get_reboot_reason_msg(
@@ -1670,6 +1672,7 @@ fw_update_task(void)
     }
     else
     {
+        fw_update_set_extra_info_for_status_json_update_successful();
         switch (fw_updating_reason_get())
         {
             case FW_UPDATE_REASON_AUTO:
