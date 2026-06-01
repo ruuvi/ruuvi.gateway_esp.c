@@ -88,44 +88,46 @@ esp_ota_is_ota_partition(const esp_partition_t* p)
 // Read otadata partition and fill array from two otadata structures.
 // Also return pointer to otadata info partition.
 static const esp_partition_t*
-read_otadata(esp_ota_select_entry_t* two_otadata)
+read_otadata(esp_ota_select_entry_t* const p_two_ota_data)
 {
-    const esp_partition_t* otadata_partition = esp_partition_find_first(
+    const esp_partition_t* const p_ota_data_partition = esp_partition_find_first(
         ESP_PARTITION_TYPE_DATA,
         ESP_PARTITION_SUBTYPE_DATA_OTA,
         NULL);
 
-    if (otadata_partition == NULL)
+    if (NULL == p_ota_data_partition)
     {
-        ESP_LOGE(TAG, "otadata partition not found");
+        LOG_ERR("Partition with OTA data not found");
         return NULL;
     }
 
-    spi_flash_mmap_handle_t ota_data_map;
-    const void*             result = NULL;
-    const esp_err_t         err    = esp_partition_mmap(
-        otadata_partition,
+    spi_flash_mmap_handle_t ota_data_map = 0;
+    const void*             p_result     = NULL;
+
+    const esp_err_t err = esp_partition_mmap(
+        p_ota_data_partition,
         0,
-        otadata_partition->size,
+        p_ota_data_partition->size,
         SPI_FLASH_MMAP_DATA,
-        &result,
+        &p_result,
         &ota_data_map);
-    if (err != ESP_OK)
+    if (ESP_OK != err)
     {
-        ESP_LOGE(TAG, "mmap otadata failed. Err=%" PRId32, err);
+        LOG_ERR("mmap OTA-data failed. Err=%" PRId32, err);
         return NULL;
     }
-    if (NULL == result)
+    if (NULL == p_result)
     {
-        ESP_LOGE(TAG, "mmap otadata returned NULL pointer");
+        LOG_ERR("mmap OTA-data returned NULL pointer");
         spi_flash_munmap(ota_data_map);
         return NULL;
     }
-    const uint8_t* const p_otadata = (const uint8_t*)result;
-    memcpy(&two_otadata[0], p_otadata, sizeof(esp_ota_select_entry_t));
-    memcpy(&two_otadata[1], p_otadata + SPI_FLASH_SEC_SIZE, sizeof(esp_ota_select_entry_t));
+    const uint8_t* const p_otadata = (const uint8_t*)p_result;
+    memcpy(&p_two_ota_data[0], p_otadata, sizeof(esp_ota_select_entry_t));
+    memcpy(&p_two_ota_data[1], p_otadata + SPI_FLASH_SEC_SIZE, sizeof(esp_ota_select_entry_t));
+
     spi_flash_munmap(ota_data_map);
-    return otadata_partition;
+    return p_ota_data_partition;
 }
 
 static esp_err_t
@@ -664,48 +666,6 @@ esp_ota_set_boot_partition_patched(const esp_partition_t* partition)
     return esp_rewrite_ota_data(partition->subtype);
 }
 
-static const esp_partition_t*
-read_two_ota_data(esp_ota_select_entry_t* const p_two_ota_data)
-{
-    const esp_partition_t* const p_ota_data_partition = esp_partition_find_first(
-        ESP_PARTITION_TYPE_DATA,
-        ESP_PARTITION_SUBTYPE_DATA_OTA,
-        NULL);
-
-    if (NULL == p_ota_data_partition)
-    {
-        LOG_ERR("Partition with OTA data not found");
-        return NULL;
-    }
-
-    spi_flash_mmap_handle_t ota_data_map = 0;
-    const void*             p_result     = NULL;
-
-    const esp_err_t err = esp_partition_mmap(
-        p_ota_data_partition,
-        0,
-        p_ota_data_partition->size,
-        SPI_FLASH_MMAP_DATA,
-        &p_result,
-        &ota_data_map);
-    if (ESP_OK != err)
-    {
-        LOG_ERR("mmap OTA-data failed. Err=%" PRId32, err);
-        return NULL;
-    }
-    if (NULL == p_result)
-    {
-        LOG_ERR("mmap OTA-data returned NULL pointer");
-        spi_flash_munmap(ota_data_map);
-        return NULL;
-    }
-    memcpy(&p_two_ota_data[0], p_result, sizeof(esp_ota_select_entry_t));
-    memcpy(&p_two_ota_data[1], (const uint8_t*)p_result + SPI_FLASH_SEC_SIZE, sizeof(esp_ota_select_entry_t));
-
-    spi_flash_munmap(ota_data_map);
-    return p_ota_data_partition;
-}
-
 static int32_t
 esp_ota_calc_slot_from_seq(const uint32_t ota_seq, const uint8_t ota_app_count)
 {
@@ -742,7 +702,7 @@ esp_ota_get_state_partition_patched(const esp_partition_t* const p_partition, es
     LOG_INFO("### Found %" PRIu8 " OTA app partitions", ota_app_count);
 
     esp_ota_select_entry_t ota_data[ESP_OTA_NUM_OTA_SLOTS];
-    if (NULL == read_two_ota_data(ota_data))
+    if (NULL == read_otadata(ota_data))
     {
         LOG_ERR("Failed to read OTA data");
         return ESP_ERR_NOT_FOUND;
