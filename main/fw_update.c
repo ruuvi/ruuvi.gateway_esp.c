@@ -446,7 +446,7 @@ fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
 static void
 fw_update_set_next_ota_partition(ruuvi_flash_info_t* const p_flash_info)
 {
-    // Precondition: p_flash_info->p_running_partition != NULL
+    assert(NULL != p_flash_info->p_running_partition);
     p_flash_info->p_next_update_partition = esp_ota_get_next_update_partition(p_flash_info->p_running_partition);
     if (NULL == p_flash_info->p_next_update_partition)
     {
