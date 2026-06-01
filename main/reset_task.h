@@ -35,6 +35,10 @@ gateway_restart(const char* const p_msg);
 void
 gateway_restart_low_memory(void);
 
+ATTR_NORETURN
+void
+gateway_restart_immediate_no_cleanup(const char* const p_msg);
+
 #ifdef __cplusplus
 }
 #endif

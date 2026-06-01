@@ -312,3 +312,14 @@ gateway_restart_low_memory(void)
     gateway_restart("Low memory");
 #endif // RUUVI_GATEWAY_ENABLE_MEM_FRAGMENTATION_TEST
 }
+
+ATTR_NORETURN
+void
+gateway_restart_immediate_no_cleanup(const char* const p_msg)
+{
+    reset_info_set_sw(p_msg);
+    LOG_INFO("%s", p_msg);
+    vTaskDelay(pdMS_TO_TICKS(100)); // Give some time to print logs to UART
+
+    esp_restart();
+}

@@ -16,6 +16,7 @@
 #include "esp_ota_ops.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -38,10 +39,12 @@
 #include "sys/param.h"
 
 #define LOG_LOCAL_LEVEL 3
-#include "esp_log.h"
+#include "log.h"
 
 #define ESP_OTA_FLASH_ENCRYPTION_MIN_CHUNK_SIZE (16U)
 #define ESP_OTA_FLASH_ENCRYPTION_FILL           (0xFFU)
+
+#define ESP_OTA_NUM_OTA_SLOTS (2U)
 
 typedef struct ota_ops_entry_t
 {
@@ -106,7 +109,7 @@ esp_ota_begin_patched(
     if ((ESP_OK == esp_ota_get_state_partition(p_running_partition, &ota_state_running_part))
         && (ESP_OTA_IMG_PENDING_VERIFY == ota_state_running_part))
     {
-        ESP_LOGE(TAG, "Running app has not confirmed state (ESP_OTA_IMG_PENDING_VERIFY)");
+        LOG_ERR("Running app has not confirmed state (ESP_OTA_IMG_PENDING_VERIFY)");
         return ESP_ERR_OTA_ROLLBACK_INVALID_STATE;
     }
 #endif
@@ -151,7 +154,7 @@ esp_ota_write_entry(ota_ops_entry_t* const p_it, const void* const p_data, const
     if ((0 == p_it->wrote_size) && (0 == p_it->partial_bytes) && (cnt_remaining_bytes > 0)
         && (ESP_IMAGE_HEADER_MAGIC != p_data_bytes[0]))
     {
-        ESP_LOGE(TAG, "OTA image has invalid magic byte (expected 0xE9, saw 0x%02x)", p_data_bytes[0]);
+        LOG_ERR("OTA image has invalid magic byte (expected 0xE9, saw 0x%02x)", p_data_bytes[0]);
         return ESP_ERR_OTA_VALIDATE_FAILED;
     }
 
@@ -210,7 +213,7 @@ esp_ota_write_patched(const esp_ota_handle_t handle, const void* const p_data, c
 {
     if (NULL == p_data)
     {
-        ESP_LOGE(TAG, "write p_data is invalid");
+        LOG_ERR("write p_data is invalid");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -224,7 +227,7 @@ esp_ota_write_patched(const esp_ota_handle_t handle, const void* const p_data, c
     }
 
     // if go to here ,means don't find the handle
-    ESP_LOGE(TAG, "not found the handle");
+    LOG_ERR("not found the handle");
     return ESP_ERR_INVALID_ARG;
 }
 
@@ -291,8 +294,7 @@ esp_ota_end_patched(const esp_ota_handle_t handle, esp_ota_sha256_digest_t* cons
             {
                 if (esp_image_verify(ESP_IMAGE_VERIFY, &part_pos, p_metadata) != ESP_OK)
                 {
-                    ESP_LOGE(
-                        TAG,
+                    LOG_ERR(
                         "Image verify failed for partition at address 0x%08x, size 0x%08x",
                         part_pos.offset,
                         part_pos.size);
@@ -302,8 +304,7 @@ esp_ota_end_patched(const esp_ota_handle_t handle, esp_ota_sha256_digest_t* cons
                 {
                     if (!esp_ota_helper_calc_pub_key_digest_for_app_image(p_metadata, p_pub_key_digest))
                     {
-                        ESP_LOGE(
-                            TAG,
+                        LOG_ERR(
                             "Public key digest calculation failed for partition at address 0x%08x, size 0x%08x",
                             part_pos.offset,
                             part_pos.size);
@@ -318,4 +319,153 @@ esp_ota_end_patched(const esp_ota_handle_t handle, esp_ota_sha256_digest_t* cons
     LIST_REMOVE(p_it, entries);
     os_free(p_it);
     return ret;
+}
+
+static uint8_t
+get_ota_partition_count(void)
+{
+    uint8_t ota_app_count = 0;
+    while (esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_MIN + ota_app_count, NULL)
+           != NULL)
+    {
+        const uint32_t max_ota_app_count = ESP_PARTITION_SUBTYPE_APP_OTA_MAX - ESP_PARTITION_SUBTYPE_APP_OTA_MIN;
+        assert(ota_app_count < max_ota_app_count && "must erase the partition before writing to it");
+        ota_app_count++;
+    }
+    return ota_app_count;
+}
+
+static const esp_partition_t*
+read_two_ota_data(esp_ota_select_entry_t* const p_two_ota_data)
+{
+    const esp_partition_t* const p_ota_data_partition = esp_partition_find_first(
+        ESP_PARTITION_TYPE_DATA,
+        ESP_PARTITION_SUBTYPE_DATA_OTA,
+        NULL);
+
+    if (p_ota_data_partition == NULL)
+    {
+        LOG_ERR("Partition with OTA data not found");
+        return NULL;
+    }
+
+    spi_flash_mmap_handle_t ota_data_map = 0;
+    const void*             p_result     = NULL;
+
+    const esp_err_t err = esp_partition_mmap(
+        p_ota_data_partition,
+        0,
+        p_ota_data_partition->size,
+        SPI_FLASH_MMAP_DATA,
+        &p_result,
+        &ota_data_map);
+    if (ESP_OK != err)
+    {
+        LOG_ERR("mmap OTA-data failed. Err=%" PRId32, err);
+        return NULL;
+    }
+    if (NULL == p_result)
+    {
+        LOG_ERR("mmap OTA-data returned NULL pointer");
+        spi_flash_munmap(ota_data_map);
+        return NULL;
+    }
+    memcpy(&p_two_ota_data[0], p_result, sizeof(esp_ota_select_entry_t));
+    memcpy(&p_two_ota_data[1], (const uint8_t*)p_result + SPI_FLASH_SEC_SIZE, sizeof(esp_ota_select_entry_t));
+
+    spi_flash_munmap(ota_data_map);
+    return p_ota_data_partition;
+}
+
+static int32_t
+esp_ota_calc_slot_from_seq(const uint32_t ota_seq, const uint8_t ota_app_count)
+{
+    if (0U == ota_app_count)
+    {
+        return -1;
+    }
+    if ((UINT32_MAX == ota_seq) || (0 == ota_seq))
+    {
+        return -1;
+    }
+    return (int32_t)((ota_seq - 1U) % (uint32_t)ota_app_count);
+}
+
+esp_err_t
+esp_ota_get_state_partition_patched(const esp_partition_t* const p_partition, esp_ota_img_states_t* const p_ota_state)
+{
+    if ((NULL == p_partition) || (NULL == p_ota_state))
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!esp_ota_is_ota_partition(p_partition))
+    {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    const uint8_t ota_app_count = get_ota_partition_count();
+    if (0 == ota_app_count)
+    {
+        LOG_ERR("There is no OTA app partition");
+        return ESP_ERR_NOT_FOUND;
+    }
+    LOG_INFO("### Found %" PRIu8 " OTA app partitions", ota_app_count);
+
+    esp_ota_select_entry_t ota_data[ESP_OTA_NUM_OTA_SLOTS];
+    if (NULL == read_two_ota_data(ota_data))
+    {
+        LOG_ERR("Failed to read OTA data");
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    LOG_DUMP_INFO(
+        (const uint8_t*)&ota_data[0],
+        sizeof(esp_ota_select_entry_t),
+        "### otadata[0]: ota_slot %" PRIi32,
+        esp_ota_calc_slot_from_seq(ota_data[0].ota_seq, ota_app_count));
+    LOG_DUMP_INFO(
+        (const uint8_t*)&ota_data[1],
+        sizeof(esp_ota_select_entry_t),
+        "### otadata[1]: ota_slot %" PRIi32,
+        esp_ota_calc_slot_from_seq(ota_data[1].ota_seq, ota_app_count));
+
+    const int32_t req_ota_slot = (int32_t)(p_partition->subtype - ESP_PARTITION_SUBTYPE_APP_OTA_MIN);
+    LOG_INFO("### Requested OTA slot %" PRIi32, req_ota_slot);
+    bool is_slot_found = false;
+    for (uint32_t i = 0; i < ESP_OTA_NUM_OTA_SLOTS; ++i)
+    {
+        const int32_t ota_slot = esp_ota_calc_slot_from_seq(ota_data[i].ota_seq, ota_app_count);
+        if (ota_slot == req_ota_slot)
+        {
+            // Write ota_state before checking CRC,
+            // so that the caller will be able to log the OTA state even if CRC check fails.
+            *p_ota_state = ota_data[i].ota_state;
+
+            is_slot_found = true;
+
+            const uint32_t actual_crc = bootloader_common_ota_select_crc(&ota_data[i]);
+            if (ota_data[i].crc != actual_crc)
+            {
+                LOG_ERR(
+                    "[idx=%" PRIu32 "] CRC mismatch for OTA slot %" PRIi32 ": ota_seq=0x%08" PRIx32
+                    ", ota_state=0x%08" PRIx32 ", crc=0x%08" PRIx32 ", actual crc=0x%08" PRIx32,
+                    i,
+                    req_ota_slot,
+                    ota_data[i].ota_seq,
+                    ota_data[i].ota_state,
+                    ota_data[i].crc,
+                    actual_crc);
+                continue;
+            }
+            return ESP_OK;
+        }
+    }
+    if (is_slot_found)
+    {
+        LOG_ERR("There is no OTA slot %" PRIi32 " with valid CRC", req_ota_slot);
+        return ESP_ERR_INVALID_CRC;
+    }
+    LOG_ERR("OTA slot %" PRIi32 " not found", req_ota_slot);
+    return ESP_ERR_NOT_FOUND;
 }
