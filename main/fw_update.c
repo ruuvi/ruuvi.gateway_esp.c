@@ -656,6 +656,13 @@ fw_update_get_current_fatfs_nrf52_partition_name(void)
     return p_flash_info->is_ota0_active ? GW_NRF_PARTITION : GW_NRF_PARTITION_2;
 }
 
+static const char*
+fw_update_get_inactive_fatfs_nrf52_partition_name(void)
+{
+    const ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
+    return !p_flash_info->is_ota0_active ? GW_NRF_PARTITION : GW_NRF_PARTITION_2;
+}
+
 const char*
 fw_update_get_current_fatfs_gwui_partition_name(void)
 {
@@ -1536,7 +1543,7 @@ fw_update_do_actions(fw_update_error_message_info_t* const p_error_message_info)
 
     LOG_INFO("nrf52fw_update_fw_if_necessary");
     if (!nrf52fw_update_fw_if_necessary(
-            fw_update_get_current_fatfs_nrf52_partition_name(),
+            fw_update_get_inactive_fatfs_nrf52_partition_name(),
             &fw_update_nrf52fw_cb_progress,
             NULL,
             &fw_update_nrf52fw_cb_before_updating,
