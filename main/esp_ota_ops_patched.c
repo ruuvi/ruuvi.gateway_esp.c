@@ -567,13 +567,25 @@ esp_rewrite_ota_data(esp_partition_subtype_t subtype)
     {
         const uint32_t seq  = otadata[active_otadata].ota_seq;
         const uint32_t base = (SUB_TYPE_ID(subtype) + 1) % ota_app_count;
-        // Find the smallest i such that (base + i * ota_app_count) >= seq.
-        // Equivalent to the previous loop, but O(1) instead of O(seq / ota_app_count),
-        // which matters because ota_seq grows monotonically across OTA updates.
-        uint32_t i = 0;
-        if (seq > base)
+        // Find the smallest i such that (base + i * ota_app_count) > seq, i.e. produce a
+        // new ota_seq that is strictly greater than the currently active one. This is
+        // required so the bootloader's "highest ota_seq wins" rule unambiguously selects
+        // the newly written entry; if new_seq could equal seq, both otadata entries would
+        // share the same sequence number and the tiebreaker would be undefined.
+        //
+        // Done in O(1) instead of the original IDF O(seq / ota_app_count) loop, which
+        // matters because ota_seq grows monotonically across OTA updates.
+        uint32_t i;
+        if (seq < base)
         {
-            i = (seq - base + ota_app_count - 1) / ota_app_count;
+            i = 0; // base alone is already > seq
+        }
+        else
+        {
+            // Ceiling of (seq - base + 1) / ota_app_count, written so it also yields a
+            // strictly greater value when (seq - base) is an exact multiple of ota_app_count
+            // (including seq == base).
+            i = (seq - base + ota_app_count) / ota_app_count;
         }
         const int32_t next_otadata      = (~active_otadata) & 1; // if 0 -> will be next 1. and if 1 -> will be next 0.
         otadata[next_otadata].ota_state = set_new_state_otadata();
