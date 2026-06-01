@@ -15,7 +15,19 @@ jobs:
     name: Build Firmware (dev)
     environment: dev
     runs-on: ubuntu-22.04
-    # Default (read-only) GITHUB_TOKEN; release publishing happens in a separate job.
+    # Use the default GITHUB_TOKEN permissions for this job; release publishing happens in a separate job.
+    env:
+      # Single source of truth for the files shipped as both the workflow
+      # artifact and the contents of the release zip. Keep paths relative to
+      # the repository root and inside the `build/` directory.
+      RELEASE_FILES: |
+        build/ruuvi_gateway_esp.bin
+        build/binaries_v1.9.2/bootloader.bin
+        build/partition_table/partition-table.bin
+        build/ota_data_initial.bin
+        build/fatfs_nrf52.bin
+        build/fatfs_gwui.bin
+        build/gw_cfg_def.bin
 
     steps:
       - name: Check out code
@@ -102,14 +114,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ruuvi_gateway_fw
-          path: |
-            build/ruuvi_gateway_esp.bin
-            build/binaries_v1.9.2/bootloader.bin
-            build/partition_table/partition-table.bin
-            build/ota_data_initial.bin
-            build/fatfs_nrf52.bin
-            build/fatfs_gwui.bin
-            build/gw_cfg_def.bin
+          path: ${{ env.RELEASE_FILES }}
 
       - name: Create release zip
         id: create_zip
@@ -126,20 +131,14 @@ jobs:
           ARTIFACT_NAME="ruuvi_gateway_fw-dev_${SAFE_TAG}"
           DST="$ARTIFACT_NAME"
           mkdir -p "$DST"
-          paths=(
-            "build/ruuvi_gateway_esp.bin"
-            "build/binaries_v1.9.2/bootloader.bin"
-            "build/partition_table/partition-table.bin"
-            "build/ota_data_initial.bin"
-            "build/fatfs_nrf52.bin"
-            "build/fatfs_gwui.bin"
-            "build/gw_cfg_def.bin"
-          )
-          for rel in "${paths[@]}"; do
+          # File list is provided by the job-level RELEASE_FILES env var
+          # (single source of truth shared with the "Upload artifact" step).
+          while IFS= read -r rel; do
+            [ -z "$rel" ] && continue
             dst_path="$DST/${rel#build/}"
             mkdir -p "$(dirname "$dst_path")"
             cp "$rel" "$dst_path"
-          done
+          done <<< "$RELEASE_FILES"
           ARTIFACT_PATH="$GITHUB_WORKSPACE/$ARTIFACT_NAME.zip"
           zip -r -q "$ARTIFACT_PATH" "$ARTIFACT_NAME"
           echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
