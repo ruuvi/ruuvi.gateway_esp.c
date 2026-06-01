@@ -138,6 +138,10 @@ jobs:
           # (single source of truth shared with the "Upload artifact" step).
           while IFS= read -r rel; do
             [ -z "$rel" ] && continue
+            if [ ! -f "$rel" ]; then
+              echo "Missing release file: $rel" >&2
+              exit 1
+            fi
             dst_path="$DST/${rel#build/}"
             mkdir -p "$(dirname "$dst_path")"
             cp "$rel" "$dst_path"
