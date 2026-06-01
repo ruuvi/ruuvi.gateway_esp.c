@@ -475,8 +475,11 @@ find_otadata_idx_for_ota_slot(
 
     for (uint32_t i = 0; i < ESP_OTA_NUM_OTA_SLOTS; ++i)
     {
+        // Use the same validity rules as the bootloader: an entry is usable only if
+        // its CRC matches AND its ota_state is not INVALID/ABORTED. Otherwise we may
+        // "preserve" an entry the bootloader will never consider active.
         if ((ota_slot == esp_ota_calc_slot_from_seq(otadata[i].ota_seq, ota_app_count))
-            && (otadata[i].crc == bootloader_common_ota_select_crc(&otadata[i])))
+            && bootloader_common_ota_select_valid(&otadata[i]))
         {
             return (int32_t)i;
         }
@@ -562,19 +565,19 @@ esp_rewrite_ota_data(esp_partition_subtype_t subtype)
     }
     if (-1 != active_otadata)
     {
-        const uint32_t seq = otadata[active_otadata].ota_seq;
-        uint32_t       i   = 0;
-        while (seq > (((SUB_TYPE_ID(subtype) + 1) % ota_app_count) + (i * ota_app_count)))
+        const uint32_t seq  = otadata[active_otadata].ota_seq;
+        const uint32_t base = (SUB_TYPE_ID(subtype) + 1) % ota_app_count;
+        // Find the smallest i such that (base + i * ota_app_count) >= seq.
+        // Equivalent to the previous loop, but O(1) instead of O(seq / ota_app_count),
+        // which matters because ota_seq grows monotonically across OTA updates.
+        uint32_t i = 0;
+        if (seq > base)
         {
-            i++;
+            i = (seq - base + ota_app_count - 1) / ota_app_count;
         }
         const int32_t next_otadata      = (~active_otadata) & 1; // if 0 -> will be next 1. and if 1 -> will be next 0.
         otadata[next_otadata].ota_state = set_new_state_otadata();
-        return rewrite_ota_seq(
-            otadata,
-            (SUB_TYPE_ID(subtype) + 1) % ota_app_count + i * ota_app_count,
-            next_otadata,
-            otadata_partition);
+        return rewrite_ota_seq(otadata, base + i * ota_app_count, next_otadata, otadata_partition);
     }
     /* Both OTA slots are invalid, probably because unformatted... */
     const int32_t next_otadata      = 0;
