@@ -103,7 +103,7 @@ read_otadata(esp_ota_select_entry_t* two_otadata)
 
     spi_flash_mmap_handle_t ota_data_map;
     const void*             result = NULL;
-    esp_err_t               err    = esp_partition_mmap(
+    const esp_err_t         err    = esp_partition_mmap(
         otadata_partition,
         0,
         otadata_partition->size,
@@ -112,7 +112,7 @@ read_otadata(esp_ota_select_entry_t* two_otadata)
         &ota_data_map);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "mmap otadata failed. Err=0x%8x", err);
+        ESP_LOGE(TAG, "mmap otadata failed. Err=%" PRId32, err);
         return NULL;
     }
     if (NULL == result)

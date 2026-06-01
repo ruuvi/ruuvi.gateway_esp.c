@@ -1662,6 +1662,12 @@ fw_update_task(void)
                 error_message_info.p_message = "Failed to switch boot partition";
             }
             flag_fw_update_successful = false;
+            // Mirror the cleanup done in the fw_update_do_actions() failure branch above:
+            // the next partition has been flashed but the boot switch failed, so invalidate
+            // it to avoid booting into a partition that the bootloader was never told to use,
+            // and reflect the failed finalization in the progress stage.
+            g_update_progress_stage = FW_UPDATE_STAGE_4;
+            fw_update_invalidate_all_next_partitions();
             fw_update_set_extra_info_for_status_json_update_failed(error_message_info.p_message);
         }
     }
