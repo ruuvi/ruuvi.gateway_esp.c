@@ -46,7 +46,7 @@
 
 #define ESP_OTA_NUM_OTA_SLOTS (2U)
 
-#define SUB_TYPE_ID(i) (i & 0x0F)
+#define SUB_TYPE_ID(i) ((i)&0x0F)
 
 typedef struct ota_ops_entry_t
 {
@@ -97,7 +97,7 @@ read_otadata(esp_ota_select_entry_t* two_otadata)
 
     if (otadata_partition == NULL)
     {
-        ESP_LOGE(TAG, "not found otadata");
+        ESP_LOGE(TAG, "otadata partition not found");
         return NULL;
     }
 
@@ -112,15 +112,19 @@ read_otadata(esp_ota_select_entry_t* two_otadata)
         &ota_data_map);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "mmap otadata filed. Err=0x%8x", err);
+        ESP_LOGE(TAG, "mmap otadata failed. Err=0x%8x", err);
         return NULL;
     }
-    else
+    if (NULL == result)
     {
-        memcpy(&two_otadata[0], result, sizeof(esp_ota_select_entry_t));
-        memcpy(&two_otadata[1], result + SPI_FLASH_SEC_SIZE, sizeof(esp_ota_select_entry_t));
+        ESP_LOGE(TAG, "mmap otadata returned NULL pointer");
         spi_flash_munmap(ota_data_map);
+        return NULL;
     }
+    const uint8_t* const p_otadata = (const uint8_t*)result;
+    memcpy(&two_otadata[0], p_otadata, sizeof(esp_ota_select_entry_t));
+    memcpy(&two_otadata[1], p_otadata + SPI_FLASH_SEC_SIZE, sizeof(esp_ota_select_entry_t));
+    spi_flash_munmap(ota_data_map);
     return otadata_partition;
 }
 
@@ -586,6 +590,17 @@ esp_err_t
 esp_ota_set_boot_partition_patched(const esp_partition_t* partition)
 {
     if (partition == NULL)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* Only FACTORY or OTA app partitions are valid boot targets. Reject other APP subtypes
+     * (e.g. TEST or unrelated APP subtypes) to avoid corrupting otadata. */
+    if (partition->type != ESP_PARTITION_TYPE_APP)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if ((partition->subtype != ESP_PARTITION_SUBTYPE_APP_FACTORY) && (!is_ota_partition(partition)))
     {
         return ESP_ERR_INVALID_ARG;
     }

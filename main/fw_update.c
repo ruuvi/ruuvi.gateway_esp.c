@@ -1652,7 +1652,7 @@ fw_update_task(void)
         const esp_err_t err = esp_ota_set_boot_partition_patched(g_ruuvi_flash_info.p_next_update_partition);
         if (ESP_OK != err)
         {
-            LOG_ERR_ESP(err, "%s failed", "esp_ota_set_boot_partition");
+            LOG_ERR_ESP(err, "%s failed", "esp_ota_set_boot_partition_patched");
             if (NULL == error_message_info.p_message)
             {
                 error_message_info.p_message = "Failed to switch boot partition";
