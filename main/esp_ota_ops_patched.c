@@ -456,7 +456,7 @@ get_ota_partition_count(void)
            != NULL)
     {
         const uint32_t max_ota_app_count = ESP_PARTITION_SUBTYPE_APP_OTA_MAX - ESP_PARTITION_SUBTYPE_APP_OTA_MIN;
-        assert(ota_app_count < max_ota_app_count && "must erase the partition before writing to it");
+        assert(ota_app_count < max_ota_app_count && "too many OTA app partitions: OTA subtype range overflow");
         ota_app_count++;
     }
     return ota_app_count;
@@ -489,7 +489,7 @@ esp_rewrite_ota_data(esp_partition_subtype_t subtype)
 {
     esp_ota_select_entry_t otadata[2];
     const esp_partition_t* otadata_partition = read_otadata(otadata);
-    if (otadata_partition == NULL)
+    if (NULL == otadata_partition)
     {
         return ESP_ERR_NOT_FOUND;
     }
@@ -520,7 +520,7 @@ esp_rewrite_ota_data(esp_partition_subtype_t subtype)
     // Keep the new sequence number higher than the current active sequence number,
     // while making it map to the requested OTA slot.
 
-    const esp_partition_t* p_running_partition = esp_ota_get_running_partition();
+    const esp_partition_t* const p_running_partition = esp_ota_get_running_partition();
 
     const int32_t running_partition_ota_slot
         = is_ota_partition(p_running_partition)
@@ -535,7 +535,7 @@ esp_rewrite_ota_data(esp_partition_subtype_t subtype)
         bootloader_selected_ota_slot = esp_ota_calc_slot_from_seq(otadata[active_otadata].ota_seq, ota_app_count);
     }
 
-    if ((active_otadata != -1) && (running_partition_ota_slot >= 0)
+    if ((-1 != active_otadata) && (running_partition_ota_slot >= 0)
         && (bootloader_selected_ota_slot != running_partition_ota_slot))
     {
         // The highest-sequence otadata entry can point to a damaged image. In this case
@@ -589,18 +589,18 @@ esp_rewrite_ota_data(esp_partition_subtype_t subtype)
 esp_err_t
 esp_ota_set_boot_partition_patched(const esp_partition_t* partition)
 {
-    if (partition == NULL)
+    if (NULL == partition)
     {
         return ESP_ERR_INVALID_ARG;
     }
 
     /* Only FACTORY or OTA app partitions are valid boot targets. Reject other APP subtypes
      * (e.g. TEST or unrelated APP subtypes) to avoid corrupting otadata. */
-    if (partition->type != ESP_PARTITION_TYPE_APP)
+    if (ESP_PARTITION_TYPE_APP != partition->type)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    if ((partition->subtype != ESP_PARTITION_SUBTYPE_APP_FACTORY) && (!is_ota_partition(partition)))
+    if ((ESP_PARTITION_SUBTYPE_APP_FACTORY != partition->subtype) && (!is_ota_partition(partition)))
     {
         return ESP_ERR_INVALID_ARG;
     }
@@ -610,55 +610,43 @@ esp_ota_set_boot_partition_patched(const esp_partition_t* partition)
         return ESP_ERR_OTA_VALIDATE_FAILED;
     }
 
-    // if set boot partition to factory bin ,just format ota info partition
-    if (partition->type == ESP_PARTITION_TYPE_APP)
+    // if set boot partition to factory bin, just format ota info partition
+    if (partition->subtype == ESP_PARTITION_SUBTYPE_APP_FACTORY)
     {
-        if (partition->subtype == ESP_PARTITION_SUBTYPE_APP_FACTORY)
+        const esp_partition_t* find_partition = esp_partition_find_first(
+            ESP_PARTITION_TYPE_DATA,
+            ESP_PARTITION_SUBTYPE_DATA_OTA,
+            NULL);
+        if (NULL == find_partition)
         {
-            const esp_partition_t* find_partition = esp_partition_find_first(
-                ESP_PARTITION_TYPE_DATA,
-                ESP_PARTITION_SUBTYPE_DATA_OTA,
-                NULL);
-            if (find_partition != NULL)
-            {
-                return esp_partition_erase_range(find_partition, 0, find_partition->size);
-            }
-            else
-            {
-                return ESP_ERR_NOT_FOUND;
-            }
+            return ESP_ERR_NOT_FOUND;
         }
-        else
-        {
-#ifdef CONFIG_BOOTLOADER_APP_ANTI_ROLLBACK
-            esp_app_desc_t partition_app_desc;
-            esp_err_t      err = esp_ota_get_partition_description(partition, &partition_app_desc);
-            if (err != ESP_OK)
-            {
-                return err;
-            }
+        return esp_partition_erase_range(find_partition, 0, find_partition->size);
+    }
 
-            if (esp_efuse_check_secure_version(partition_app_desc.secure_version) == false)
-            {
-                ESP_LOGE(
-                    TAG,
-                    "This a new partition can not be booted due to a secure version is lower than stored in efuse. "
-                    "Partition will be erased.");
-                esp_err_t err = esp_partition_erase_range(partition, 0, partition->size);
-                if (err != ESP_OK)
-                {
-                    return err;
-                }
-                return ESP_ERR_OTA_SMALL_SEC_VER;
-            }
-#endif
-            return esp_rewrite_ota_data(partition->subtype);
-        }
-    }
-    else
+#ifdef CONFIG_BOOTLOADER_APP_ANTI_ROLLBACK
+    esp_app_desc_t partition_app_desc = { 0 };
+    esp_err_t      err                = esp_ota_get_partition_description(partition, &partition_app_desc);
+    if (ESP_OK != err)
     {
-        return ESP_ERR_INVALID_ARG;
+        return err;
     }
+
+    if (!esp_efuse_check_secure_version(partition_app_desc.secure_version))
+    {
+        ESP_LOGE(
+            TAG,
+            "This a new partition can not be booted due to a secure version is lower than stored in efuse. "
+            "Partition will be erased.");
+        esp_err_t err = esp_partition_erase_range(partition, 0, partition->size);
+        if (ESP_OK != err)
+        {
+            return err;
+        }
+        return ESP_ERR_OTA_SMALL_SEC_VER;
+    }
+#endif
+    return esp_rewrite_ota_data(partition->subtype);
 }
 
 static const esp_partition_t*
@@ -669,7 +657,7 @@ read_two_ota_data(esp_ota_select_entry_t* const p_two_ota_data)
         ESP_PARTITION_SUBTYPE_DATA_OTA,
         NULL);
 
-    if (p_ota_data_partition == NULL)
+    if (NULL == p_ota_data_partition)
     {
         LOG_ERR("Partition with OTA data not found");
         return NULL;
