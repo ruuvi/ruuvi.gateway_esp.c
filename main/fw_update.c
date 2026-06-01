@@ -1532,9 +1532,6 @@ fw_update_do_actions(fw_update_error_message_info_t* const p_error_message_info)
         return false;
     }
 
-    g_ruuvi_flash_info.p_boot_partition = g_ruuvi_flash_info.p_next_update_partition;
-    g_ruuvi_flash_info.is_ota0_active   = !g_ruuvi_flash_info.is_ota0_active;
-
     fw_update_set_stage_nrf52_updating();
 
     LOG_INFO("nrf52fw_update_fw_if_necessary");
@@ -1672,6 +1669,9 @@ fw_update_task(void)
     }
     else
     {
+        g_ruuvi_flash_info.p_boot_partition = g_ruuvi_flash_info.p_next_update_partition;
+        g_ruuvi_flash_info.is_ota0_active   = !g_ruuvi_flash_info.is_ota0_active;
+
         fw_update_set_extra_info_for_status_json_update_successful();
         switch (fw_updating_reason_get())
         {
