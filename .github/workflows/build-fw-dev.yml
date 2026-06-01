@@ -29,6 +29,12 @@ jobs:
         build/fatfs_gwui.bin
         build/gw_cfg_def.bin
 
+    outputs:
+      # Exposes the sanitized release zip name (without .zip suffix) so the
+      # release job can locate the downloaded artifact without re-implementing
+      # the sanitization logic.
+      release_zip_name: ${{ steps.create_zip.outputs.artifact_name }}
+
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -159,11 +165,11 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-22.04
     permissions:
-      contents: write
+      contents: write   # create GitHub Release and upload assets
+      actions: read     # download workflow artifact from the build job
     env:
       TAG: ${{ github.ref_name }}
-      # Keep in sync with the sanitization in the build job's "Create release zip" step.
-      ARTIFACT_NAME: ruuvi_gateway_fw-dev_${{ replace(github.ref_name, '/', '_') }}
+      ARTIFACT_NAME: ${{ needs.build.outputs.release_zip_name }}
     steps:
       - name: Download release zip artifact
         uses: actions/download-artifact@v4
