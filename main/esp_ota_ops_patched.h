@@ -93,6 +93,9 @@ esp_ota_end_patched(const esp_ota_handle_t handle, esp_ota_sha256_digest_t* cons
 esp_err_t
 esp_ota_get_state_partition_patched(const esp_partition_t* const p_partition, esp_ota_img_states_t* const p_ota_state);
 
+esp_err_t
+esp_ota_set_boot_partition_patched(const esp_partition_t* partition);
+
 #ifdef __cplusplus
 }
 #endif
