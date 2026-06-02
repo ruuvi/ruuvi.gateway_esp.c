@@ -1,4 +1,4 @@
-name: Build Firmware
+name: Build Firmware (prod)
 
 on:
   push:
@@ -9,9 +9,28 @@ on:
 
 jobs:
   build:
-    name: Build firmware (prod)
+    name: Build Firmware (prod)
     environment: prod
     runs-on: ubuntu-22.04
+    # Use the default GITHUB_TOKEN permissions for this job; release publishing happens in a separate job.
+    env:
+      # Single source of truth for the files shipped as both the workflow
+      # artifact and the contents of the release zip. Keep paths relative to
+      # the repository root and inside the `build/` directory.
+      RELEASE_FILES: |
+        build/ruuvi_gateway_esp.bin
+        build/binaries_v1.9.2/bootloader.bin
+        build/partition_table/partition-table.bin
+        build/ota_data_initial.bin
+        build/fatfs_nrf52.bin
+        build/fatfs_gwui.bin
+        build/gw_cfg_def.bin
+
+    outputs:
+      # Exposes the sanitized release zip name (without .zip suffix) so the
+      # release job can locate the downloaded artifact without re-implementing
+      # the sanitization logic.
+      release_zip_name: ${{ steps.create_zip.outputs.artifact_name }}
 
     steps:
       - name: Check out code
@@ -95,14 +114,90 @@ jobs:
           cd ..
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ruuvi_gateway_fw
-          path: |
-            build/ruuvi_gateway_esp.bin
-            build/binaries_v1.9.2/bootloader.bin
-            build/partition_table/partition-table.bin
-            build/ota_data_initial.bin
-            build/fatfs_nrf52.bin
-            build/fatfs_gwui.bin
-            build/gw_cfg_def.bin
+          path: ${{ env.RELEASE_FILES }}
+
+      - name: Create release zip
+        id: create_zip
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -xeuo pipefail
+          # github.ref_name may contain '/' (e.g. "release/v1.2.3"); sanitize so
+          # the zip filename and uploaded asset name stay a single path component
+          # and the dev/prod naming scheme remains unique.
+          SAFE_TAG="${TAG//\//_}"
+          ARTIFACT_NAME="ruuvi_gateway_fw-prod_${SAFE_TAG}"
+          DST="$ARTIFACT_NAME"
+          mkdir -p "$DST"
+          # File list is provided by the job-level RELEASE_FILES env var
+          # (single source of truth shared with the "Upload artifact" step).
+          while IFS= read -r rel; do
+            [ -z "$rel" ] && continue
+            if [ ! -f "$rel" ]; then
+              echo "Missing release file: $rel" >&2
+              exit 1
+            fi
+            dst_path="$DST/${rel#build/}"
+            mkdir -p "$(dirname "$dst_path")"
+            cp "$rel" "$dst_path"
+          done <<< "$RELEASE_FILES"
+          ARTIFACT_PATH="$GITHUB_WORKSPACE/$ARTIFACT_NAME.zip"
+          zip -r -q "$ARTIFACT_PATH" "$ARTIFACT_NAME"
+          echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+          echo "artifact_path=$ARTIFACT_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release zip as workflow artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v7
+        with:
+          name: ruuvi_gateway_fw-prod-release-zip
+          path: ${{ steps.create_zip.outputs.artifact_path }}
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Publish GitHub Release (prod)
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write   # create GitHub Release and upload assets
+      actions: read     # download workflow artifact from the build job
+    env:
+      TAG: ${{ github.ref_name }}
+      ARTIFACT_NAME: ${{ needs.build.outputs.release_zip_name }}
+    steps:
+      - name: Download release zip artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ruuvi_gateway_fw-prod-release-zip
+          path: release_asset
+
+      - name: Create release and upload asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -xe
+          command -v gh >/dev/null 2>&1 || { echo "gh CLI not found"; exit 1; }
+          ARTIFACT_PATH="$GITHUB_WORKSPACE/release_asset/${ARTIFACT_NAME}.zip"
+          if [ ! -f "$ARTIFACT_PATH" ]; then
+            echo "Artifact not found at $ARTIFACT_PATH"; ls -la "$GITHUB_WORKSPACE/release_asset" || true
+            exit 1
+          fi
+          # create if missing; on failure re-check to tolerate races with the dev workflow
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if ! gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes "Automated release" --prerelease; then
+              echo "Create failed; rechecking..."
+              if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                echo "Release still missing; aborting."
+                exit 1
+              fi
+            fi
+          fi
+          gh release upload "$TAG" "$ARTIFACT_PATH" --repo "$GITHUB_REPOSITORY" --clobber
