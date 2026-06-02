@@ -51,7 +51,7 @@ Also it is possible to specify the serial port in the environment variable RUUVI
 Possible operations:
 1) [download (if needed) and flash specific version]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] v1.15.0
    [download (if needed) and flash dev release]:      python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] v1.17.2-dev
-   [download (if needed) and flash proc release]:     python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] v1.17.2-prod
+   [download (if needed) and flash prod release]:     python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] v1.17.2-prod
 2.1) [download and flash GitHub artifact]: python3 ruuvi_gw_flash.py https://github.com/ruuvi/ruuvi.gateway_esp.c/actions/runs/8187982688
 2.2) [download and flash GitHub artifact]: python3 ruuvi_gw_flash.py 8187982688
 3) [only erase flash]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --erase_flash -
