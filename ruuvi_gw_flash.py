@@ -24,6 +24,19 @@ import signal
 
 requirements = ['requests', 'pyserial']
 
+FW_VERSION_RE = re.compile(r'^v(\d+)\.(\d+)\.(\d+)(?:-(dev|prod))?$')
+FW_VERSION_WITH_VARIANTS = (1, 17, 0)
+FW_VARIANTS = ('dev', 'prod')
+FIRMWARE_FILES = [
+    'bootloader.bin',
+    'partition-table.bin',
+    'ota_data_initial.bin',
+    'ruuvi_gateway_esp.bin',
+    'fatfs_gwui.bin',
+    'fatfs_nrf52.bin'
+]
+RELEASE_ZIP_FILES = FIRMWARE_FILES + ['gw_cfg_def.bin']
+
 description = """
 This script is used to handle firmware operations for the Ruuvi Gateway.
 It can download and write specific firmware version binaries from GitHub to the device.
@@ -37,10 +50,12 @@ Also it is possible to specify the serial port in the environment variable RUUVI
 
 Possible operations:
 1) [download (if needed) and flash specific version]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] v1.15.0
+   [download (if needed) and flash dev release]:      python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] v1.17.2-dev
+   [download (if needed) and flash proc release]:     python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] v1.17.2-prod
 2.1) [download and flash GitHub artifact]: python3 ruuvi_gw_flash.py https://github.com/ruuvi/ruuvi.gateway_esp.c/actions/runs/8187982688
 2.2) [download and flash GitHub artifact]: python3 ruuvi_gw_flash.py 8187982688
 3) [only erase flash]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --erase_flash -
-4) [download, erase and flash specific version]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --erase_flash v1.15.0
+4) [download, erase and flash specific version]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --erase_flash v1.17.1-dev
 5) [Build and flash]: python3 ruuvi_gw_flash.py build
 6) [Compile and flash only ruuvi_gateway_esp.bin and ota_data_initial.bin]: python3 ruuvi_gw_flash.py --compile_and_flash build
 7) [Compile and flash only ruuvi_gateway_esp.bin and ota_data_initial.bin]: python3 ruuvi_gw_flash.py --compile_only build
@@ -189,6 +204,61 @@ def check_if_release_exist_on_github(version):
     return False, releases
 
 
+def parse_firmware_version(fw_ver):
+    match = FW_VERSION_RE.fullmatch(fw_ver)
+    if match is None:
+        return None
+
+    version_tuple = tuple(int(match.group(i)) for i in range(1, 4))
+    variant = match.group(4)
+    base_version = f"v{version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]}"
+
+    if version_tuple >= FW_VERSION_WITH_VARIANTS and variant is None:
+        variants = ', '.join(f'"{base_version}-{item}"' for item in FW_VARIANTS)
+        error(f'Firmware release {base_version} uses separate dev/prod assets. '
+              f'Please specify the configuration suffix: {variants}.')
+        sys.exit(1)
+
+    if version_tuple < FW_VERSION_WITH_VARIANTS and variant is not None:
+        error(f'Firmware release {base_version} does not use dev/prod ZIP assets. '
+              f'Please use "{base_version}" without the "-{variant}" suffix.')
+        sys.exit(1)
+
+    return {
+        'base_version': base_version,
+        'cache_version': fw_ver,
+        'variant': variant,
+        'uses_release_zip': version_tuple >= FW_VERSION_WITH_VARIANTS,
+        'version_tuple': version_tuple,
+    }
+
+
+def get_release_zip_filename(base_version, variant):
+    return f'ruuvi_gateway_fw-{variant}_{base_version}.zip'
+
+
+def extract_release_zip_to_single_dir(zip_file_path, fw_ver_dir):
+    extracted_files = set()
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        for zip_info in zip_ref.infolist():
+            if zip_info.is_dir():
+                continue
+
+            filename = os.path.basename(str(zip_info.filename))
+            if filename == '':
+                continue
+
+            destination_path = os.path.join(str(fw_ver_dir), filename)
+            logger.info(f'Extracting: {destination_path}')
+            with zip_ref.open(zip_info) as source, open(destination_path, 'wb') as destination:
+                destination.write(source.read())
+            extracted_files.add(filename)
+
+    missing_files = [file for file in RELEASE_ZIP_FILES if file not in extracted_files]
+    if len(missing_files) > 0:
+        raise Exception(f'The firmware ZIP archive does not contain required files: {missing_files}.')
+
+
 def parse_url(url):
     pattern = r"^https://github\.com/ruuvi/ruuvi\.gateway_esp\.c/actions/runs/(\d+)/artifacts/\d+$"
     match = re.match(pattern, url)
@@ -280,6 +350,17 @@ def download_binary(version, fw_ver_dir, filename):
         raise Exception(f"Could not download the binary {filename}.")
 
 
+def download_release_zip(version_info, fw_ver_dir):
+    zip_filename = get_release_zip_filename(version_info['base_version'], version_info['variant'])
+    download_binary(version_info['base_version'], fw_ver_dir, zip_filename)
+    zip_file_path = f'{fw_ver_dir}/{zip_filename}'
+    try:
+        extract_release_zip_to_single_dir(zip_file_path, fw_ver_dir)
+    finally:
+        if os.path.isfile(zip_file_path):
+            os.remove(zip_file_path)
+
+
 def download_binaries_if_needed(fw_ver):
     if not os.path.isdir(RELEASES_DIR):
         logger.info(f'Creating directory: {RELEASES_DIR} ({os.path.realpath(RELEASES_DIR)})')
@@ -315,15 +396,24 @@ def download_binaries_if_needed(fw_ver):
             logger.info(f'Directory already exists: {fw_ver_dir}')
         return github_run_id
 
-    fw_ver_dir = os.path.realpath(f'{RELEASES_DIR}/{fw_ver}')
+    version_info = parse_firmware_version(fw_ver)
+    if version_info is None:
+        version_info = {
+            'base_version': fw_ver,
+            'cache_version': fw_ver,
+            'variant': None,
+            'uses_release_zip': False,
+        }
+
+    fw_ver_dir = os.path.realpath(f'{RELEASES_DIR}/{version_info["cache_version"]}')
     directory_exists = os.path.isdir(fw_ver_dir)
 
     if not directory_exists:
-        logger.info(f'Checking if the release {fw_ver} exists on GitHub...')
-        release_exists, releases = check_if_release_exist_on_github(fw_ver)
+        logger.info(f'Checking if the release {version_info["base_version"]} exists on GitHub...')
+        release_exists, releases = check_if_release_exist_on_github(version_info['base_version'])
 
         if not directory_exists and not release_exists:
-            error(f'No such firmware version "{fw_ver}" exists on disk or GitHub.')
+            error(f'No such firmware version "{version_info["cache_version"]}" exists on disk or GitHub.')
             list_of_releases = ', '.join(release['tag_name'] for release in releases)
             logger.info(f'Available releases: [{list_of_releases}]')
             sys.exit(1)
@@ -331,25 +421,19 @@ def download_binaries_if_needed(fw_ver):
         logger.info(f'Creating directory: {fw_ver_dir}')
         os.makedirs(fw_ver_dir)
 
-        firmware_files = [
-            'bootloader.bin',
-            'partition-table.bin',
-            'ota_data_initial.bin',
-            'ruuvi_gateway_esp.bin',
-            'fatfs_gwui.bin',
-            'fatfs_nrf52.bin'
-        ]
-
         try:
-            for file in firmware_files:
-                download_binary(fw_ver, fw_ver_dir, file)
+            if version_info['uses_release_zip']:
+                download_release_zip(version_info, fw_ver_dir)
+            else:
+                for file in FIRMWARE_FILES:
+                    download_binary(version_info['base_version'], fw_ver_dir, file)
         except Exception as e:
             logger.error(str(e))
             shutil.rmtree(fw_ver_dir)
             sys.exit(1)
     else:
         logger.info(f'Directory already exists: {fw_ver_dir}')
-    return fw_ver
+    return str(version_info['cache_version'])
 
 
 def parse_arguments():
@@ -361,6 +445,7 @@ def parse_arguments():
     parser.add_argument('fw_ver',
                         type=str,
                         help='Firmware version to write, URL of GitHub action or GitHub action run_id. '
+                             'For v1.17.0 and newer releases use suffix "-dev" or "-prod". '
                              'Use "-" to skip flashing firmware binaries.')
 
     parser.add_argument('--erase_flash',
@@ -385,6 +470,12 @@ def parse_arguments():
     parser.add_argument('--download_only',
                         action='store_true',
                         help='Download the firmware binaries only, do not flash them.')
+
+    parser.add_argument('--flash_gw_cfg_def',
+                        action='store_true',
+                        help='Flash gw_cfg_def.bin to the gw_cfg_def partition at 0xB00000. '
+                             'For v1.17.0 and newer release ZIPs this file is downloaded automatically, '
+                             'but it is flashed only when this option is specified.')
 
     parser.add_argument('--log_uart',
                         action='store_true',
@@ -422,11 +513,20 @@ def parse_arguments():
     if arguments.erase_flash and arguments.download_only:
         error("Arguments '--download_only' and '--erase_flash' are mutually exclusive.")
         sys.exit(1)
+    if arguments.flash_gw_cfg_def and arguments.download_only:
+        error("Arguments '--flash_gw_cfg_def' and '--download_only' are mutually exclusive.")
+        sys.exit(1)
+    if arguments.flash_gw_cfg_def and arguments.fw_ver == "-":
+        error("Argument '--flash_gw_cfg_def' requires 'fw_ver' to be set to a firmware version or 'build'.")
+        sys.exit(1)
     if arguments.erase_flash and arguments.compile_and_flash:
         error("'--erase_flash' and '--compile_and_flash' cannot be used together.")
         sys.exit(1)
     if arguments.compile_only and arguments.compile_and_flash:
         error("'--compile_only' and '--compile_and_flash' cannot be used together.")
+        sys.exit(1)
+    if arguments.flash_gw_cfg_def and arguments.compile_only:
+        error("'--flash_gw_cfg_def' and '--compile_only' cannot be used together.")
         sys.exit(1)
     if arguments.erase_flash and arguments.log_uart:
         error("'--erase_flash' and '--log_uart' cannot be used together.")
@@ -513,6 +613,13 @@ def run_process_with_logging(cmd_with_args):
     except subprocess.CalledProcessError as e:
         logger.error(f"{cmd_with_args[0]} execution failed: {e}")
         sys.exit(e.returncode)
+
+
+def append_flash_file(esptool_cmd_with_args, address, file_path):
+    if not os.path.isfile(file_path):
+        error(f'Required file does not exist: {file_path}')
+        sys.exit(1)
+    esptool_cmd_with_args += [address, file_path]
 
 
 def main():
@@ -608,6 +715,8 @@ def main():
             esptool_cmd_with_args += [
                 '0xd000', f'{arguments.fw_ver}/ota_data_initial.bin',
                 '0x100000', f'{arguments.fw_ver}/ruuvi_gateway_esp.bin']
+            if arguments.flash_gw_cfg_def:
+                append_flash_file(esptool_cmd_with_args, '0xB00000', f'{arguments.fw_ver}/gw_cfg_def.bin')
         else:
             if arguments.fw_ver == 'build':
                 esptool_cmd_with_args += [
@@ -617,6 +726,8 @@ def main():
                     '0x100000', f'{arguments.fw_ver}/ruuvi_gateway_esp.bin',
                     '0x500000', f'{arguments.fw_ver}/fatfs_gwui.bin',
                     '0x5C0000', f'{arguments.fw_ver}/fatfs_nrf52.bin']
+                if arguments.flash_gw_cfg_def:
+                    append_flash_file(esptool_cmd_with_args, '0xB00000', f'{arguments.fw_ver}/gw_cfg_def.bin')
             else:
                 esptool_cmd_with_args += [
                     '0x1000', f'{RELEASES_DIR}/{arguments.fw_ver}/bootloader.bin',
@@ -625,6 +736,8 @@ def main():
                     '0x100000', f'{RELEASES_DIR}/{arguments.fw_ver}/ruuvi_gateway_esp.bin',
                     '0x500000', f'{RELEASES_DIR}/{arguments.fw_ver}/fatfs_gwui.bin',
                     '0x5C0000', f'{RELEASES_DIR}/{arguments.fw_ver}/fatfs_nrf52.bin']
+                if arguments.flash_gw_cfg_def:
+                    append_flash_file(esptool_cmd_with_args, '0xB00000', f'{RELEASES_DIR}/{arguments.fw_ver}/gw_cfg_def.bin')
         run_process_with_logging(esptool_cmd_with_args)
 
     if arguments.reset:
