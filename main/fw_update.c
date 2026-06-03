@@ -1116,7 +1116,10 @@ fw_update_ota(const char* const p_url, fw_update_error_message_info_t* const p_e
     if (!fw_update_ota_partition(p_partition, out_handle, p_url))
     {
         LOG_ERR("Failed to download firmware image");
-        p_error_message_info->p_message = "Firmware image download ended with an error";
+        p_error_message_info->p_message        = "Firmware image download ended with an error";
+        esp_ota_sha256_digest_t pub_key_digest = { 0 };
+        // esp_ota_end_patched removes the OTA ops entry even if validation fails.
+        (void)esp_ota_end_patched(out_handle, &pub_key_digest);
         return false;
     }
 
