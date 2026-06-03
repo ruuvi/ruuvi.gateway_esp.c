@@ -685,15 +685,6 @@ time_is_synchronized(void)
     return (nullptr != g_pTestClass) ? g_pTestClass->m_time_is_synchronized : true;
 }
 
-bool
-time_is_timestamp_valid(const time_t timestamp)
-{
-    // Mirror the production semantics: any positive Unix timestamp is treated
-    // as valid here (the production threshold lives in time_task.c and is not
-    // compiled into this test binary).
-    return timestamp > 0;
-}
-
 time_t
 http_server_get_request_timestamp(void)
 {

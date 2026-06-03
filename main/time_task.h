@@ -36,9 +36,6 @@ time_task_stop(void);
 bool
 time_is_synchronized(void);
 
-bool
-time_is_timestamp_valid(const time_t timestamp);
-
 #ifdef __cplusplus
 }
 #endif
