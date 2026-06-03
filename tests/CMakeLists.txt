@@ -322,10 +322,10 @@ add_test(NAME test_time_str
             --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-time_str>/gtestresults.xml
 )
 
-#add_test(NAME test_time_task
-#        COMMAND ruuvi_gateway_esp-test-time_task
-#            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-time_task>/gtestresults.xml
-#)
+add_test(NAME test_time_task
+        COMMAND ruuvi_gateway_esp-test-time_task
+            --gtest_output=xml:$<TARGET_FILE_DIR:ruuvi_gateway_esp-test-time_task>/gtestresults.xml
+)
 
 add_test(NAME test_url_encode
         COMMAND ruuvi_gateway_esp-test-url_encode

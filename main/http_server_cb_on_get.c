@@ -74,7 +74,7 @@ http_server_resp_json_firmware_update(void)
     if ((!gw_cfg_get_ntp_use()) || (!time_is_synchronized()))
     {
         const time_t timestamp = http_server_get_request_timestamp();
-        if (0 != timestamp)
+        if (time_is_timestamp_valid(timestamp))
         {
             const struct timeval tv = { .tv_sec = timestamp, .tv_usec = 0 };
             if (0 == settimeofday(&tv, NULL))

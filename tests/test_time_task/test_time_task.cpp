@@ -715,10 +715,10 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Switch time sync mode to SMOOTH");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
-    // With the synchronisation flag set and the host wall-clock past the
+    // With the synchronisation flag set and the wrapped wall-clock past the
     // minimum-valid threshold (2026-01-01), time_is_synchronized() must
     // return true (covers the "valid timestamp" branch).
-    this->wrap_time_override = 0;
+    this->wrap_time_override = 1767225600; // 2026-01-01 00:00:00 UTC
     ASSERT_TRUE(time_is_synchronized());
 
     // Force the wrapped time() to return a value below the minimum-valid

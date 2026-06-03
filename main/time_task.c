@@ -92,7 +92,7 @@ time_task_get_min_valid_time(void)
     return os_mkgmtime(&tm_min_valid);
 }
 
-static bool
+bool
 time_is_timestamp_valid(const time_t timestamp)
 {
     if (timestamp < g_time_min_valid)
