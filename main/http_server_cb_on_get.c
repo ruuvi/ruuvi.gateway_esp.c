@@ -8,6 +8,9 @@
 #include "http_server_cb.h"
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
+#include <sys/time.h>
+#include "http_server.h"
 #include "os_malloc.h"
 #include "gw_cfg_ruuvi_json.h"
 #include "http_server_resp.h"
@@ -67,8 +70,18 @@ HTTP_SERVER_CB_STATIC
 http_server_resp_t
 http_server_resp_json_firmware_update(void)
 {
-    str_buf_t                   fw_update_url = gw_cfg_get_fw_update_url();
-    http_server_download_info_t info          = http_download_firmware_update_info(fw_update_url.buf, true);
+    str_buf_t fw_update_url = gw_cfg_get_fw_update_url();
+    if (!gw_cfg_get_ntp_use() || (!time_is_synchronized()))
+    {
+        const time_t timestamp = http_server_get_request_timestamp();
+        if (0 != timestamp)
+        {
+            const struct timeval tv = { .tv_sec = timestamp, .tv_usec = 0 };
+            LOG_INFO("Set system time to %" PRId64, (int64_t)timestamp);
+            settimeofday(&tv, NULL);
+        }
+    }
+    http_server_download_info_t info = http_download_firmware_update_info(fw_update_url.buf, true);
     str_buf_free_buf(&fw_update_url);
     if (info.is_error)
     {

@@ -485,8 +485,19 @@ cmd_handler_task(void* p_param)
             }
             case MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_GOOD_TIMESTAMP:
             {
+                struct tm tm_2026_08_28 = {
+                    .tm_sec   = 36,
+                    .tm_min   = 7,
+                    .tm_hour  = 12,
+                    .tm_mday  = 28,
+                    .tm_mon   = 7,
+                    .tm_year  = 2026 - 1900,
+                    .tm_wday  = 0,
+                    .tm_yday  = 0,
+                    .tm_isdst = -1,
+                };
                 struct timeval tv = {
-                    .tv_sec  = 1630152456,
+                    .tv_sec  = os_mkgmtime(&tm_2026_08_28),
                     .tv_usec = 0,
                 };
                 gp_obj->sntp_sync_time_cb(&tv);
@@ -678,7 +689,7 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         ASSERT_EQ(SNTP_SYNC_MODE_SMOOTH, p_ev->sync_mode);
     }
     testEvents.clear();
-    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "### Time has been synchronized: 2021-08-28 12:07:36.000");
+    TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "### Time has been synchronized: 2026-08-28 12:07:36.000");
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Switch time sync mode to SMOOTH");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 

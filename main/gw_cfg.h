@@ -15,6 +15,7 @@
 #include "fw_ver.h"
 #include "nrf52_fw_ver.h"
 #include "ruuvi_device_id.h"
+#include "http_server_auth_type.h"
 
 #if !defined(RUUVI_TESTS_GW_CFG)
 #define RUUVI_TESTS_GW_CFG (0)
