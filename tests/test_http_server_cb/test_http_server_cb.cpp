@@ -7,6 +7,8 @@
 
 #include "http_server_cb.h"
 #include <cstring>
+#include <cerrno>
+#include <sys/time.h>
 #include <utility>
 #include <vector>
 #include <functional>
@@ -163,12 +165,6 @@ network_timeout_update_timestamp(void)
 
 void
 settings_save_to_flash(const gw_cfg_t* const p_gw_cfg);
-
-bool
-time_is_synchronized(void)
-{
-    return true;
-}
 
 void
 main_task_on_get_history(void)
@@ -499,6 +495,12 @@ protected:
         this->m_mock_http_async_info_free_data_called = false;
         this->m_mock_http_download_with_auth          = nullptr;
 
+        this->m_time_is_synchronized  = true;
+        this->m_request_timestamp     = 0;
+        this->m_settimeofday_call_cnt = 0;
+        this->m_settimeofday_tv       = { 0, 0 };
+        this->m_settimeofday_fail     = false;
+
         memset(&g_extra_cfg_storage, 0, sizeof(g_extra_cfg_storage));
     }
 
@@ -554,6 +556,13 @@ public:
         void*                                  p_user_data,
         bool                                   flag_use_big_tls_buf)>;
     http_download_mock_cb_t m_mock_http_download_with_auth;
+
+    // Mocks for the new firmware-update time-seeding logic
+    bool           m_time_is_synchronized;
+    time_t         m_request_timestamp;
+    uint32_t       m_settimeofday_call_cnt;
+    struct timeval m_settimeofday_tv;
+    bool           m_settimeofday_fail;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -648,6 +657,38 @@ __wrap_free(void* ptr)
     {
         g_pTestClass->m_alloc_free_call_count -= 1;
     }
+}
+
+int
+__wrap_settimeofday(const struct timeval* tv, const struct timezone* tz)
+{
+    (void)tz;
+    if (nullptr != g_pTestClass)
+    {
+        g_pTestClass->m_settimeofday_call_cnt += 1;
+        if (nullptr != tv)
+        {
+            g_pTestClass->m_settimeofday_tv = *tv;
+        }
+        if (g_pTestClass->m_settimeofday_fail)
+        {
+            errno = EPERM;
+            return -1;
+        }
+    }
+    return 0;
+}
+
+bool
+time_is_synchronized(void)
+{
+    return (nullptr != g_pTestClass) ? g_pTestClass->m_time_is_synchronized : true;
+}
+
+time_t
+http_server_get_request_timestamp(void)
+{
+    return (nullptr != g_pTestClass) ? g_pTestClass->m_request_timestamp : 0;
 }
 
 os_mutex_recursive_t
@@ -9227,6 +9268,183 @@ TEST_F(TestHttpServerCb, http_download_firmware_update_info__ok) // NOLINT
         ESP_LOG_INFO,
         string("cb_on_http_download_json_data: buf_size=") + to_string(strlen(p_json_resp)));
     TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+/* ============================================================================
+ * Tests for http_server_resp_json_firmware_update
+ *
+ * Cover the time-seeding logic added for issue #1288: when the gateway's clock
+ * is not synchronised (NTP disabled, or NTP enabled but no successful sync),
+ * the X-Request-Timestamp value from the web UI (exposed via
+ * http_server_get_request_timestamp()) is applied via settimeofday() before
+ * the outbound HTTPS request to the firmware-update server.
+ * ============================================================================
+ */
+extern "C" http_server_resp_t
+http_server_resp_json_firmware_update(void);
+namespace
+{
+const char* const g_test_fw_update_json
+    = "{\"latest\":{\"version\":\"v1.15.0\",\"url\":\"https://fwupdate.ruuvi.com/v1.15.0\"}}";
+void
+set_ntp_use(const bool ntp_use)
+{
+    gw_cfg_t gw_cfg = {};
+    gw_cfg_default_get(&gw_cfg);
+    gw_cfg.ruuvi_cfg.ntp.ntp_use = ntp_use;
+    gw_cfg_update(&gw_cfg);
+}
+} // namespace
+TEST_F(TestHttpServerCb, json_firmware_update__ntp_enabled_and_time_synchronized__no_settimeofday) // NOLINT
+{
+    set_ntp_use(true);
+    this->m_time_is_synchronized = true;
+    this->m_request_timestamp    = 1735689600; // 2025-01-01 00:00:00 UTC
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(g_test_fw_update_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    // X-Request-Timestamp must NOT be applied when the clock is already in sync.
+    ASSERT_EQ(0U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__ntp_disabled_no_request_timestamp__no_settimeofday) // NOLINT
+{
+    set_ntp_use(false);
+    this->m_time_is_synchronized = false;
+    this->m_request_timestamp    = 0; // header absent -> exposed as 0
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_EQ(string(g_test_fw_update_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    // No header timestamp -> settimeofday must not be called.
+    ASSERT_EQ(0U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__ntp_disabled_with_request_timestamp__settimeofday_called) // NOLINT
+{
+    set_ntp_use(false);
+    this->m_time_is_synchronized = false;
+    this->m_request_timestamp    = 1735689600; // 2025-01-01 00:00:00 UTC
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    // Clock seeding must occur with the value from the X-Request-Timestamp header.
+    ASSERT_EQ(1U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(1735689600, this->m_settimeofday_tv.tv_sec);
+    ASSERT_EQ(0, this->m_settimeofday_tv.tv_usec);
+    ASSERT_EQ(
+        "I http_server: Set system time to 1735689600\n"
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__ntp_enabled_but_not_synchronized__settimeofday_called) // NOLINT
+{
+    set_ntp_use(true);
+    this->m_time_is_synchronized = false;      // NTP enabled but clock not yet in sync
+    this->m_request_timestamp    = 1748908800; // 2025-06-03 00:00:00 UTC
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    // The clock has not been synchronised yet, so the header value must be applied.
+    ASSERT_EQ(1U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(1748908800, this->m_settimeofday_tv.tv_sec);
+    ASSERT_EQ(
+        "I http_server: Set system time to 1748908800\n"
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__download_error_propagated_504) // NOLINT
+{
+    set_ntp_use(false);
+    this->m_time_is_synchronized = false;
+    this->m_request_timestamp    = 0;
+    // Override gw_cfg fw_update_url so the default mock returns http_server_resp_400() (is_error).
+    {
+        gw_cfg_t gw_cfg = {};
+        gw_cfg_default_get(&gw_cfg);
+        (void)snprintf(
+            gw_cfg.ruuvi_cfg.fw_update.fw_update_url,
+            sizeof(gw_cfg.ruuvi_cfg.fw_update.fw_update_url),
+            "%s",
+            "https://unknown.server/firmwareupdate");
+        gw_cfg_update(&gw_cfg);
+    }
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_504, resp.http_resp_code);
+    ASSERT_EQ(0U, this->m_settimeofday_call_cnt);
+    esp_log_wrapper_clear();
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__settimeofday_failure_logs_error) // NOLINT
+{
+    set_ntp_use(false);
+    this->m_time_is_synchronized = false;
+    this->m_request_timestamp    = 1735689600; // 2025-01-01 00:00:00 UTC
+    this->m_settimeofday_fail    = true;
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    // settimeofday was attempted but failed -> success log must NOT be present,
+    // error log must be present.
+    ASSERT_EQ(1U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(1735689600, this->m_settimeofday_tv.tv_sec);
+    ASSERT_EQ(
+        "E http_server: Failed to set system time to 1735689600\n"
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_EQ(0, this->m_alloc_free_call_count);

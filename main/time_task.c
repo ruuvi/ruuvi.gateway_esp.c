@@ -26,7 +26,7 @@
 #include "log.h"
 
 #define TM_YEAR_BASE (1900)
-#define TM_YEAR_MIN  (2021)
+#define TM_YEAR_MIN  (2026)
 
 #define RUUVI_STACK_SIZE_TIME_TASK (3U * 1024U)
 
@@ -77,7 +77,7 @@ time_task_configure_ntp_sources(void);
 static time_t
 time_task_get_min_valid_time(void)
 {
-    struct tm tm_2021_01_01 = {
+    struct tm tm_min_valid = {
         .tm_sec   = 0,
         .tm_min   = 0,
         .tm_hour  = 0,
@@ -89,11 +89,11 @@ time_task_get_min_valid_time(void)
         .tm_isdst = -1,
     };
 
-    return os_mkgmtime(&tm_2021_01_01);
+    return os_mkgmtime(&tm_min_valid);
 }
 
-bool
-time_is_valid(const time_t timestamp)
+static bool
+time_is_timestamp_valid(const time_t timestamp)
 {
     if (timestamp < g_time_min_valid)
     {
@@ -105,7 +105,7 @@ time_is_valid(const time_t timestamp)
 bool
 time_is_synchronized(void)
 {
-    return g_time_is_synchronized;
+    return g_time_is_synchronized && time_is_timestamp_valid(time(NULL));
 }
 
 ATTR_PURE
