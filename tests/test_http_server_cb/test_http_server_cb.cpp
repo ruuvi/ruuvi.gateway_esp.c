@@ -7,6 +7,7 @@
 
 #include "http_server_cb.h"
 #include <cstring>
+#include <cerrno>
 #include <utility>
 #include <vector>
 #include <functional>
@@ -497,6 +498,7 @@ protected:
         this->m_request_timestamp     = 0;
         this->m_settimeofday_call_cnt = 0;
         this->m_settimeofday_tv       = { 0, 0 };
+        this->m_settimeofday_fail     = false;
 
         memset(&g_extra_cfg_storage, 0, sizeof(g_extra_cfg_storage));
     }
@@ -559,6 +561,7 @@ public:
     time_t         m_request_timestamp;
     uint32_t       m_settimeofday_call_cnt;
     struct timeval m_settimeofday_tv;
+    bool           m_settimeofday_fail;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -665,6 +668,11 @@ __wrap_settimeofday(const struct timeval* tv, const struct timezone* tz)
         if (nullptr != tv)
         {
             g_pTestClass->m_settimeofday_tv = *tv;
+        }
+        if (g_pTestClass->m_settimeofday_fail)
+        {
+            errno = EPERM;
+            return -1;
         }
     }
     return 0;
@@ -9408,6 +9416,32 @@ TEST_F(TestHttpServerCb, json_firmware_update__download_error_propagated_504) //
     ASSERT_EQ(HTTP_RESP_CODE_504, resp.http_resp_code);
     ASSERT_EQ(0U, this->m_settimeofday_call_cnt);
     esp_log_wrapper_clear();
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__settimeofday_failure_logs_error) // NOLINT
+{
+    set_ntp_use(false);
+    this->m_time_is_synchronized = false;
+    this->m_request_timestamp    = 1735689600; // 2025-01-01 00:00:00 UTC
+    this->m_settimeofday_fail    = true;
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    // settimeofday was attempted but failed -> success log must NOT be present,
+    // error log must be present.
+    ASSERT_EQ(1U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(1735689600, this->m_settimeofday_tv.tv_sec);
+    ASSERT_EQ(
+        "E http_server: Failed to set system time to 1735689600\n"
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
     http_server_resp_free(&resp);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");

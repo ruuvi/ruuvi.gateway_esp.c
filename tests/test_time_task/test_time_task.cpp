@@ -127,6 +127,10 @@ public:
     sntp_sync_mode_t        sync_mode {};
     std::vector<bool>       wifi_time_sync_info_updates;
 
+    // Override for the wrapped time() libc function. When != 0, __wrap_time
+    // returns this value; otherwise it forwards to the real libc time().
+    time_t wrap_time_override { 0 };
+
     TestTimeTask();
 
     ~TestTimeTask() override;
@@ -175,6 +179,19 @@ extern "C" {
 
 /*** System functions
  * *****************************************************************************************/
+
+time_t
+__wrap_time(time_t* p_t)
+{
+    extern time_t __real_time(time_t * _t);
+    const time_t  result = (nullptr != gp_obj && 0 != gp_obj->wrap_time_override) ? gp_obj->wrap_time_override
+                                                                                  : __real_time(nullptr);
+    if (nullptr != p_t)
+    {
+        *p_t = result;
+    }
+    return result;
+}
 
 os_mutex_recursive_t
 os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_static)
@@ -677,6 +694,11 @@ TEST_F(TestTimeTask, test_all) // NOLINT
         "### Time has been synchronized but timestamp is bad: 2020-12-31 23:59:59.000");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
 
+    // After a bad timestamp the synchronisation flag must be cleared, so
+    // time_is_synchronized() must short-circuit to false regardless of the
+    // current wall-clock value.
+    ASSERT_FALSE(time_is_synchronized());
+
     ASSERT_NE(nullptr, gp_obj->sntp_sync_time_cb);
     cmdQueue.push_and_wait(MAIN_TASK_CMD_SNTP_SYNC_TIME_CB_GOOD_TIMESTAMP);
     ASSERT_EQ(1, testEvents.size());
@@ -692,6 +714,19 @@ TEST_F(TestTimeTask, test_all) // NOLINT
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "### Time has been synchronized: 2026-08-28 12:07:36.000");
     TEST_CHECK_LOG_RECORD_TIME(ESP_LOG_INFO, "cmd_handler", "Switch time sync mode to SMOOTH");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+
+    // With the synchronisation flag set and the host wall-clock past the
+    // minimum-valid threshold (2026-01-01), time_is_synchronized() must
+    // return true (covers the "valid timestamp" branch).
+    this->wrap_time_override = 0;
+    ASSERT_TRUE(time_is_synchronized());
+
+    // Force the wrapped time() to return a value below the minimum-valid
+    // threshold so that time_is_timestamp_valid() takes its "false" branch
+    // even though the synchronisation flag is still set.
+    this->wrap_time_override = 1577836799; // 2019-12-31 23:59:59 UTC (< 2026-01-01)
+    ASSERT_FALSE(time_is_synchronized());
+    this->wrap_time_override = 0;
 
     cmdQueue.push_and_wait(MAIN_TASK_CMD_EVENT_MGR_EV_WIFI_DISCONNECTED);
     ASSERT_TRUE(this->wait_for_events());

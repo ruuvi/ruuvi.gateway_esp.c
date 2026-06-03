@@ -100,4 +100,5 @@ target_link_libraries(${ProjectId}
         esp_simul
         lwip
         --coverage
+        -Wl,--wrap=time
 )

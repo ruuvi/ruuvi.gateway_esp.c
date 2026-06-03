@@ -71,14 +71,20 @@ http_server_resp_t
 http_server_resp_json_firmware_update(void)
 {
     str_buf_t fw_update_url = gw_cfg_get_fw_update_url();
-    if (!gw_cfg_get_ntp_use() || (!time_is_synchronized()))
+    if ((!gw_cfg_get_ntp_use()) || (!time_is_synchronized()))
     {
         const time_t timestamp = http_server_get_request_timestamp();
         if (0 != timestamp)
         {
             const struct timeval tv = { .tv_sec = timestamp, .tv_usec = 0 };
-            LOG_INFO("Set system time to %" PRId64, (int64_t)timestamp);
-            settimeofday(&tv, NULL);
+            if (0 == settimeofday(&tv, NULL))
+            {
+                LOG_INFO("Set system time to %" PRId64, (int64_t)timestamp);
+            }
+            else
+            {
+                LOG_ERR("Failed to set system time to %" PRId64, (int64_t)timestamp);
+            }
         }
     }
     http_server_download_info_t info = http_download_firmware_update_info(fw_update_url.buf, true);
