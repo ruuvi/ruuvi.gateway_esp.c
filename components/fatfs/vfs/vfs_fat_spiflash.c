@@ -32,6 +32,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "esp_log.h"
 #include "esp_vfs.h"
 #include "esp_vfs_fat.h"
