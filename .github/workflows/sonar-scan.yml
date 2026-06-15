@@ -103,7 +103,7 @@ jobs:
           cd ../..
           gcovr -r . --sonarqube -o coverage.xml
 
-      - name: SonarQube Scan
+      - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
