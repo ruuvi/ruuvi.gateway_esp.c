@@ -722,6 +722,13 @@ nrf52fw_update_fw_step3(
     const nrf52fw_update_fw_cb_params_t* const p_cb_params,
     ruuvi_nrf52_fw_ver_t* const                p_nrf52_fw_ver)
 {
+    const nrf52fw_update_fw_cb_params_t cb_params = (NULL != p_cb_params) ? *p_cb_params
+                                                                          : (nrf52fw_update_fw_cb_params_t) {
+                                                                                .cb_progress         = NULL,
+                                                                                .p_param_cb_progress = NULL,
+                                                                                .cb_before_updating  = NULL,
+                                                                                .cb_after_updating   = NULL,
+                                                                            };
     if (!nrf52fw_read_info_txt(p_ffs, "info.txt", &p_tmp_data->fw_info))
     {
         LOG_ERR("%s failed", "nrf52fw_read_info_txt");
@@ -749,9 +756,9 @@ nrf52fw_update_fw_step3(
     }
 
     LOG_INFO("### Need to update firmware on nRF52");
-    if ((NULL != p_cb_params) && (NULL != p_cb_params->cb_before_updating))
+    if (NULL != cb_params.cb_before_updating)
     {
-        p_cb_params->cb_before_updating();
+        cb_params.cb_before_updating();
     }
     if (!nrf52fw_check_firmware(p_ffs, &p_tmp_data->tmp_buf, &p_tmp_data->fw_info))
     {
@@ -760,9 +767,9 @@ nrf52fw_update_fw_step3(
         {
             nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
         }
-        if ((NULL != p_cb_params) && (NULL != p_cb_params->cb_after_updating))
+        if (cb_params.cb_after_updating)
         {
-            p_cb_params->cb_after_updating(false);
+            cb_params.cb_after_updating(false);
         }
         return false;
     }
@@ -770,17 +777,17 @@ nrf52fw_update_fw_step3(
             p_ffs,
             &p_tmp_data->tmp_buf,
             &p_tmp_data->fw_info,
-            (NULL != p_cb_params) ? p_cb_params->cb_progress : NULL,
-            (NULL != p_cb_params) ? p_cb_params->p_param_cb_progress : NULL))
+            cb_params.cb_progress,
+            cb_params.p_param_cb_progress))
     {
         LOG_ERR("%s failed", "nrf52fw_flash_write_firmware");
         if (NULL != p_nrf52_fw_ver)
         {
             nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
         }
-        if ((NULL != p_cb_params) && (NULL != p_cb_params->cb_after_updating))
+        if (cb_params.cb_after_updating)
         {
-            p_cb_params->cb_after_updating(false);
+            cb_params.cb_after_updating(false);
         }
         return false;
     }
@@ -791,15 +798,15 @@ nrf52fw_update_fw_step3(
         {
             *p_nrf52_fw_ver = p_tmp_data->cur_fw_ver;
         }
-        if ((NULL != p_cb_params) && (NULL != p_cb_params->cb_after_updating))
+        if (cb_params.cb_after_updating)
         {
-            p_cb_params->cb_after_updating(false);
+            cb_params.cb_after_updating(false);
         }
         return false;
     }
-    if ((NULL != p_cb_params) && (NULL != p_cb_params->cb_after_updating))
+    if (cb_params.cb_after_updating)
     {
-        p_cb_params->cb_after_updating(true);
+        cb_params.cb_after_updating(true);
     }
     if (NULL != p_nrf52_fw_ver)
     {
