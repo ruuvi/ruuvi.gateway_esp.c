@@ -767,7 +767,7 @@ nrf52fw_update_fw_step3(
         {
             nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
         }
-        if (cb_params.cb_after_updating)
+        if (NULL != cb_params.cb_after_updating)
         {
             cb_params.cb_after_updating(false);
         }
@@ -785,7 +785,7 @@ nrf52fw_update_fw_step3(
         {
             nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
         }
-        if (cb_params.cb_after_updating)
+        if (NULL != cb_params.cb_after_updating)
         {
             cb_params.cb_after_updating(false);
         }
@@ -798,13 +798,13 @@ nrf52fw_update_fw_step3(
         {
             *p_nrf52_fw_ver = p_tmp_data->cur_fw_ver;
         }
-        if (cb_params.cb_after_updating)
+        if (NULL != cb_params.cb_after_updating)
         {
             cb_params.cb_after_updating(false);
         }
         return false;
     }
-    if (cb_params.cb_after_updating)
+    if (NULL != cb_params.cb_after_updating)
     {
         cb_params.cb_after_updating(true);
     }
