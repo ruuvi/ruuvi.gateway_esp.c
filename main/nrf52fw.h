@@ -72,6 +72,14 @@ typedef struct nrf52fw_progress_info_t
     void* const         p_param_cb_progress;
 } nrf52fw_progress_info_t;
 
+typedef struct nrf52fw_update_fw_cb_params_t
+{
+    nrf52fw_cb_progress const        cb_progress;
+    void* const                      p_param_cb_progress;
+    nrf52fw_cb_before_updating const cb_before_updating;
+    nrf52fw_cb_after_updating const  cb_after_updating;
+} nrf52fw_update_fw_cb_params_t;
+
 void
 nrf52fw_set_manual_reset_mode(const bool flag_manual_reset_mode);
 
@@ -83,13 +91,10 @@ nrf52fw_hw_reset_nrf52(const bool flag_reset);
 
 bool
 nrf52fw_update_fw_if_necessary(
-    const char* const           p_fatfs_nrf52_partition_name,
-    nrf52fw_cb_progress         cb_progress,
-    void* const                 p_param_cb_progress,
-    nrf52fw_cb_before_updating  cb_before_updating,
-    nrf52fw_cb_after_updating   cb_after_updating,
-    ruuvi_nrf52_fw_ver_t* const p_nrf52_fw_ver,
-    const bool                  flag_run_fw_after_update);
+    const char* const                          p_fatfs_nrf52_partition_name,
+    const nrf52fw_update_fw_cb_params_t* const p_cb_params,
+    ruuvi_nrf52_fw_ver_t* const                p_nrf52_fw_ver,
+    const bool                                 flag_run_fw_after_update);
 
 bool
 nrf52fw_software_reset(void);

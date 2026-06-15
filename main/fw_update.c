@@ -850,13 +850,17 @@ fw_update_do_actions(void)
 
     fw_update_set_stage_nrf52_updating();
 
+    const nrf52fw_update_fw_cb_params_t update_fw_cb_params = {
+        .cb_progress         = &fw_update_nrf52fw_cb_progress,
+        .p_param_cb_progress = NULL,
+        .cb_before_updating  = &fw_update_nrf52fw_cb_before_updating,
+        .cb_after_updating   = &fw_update_nrf52fw_cb_after_updating,
+    };
+
     LOG_INFO("nrf52fw_update_fw_if_necessary");
     if (!nrf52fw_update_fw_if_necessary(
             fw_update_get_current_fatfs_nrf52_partition_name(),
-            &fw_update_nrf52fw_cb_progress,
-            NULL,
-            &fw_update_nrf52fw_cb_before_updating,
-            &fw_update_nrf52fw_cb_after_updating,
+            &update_fw_cb_params,
             NULL,
             false))
     {
