@@ -3174,10 +3174,10 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
     uint32_t                            cb_progress_cnt = 0;
     ruuvi_nrf52_fw_ver_t                fw_ver          = { 0 };
     const nrf52fw_update_fw_cb_params_t cb_params       = {
-              &cb_progress,
-              &cb_progress_cnt,
-              &cb_before_updating,
-              &cb_after_updating,
+              .cb_progress         = &cb_progress,
+              .p_param_cb_progress = &cb_progress_cnt,
+              .cb_before_updating  = &cb_before_updating,
+              .cb_after_updating   = &cb_after_updating,
     };
     ASSERT_TRUE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, &cb_params, &fw_ver, true));
 
