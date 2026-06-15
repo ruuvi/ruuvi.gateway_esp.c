@@ -74,10 +74,10 @@ typedef struct nrf52fw_progress_info_t
 
 typedef struct nrf52fw_update_fw_cb_params_t
 {
-    nrf52fw_cb_progress        cb_progress;
-    void*                      p_param_cb_progress;
-    nrf52fw_cb_before_updating cb_before_updating;
-    nrf52fw_cb_after_updating  cb_after_updating;
+    nrf52fw_cb_progress const        cb_progress;
+    void* const                      p_param_cb_progress;
+    nrf52fw_cb_before_updating const cb_before_updating;
+    nrf52fw_cb_after_updating const  cb_after_updating;
 } nrf52fw_update_fw_cb_params_t;
 
 void

@@ -820,7 +820,7 @@ nrf52fw_update_fw_step2(
     nrf52fw_update_tmp_data_t* p_tmp_data = os_calloc(1, sizeof(*p_tmp_data));
     if (NULL == p_tmp_data)
     {
-        LOG_ERR("%s failed", "os_malloc");
+        LOG_ERR("%s failed", "os_calloc");
         return false;
     }
     const bool result = nrf52fw_update_fw_step3(p_ffs, p_tmp_data, p_cb_params, p_nrf52_fw_ver);
