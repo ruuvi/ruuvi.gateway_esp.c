@@ -749,7 +749,7 @@ nrf52fw_update_fw_step3(
     }
 
     LOG_INFO("### Need to update firmware on nRF52");
-    if (NULL != p_cb_params->cb_before_updating)
+    if ((NULL != p_cb_params) && (NULL != p_cb_params->cb_before_updating))
     {
         p_cb_params->cb_before_updating();
     }
@@ -760,7 +760,7 @@ nrf52fw_update_fw_step3(
         {
             nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
         }
-        if (NULL != p_cb_params->cb_after_updating)
+        if ((NULL != p_cb_params) && (NULL != p_cb_params->cb_after_updating))
         {
             p_cb_params->cb_after_updating(false);
         }
@@ -770,15 +770,15 @@ nrf52fw_update_fw_step3(
             p_ffs,
             &p_tmp_data->tmp_buf,
             &p_tmp_data->fw_info,
-            p_cb_params->cb_progress,
-            p_cb_params->p_param_cb_progress))
+            (NULL != p_cb_params) ? p_cb_params->cb_progress : NULL,
+            (NULL != p_cb_params) ? p_cb_params->p_param_cb_progress : NULL))
     {
         LOG_ERR("%s failed", "nrf52fw_flash_write_firmware");
         if (NULL != p_nrf52_fw_ver)
         {
             nrf52fw_read_current_fw_ver(p_nrf52_fw_ver);
         }
-        if (NULL != p_cb_params->cb_after_updating)
+        if ((NULL != p_cb_params) && (NULL != p_cb_params->cb_after_updating))
         {
             p_cb_params->cb_after_updating(false);
         }
@@ -791,13 +791,13 @@ nrf52fw_update_fw_step3(
         {
             *p_nrf52_fw_ver = p_tmp_data->cur_fw_ver;
         }
-        if (NULL != p_cb_params->cb_after_updating)
+        if ((NULL != p_cb_params) && (NULL != p_cb_params->cb_after_updating))
         {
             p_cb_params->cb_after_updating(false);
         }
         return false;
     }
-    if (NULL != p_cb_params->cb_after_updating)
+    if ((NULL != p_cb_params) && (NULL != p_cb_params->cb_after_updating))
     {
         p_cb_params->cb_after_updating(true);
     }
