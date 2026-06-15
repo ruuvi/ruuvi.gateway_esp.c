@@ -719,8 +719,13 @@ ethernet_update_ip(void)
 }
 
 const flash_fat_fs_t*
-flashfatfs_mount(const char* mount_point, const char* partition_label, const flash_fat_fs_num_files_t max_files)
+flashfatfs_mount(
+    const char*                    mount_point,
+    const char*                    partition_label,
+    const flash_fat_fs_num_files_t max_files,
+    const bool                     flag_use_raw_fatfs)
 {
+    (void)flag_use_raw_fatfs;
     assert(!g_pTestClass->m_is_fatfs_mounted);
     if (g_pTestClass->m_is_fatfs_mount_fail)
     {

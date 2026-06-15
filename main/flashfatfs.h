@@ -33,7 +33,11 @@ typedef struct flash_fat_fs_t flash_fat_fs_t;
 typedef int flash_fat_fs_num_files_t;
 
 const flash_fat_fs_t*
-flashfatfs_mount(const char* mount_point, const char* partition_label, const flash_fat_fs_num_files_t max_files);
+flashfatfs_mount(
+    const char*                    mount_point,
+    const char*                    partition_label,
+    const flash_fat_fs_num_files_t max_files,
+    const bool                     flag_use_raw_fatfs);
 
 bool
 flashfatfs_unmount(const flash_fat_fs_t** pp_ffs);

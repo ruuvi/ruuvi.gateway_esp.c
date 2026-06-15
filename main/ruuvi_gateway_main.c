@@ -480,6 +480,7 @@ main_task_init(void)
     };
     if (!nrf52fw_update_fw_if_necessary(
             fw_update_get_current_fatfs_nrf52_partition_name(),
+            false,
             &update_fw_cb_params,
             &nrf52_fw_ver,
             true))

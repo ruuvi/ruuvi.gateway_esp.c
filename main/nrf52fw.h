@@ -92,6 +92,7 @@ nrf52fw_hw_reset_nrf52(const bool flag_reset);
 bool
 nrf52fw_update_fw_if_necessary(
     const char* const                          p_fatfs_nrf52_partition_name,
+    const bool                                 flag_try_using_raw_fatfs,
     const nrf52fw_update_fw_cb_params_t* const p_cb_params,
     ruuvi_nrf52_fw_ver_t* const                p_nrf52_fw_ver,
     const bool                                 flag_run_fw_after_update);
