@@ -186,6 +186,7 @@ protected:
         this->m_uicr_fw_ver                                     = 0xFFFFFFFFU;
         this->m_uicr_fw_ver_simulate_write_error                = false;
         this->m_uicr_fw_ver_simulate_read_error                 = false;
+        this->m_uicr_fw_ver_num_reads_before_error              = 0;
     }
 
     void
@@ -247,6 +248,7 @@ public:
     uint32_t                  m_uicr_fw_ver;
     bool                      m_uicr_fw_ver_simulate_write_error;
     bool                      m_uicr_fw_ver_simulate_read_error;
+    uint32_t                  m_uicr_fw_ver_num_reads_before_error;
 
     bool
     write_mem(const uint32_t addr, const uint32_t num_words, const uint32_t* p_buf)
@@ -301,6 +303,14 @@ public:
             if (this->m_uicr_fw_ver_simulate_read_error)
             {
                 return false;
+            }
+            if (0 != this->m_uicr_fw_ver_num_reads_before_error)
+            {
+                this->m_uicr_fw_ver_num_reads_before_error -= 1;
+                if (0 == this->m_uicr_fw_ver_num_reads_before_error)
+                {
+                    this->m_uicr_fw_ver_simulate_read_error = true;
+                }
             }
             *p_buf = this->m_uicr_fw_ver;
             return true;
@@ -4112,7 +4122,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_step2_no_mem) //
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Init SWD");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Mount partition 'fatfs_nrf52' to the mount point /fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Partition 'fatfs_nrf52' mounted successfully to /fs_nrf52");
-    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "os_malloc failed");
+    TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "os_calloc failed");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_INFO, "Unmount ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Hardware reset nRF52: true");
@@ -4809,6 +4819,112 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware__
     // nrf52fw_read_current_fw_ver should have been invoked to refresh fw_ver after the failure;
     // erase_all wipes the UICR, so the version reads back as 0xFFFFFFFF.
     ASSERT_EQ(0xFFFFFFFFU, fw_ver.version);
+
+    esp_log_wrapper_clear();
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_current_fw_ver_after_flash) // NOLINT
+{
+    const char* segment1_path = "segment_1.bin";
+    const char* segment2_path = "segment_2.bin";
+    const char* segment3_path = "segment_3.bin";
+
+    const size_t segment1_size = 2816;
+    const size_t segment2_size = 151016;
+    const size_t segment3_size = 24448;
+
+    uint32_t segment1_crc = 0;
+    uint32_t segment2_crc = 0;
+    uint32_t segment3_crc = 0;
+
+    std::unique_ptr<uint32_t[]> segment1_buf(new uint32_t[segment1_size / sizeof(uint32_t)]);
+    {
+        for (int i = 0; i < segment1_size / sizeof(uint32_t); ++i)
+        {
+            segment1_buf[i] = 0xAA000000 + i;
+        }
+        segment1_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment1_buf.get()), segment1_size);
+        this->m_fd   = this->open_file(segment1_path, "wb");
+        ASSERT_NE(nullptr, this->m_fd);
+        fwrite(segment1_buf.get(), 1, segment1_size, this->m_fd);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    std::unique_ptr<uint32_t[]> segment2_buf(new uint32_t[segment2_size / sizeof(uint32_t)]);
+    {
+        for (int i = 0; i < segment2_size / sizeof(uint32_t); ++i)
+        {
+            segment2_buf[i] = 0xBB000000 + i;
+        }
+        segment2_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment2_buf.get()), segment2_size);
+        this->m_fd   = this->open_file(segment2_path, "wb");
+        ASSERT_NE(nullptr, this->m_fd);
+        fwrite(segment2_buf.get(), 1, segment2_size, this->m_fd);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    std::unique_ptr<uint32_t[]> segment3_buf(new uint32_t[segment3_size / sizeof(uint32_t)]);
+    {
+        for (int i = 0; i < segment3_size / sizeof(uint32_t); ++i)
+        {
+            segment3_buf[i] = 0xCC000000 + i;
+        }
+        segment3_crc = crc32_le(0, reinterpret_cast<const uint8_t*>(segment3_buf.get()), segment3_size);
+        this->m_fd   = this->open_file(segment3_path, "wb");
+        ASSERT_NE(nullptr, this->m_fd);
+        fwrite(segment3_buf.get(), 1, segment3_size, this->m_fd);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    {
+        this->m_fd = this->open_file("info.txt", "w");
+        ASSERT_NE(nullptr, this->m_fd);
+        fprintf(this->m_fd, "# v1.2.3\n");
+        fprintf(this->m_fd, "0x00000000 %u %s 0x%08x\n", (unsigned)segment1_size, segment1_path, segment1_crc);
+        fprintf(this->m_fd, "0x00001000 %u %s 0x%08x\n", (unsigned)segment2_size, segment2_path, segment2_crc);
+        fprintf(this->m_fd, "0x00026000 %u %s 0x%08x\n", (unsigned)segment3_size, segment3_path, segment3_crc);
+        fclose(this->m_fd);
+        this->m_fd = nullptr;
+    }
+
+    this->m_uicr_fw_ver = 0x01020000;
+    this->m_memSegmentsRead.emplace_back(MemSegment(0x00000000, segment1_size / sizeof(uint32_t), segment1_buf.get()));
+    this->m_memSegmentsRead.emplace_back(MemSegment(0x00001000, segment2_size / sizeof(uint32_t), segment2_buf.get()));
+    this->m_memSegmentsRead.emplace_back(MemSegment(0x00026000, segment3_size / sizeof(uint32_t), segment3_buf.get()));
+
+    this->cb_before_updating_cnt     = 0;
+    this->cb_after_updating_cnt      = 0;
+    uint32_t             cb_prog_cnt = 0;
+    ruuvi_nrf52_fw_ver_t fw_ver      = { 0xDEADBEEF };
+    // The post-flash nrf52fw_read_current_fw_ver(&p_tmp_data->cur_fw_ver) is the 3rd UICR read
+    // (the 1st is the pre-update version check, the 2nd happens inside nrf52fw_flash_write_firmware
+    // to decide whether to write the UICR version). After 2 successful reads the mock flips the
+    // simulate-read-error flag so that the 3rd read fails, exercising the post-flash failure
+    // branch (cb_after_updating(false)).
+    this->m_uicr_fw_ver_num_reads_before_error    = 2;
+    const nrf52fw_update_fw_cb_params_t cb_params = {
+        .cb_progress         = &cb_progress,
+        .p_param_cb_progress = &cb_prog_cnt,
+        .cb_before_updating  = &cb_before_updating,
+        .cb_after_updating   = &cb_after_updating,
+    };
+    ASSERT_FALSE(nrf52fw_update_fw_if_necessary(GW_NRF_PARTITION, &cb_params, &fw_ver, true));
+
+    ASSERT_EQ(1, this->cb_before_updating_cnt);
+    ASSERT_EQ(1, this->cb_after_updating_cnt);
+    ASSERT_LT(0, cb_prog_cnt);
+    ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
+    ASSERT_EQ(3, this->m_memSegmentsWrite.size());
+    // After a failed post-flash read, the temporary cur_fw_ver (loaded earlier from UICR
+    // before the simulated read error was activated) is copied into p_nrf52_fw_ver.
+    ASSERT_EQ(0x01020000U, fw_ver.version);
+
+    // Reset the simulated read error so subsequent calls in tear-down work normally.
+    this->m_uicr_fw_ver_simulate_read_error = false;
 
     esp_log_wrapper_clear();
     ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
