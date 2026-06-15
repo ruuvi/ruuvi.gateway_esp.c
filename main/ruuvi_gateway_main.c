@@ -471,13 +471,16 @@ main_task_init(void)
 
     leds_notify_nrf52_fw_check();
     vTaskDelay(pdMS_TO_TICKS(750)); // give time for leds_task to turn off the red LED
-    ruuvi_nrf52_fw_ver_t nrf52_fw_ver = { 0 };
+    ruuvi_nrf52_fw_ver_t                nrf52_fw_ver        = { 0 };
+    const nrf52fw_update_fw_cb_params_t update_fw_cb_params = {
+        .cb_progress         = &fw_update_nrf52fw_cb_progress,
+        .p_param_cb_progress = NULL,
+        .cb_before_updating  = &cb_before_nrf52_fw_updating,
+        .cb_after_updating   = &cb_after_nrf52_fw_updating,
+    };
     if (!nrf52fw_update_fw_if_necessary(
             fw_update_get_current_fatfs_nrf52_partition_name(),
-            &fw_update_nrf52fw_cb_progress,
-            NULL,
-            &cb_before_nrf52_fw_updating,
-            &cb_after_nrf52_fw_updating,
+            &update_fw_cb_params,
             &nrf52_fw_ver,
             true))
     {
