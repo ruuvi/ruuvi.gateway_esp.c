@@ -8,3 +8,6 @@ that is distributed as a part of curl.
 
 Another alternative would be to download the finished list directly from the curl website: 
 [CA certificates extracted from Mozilla](https://curl.se/docs/caextract.html)
+
+After downloading the file, update the path to the file in the project configuration `sdkconfig`:
+`CONFIG_MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE_PATH`

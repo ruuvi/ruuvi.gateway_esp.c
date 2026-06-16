@@ -1,0 +1,75 @@
+name: Check CA Bundle
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ '*' ]
+    types: [opened, synchronize, reopened]
+  schedule:
+    # Run weekly (Monday 06:00 UTC) so updates are noticed even without commits.
+    # NOTE: scheduled runs only fire on the repository's default branch.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-ca-bundle:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Verify bundled Mozilla CA certificates are up-to-date
+        id: check
+        run: bash scripts/check_ca_bundle_up_to_date.sh
+
+      # On a scheduled run, open (or keep open) a tracking issue when the
+      # bundle is stale, so the maintainer sees it even without checking the
+      # Actions tab. Updates an existing open issue instead of spamming a new
+      # one every week.
+      - name: Open issue if CA bundle is stale
+        if: failure() && github.event_name == 'schedule'
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          filename: .github/CA_BUNDLE_STALE_ISSUE.md
+          update_existing: true
+          search_existing: open
+
+      # When a scheduled run finally passes, close any previously-opened
+      # tracking issue so the alert clears itself once the bundle is refreshed.
+      - name: Close stale-bundle issue on success
+        if: success() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'CA bundle (esp_crt_bundle/cacert.pem) is out of date';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              state: 'open',
+              labels: 'maintenance',
+              per_page: 100,
+            });
+            for (const issue of issues) {
+              if (issue.title === title) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo:  context.repo.repo,
+                  issue_number: issue.number,
+                  body: `Resolved automatically: the bundled CA certificates are up-to-date again as of run ${context.runId}.`,
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo:  context.repo.repo,
+                  issue_number: issue.number,
+                  state: 'closed',
+                });
+              }
+            }
