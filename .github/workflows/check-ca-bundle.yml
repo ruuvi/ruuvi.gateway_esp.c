@@ -22,14 +22,35 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
+    # Expose the script's raw exit code to downstream jobs so they can
+    # distinguish "bundle is stale" (1) from "internal error" (2) — the
+    # built-in `needs.<job>.result` (success/failure) cannot tell them apart.
+    outputs:
+      exit_code: ${{ steps.run.outputs.exit_code }}
 
     steps:
       - name: Check out code
         uses: actions/checkout@v6
 
+      # Capture the script's exit code without failing the step, so that
+      # the `gate` step below can both (a) propagate it to downstream jobs
+      # via a step output, and (b) still mark this job as failed when the
+      # bundle is stale (exit 1) or the check errored (exit 2).
       - name: Verify bundled Mozilla CA certificates are up-to-date
-        id: check
-        run: bash scripts/check_ca_bundle_up_to_date.sh
+        id: run
+        shell: bash
+        run: |
+          set +e
+          bash scripts/check_ca_bundle_up_to_date.sh
+          rc=$?
+          echo "exit_code=${rc}" >> "${GITHUB_OUTPUT}"
+          exit 0
+
+      - name: Fail the job if the check did not succeed
+        if: steps.run.outputs.exit_code != '0'
+        run: |
+          echo "::error::scripts/check_ca_bundle_up_to_date.sh exited with code ${{ steps.run.outputs.exit_code }}"
+          exit 1
 
   # Schedule-only job that opens or closes a tracking issue based on the
   # outcome of `check-ca-bundle`. Kept as a separate job so `issues: write`
@@ -47,24 +68,35 @@ jobs:
       - name: Open or close the CA-bundle tracking issue
         uses: actions/github-script@v7
         env:
-          CHECK_RESULT: ${{ needs.check-ca-bundle.result }}
+          CHECK_EXIT_CODE: ${{ needs.check-ca-bundle.outputs.exit_code }}
           CHECK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           script: |
             const title  = 'CA bundle (esp_crt_bundle/cacert.pem) is out of date';
-            const labels = ['maintenance', 'security'];
-            const stale  = process.env.CHECK_RESULT === 'failure';
             const runUrl = process.env.CHECK_RUN_URL;
+            const exit   = process.env.CHECK_EXIT_CODE;
+            // 0 = bundle fresh, 1 = bundle stale, anything else = internal error
+            // (download/parse failure, etc.). Internal errors must NOT toggle
+            // the tracking issue, otherwise transient outages would create
+            // misleading "out of date" reports.
+            if (exit !== '0' && exit !== '1') {
+              core.warning(
+                `CA-bundle check exited with code '${exit}' (internal error). ` +
+                `Leaving the tracking issue untouched. See ${runUrl}.`);
+              return;
+            }
+            const stale = exit === '1';
 
             // Find any existing open tracking issue with this exact title.
-            const { data: openIssues } = await github.rest.issues.listForRepo({
+            // The repository does not define dedicated labels for this check,
+            // so we identify the issue purely by its (constant) title.
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo:  context.repo.repo,
               state: 'open',
-              labels: 'maintenance',
               per_page: 100,
             });
-            const existing = openIssues.find(i => i.title === title);
+            const existing = issues.find(i => i.title === title && !i.pull_request);
 
             if (stale) {
               const body = [
@@ -103,7 +135,6 @@ jobs:
                   repo:  context.repo.repo,
                   title,
                   body,
-                  labels,
                 });
                 core.notice(`Opened tracking issue #${created.number}.`);
               }
@@ -112,7 +143,7 @@ jobs:
                 owner: context.repo.owner,
                 repo:  context.repo.repo,
                 issue_number: existing.number,
-                body: `Resolved automatically: the bundled CA certificates are up-to-date again as of ${runUrl}.`,
+                body: `Resolved automatically: the bundled CA certificates are up-to-date again. See ${runUrl}.`,
               });
               await github.rest.issues.update({
                 owner: context.repo.owner,
