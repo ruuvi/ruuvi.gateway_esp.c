@@ -12,13 +12,18 @@ on:
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
+# Workflow-level permissions are kept minimal. The tracking-issue steps run
+# only on scheduled runs and request `issues: write` at the job level below.
 permissions:
   contents: read
-  issues: write
 
 jobs:
   check-ca-bundle:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      # Needed only for the scheduled "Open/Close stale-bundle issue" steps.
+      issues: write
 
     steps:
       - name: Check out code

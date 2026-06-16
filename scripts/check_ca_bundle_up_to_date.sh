@@ -52,6 +52,10 @@ done
 # Extract the "Certificate data from Mozilla as of: ..." date from a PEM bundle
 # and convert it to YYYY-MM-DD (UTC). Prints the date on stdout, or returns
 # non-zero if the header line is missing or unparsable.
+#
+# The date is parsed with Python (already a project dependency) rather than
+# `date -d`, which is a GNU-coreutils extension and is not available on
+# macOS/BSD.
 extract_bundle_date() {
     local file="$1"
     local label="$2"
@@ -64,7 +68,25 @@ extract_bundle_date() {
     fi
 
     date_str="${header_line#*as of: }"
-    if ! date_utc="$(date -u -d "${date_str}" +%Y-%m-%d 2>/dev/null)"; then
+    if ! date_utc="$(
+        DATE_STR="${date_str}" python3 - <<'PY' 2>/dev/null
+import os, sys
+from datetime import datetime, timezone
+
+s = os.environ["DATE_STR"].strip()
+# Curl publishes timestamps like:  "Tue May 20 03:12:02 2025 GMT"
+for fmt in ("%a %b %d %H:%M:%S %Y %Z", "%a %b %d %H:%M:%S %Y"):
+    try:
+        dt = datetime.strptime(s, fmt)
+        # The bundle's "as of" timestamp is always in GMT/UTC.
+        dt = dt.replace(tzinfo=timezone.utc)
+        print(dt.strftime("%Y-%m-%d"))
+        sys.exit(0)
+    except ValueError:
+        continue
+sys.exit(1)
+PY
+    )"; then
         err "Failed to parse date string from ${label}: '${date_str}'"
         return 1
     fi
