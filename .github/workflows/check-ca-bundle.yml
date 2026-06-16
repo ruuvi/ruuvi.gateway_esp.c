@@ -12,8 +12,8 @@ on:
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
-# Workflow-level permissions are kept minimal. The tracking-issue steps run
-# only on scheduled runs and request `issues: write` at the job level below.
+# Workflow-level permissions are kept minimal. The `notify` job below
+# requests `issues: write` at the job level, and it only runs on `schedule`.
 permissions:
   contents: read
 
@@ -22,8 +22,6 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
-      # Needed only for the scheduled "Open/Close stale-bundle issue" steps.
-      issues: write
 
     steps:
       - name: Check out code
@@ -33,48 +31,96 @@ jobs:
         id: check
         run: bash scripts/check_ca_bundle_up_to_date.sh
 
-      # On a scheduled run, open (or keep open) a tracking issue when the
-      # bundle is stale, so the maintainer sees it even without checking the
-      # Actions tab. Updates an existing open issue instead of spamming a new
-      # one every week.
-      - name: Open issue if CA bundle is stale
-        if: failure() && github.event_name == 'schedule'
-        uses: JasonEtco/create-an-issue@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          filename: .github/CA_BUNDLE_STALE_ISSUE.md
-          update_existing: true
-          search_existing: open
+  # Schedule-only job that opens or closes a tracking issue based on the
+  # outcome of `check-ca-bundle`. Kept as a separate job so `issues: write`
+  # is granted only for scheduled runs (GitHub Actions permissions are
+  # job-scoped, not step-scoped).
+  notify:
+    needs: check-ca-bundle
+    if: github.event_name == 'schedule' && always()
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      issues: write
 
-      # When a scheduled run finally passes, close any previously-opened
-      # tracking issue so the alert clears itself once the bundle is refreshed.
-      - name: Close stale-bundle issue on success
-        if: success() && github.event_name == 'schedule'
+    steps:
+      - name: Open or close the CA-bundle tracking issue
         uses: actions/github-script@v7
+        env:
+          CHECK_RESULT: ${{ needs.check-ca-bundle.result }}
+          CHECK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           script: |
-            const title = 'CA bundle (esp_crt_bundle/cacert.pem) is out of date';
-            const { data: issues } = await github.rest.issues.listForRepo({
+            const title  = 'CA bundle (esp_crt_bundle/cacert.pem) is out of date';
+            const labels = ['maintenance', 'security'];
+            const stale  = process.env.CHECK_RESULT === 'failure';
+            const runUrl = process.env.CHECK_RUN_URL;
+
+            // Find any existing open tracking issue with this exact title.
+            const { data: openIssues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo:  context.repo.repo,
               state: 'open',
               labels: 'maintenance',
               per_page: 100,
             });
-            for (const issue of issues) {
-              if (issue.title === title) {
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo:  context.repo.repo,
-                  issue_number: issue.number,
-                  body: `Resolved automatically: the bundled CA certificates are up-to-date again as of run ${context.runId}.`,
-                });
+            const existing = openIssues.find(i => i.title === title);
+
+            if (stale) {
+              const body = [
+                'The scheduled **Check CA Bundle** workflow found a newer Mozilla CA',
+                'certificate bundle on https://curl.se/docs/caextract.html.',
+                '',
+                'The bundle embedded in the firmware (`esp_crt_bundle/cacert.pem`)',
+                'should be refreshed so that TLS connections continue to trust',
+                'newly-added roots and stop trusting roots that have been removed.',
+                '',
+                `**Failing run:** ${runUrl}`,
+                '',
+                '### How to update',
+                '',
+                '```bash',
+                'scripts/check_ca_bundle_up_to_date.sh --update',
+                'git add esp_crt_bundle/cacert.pem',
+                'git commit -m "esp_crt_bundle: update Mozilla CA bundle"',
+                '```',
+                '',
+                'The next successful scheduled run of this workflow will close',
+                'this issue automatically.',
+              ].join('\n');
+
+              if (existing) {
                 await github.rest.issues.update({
                   owner: context.repo.owner,
                   repo:  context.repo.repo,
-                  issue_number: issue.number,
-                  state: 'closed',
+                  issue_number: existing.number,
+                  body,
                 });
+                core.notice(`Refreshed tracking issue #${existing.number}.`);
+              } else {
+                const { data: created } = await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo:  context.repo.repo,
+                  title,
+                  body,
+                  labels,
+                });
+                core.notice(`Opened tracking issue #${created.number}.`);
               }
+            } else if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: existing.number,
+                body: `Resolved automatically: the bundled CA certificates are up-to-date again as of ${runUrl}.`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+              core.notice(`Closed tracking issue #${existing.number}.`);
+            } else {
+              core.info('Bundle is up-to-date and no tracking issue is open. Nothing to do.');
             }

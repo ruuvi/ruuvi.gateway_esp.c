@@ -108,7 +108,7 @@ info "Local bundle:  ${LOCAL_FILE} (date: ${local_date})"
 
 # --- Download the remote bundle --------------------------------------------
 
-tmpfile="$(mktemp)"
+tmpfile="$(mktemp "${TMPDIR:-/tmp}/cacert.XXXXXX")"
 trap 'rm -f "${tmpfile}"' EXIT
 
 if ! curl --silent --show-error --fail --location \
