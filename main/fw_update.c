@@ -860,6 +860,7 @@ fw_update_do_actions(void)
     LOG_INFO("nrf52fw_update_fw_if_necessary");
     if (!nrf52fw_update_fw_if_necessary(
             fw_update_get_current_fatfs_nrf52_partition_name(),
+            true,
             &update_fw_cb_params,
             NULL,
             false))

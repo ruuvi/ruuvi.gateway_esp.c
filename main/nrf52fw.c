@@ -839,12 +839,17 @@ NRF52FW_STATIC
 bool
 nrf52fw_update_fw_step1(
     const char* const                          p_fatfs_nrf52_partition_name,
+    const bool                                 flag_try_using_raw_fatfs,
     const nrf52fw_update_fw_cb_params_t* const p_cb_params,
     ruuvi_nrf52_fw_ver_t* const                p_nrf52_fw_ver)
 {
     const flash_fat_fs_num_files_t max_num_files = 1;
 
-    const flash_fat_fs_t* p_ffs = flashfatfs_mount("/fs_nrf52", p_fatfs_nrf52_partition_name, max_num_files);
+    const flash_fat_fs_t* p_ffs = flashfatfs_mount(
+        "/fs_nrf52",
+        p_fatfs_nrf52_partition_name,
+        max_num_files,
+        flag_try_using_raw_fatfs);
     if (NULL == p_ffs)
     {
         LOG_ERR("%s failed", "flashfatfs_mount");
@@ -859,6 +864,7 @@ NRF52FW_STATIC
 bool
 nrf52fw_update_fw_step0(
     const char* const                          p_fatfs_nrf52_partition_name,
+    const bool                                 flag_try_using_raw_fatfs,
     const nrf52fw_update_fw_cb_params_t* const p_cb_params,
     ruuvi_nrf52_fw_ver_t* const                p_nrf52_fw_ver,
     const bool                                 flag_run_fw_after_update)
@@ -869,7 +875,11 @@ nrf52fw_update_fw_step0(
         return false;
     }
 
-    bool result = nrf52fw_update_fw_step1(p_fatfs_nrf52_partition_name, p_cb_params, p_nrf52_fw_ver);
+    bool result = nrf52fw_update_fw_step1(
+        p_fatfs_nrf52_partition_name,
+        flag_try_using_raw_fatfs,
+        p_cb_params,
+        p_nrf52_fw_ver);
 
     if (result && flag_run_fw_after_update)
     {
@@ -902,6 +912,7 @@ nrf52fw_hw_reset_nrf52(const bool flag_reset)
 bool
 nrf52fw_update_fw_if_necessary(
     const char* const                          p_fatfs_nrf52_partition_name,
+    const bool                                 flag_try_using_raw_fatfs,
     const nrf52fw_update_fw_cb_params_t* const p_cb_params,
     ruuvi_nrf52_fw_ver_t* const                p_nrf52_fw_ver,
     const bool                                 flag_run_fw_after_update)
@@ -916,6 +927,7 @@ nrf52fw_update_fw_if_necessary(
 
     const bool res = nrf52fw_update_fw_step0(
         p_fatfs_nrf52_partition_name,
+        flag_try_using_raw_fatfs,
         p_cb_params,
         p_nrf52_fw_ver,
         flag_run_fw_after_update);

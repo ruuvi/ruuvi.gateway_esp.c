@@ -31,19 +31,27 @@ struct flash_fat_fs_t
 {
     char*       mount_point;
     wl_handle_t wl_handle;
+    char*       partition_label;
+    bool        flag_use_raw_flash;
 };
 
 const flash_fat_fs_t*
-flashfatfs_mount(const char* mount_point, const char* partition_label, const flash_fat_fs_num_files_t max_files)
+flashfatfs_mount(
+    const char*                    mount_point,
+    const char*                    partition_label,
+    const flash_fat_fs_num_files_t max_files,
+    const bool                     flag_use_raw_fatfs)
 {
     const char* mount_point_prefix = "";
 #if RUUVI_TESTS_NRF52FW || RUUVI_TESTS_FLASHFATFS
     mount_point_prefix = (mount_point[0] == '/') ? "." : "";
 #endif
-    size_t mount_point_buf_size = strlen(mount_point_prefix) + strlen(mount_point) + 1;
+    size_t mount_point_buf_size     = strlen(mount_point_prefix) + strlen(mount_point) + 1;
+    size_t partition_label_buf_size = strlen(partition_label) + 1;
 
     LOG_INFO("Mount partition '%s' to the mount point %s", partition_label, mount_point);
-    flash_fat_fs_t* p_obj = os_calloc(1, sizeof(*p_obj) + mount_point_buf_size);
+
+    flash_fat_fs_t* p_obj = os_calloc(1, sizeof(*p_obj) + mount_point_buf_size + partition_label_buf_size);
     if (NULL == p_obj)
     {
         LOG_ERR("Can't allocate memory");
@@ -51,8 +59,35 @@ flashfatfs_mount(const char* mount_point, const char* partition_label, const fla
     }
     p_obj->mount_point = (void*)(p_obj + 1);
     snprintf(p_obj->mount_point, mount_point_buf_size, "%s%s", mount_point_prefix, mount_point);
+    p_obj->partition_label = p_obj->mount_point + mount_point_buf_size;
+    snprintf(p_obj->partition_label, partition_label_buf_size, "%s", partition_label);
+    p_obj->flag_use_raw_flash = false;
 
-    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+    if (flag_use_raw_fatfs)
+    {
+        const esp_vfs_fat_mount_config_t mount_config_fat = {
+            .format_if_mount_failed = false,
+            .max_files              = max_files,
+            .allocation_unit_size   = 512U,
+        };
+
+        LOG_INFO(
+            "Try to mount partition '%s' as FATFS (raw flash) to the mount point %s",
+            partition_label,
+            mount_point);
+        const esp_err_t err = esp_vfs_fat_rawflash_mount(p_obj->mount_point, p_obj->partition_label, &mount_config_fat);
+        if (ESP_OK == err)
+        {
+            p_obj->flag_use_raw_flash = true;
+            LOG_INFO("Partition '%s' mounted successfully to %s as FATFS on raw flash", partition_label, mount_point);
+            return p_obj;
+        }
+        LOG_ERR_ESP(err, "%s failed", "esp_vfs_fat_rawflash_mount");
+        LOG_WARN("Try to mount partition as SPI-Flash FATFS");
+    }
+
+    LOG_INFO("Mount partition '%s' as FATFS (SPI-Flash) to the mount point %s", partition_label, mount_point);
+    const esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = false,
         .max_files              = max_files,
         .allocation_unit_size   = 512U,
@@ -64,7 +99,7 @@ flashfatfs_mount(const char* mount_point, const char* partition_label, const fla
         os_free(p_obj);
         return NULL;
     }
-    LOG_INFO("Partition '%s' mounted successfully to %s", partition_label, mount_point);
+    LOG_INFO("Partition '%s' mounted successfully to %s as FATFS on SPI-Flash", partition_label, mount_point);
     return p_obj;
 }
 
@@ -73,12 +108,27 @@ flashfatfs_unmount(const flash_fat_fs_t** pp_ffs)
 {
     const flash_fat_fs_t* p_ffs = *pp_ffs;
     LOG_INFO("Unmount %s", p_ffs->mount_point);
-    const esp_err_t err = esp_vfs_fat_spiflash_unmount(p_ffs->mount_point, p_ffs->wl_handle);
+    esp_err_t err = ESP_FAIL;
+    if (p_ffs->flag_use_raw_flash)
+    {
+        err = esp_vfs_fat_rawflash_unmount(p_ffs->mount_point, p_ffs->partition_label);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_vfs_fat_rawflash_unmount");
+        }
+    }
+    else
+    {
+        err = esp_vfs_fat_spiflash_unmount(p_ffs->mount_point, p_ffs->wl_handle);
+        if (ESP_OK != err)
+        {
+            LOG_ERR_ESP(err, "%s failed", "esp_vfs_fat_spiflash_unmount");
+        }
+    }
     os_free(p_ffs);
     *pp_ffs = NULL;
     if (ESP_OK != err)
     {
-        LOG_ERR_ESP(err, "%s failed", "esp_vfs_fat_spiflash_unmount");
         return false;
     }
     return true;
