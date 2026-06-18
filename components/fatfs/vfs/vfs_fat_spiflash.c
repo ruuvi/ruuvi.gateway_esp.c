@@ -158,6 +158,8 @@ fail:
     }
     if (diskio_registered) {
         ff_diskio_clear_pdrv_wl(*wl_handle);
+    }
+    if (pdrv != 0xFF) {
         ff_diskio_unregister(pdrv);
     }
     if (wl_mounted) {
@@ -247,7 +249,7 @@ fail:
     if (vfs_registered) {
         esp_vfs_fat_unregister_path(base_path);
     }
-    if (diskio_registered) {
+    if (diskio_registered || (pdrv != 0xFF)) {
         ff_diskio_unregister(pdrv);
     }
     return result;
