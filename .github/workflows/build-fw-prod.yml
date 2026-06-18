@@ -1,19 +1,30 @@
-name: Build Firmware
+name: Build Firmware (prod)
 
 on:
   push:
     branches: [ master ]
     tags: [ '*' ]
-  pull_request:
-    branches: [ '*' ]
-    types: [opened, synchronize, reopened]
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build Firmware
+    name: Build Firmware (prod)
+    environment: prod
     runs-on: ubuntu-22.04
+    # Use the default GITHUB_TOKEN permissions for this job; release publishing happens in a separate job.
+    env:
+      # Single source of truth for the files shipped as both the workflow
+      # artifact and the released version. Keep paths relative to
+      # the repository root and inside the `build/` directory.
+      RELEASE_FILES: |
+        build/ruuvi_gateway_esp.bin
+        build/binaries_v1.9.2/bootloader.bin
+        build/partition_table/partition-table.bin
+        build/ota_data_initial.bin
+        build/fatfs_nrf52.bin
+        build/fatfs_gwui.bin
+        build/gw_cfg_def.bin
 
     steps:
       - name: Check out code
@@ -71,6 +82,15 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare secure boot signing key
+        env:
+          SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
+        run: |
+          set +x # do not echo secrets
+          mkdir -p ~/.signing_keys
+          install -m 600 /dev/null ~/.signing_keys/secure_boot_signing_key.pem
+          printf "%s" "$SECURE_BOOT_SIGNING_KEY" > ~/.signing_keys/secure_boot_signing_key.pem
+
       - name: Run build
         run: |
           lsb_release -a          
@@ -93,11 +113,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ruuvi_gateway_fw
-          path: |
-            build/ruuvi_gateway_esp.bin
-            build/binaries_v1.9.2/bootloader.bin
-            build/partition_table/partition-table.bin
-            build/ota_data_initial.bin
-            build/fatfs_nrf52.bin
-            build/fatfs_gwui.bin
-            build/gw_cfg_def.bin
+          path: ${{ env.RELEASE_FILES }}
+

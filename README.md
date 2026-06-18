@@ -6,6 +6,66 @@ Developed with:
 
 Latest documentation and roadmap is at https://docs.ruuvi.com/gw-esp32-firmware. 
 
+## Firmware version migration (v1.16.2 → v1.16.3 → v1.17.x)
+
+Starting with **v1.17.0** the Ruuvi Gateway firmware is built with
+**Secure Boot v2 image signing** enabled, and OTA update logic on
+v1.17.x **rejects images that do not carry a valid signature**.
+Releases on the **v1.16.x line and earlier** were unsigned, so a
+direct OTA from v1.16.2 (or older) straight to v1.17.x is not
+possible — and a rollback from v1.17.x straight to an unsigned
+v1.16.2 image is not possible either.
+
+To make the transition between the unsigned and signed lines smooth
+and reversible, **v1.16.3 is shipped as an intermediate "bridge"
+release**:
+
+* it is itself **signed** with the same Secure Boot v2 scheme as
+  v1.17.x, so any v1.17.x device will accept it as an OTA image;
+* it **also accepts unsigned OTA images**, so it can still be reached
+  from v1.16.2 (and older) and can roll back to v1.16.2 if needed.
+
+```
+   unsigned                    bridge                        signed
+ +----------+  OTA upgrade   +----------+  OTA upgrade   +----------+
+ | v1.16.2  | -------------> | v1.16.3  | -------------> | v1.17.x  |
+ |(unsigned)| <------------- | (signed) |                | (signed) |
+ +----------+   rollback     +----------+                +----------+
+                                  ^                           |
+                                  +------ rollback -----------+
+```
+
+Supported OTA transitions:
+
+| From (running on device) | To (OTA target)         | Result                                     |
+|---|---|--------------------------------------------|
+| v1.16.2 (unsigned)       | v1.16.3 (signed bridge) | ✅ supported                                |
+| v1.16.3 (signed bridge)  | v1.16.2 (unsigned)      | ✅ supported (legacy rollback)              |
+| v1.16.3 (signed bridge)  | v1.17.x (signed)        | ✅ supported (final upgrade)                |
+| v1.17.x (signed)         | v1.16.3 (signed bridge) | ✅ supported (rollback to bridge)           |
+| v1.16.2 (unsigned)       | v1.17.x (signed)        | ✅ supported, see Note 1                    |
+| v1.17.x (signed)         | v1.16.2 (unsigned)      | ❌ rejected by design — must go via v1.16.3 |
+
+**Note 1:** The upgrade from v1.16.2 to v1.17.x is supported.
+However, during the manual upgrade process, a confusing error message
+stating that the upgrade has failed is displayed.
+
+**Recommended migration path for existing v1.16.2 devices:**
+
+1. OTA-upgrade to **v1.16.3** (the bridge release).
+2. Once the device is healthy on v1.16.3, OTA-upgrade to **v1.17.x**.
+
+If a rollback from v1.17.x is ever required, the supported target is
+v1.16.3; v1.16.2 remains reachable from v1.16.3.
+
+> **Note:** v1.16.3 is the **last** v1.16.x release. Its purpose is to
+> serve as the migration bridge to v1.17.x; no further unsigned
+> v1.16.x releases will be produced.
+>
+> Secure Boot is *not* burned into eFuse on v1.16.x devices
+> (`CONFIG_SECURE_BOOT_INSECURE=y`), so the change is purely a software
+> upgrade and does not lock the hardware in any way.
+
 ## Installing Prerequisites
 
 ### Driver installation for the USB-to-Serial converter **CH340**
