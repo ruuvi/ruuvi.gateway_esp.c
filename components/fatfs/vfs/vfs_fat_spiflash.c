@@ -90,7 +90,7 @@ esp_err_t esp_vfs_fat_spiflash_mount(const char* base_path,
     }
     diskio_registered = true;
 
-    FATFS *fs;
+    FATFS *fs = NULL;
     result = esp_vfs_fat_register(base_path, drv, mount_config->max_files, &fs);
     if (result == ESP_ERR_INVALID_STATE) {
         // it's okay, already registered with VFS
@@ -217,7 +217,7 @@ esp_err_t esp_vfs_fat_rawflash_mount(const char* base_path,
     }
     diskio_registered = true;
 
-    FATFS *fs;
+    FATFS *fs = NULL;
     result = esp_vfs_fat_register(base_path, drv, mount_config->max_files, &fs);
     if (result == ESP_ERR_INVALID_STATE) {
         // it's okay, already registered with VFS
