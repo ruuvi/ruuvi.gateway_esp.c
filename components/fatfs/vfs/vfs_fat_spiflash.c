@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Local overlay of ESP-IDF v4.2.2 components/fatfs/vfs/vfs_fat_spiflash.c
+// Local overlay of ESP-IDF v4.2.5 components/fatfs/vfs/vfs_fat_spiflash.c
 //
 // FIX (Ruuvi): The upstream `fail:` paths of both `esp_vfs_fat_spiflash_mount`
 // and `esp_vfs_fat_rawflash_mount` skip the FatFs deregistration step.
