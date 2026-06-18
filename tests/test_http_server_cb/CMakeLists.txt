@@ -144,11 +144,15 @@ set_target_properties(${ProjectId} PROPERTIES
         CXX_STANDARD 14
 )
 
+target_include_directories(${ProjectId} SYSTEM BEFORE PUBLIC
+        include
+)
+
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
-        include
+        ${COMPONENTS}/bootloader_support/include
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
         ${COMPONENTS}/esp_http_client/include
         $ENV{IDF_PATH}/components/json/cJSON
