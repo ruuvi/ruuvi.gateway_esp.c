@@ -296,7 +296,6 @@ fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
     }
     LOG_INFO("Signature of the running partition is valid.");
 
-    // Save public key digest of running partition for later comparison with pub key digest of firmware updates
     LOG_INFO("Calculating public key digest of running partition...");
     if (!esp_ota_helper_calc_pub_key_digest_for_app_image(
             &p_flash_info->image_metadata,
