@@ -291,14 +291,15 @@ fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
         .size   = p_flash_info->p_running_partition->size,
     };
 
-    LOG_INFO("Verifying signature of the running partition...");
+    LOG_INFO("Verifying running partition image...");
+    // The signature verification is disabled in components/bootloader_support/src/esp_image_format.c
     const esp_err_t err = esp_image_verify(ESP_IMAGE_VERIFY, &part_pos, &p_flash_info->image_metadata);
     if (ESP_OK != err)
     {
         LOG_ERR_ESP(err, "Failed to verify image in running partition");
         return false;
     }
-    LOG_INFO("Signature of the running partition is valid.");
+    LOG_INFO("Running partition image is valid.");
 
     LOG_INFO("Calculating public key digest of running partition...");
     if (!esp_ota_helper_calc_pub_key_digest_for_app_image(
