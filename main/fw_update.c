@@ -224,7 +224,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
             return false;
         }
         LOG_WARN(
-            "Can't find seconds partition for nRF52 firmware: %s, use the first one: %s",
+            "Can't find second partition for nRF52 firmware: %s, use the first one: %s",
             GW_NRF_PARTITION_2,
             GW_NRF_PARTITION);
         p_flash_info->p_next_fatfs_nrf52_partition = find_data_fat_partition_by_name(GW_NRF_PARTITION);
