@@ -318,6 +318,7 @@ fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
         != sizeof(ets_secure_boot_signature_t))
     {
         LOG_ERR("Invalid size of embedded signature for fatfs_gwui partition");
+        gateway_restart("Invalid size of embedded signature for fatfs_gwui partition");
         return false;
     }
 
@@ -340,6 +341,7 @@ fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
         != sizeof(ets_secure_boot_signature_t))
     {
         LOG_ERR("Invalid size of embedded signature for fatfs_nrf52 partition");
+        gateway_restart("Invalid size of embedded signature for fatfs_nrf52 partition");
         return false;
     }
 
