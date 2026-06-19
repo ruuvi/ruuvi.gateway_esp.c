@@ -11,10 +11,11 @@ Latest documentation and roadmap is at https://docs.ruuvi.com/gw-esp32-firmware.
 Starting with **v1.17.0** the Ruuvi Gateway firmware is built with
 **Secure Boot v2 image signing** enabled, and OTA update logic on
 v1.17.x **rejects images that do not carry a valid signature**.
-Releases on the **v1.16.x line and earlier** were unsigned, so a
-direct OTA from v1.16.2 (or older) straight to v1.17.x is not
-possible — and a rollback from v1.17.x straight to an unsigned
-v1.16.2 image is not possible either.
+Releases on the **v1.16.x line and earlier** were unsigned. A direct OTA
+from v1.16.2 (or older) straight to v1.17.x is *technically possible*,
+but v1.16.2 reports a misleading "upgrade failed" message before the
+reboot makes the upgrade visible. A rollback from v1.17.x straight to an
+unsigned v1.16.2 image is not possible.
 
 To make the transition between the unsigned and signed lines smooth
 and reversible, **v1.16.3 is shipped as an intermediate "bridge"
