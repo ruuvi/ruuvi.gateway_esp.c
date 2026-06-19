@@ -13,6 +13,7 @@
 #include "attribs.h"
 #include "fw_ver.h"
 #include "str_buf.h"
+#include "esp_ota_helpers.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,15 +24,18 @@ extern "C" {
 
 typedef struct ruuvi_flash_info_t
 {
-    bool                   is_valid;
-    bool                   is_ota0_active;
-    const esp_app_desc_t*  p_app_desc;
-    const esp_partition_t* p_boot_partition;
-    const esp_partition_t* p_running_partition;
-    esp_ota_img_states_t   running_partition_state;
-    const esp_partition_t* p_next_update_partition;
-    const esp_partition_t* p_next_fatfs_gwui_partition;
-    const esp_partition_t* p_next_fatfs_nrf52_partition;
+    bool                    is_ota0_active;
+    const esp_app_desc_t*   p_app_desc;
+    const esp_partition_t*  p_boot_partition;
+    const esp_partition_t*  p_running_partition;
+    esp_ota_img_states_t    running_partition_state;
+    const esp_partition_t*  p_cur_fatfs_gwui_partition;
+    const esp_partition_t*  p_cur_fatfs_nrf52_partition;
+    const esp_partition_t*  p_next_update_partition;
+    const esp_partition_t*  p_next_fatfs_gwui_partition;
+    const esp_partition_t*  p_next_fatfs_nrf52_partition;
+    esp_image_metadata_t    image_metadata;
+    esp_ota_sha256_digest_t running_app_pub_key_digest;
 } ruuvi_flash_info_t;
 
 typedef enum fw_update_reason_e
@@ -43,7 +47,7 @@ typedef enum fw_update_reason_e
 } fw_updating_reason_e;
 
 bool
-fw_update_read_flash_info(void);
+fw_update_read_flash_info_and_check_signatures(void);
 
 bool
 fw_update_mark_app_valid_cancel_rollback(void);

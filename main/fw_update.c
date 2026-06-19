@@ -19,6 +19,7 @@
 #include "leds.h"
 #include "gw_status.h"
 #include "os_malloc.h"
+#include "esp_ota_helpers.h"
 
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
@@ -134,8 +135,6 @@ fw_update_log_running_partition_state(const esp_ota_img_states_t running_partiti
 static bool
 fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
 {
-    p_flash_info->is_valid = false;
-
     p_flash_info->running_partition_state = ESP_OTA_IMG_UNDEFINED;
 
     p_flash_info->p_app_desc = esp_ota_get_app_description();
@@ -179,9 +178,21 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
         p_flash_info->p_next_update_partition->label,
         p_flash_info->p_next_update_partition->address,
         p_flash_info->p_next_update_partition->size);
+
+    const esp_partition_t* const p_gw_gwui = find_data_fat_partition_by_name(GW_GWUI_PARTITION);
+    if (NULL == p_gw_gwui)
+    {
+        LOG_ERR("Can't find first partition for gwui filesystem: %s", GW_GWUI_PARTITION);
+    }
+    const esp_partition_t* const p_gw_gwui2 = find_data_fat_partition_by_name(GW_GWUI_PARTITION_2);
+    if (NULL == p_gw_gwui2)
+    {
+        LOG_ERR("Can't find second partition for gwui filesystem: %s", GW_GWUI_PARTITION_2);
+    }
+
     p_flash_info->is_ota0_active = (0 == strcmp("ota_0", p_flash_info->p_running_partition->label)) ? true : false;
-    const char* const p_gwui_parition_name    = p_flash_info->is_ota0_active ? GW_GWUI_PARTITION_2 : GW_GWUI_PARTITION;
-    p_flash_info->p_next_fatfs_gwui_partition = find_data_fat_partition_by_name(p_gwui_parition_name);
+    p_flash_info->p_cur_fatfs_gwui_partition  = p_flash_info->is_ota0_active ? p_gw_gwui : p_gw_gwui2;
+    p_flash_info->p_next_fatfs_gwui_partition = p_flash_info->is_ota0_active ? p_gw_gwui2 : p_gw_gwui;
     if (NULL == p_flash_info->p_next_fatfs_gwui_partition)
     {
         return false;
@@ -192,21 +203,35 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
         p_flash_info->p_next_fatfs_gwui_partition->address,
         p_flash_info->p_next_fatfs_gwui_partition->size);
 
-    const char* const p_fatfs_nrf52_partition_name = p_flash_info->is_ota0_active ? GW_NRF_PARTITION_2
-                                                                                  : GW_NRF_PARTITION;
-    p_flash_info->p_next_fatfs_nrf52_partition     = find_data_fat_partition_by_name(p_fatfs_nrf52_partition_name);
+    const esp_partition_t* const p_gw_nrf = find_data_fat_partition_by_name(GW_NRF_PARTITION);
+    if (NULL == p_gw_nrf)
+    {
+        LOG_ERR("Can't find first partition for nRF52 firmware: %s", GW_NRF_PARTITION);
+    }
+    const esp_partition_t* const p_gw_nrf2 = find_data_fat_partition_by_name(GW_NRF_PARTITION_2);
+    if (NULL == p_gw_nrf2)
+    {
+        LOG_ERR("Can't find second partition for nRF52 firmware: %s", GW_NRF_PARTITION_2);
+    }
+    p_flash_info->p_cur_fatfs_nrf52_partition  = p_flash_info->is_ota0_active ? p_gw_nrf : p_gw_nrf2;
+    p_flash_info->p_next_fatfs_nrf52_partition = p_flash_info->is_ota0_active ? p_gw_nrf2 : p_gw_nrf;
+
     if (NULL == p_flash_info->p_next_fatfs_nrf52_partition)
     {
         if (!p_flash_info->is_ota0_active)
         {
-            LOG_ERR("Can't find seconds partition for nRF52 firmware: %s", p_fatfs_nrf52_partition_name);
+            LOG_ERR("Can't find first partition for nRF52 firmware: %s", GW_NRF_PARTITION);
             return false;
         }
         LOG_WARN(
-            "Can't find seconds partition for nRF52 firmware: %s, use the first one: %s",
-            p_fatfs_nrf52_partition_name,
+            "Can't find second partition for nRF52 firmware: %s, use the first one: %s",
+            GW_NRF_PARTITION_2,
             GW_NRF_PARTITION);
         p_flash_info->p_next_fatfs_nrf52_partition = find_data_fat_partition_by_name(GW_NRF_PARTITION);
+    }
+    if (NULL == p_flash_info->p_next_fatfs_nrf52_partition)
+    {
+        return false;
     }
     LOG_INFO(
         "Next fatfs_nrf52 partition: %s: address 0x%08x, size 0x%x",
@@ -214,16 +239,156 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
         p_flash_info->p_next_fatfs_nrf52_partition->address,
         p_flash_info->p_next_fatfs_nrf52_partition->size);
 
-    p_flash_info->is_valid = true;
+    return true;
+}
+
+static bool
+fw_update_check_fatfs_partition_signature(
+    const esp_partition_t* const             p_fatfs_partition,
+    const ets_secure_boot_signature_t* const p_embedded_signature)
+{
+    LOG_INFO("Verify fatfs partition '%s'", p_fatfs_partition->label);
+
+    esp_ota_sha256_digest_t fatfs_partition_pub_key_digest = { 0 };
+    if (!esp_ota_helper_calc_pub_key_digest_for_signature(p_embedded_signature, &fatfs_partition_pub_key_digest))
+    {
+        LOG_ERR(
+            "Failed to calculate pub key digest for embedded signature fatfs partition '%s'",
+            p_fatfs_partition->label);
+        return false;
+    }
+    LOG_DUMP_INFO(
+        &fatfs_partition_pub_key_digest.digest[0],
+        sizeof(fatfs_partition_pub_key_digest.digest),
+        "Fatfs partition '%s' embedded signature pub key digest",
+        p_fatfs_partition->label);
+
+    esp_ota_sha256_digest_t fatfs_partition_digest = { 0 };
+    if (!esp_ota_helper_calc_digest_for_partition(p_fatfs_partition, &fatfs_partition_digest))
+    {
+        LOG_ERR("Failed to calculate digest for fatfs partition '%s'", p_fatfs_partition->label);
+        return false;
+    }
+    LOG_DUMP_INFO(
+        &fatfs_partition_digest.digest[0],
+        sizeof(fatfs_partition_digest.digest),
+        "Fatfs partition '%s' digest:",
+        p_fatfs_partition->label);
+    if (!esp_ota_helper_data_partition_verify(&fatfs_partition_digest, p_embedded_signature))
+    {
+        LOG_ERR("Failed to verify fatfs partition '%s' using embedded signature", p_fatfs_partition->label);
+        return false;
+    }
+    LOG_INFO("Successfully verified fatfs partition '%s' using embedded signature", p_fatfs_partition->label);
+    return true;
+}
+
+static bool
+fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
+{
+    const esp_partition_pos_t part_pos = {
+        .offset = p_flash_info->p_running_partition->address,
+        .size   = p_flash_info->p_running_partition->size,
+    };
+
+    LOG_INFO("Verifying running partition image...");
+    // The signature verification is disabled in components/bootloader_support/src/esp_image_format.c
+    const esp_err_t err = esp_image_verify(ESP_IMAGE_VERIFY, &part_pos, &p_flash_info->image_metadata);
+    if (ESP_OK != err)
+    {
+        LOG_ERR_ESP(err, "Failed to verify image in running partition");
+        return false;
+    }
+    LOG_INFO("Running partition image is valid.");
+
+    LOG_INFO("Calculating public key digest of running partition...");
+    if (!esp_ota_helper_calc_pub_key_digest_for_app_image(
+            &p_flash_info->image_metadata,
+            &p_flash_info->running_app_pub_key_digest))
+    {
+        LOG_ERR("Failed to calculate public key digest of running partition");
+        return false;
+    }
+    LOG_DUMP_INFO(
+        &p_flash_info->running_app_pub_key_digest.digest[0],
+        sizeof(p_flash_info->running_app_pub_key_digest.digest),
+        "Running partition pub key digest");
+
+    extern const ets_secure_boot_signature_t fatfs_gwui_signature_start[] asm("_binary_fatfs_gwui_bin_signature_start");
+    extern const uint8_t                     fatfs_gwui_signature_end[] asm("_binary_fatfs_gwui_bin_signature_end");
+    assert(
+        ((uintptr_t)fatfs_gwui_signature_end - (uintptr_t)fatfs_gwui_signature_start)
+        == sizeof(ets_secure_boot_signature_t));
+    if (((uintptr_t)fatfs_gwui_signature_end - (uintptr_t)fatfs_gwui_signature_start)
+        != sizeof(ets_secure_boot_signature_t))
+    {
+        LOG_ERR("Invalid size of embedded signature for fatfs_gwui partition");
+        gateway_restart("Invalid size of embedded signature for fatfs_gwui partition");
+        return false;
+    }
+
+    if (!fw_update_check_fatfs_partition_signature(
+            p_flash_info->p_cur_fatfs_gwui_partition,
+            fatfs_gwui_signature_start))
+    {
+        LOG_WARN(
+            "fatfs_gwui partition signature check failed, most probable because of wear leveling info was updated - "
+            "ignore it");
+    }
+
+    extern const ets_secure_boot_signature_t fatfs_nrf52_signature_start[] asm(
+        "_binary_fatfs_nrf52_bin_signature_start");
+    extern const uint8_t fatfs_nrf52_signature_end[] asm("_binary_fatfs_nrf52_bin_signature_end");
+    assert(
+        ((uintptr_t)fatfs_nrf52_signature_end - (uintptr_t)fatfs_nrf52_signature_start)
+        == sizeof(ets_secure_boot_signature_t));
+    if (((uintptr_t)fatfs_nrf52_signature_end - (uintptr_t)fatfs_nrf52_signature_start)
+        != sizeof(ets_secure_boot_signature_t))
+    {
+        LOG_ERR("Invalid size of embedded signature for fatfs_nrf52 partition");
+        gateway_restart("Invalid size of embedded signature for fatfs_nrf52 partition");
+        return false;
+    }
+
+    if (!fw_update_check_fatfs_partition_signature(
+            p_flash_info->p_cur_fatfs_nrf52_partition,
+            fatfs_nrf52_signature_start))
+    {
+        LOG_WARN(
+            "fatfs_nrf52 partition signature check failed, most probable because of wear leveling info was updated - "
+            "ignore it");
+    }
+
     return true;
 }
 
 bool
-fw_update_read_flash_info(void)
+fw_update_read_flash_info_and_check_signatures(void)
 {
-    ruuvi_flash_info_t* p_flash_info = &g_ruuvi_flash_info;
-    fw_update_read_flash_info_internal(p_flash_info);
-    return p_flash_info->is_valid;
+    ruuvi_flash_info_t* const p_flash_info = &g_ruuvi_flash_info;
+
+    if (!fw_update_read_flash_info_internal(p_flash_info))
+    {
+        LOG_ERR("Can't get info about running partition");
+        return false;
+    }
+    if (NULL == p_flash_info->p_cur_fatfs_gwui_partition)
+    {
+        LOG_ERR("Can't find cur fatfs_gwui partition");
+        return false;
+    }
+    if (NULL == p_flash_info->p_cur_fatfs_nrf52_partition)
+    {
+        LOG_ERR("Can't find cur fatfs_nrf52 partition");
+        return false;
+    }
+    if (!fw_update_self_check_signature(p_flash_info))
+    {
+        LOG_ERR("Self check of running partition signature failed");
+        return false;
+    }
+
+    return true;
 }
 
 bool

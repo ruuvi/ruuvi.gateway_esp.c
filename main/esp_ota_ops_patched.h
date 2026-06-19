@@ -17,6 +17,9 @@
 extern "C" {
 #endif
 
+bool
+esp_ota_is_ota_partition(const esp_partition_t* p);
+
 esp_err_t
 esp_ota_begin_patched(const esp_partition_t* const p_partition, esp_ota_handle_t* const p_out_handle);
 

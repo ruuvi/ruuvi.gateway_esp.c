@@ -44,7 +44,23 @@
 #endif
 #else /* !BOOTLOADER_BUILD */
 #ifdef CONFIG_SECURE_SIGNED_ON_UPDATE
-#define SECURE_BOOT_CHECK_SIGNATURE 1
+/*
+ * Ruuvi Gateway downstream patch (issue #1309).
+ *
+ * Starting with v1.16.3 the firmware is built with Secure Boot v2 signing
+ * enabled (CONFIG_SECURE_SIGNED_ON_BOOT / CONFIG_SECURE_SIGNED_ON_UPDATE),
+ * but Secure Boot is intentionally NOT burned into eFuse on production
+ * devices (CONFIG_SECURE_BOOT_INSECURE=y). To keep the OTA upgrade and
+ * downgrade path compatible with field units still running v1.16.2 and
+ * older - which were released without an appended signature - we must
+ * skip the runtime signature check that ESP-IDF normally performs on the
+ * application side when CONFIG_SECURE_SIGNED_ON_UPDATE is set.
+ *
+ * The bootloader-side check (BOOTLOADER_BUILD branch above) is left
+ * untouched, so devices on which Secure Boot is actually enabled in
+ * hardware still verify signatures at boot time.
+ */
+#undef SECURE_BOOT_CHECK_SIGNATURE
 #endif
 #endif
 

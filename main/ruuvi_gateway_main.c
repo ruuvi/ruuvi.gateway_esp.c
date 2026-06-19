@@ -398,9 +398,9 @@ main_task_initial_initialization(void)
         return false;
     }
 
-    if (!fw_update_read_flash_info())
+    if (!fw_update_read_flash_info_and_check_signatures())
     {
-        LOG_ERR("%s failed", "fw_update_read_flash_info");
+        LOG_ERR("%s failed", "fw_update_read_flash_info_and_check_signatures");
         return false;
     }
 
