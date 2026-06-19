@@ -220,7 +220,7 @@ fw_update_read_flash_info_internal(ruuvi_flash_info_t* const p_flash_info)
     {
         if (!p_flash_info->is_ota0_active)
         {
-            LOG_ERR("Can't find seconds partition for nRF52 firmware: %s", GW_NRF_PARTITION);
+            LOG_ERR("Can't find first partition for nRF52 firmware: %s", GW_NRF_PARTITION);
             return false;
         }
         LOG_WARN(
