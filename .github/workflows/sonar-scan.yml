@@ -84,6 +84,10 @@ jobs:
           SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
         run: |
           set +x # do not echo secrets
+          if [ -z "$SECURE_BOOT_SIGNING_KEY" ]; then
+            echo "SECURE_BOOT_SIGNING_KEY is not set"
+            exit 1
+          fi
           mkdir -p ~/.signing_keys
           install -m 600 /dev/null ~/.signing_keys/secure_boot_signing_key.pem
           printf "%s" "$SECURE_BOOT_SIGNING_KEY" > ~/.signing_keys/secure_boot_signing_key.pem
@@ -113,7 +117,7 @@ jobs:
           cd ../..
           gcovr -r . --sonarqube -o coverage.xml
 
-      - name: SonarQube Scan
+      - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
