@@ -121,3 +121,52 @@ jobs:
           name: ruuvi_gateway_fw
           path: ${{ env.RELEASE_FILES }}
 
+  release:
+    name: Publish GitHub Release (prod)
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write   # create GitHub Release and upload assets
+      actions: read     # download workflow artifact from the build job
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Download firmware artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ruuvi_gateway_fw
+          path: release_files
+
+      - name: Create release and upload assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -xe
+          command -v gh >/dev/null 2>&1 || { echo "gh CLI not found"; exit 1; }
+          RELEASE_DIR="$GITHUB_WORKSPACE/release_files"
+          if [ ! -d "$RELEASE_DIR" ]; then
+            echo "Release files directory not found at $RELEASE_DIR"
+            exit 1
+          fi
+          # Collect all files from the downloaded artifact. upload-artifact
+          # flattens to the common ancestor of the input paths (here: build/),
+          # so subdirectories like binaries_v1.9.2/ and partition_table/ are
+          # preserved but file basenames remain unique across the asset set.
+          mapfile -t ASSETS < <(find "$RELEASE_DIR" -type f | sort)
+          if [ "${#ASSETS[@]}" -eq 0 ]; then
+            echo "No release files found under $RELEASE_DIR"
+            exit 1
+          fi
+          # Create the release if it does not already exist.
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if ! gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes "Automated release" --prerelease; then
+              echo "Create failed; rechecking..."
+              if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                echo "Release still missing; aborting."
+                exit 1
+              fi
+            fi
+          fi
+          gh release upload "$TAG" "${ASSETS[@]}" --repo "$GITHUB_REPOSITORY" --clobber
