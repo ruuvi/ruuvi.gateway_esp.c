@@ -339,6 +339,24 @@
       "type": "boolean",
       "default": false
     },
+    "http_use_extra_http_path": {
+      "title": "Append an extra path segment (from a separate storage file) to the HTTP(S) server URL",
+      "description": "When enabled, the gateway appends an extra path segment to the HTTP(S) endpoint URL for each request. The path text is NOT stored in 'ruuvi.json' — it is kept in a separate file ('http_path') in the gateway's internal storage. Downloading 'ruuvi.json' alone is therefore not sufficient to back up the configuration when this option is enabled; the 'http_path' file must be backed up separately.",
+      "type": "boolean",
+      "default": false
+    },
+    "http_use_extra_http_query": {
+      "title": "Append an extra query string (from a separate storage file) to the HTTP(S) server URL",
+      "description": "When enabled, the gateway appends an extra query string to the HTTP(S) endpoint URL for each request. The query text is NOT stored in 'ruuvi.json' — it is kept in a separate file ('http_query') in the gateway's internal storage. Downloading 'ruuvi.json' alone is therefore not sufficient to back up the configuration when this option is enabled; the 'http_query' file must be backed up separately.",
+      "type": "boolean",
+      "default": false
+    },
+    "http_use_extra_http_headers": {
+      "title": "Send extra HTTP headers (from a separate storage file) with each request to the HTTP(S) server",
+      "description": "When enabled, the gateway adds extra HTTP headers to each request sent to the HTTP(S) endpoint. The header lines are NOT stored in 'ruuvi.json' — they are kept in a separate file ('http_headers') in the gateway's internal storage. Downloading 'ruuvi.json' alone is therefore not sufficient to back up the configuration when this option is enabled; the 'http_headers' file must be backed up separately.",
+      "type": "boolean",
+      "default": false
+    },
     "use_http_stat": {
       "title": "Enable sending Gateway status to the HTTP-server",
       "type": "boolean",
