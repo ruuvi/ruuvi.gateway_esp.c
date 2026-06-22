@@ -407,6 +407,13 @@ fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
     assert(
         ((uintptr_t)fatfs_gwui_signature_end - (uintptr_t)fatfs_gwui_signature_start)
         == sizeof(ets_secure_boot_signature_t));
+    if (((uintptr_t)fatfs_gwui_signature_end - (uintptr_t)fatfs_gwui_signature_start)
+        != sizeof(ets_secure_boot_signature_t))
+    {
+        LOG_ERR("Invalid size of embedded signature for fatfs_gwui partition");
+        gateway_restart("Invalid size of embedded signature for fatfs_gwui partition");
+        return false;
+    }
 
     if (!fw_update_check_fatfs_partition_signature(
             p_flash_info->p_cur_fatfs_gwui_partition,
@@ -431,6 +438,13 @@ fw_update_self_check_signature(ruuvi_flash_info_t* const p_flash_info)
     assert(
         ((uintptr_t)fatfs_nrf52_signature_end - (uintptr_t)fatfs_nrf52_signature_start)
         == sizeof(ets_secure_boot_signature_t));
+    if (((uintptr_t)fatfs_nrf52_signature_end - (uintptr_t)fatfs_nrf52_signature_start)
+        != sizeof(ets_secure_boot_signature_t))
+    {
+        LOG_ERR("Invalid size of embedded signature for fatfs_nrf52 partition");
+        gateway_restart("Invalid size of embedded signature for fatfs_nrf52 partition");
+        return false;
+    }
 
     if (!fw_update_check_fatfs_partition_signature(
             p_flash_info->p_cur_fatfs_nrf52_partition,

@@ -86,7 +86,7 @@ endif()
 if(NOT BOOTLOADER_BUILD AND CONFIG_SECURE_SIGNED_APPS AND CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES)
     add_custom_command(
             OUTPUT "${build_dir}/.signed_nrf52fw_timestamp" "${NRF52_SIGNED}"
-            COMMAND ${ESPSECUREPY} sign_data --version ${secure_boot_version} --keyfile ${secure_boot_signing_key}
+            COMMAND ${ESPSECUREPY} sign_data --version ${secure_boot_version} --keyfile "${secure_boot_signing_key}"
             -o "${NRF52_SIGNED}" "${NRF52_UNSIGNED}"
             COMMAND ${CMAKE_COMMAND} -E echo "Generated signed binary image ${NRF52_SIGNED} from ${NRF52_UNSIGNED}"
             COMMAND ${CMAKE_COMMAND} -E md5sum "${NRF52_SIGNED}" > "${build_dir}/.signed_nrf52fw_timestamp"
