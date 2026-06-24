@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.22)
 
 project(gw_cfg_default)
 
+if(NOT DEFINED ENV{IDF_PATH} OR "$ENV{IDF_PATH}" STREQUAL "")
+    message(FATAL_ERROR "IDF_PATH is not set. Source ESP-IDF export.sh (e.g. source ~/esp-idf-env.sh) before building gw_cfg_default.")
+endif()
+
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 17)
 

@@ -99,6 +99,7 @@ The step uses `ALWAYS 1`, so the snapshot is refreshed on every firmware build.
 ### Requirements
 
 - `jq` must be available in `PATH`. The build fails with a clear error otherwise.
+- ESP-IDF must be installed and `IDF_PATH` must point to it (e.g. `source ~/esp-idf-env.sh` before building).
 - The host toolchain (gcc + CMake + Ninja/Make) must be available — the same
   toolchain used to build the unit tests in `tests/`.
 

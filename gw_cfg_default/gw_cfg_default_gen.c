@@ -57,16 +57,19 @@ os_mutex_recursive_create_static(os_mutex_recursive_static_t* const p_mutex_stat
 void
 os_mutex_recursive_delete(os_mutex_recursive_t* const ph_mutex)
 {
+    (void)ph_mutex;
 }
 
 void
 os_mutex_recursive_lock(os_mutex_recursive_t const h_mutex)
 {
+    (void)h_mutex;
 }
 
 void
 os_mutex_recursive_unlock(os_mutex_recursive_t const h_mutex)
 {
+    (void)h_mutex;
 }
 
 os_mutex_t
@@ -104,6 +107,7 @@ esp_log_write(esp_log_level_t level, const char* tag, const char* fmt, ...)
 void
 event_mgr_notify(const event_mgr_ev_e event)
 {
+    (void)event;
 }
 
 uint32_t
