@@ -6909,10 +6909,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_period\":\t10,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t0,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_use_extra_http_path\":\tfalse,\n"
@@ -6991,6 +6993,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                 .http_use_extra_http_query = false,
                 .http_use_extra_http_headers = false,
                 .http_url = { "https://myserver1.com" },
+                .http_period = 50,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -7171,10 +7174,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_period\":\t10,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t50,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_use_extra_http_path\":\tfalse,\n"
@@ -7253,6 +7258,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                 .http_use_extra_http_query = false,
                 .http_use_extra_http_headers = false,
                 .http_url = { "https://myserver1.com" },
+                .http_period = 50,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -7433,10 +7439,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_period\":\t10,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t50,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_use_extra_http_path\":\tfalse,\n"
@@ -7675,7 +7683,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
                "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
@@ -7757,6 +7765,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                 .http_use_extra_http_query = false,
                 .http_use_extra_http_headers = false,
                 .http_url = { "https://myserver1.com" },
+                .http_period = 50,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -7937,10 +7946,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_period\":\t10,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t50,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_use_extra_http_path\":\tfalse,\n"
@@ -8019,6 +8030,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                 .http_use_extra_http_query = false,
                 .http_use_extra_http_headers = false,
                 .http_url = { "https://myserver1.com" },
+                .http_period = 50,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -8199,10 +8211,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_period\":\t10,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t50,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_use_extra_http_path\":\tfalse,\n"
@@ -8281,6 +8295,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                 .http_use_extra_http_query = false,
                 .http_use_extra_http_headers = false,
                 .http_url = { "https://myserver1.com" },
+                .http_period = 50,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -8461,10 +8476,12 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
-               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
-               "\t\"http_period\":\t10,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t50,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_use_extra_http_path\":\tfalse,\n"
@@ -9810,4 +9827,108 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed) // NOLINT
         }
         ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
     }
+}
+/**
+ * Verifies that when "use_http" is false but custom HTTP fields are present in
+ * the JSON, those fields are now parsed and preserved (issue-1325 fix).
+ * Previously, http_url/http_period/http_data_format/http_auth/SSL/extra flags
+ * were skipped whenever use_http was false, leaving stale values in p_gw_cfg_http.
+ */
+TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_use_http_false_preserves_custom_fields) // NOLINT
+{
+    const char* const p_json_str
+        = "{\n"
+          "\t\"use_http_ruuvi\":\tfalse,\n"
+          "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"https://custom.example.com/api\",\n"
+          "\t\"http_period\":\t42,\n"
+          "\t\"http_data_format\":\t\"ruuvi_decoded\",\n"
+          "\t\"http_auth\":\t\"bearer\",\n"
+          "\t\"http_use_ssl_client_cert\":\ttrue,\n"
+          "\t\"http_use_ssl_server_cert\":\ttrue,\n"
+          "\t\"http_use_extra_http_path\":\ttrue,\n"
+          "\t\"http_use_extra_http_query\":\ttrue,\n"
+          "\t\"http_use_extra_http_headers\":\ttrue\n"
+          "}";
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
+    // These values must reflect the JSON content, not the previous (default) values.
+    ASSERT_EQ(string("https://custom.example.com/api"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(42, gw_cfg2.ruuvi_cfg.http.http_period);
+    ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED, gw_cfg2.ruuvi_cfg.http.data_format);
+    ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_BEARER, gw_cfg2.ruuvi_cfg.http.auth_type);
+    ASSERT_TRUE(gw_cfg2.ruuvi_cfg.http.http_use_ssl_client_cert);
+    ASSERT_TRUE(gw_cfg2.ruuvi_cfg.http.http_use_ssl_server_cert);
+    ASSERT_TRUE(gw_cfg2.ruuvi_cfg.http.http_use_extra_http_path);
+    ASSERT_TRUE(gw_cfg2.ruuvi_cfg.http.http_use_extra_http_query);
+    ASSERT_TRUE(gw_cfg2.ruuvi_cfg.http.http_use_extra_http_headers);
+}
+
+/**
+ * When use_http==true but the optional HTTP fields are missing from the JSON,
+ * the parser must emit warnings for each missing key (covers the
+ * flag_warn_if_missing=true branches added in the issue-1325 fix).
+ */
+TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_use_http_true_missing_fields_logs_warnings) // NOLINT
+{
+    const char* const p_json_str
+        = "{\n"
+          "\t\"use_http_ruuvi\":\tfalse,\n"
+          "\t\"use_http\":\ttrue\n"
+          "}";
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
+    // The compatibility patch promotes (use_http==true, data_format=ruuvi,
+    // auth=none, url=RUUVI default) back to (use_http_ruuvi=true, use_http=false).
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
+    // Scan all log records to confirm the new HTTP warnings are emitted for
+    // each missing optional HTTP field (covers the flag_warn_if_missing=true paths).
+    bool found_data_format = false;
+    bool found_auth        = false;
+    bool found_url         = false;
+    bool found_period      = false;
+    bool found_path        = false;
+    bool found_query       = false;
+    bool found_headers     = false;
+    bool found_ssl_client  = false;
+    bool found_ssl_server  = false;
+    while (!esp_log_wrapper_is_empty())
+    {
+        const LogRecord r = esp_log_wrapper_pop();
+        if (r.level != ESP_LOG_WARN)
+        {
+            continue;
+        }
+        const string& msg = r.parsed.msg;
+        if (msg == "Can't find key 'http_data_format' in config-json, use default value 0")
+            found_data_format = true;
+        else if (msg == "Can't find key 'http_auth' in config-json, use default value 0")
+            found_auth = true;
+        else if (msg == "Can't find key 'http_url' in config-json")
+            found_url = true;
+        else if (msg == "Can't find key 'http_period' in config-json")
+            found_period = true;
+        else if (msg == "Can't find key 'http_use_extra_http_path' in config-json")
+            found_path = true;
+        else if (msg == "Can't find key 'http_use_extra_http_query' in config-json")
+            found_query = true;
+        else if (msg == "Can't find key 'http_use_extra_http_headers' in config-json")
+            found_headers = true;
+        else if (msg == "Can't find key 'http_use_ssl_client_cert' in config-json")
+            found_ssl_client = true;
+        else if (msg == "Can't find key 'http_use_ssl_server_cert' in config-json")
+            found_ssl_server = true;
+    }
+    ASSERT_TRUE(found_data_format);
+    ASSERT_TRUE(found_auth);
+    ASSERT_TRUE(found_url);
+    ASSERT_TRUE(found_period);
+    ASSERT_TRUE(found_path);
+    ASSERT_TRUE(found_query);
+    ASSERT_TRUE(found_headers);
+    ASSERT_TRUE(found_ssl_client);
+    ASSERT_TRUE(found_ssl_server);
 }

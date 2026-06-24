@@ -32,13 +32,23 @@
 static const char TAG[] = "gw_cfg";
 
 static gw_cfg_http_data_format_e
-gw_cfg_json_parse_http_data_format(const cJSON* const p_json_root)
+gw_cfg_json_parse_http_data_format(
+    const cJSON* const              p_json_root,
+    const bool                      flag_warn_if_missing,
+    const gw_cfg_http_data_format_e default_value)
 {
     char data_format_str[GW_CFG_HTTP_DATA_FORMAT_STR_SIZE];
     if (!gw_cfg_json_copy_string_val(p_json_root, "http_data_format", &data_format_str[0], sizeof(data_format_str)))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "http_data_format");
-        return GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+        if (flag_warn_if_missing)
+        {
+            LOG_WARN("Can't find key '%s' in config-json, use default value %d", "http_data_format", default_value);
+        }
+        else
+        {
+            LOG_DBG("Can't find key '%s' in config-json, use default value %d", "http_data_format", default_value);
+        }
+        return default_value;
     }
     if (0 == strcmp(GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI, data_format_str))
     {
@@ -57,13 +67,23 @@ gw_cfg_json_parse_http_data_format(const cJSON* const p_json_root)
 }
 
 static gw_cfg_http_auth_type_e
-gw_cfg_json_parse_http_auth_type(const cJSON* const p_json_root)
+gw_cfg_json_parse_http_auth_type(
+    const cJSON* const            p_json_root,
+    const bool                    flag_warn_if_missing,
+    const gw_cfg_http_auth_type_e default_value)
 {
     char auth_type_str[GW_CFG_HTTP_AUTH_TYPE_STR_SIZE];
     if (!gw_cfg_json_copy_string_val(p_json_root, "http_auth", &auth_type_str[0], sizeof(auth_type_str)))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "http_auth");
-        return GW_CFG_HTTP_AUTH_TYPE_NONE;
+        if (flag_warn_if_missing)
+        {
+            LOG_WARN("Can't find key '%s' in config-json, use default value %d", "http_auth", default_value);
+        }
+        else
+        {
+            LOG_DBG("Can't find key '%s' in config-json, use default value %d", "http_auth", default_value);
+        }
+        return default_value;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_NONE, auth_type_str))
     {
@@ -150,15 +170,32 @@ gw_cfg_json_parse_http_auth_apikey(const cJSON* const p_json_root, ruuvi_gw_cfg_
 }
 
 static void
-gw_cfg_json_parse_http_ssl_certs(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
+gw_cfg_json_parse_http_ssl_certs(
+    const cJSON* const         p_json_root,
+    ruuvi_gw_cfg_http_t* const p_gw_cfg_http,
+    const bool                 flag_warn_if_missing)
 {
     if (!gw_cfg_json_get_bool_val(p_json_root, "http_use_ssl_client_cert", &p_gw_cfg_http->http_use_ssl_client_cert))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_client_cert");
+        if (flag_warn_if_missing)
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_client_cert");
+        }
+        else
+        {
+            LOG_DBG("Can't find key '%s' in config-json", "http_use_ssl_client_cert");
+        }
     }
     if (!gw_cfg_json_get_bool_val(p_json_root, "http_use_ssl_server_cert", &p_gw_cfg_http->http_use_ssl_server_cert))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_server_cert");
+        if (flag_warn_if_missing)
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_server_cert");
+        }
+        else
+        {
+            LOG_DBG("Can't find key '%s' in config-json", "http_use_ssl_server_cert");
+        }
     }
 }
 
@@ -174,19 +211,33 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
         LOG_WARN("Can't find key '%s' in config-json", "use_http");
     }
 
-    if (p_gw_cfg_http->use_http)
-    {
-        p_gw_cfg_http->data_format = gw_cfg_json_parse_http_data_format(p_json_root);
-        p_gw_cfg_http->auth_type   = gw_cfg_json_parse_http_auth_type(p_json_root);
+    const bool flag_warn_if_missing = p_gw_cfg_http->use_http;
+    p_gw_cfg_http->data_format      = gw_cfg_json_parse_http_data_format(
+        p_json_root,
+        flag_warn_if_missing,
+        p_gw_cfg_http->data_format);
+    p_gw_cfg_http->auth_type = gw_cfg_json_parse_http_auth_type(
+        p_json_root,
+        flag_warn_if_missing,
+        p_gw_cfg_http->auth_type);
 
-        if (!gw_cfg_json_copy_string_val(
-                p_json_root,
-                "http_url",
-                &p_gw_cfg_http->http_url.buf[0],
-                sizeof(p_gw_cfg_http->http_url.buf)))
+    if (!gw_cfg_json_copy_string_val(
+            p_json_root,
+            "http_url",
+            &p_gw_cfg_http->http_url.buf[0],
+            sizeof(p_gw_cfg_http->http_url.buf)))
+    {
+        if (flag_warn_if_missing)
         {
             LOG_WARN("Can't find key '%s' in config-json", "http_url");
         }
+        else
+        {
+            LOG_DBG("Can't find key '%s' in config-json", "http_url");
+        }
+    }
+    if (p_gw_cfg_http->use_http)
+    {
         switch (p_gw_cfg_http->auth_type)
         {
             case GW_CFG_HTTP_AUTH_TYPE_NONE:
@@ -214,34 +265,53 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
             p_gw_cfg_http->use_http_ruuvi = true;
             p_gw_cfg_http->use_http       = false;
         }
-        if (p_gw_cfg_http->use_http)
+    }
+    if (!gw_cfg_json_get_uint32_val(p_json_root, "http_period", &p_gw_cfg_http->http_period))
+    {
+        if (flag_warn_if_missing)
         {
-            if (!gw_cfg_json_get_uint32_val(p_json_root, "http_period", &p_gw_cfg_http->http_period))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_period");
-            }
-            if (!gw_cfg_json_get_bool_val(
-                    p_json_root,
-                    "http_use_extra_http_path",
-                    &p_gw_cfg_http->http_use_extra_http_path))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_path");
-            }
-            if (!gw_cfg_json_get_bool_val(
-                    p_json_root,
-                    "http_use_extra_http_query",
-                    &p_gw_cfg_http->http_use_extra_http_query))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_query");
-            }
-            if (!gw_cfg_json_get_bool_val(
-                    p_json_root,
-                    "http_use_extra_http_headers",
-                    &p_gw_cfg_http->http_use_extra_http_headers))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_headers");
-            }
-            gw_cfg_json_parse_http_ssl_certs(p_json_root, p_gw_cfg_http);
+            LOG_WARN("Can't find key '%s' in config-json", "http_period");
+        }
+        else
+        {
+            LOG_DBG("Can't find key '%s' in config-json", "http_period");
         }
     }
+    if (!gw_cfg_json_get_bool_val(p_json_root, "http_use_extra_http_path", &p_gw_cfg_http->http_use_extra_http_path))
+    {
+        if (flag_warn_if_missing)
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_path");
+        }
+        else
+        {
+            LOG_DBG("Can't find key '%s' in config-json", "http_use_extra_http_path");
+        }
+    }
+    if (!gw_cfg_json_get_bool_val(p_json_root, "http_use_extra_http_query", &p_gw_cfg_http->http_use_extra_http_query))
+    {
+        if (flag_warn_if_missing)
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_query");
+        }
+        else
+        {
+            LOG_DBG("Can't find key '%s' in config-json", "http_use_extra_http_query");
+        }
+    }
+    if (!gw_cfg_json_get_bool_val(
+            p_json_root,
+            "http_use_extra_http_headers",
+            &p_gw_cfg_http->http_use_extra_http_headers))
+    {
+        if (flag_warn_if_missing)
+        {
+            LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_headers");
+        }
+        else
+        {
+            LOG_DBG("Can't find key '%s' in config-json", "http_use_extra_http_headers");
+        }
+    }
+    gw_cfg_json_parse_http_ssl_certs(p_json_root, p_gw_cfg_http, flag_warn_if_missing);
 }
