@@ -34,9 +34,9 @@ execute_process(
 )
 
 foreach(_res IN LISTS _gw_cfg_default_results)
-    if(NOT _res EQUAL 0)
+    if(NOT "${_res}" STREQUAL "0")
         message(FATAL_ERROR
-                "gw_cfg_default pipeline failed (exit codes: ${_gw_cfg_default_results}):\n"
+                "gw_cfg_default pipeline failed (results: ${_gw_cfg_default_results}):\n"
                 "${_gw_cfg_default_stderr}")
     endif()
 endforeach()
