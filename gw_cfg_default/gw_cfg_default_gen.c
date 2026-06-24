@@ -32,13 +32,14 @@ gw_cfg_log(const gw_cfg_t* const p_gw_cfg, const char* const p_title, const bool
 void
 wifi_manager_cb_save_wifi_config_sta(const wifiman_config_sta_t* const p_cfg_sta)
 {
+    (void)p_cfg_sta;
 }
 
 const char*
 os_task_get_name(void)
 {
     static const char g_task_name[] = "main";
-    return (char*)g_task_name;
+    return g_task_name;
 }
 
 os_task_priority_t
@@ -132,6 +133,10 @@ bool
 ruuvi_nvs_open_gw_cfg_storage(nvs_open_mode_t open_mode, nvs_handle_t* p_handle)
 {
     (void)open_mode;
+    if (NULL != p_handle)
+    {
+        *p_handle = 0;
+    }
     return true;
 }
 
@@ -222,7 +227,12 @@ main(void)
     gw_cfg_default_get(&gw_cfg);
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    gw_cfg_json_generate_for_saving(&gw_cfg, &json_str);
+    if (!gw_cfg_json_generate_for_saving(&gw_cfg, &json_str))
+    {
+        fprintf(stderr, "Failed to generate JSON from default gateway configuration\n");
+        cjson_wrap_free_json_str(&json_str);
+        return 1;
+    }
     printf("%s\n", json_str.p_str);
     cjson_wrap_free_json_str(&json_str);
 
