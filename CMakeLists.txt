@@ -68,6 +68,30 @@ set(EXCLUDE_COMPONENTS "nghttp2" "openssl" "libsodium" "coap" "protocomm" "freem
 
 include(ExternalProject)
 
+ExternalProject_Add(gw_cfg_default
+        PREFIX gw_cfg_default
+        SOURCE_DIR ${CMAKE_SOURCE_DIR}/gw_cfg_default
+        BINARY_DIR ${CMAKE_BINARY_DIR}/gw_cfg_default
+        BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/gw_cfg_default/gw_cfg_default
+        INSTALL_COMMAND ""
+        BUILD_ALWAYS 1
+)
+
+# Run the gw_cfg_default generator after it is built and capture its stdout
+# into gw_cfg_default/gw_cfg_default_gen.json so that users can compare the
+# hardcoded defaults with gw_cfg_default.json.
+set(GW_CFG_DEFAULT_GEN_JSON ${CMAKE_SOURCE_DIR}/gw_cfg_default/gw_cfg_default_gen.json)
+ExternalProject_Add_Step(gw_cfg_default generate_default_json
+        COMMAND ${CMAKE_COMMAND}
+            -DGW_CFG_DEFAULT_EXE=${CMAKE_BINARY_DIR}/gw_cfg_default/gw_cfg_default
+            -DGW_CFG_DEFAULT_OUT=${GW_CFG_DEFAULT_GEN_JSON}
+            -P ${CMAKE_SOURCE_DIR}/gw_cfg_default/run_and_capture.cmake
+        DEPENDEES build
+        BYPRODUCTS ${GW_CFG_DEFAULT_GEN_JSON}
+        ALWAYS 1
+        COMMENT "Generating gw_cfg_default_gen.json from gw_cfg_default executable"
+)
+
 set(GW_GWUI_PARTITION fatfs_gwui)
 file(STRINGS "partitions.csv" PARTITIONS_CSV)
 string(REGEX MATCH "${GW_GWUI_PARTITION}, *data, *fat, *(0x[0-9a-fA-F]+), *([x0-9a-fA-F]+)," PARTITION_FATFS_GWUI ${PARTITIONS_CSV})

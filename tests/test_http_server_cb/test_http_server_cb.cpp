@@ -1730,6 +1730,16 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
 
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -1967,8 +1977,14 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"use_http\":\ttrue,\n"
           "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
           "\",\n"
+          "\t\"http_period\":\t10,\n"
           "\t\"http_data_format\":\t\"ruuvi\",\n"
           "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -2564,6 +2580,16 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -2709,6 +2735,16 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // N
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
