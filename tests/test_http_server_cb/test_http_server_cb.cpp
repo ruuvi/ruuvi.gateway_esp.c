@@ -1730,6 +1730,16 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
 
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -1967,8 +1977,14 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"use_http\":\ttrue,\n"
           "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
           "\",\n"
+          "\t\"http_period\":\t10,\n"
           "\t\"http_data_format\":\t\"ruuvi\",\n"
           "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -2564,6 +2580,16 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -2709,6 +2735,16 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // N
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -3303,6 +3339,28 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http_ruuvi' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_DEBUG,
+        "Can't find key 'http_data_format' in config-json, leave the previous value 0 unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_DEBUG,
+        "Can't find key 'http_auth' in config-json, leave the previous value 0 unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_url' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http_stat' in config-json");
@@ -3565,6 +3623,21 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -4052,6 +4125,21 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -4315,6 +4403,21 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -4551,6 +4654,21 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -4791,6 +4909,21 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");

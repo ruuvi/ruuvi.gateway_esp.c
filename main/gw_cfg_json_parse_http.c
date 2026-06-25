@@ -31,62 +31,148 @@
 
 static const char TAG[] = "gw_cfg";
 
-static gw_cfg_http_data_format_e
-gw_cfg_json_parse_http_data_format(const cJSON* const p_json_root)
+static void
+gw_cfg_json_log_missing_key(const char* const p_key, const bool flag_warn_if_missing)
+{
+    if (flag_warn_if_missing)
+    {
+        LOG_WARN("Can't find key '%s' in config-json", p_key);
+    }
+    else
+    {
+        LOG_DBG("Can't find key '%s' in config-json", p_key);
+    }
+}
+
+static void
+gw_cfg_json_log_missing_key_with_default(
+    const char* const  p_key,
+    const printf_int_t current_value,
+    const bool         flag_warn_if_missing)
+{
+    if (flag_warn_if_missing)
+    {
+        LOG_WARN("Can't find key '%s' in config-json, leave the previous value %d unchanged", p_key, current_value);
+    }
+    else
+    {
+        LOG_DBG("Can't find key '%s' in config-json, leave the previous value %d unchanged", p_key, current_value);
+    }
+}
+
+static void
+gw_cfg_json_get_bool_or_log(
+    const cJSON* const p_json_root,
+    const char* const  p_key,
+    bool* const        p_val,
+    const bool         flag_warn_if_missing)
+{
+    if (!gw_cfg_json_get_bool_val(p_json_root, p_key, p_val))
+    {
+        gw_cfg_json_log_missing_key(p_key, flag_warn_if_missing);
+    }
+}
+
+static void
+gw_cfg_json_get_uint32_or_log(
+    const cJSON* const p_json_root,
+    const char* const  p_key,
+    uint32_t* const    p_val,
+    const bool         flag_warn_if_missing)
+{
+    if (!gw_cfg_json_get_uint32_val(p_json_root, p_key, p_val))
+    {
+        gw_cfg_json_log_missing_key(p_key, flag_warn_if_missing);
+    }
+}
+
+static void
+gw_cfg_json_copy_string_or_log(
+    const cJSON* const p_json_root,
+    const char* const  p_key,
+    char* const        p_buf,
+    const size_t       buf_size,
+    const bool         flag_warn_if_missing)
+{
+    if (!gw_cfg_json_copy_string_val(p_json_root, p_key, p_buf, buf_size))
+    {
+        gw_cfg_json_log_missing_key(p_key, flag_warn_if_missing);
+    }
+}
+
+static void
+gw_cfg_json_parse_http_data_format(
+    const cJSON* const               p_json_root,
+    const bool                       flag_warn_if_missing,
+    gw_cfg_http_data_format_e* const p_data_format)
 {
     char data_format_str[GW_CFG_HTTP_DATA_FORMAT_STR_SIZE];
     if (!gw_cfg_json_copy_string_val(p_json_root, "http_data_format", &data_format_str[0], sizeof(data_format_str)))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "http_data_format");
-        return GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+        gw_cfg_json_log_missing_key_with_default(
+            "http_data_format",
+            (printf_int_t)*p_data_format,
+            flag_warn_if_missing);
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI, data_format_str))
     {
-        return GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+        *p_data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_DATA_FORMAT_STR_RAW_AND_DECODED, data_format_str))
     {
-        return GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED;
+        *p_data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_DATA_FORMAT_STR_DECODED, data_format_str))
     {
-        return GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED;
+        *p_data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED;
+        return;
     }
     LOG_WARN("Unknown http_data_format='%s', use 'ruuvi'", data_format_str);
-    return GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+    *p_data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
 }
 
-static gw_cfg_http_auth_type_e
-gw_cfg_json_parse_http_auth_type(const cJSON* const p_json_root)
+static void
+gw_cfg_json_parse_http_auth_type(
+    const cJSON* const             p_json_root,
+    const bool                     flag_warn_if_missing,
+    gw_cfg_http_auth_type_e* const p_auth_type)
 {
     char auth_type_str[GW_CFG_HTTP_AUTH_TYPE_STR_SIZE];
     if (!gw_cfg_json_copy_string_val(p_json_root, "http_auth", &auth_type_str[0], sizeof(auth_type_str)))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "http_auth");
-        return GW_CFG_HTTP_AUTH_TYPE_NONE;
+        gw_cfg_json_log_missing_key_with_default("http_auth", (printf_int_t)*p_auth_type, flag_warn_if_missing);
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_NONE, auth_type_str))
     {
-        return GW_CFG_HTTP_AUTH_TYPE_NONE;
+        *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_BASIC, auth_type_str))
     {
-        return GW_CFG_HTTP_AUTH_TYPE_BASIC;
+        *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_BEARER, auth_type_str))
     {
-        return GW_CFG_HTTP_AUTH_TYPE_BEARER;
+        *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_BEARER;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN, auth_type_str))
     {
-        return GW_CFG_HTTP_AUTH_TYPE_TOKEN;
+        *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_TOKEN;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY, auth_type_str))
     {
-        return GW_CFG_HTTP_AUTH_TYPE_APIKEY;
+        *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_APIKEY;
+        return;
     }
-    LOG_WARN("Unknown http_auth='%s', use 'ruuvi'", auth_type_str);
-    return GW_CFG_HTTP_AUTH_TYPE_NONE;
+    LOG_WARN("Unknown http_auth='%s', use 'none'", auth_type_str);
+    *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
 }
 
 static void
@@ -150,98 +236,102 @@ gw_cfg_json_parse_http_auth_apikey(const cJSON* const p_json_root, ruuvi_gw_cfg_
 }
 
 static void
-gw_cfg_json_parse_http_ssl_certs(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
+gw_cfg_json_parse_http_ssl_certs(
+    const cJSON* const         p_json_root,
+    ruuvi_gw_cfg_http_t* const p_gw_cfg_http,
+    const bool                 flag_warn_if_missing)
 {
-    if (!gw_cfg_json_get_bool_val(p_json_root, "http_use_ssl_client_cert", &p_gw_cfg_http->http_use_ssl_client_cert))
+    gw_cfg_json_get_bool_or_log(
+        p_json_root,
+        "http_use_ssl_client_cert",
+        &p_gw_cfg_http->http_use_ssl_client_cert,
+        flag_warn_if_missing);
+    gw_cfg_json_get_bool_or_log(
+        p_json_root,
+        "http_use_ssl_server_cert",
+        &p_gw_cfg_http->http_use_ssl_server_cert,
+        flag_warn_if_missing);
+}
+
+static void
+gw_cfg_json_parse_http_auth(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
+{
+    switch (p_gw_cfg_http->auth_type)
     {
-        LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_client_cert");
+        case GW_CFG_HTTP_AUTH_TYPE_NONE:
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BASIC:
+            gw_cfg_json_parse_http_auth_basic(p_json_root, p_gw_cfg_http);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_BEARER:
+            gw_cfg_json_parse_http_auth_bearer(p_json_root, p_gw_cfg_http);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
+            gw_cfg_json_parse_http_auth_token(p_json_root, p_gw_cfg_http);
+            break;
+        case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
+            gw_cfg_json_parse_http_auth_apikey(p_json_root, p_gw_cfg_http);
+            break;
     }
-    if (!gw_cfg_json_get_bool_val(p_json_root, "http_use_ssl_server_cert", &p_gw_cfg_http->http_use_ssl_server_cert))
+}
+
+static void
+gw_cfg_json_patch_http_legacy_pre_v1_14(ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
+{
+    // 'use_http_ruuvi' was added in v1.14. To stay compatible with configs
+    // produced by older firmware (where the field is absent and use_http==true
+    // with the Ruuvi default URL meant "post to the Ruuvi cloud"), detect that
+    // exact shape and rewrite it to the v1.14+ representation.
+    if ((GW_CFG_HTTP_DATA_FORMAT_RUUVI == p_gw_cfg_http->data_format)
+        && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_gw_cfg_http->auth_type)
+        && (0 == strcmp(RUUVI_GATEWAY_HTTP_DEFAULT_URL, p_gw_cfg_http->http_url.buf)))
     {
-        LOG_WARN("Can't find key '%s' in config-json", "http_use_ssl_server_cert");
+        p_gw_cfg_http->use_http_ruuvi = true;
+        p_gw_cfg_http->use_http       = false;
     }
 }
 
 void
 gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* const p_gw_cfg_http)
 {
-    if (!gw_cfg_json_get_bool_val(p_json_root, "use_http_ruuvi", &p_gw_cfg_http->use_http_ruuvi))
-    {
-        LOG_WARN("Can't find key '%s' in config-json", "use_http_ruuvi");
-    }
-    if (!gw_cfg_json_get_bool_val(p_json_root, "use_http", &p_gw_cfg_http->use_http))
-    {
-        LOG_WARN("Can't find key '%s' in config-json", "use_http");
-    }
+    gw_cfg_json_get_bool_or_log(p_json_root, "use_http_ruuvi", &p_gw_cfg_http->use_http_ruuvi, true);
+    gw_cfg_json_get_bool_or_log(p_json_root, "use_http", &p_gw_cfg_http->use_http, true);
+
+    bool flag_warn_if_missing = p_gw_cfg_http->use_http;
+
+    gw_cfg_json_parse_http_data_format(p_json_root, flag_warn_if_missing, &p_gw_cfg_http->data_format);
+    gw_cfg_json_parse_http_auth_type(p_json_root, flag_warn_if_missing, &p_gw_cfg_http->auth_type);
+
+    gw_cfg_json_copy_string_or_log(
+        p_json_root,
+        "http_url",
+        &p_gw_cfg_http->http_url.buf[0],
+        sizeof(p_gw_cfg_http->http_url.buf),
+        flag_warn_if_missing);
 
     if (p_gw_cfg_http->use_http)
     {
-        p_gw_cfg_http->data_format = gw_cfg_json_parse_http_data_format(p_json_root);
-        p_gw_cfg_http->auth_type   = gw_cfg_json_parse_http_auth_type(p_json_root);
-
-        if (!gw_cfg_json_copy_string_val(
-                p_json_root,
-                "http_url",
-                &p_gw_cfg_http->http_url.buf[0],
-                sizeof(p_gw_cfg_http->http_url.buf)))
-        {
-            LOG_WARN("Can't find key '%s' in config-json", "http_url");
-        }
-        switch (p_gw_cfg_http->auth_type)
-        {
-            case GW_CFG_HTTP_AUTH_TYPE_NONE:
-                break;
-            case GW_CFG_HTTP_AUTH_TYPE_BASIC:
-                gw_cfg_json_parse_http_auth_basic(p_json_root, p_gw_cfg_http);
-                break;
-            case GW_CFG_HTTP_AUTH_TYPE_BEARER:
-                gw_cfg_json_parse_http_auth_bearer(p_json_root, p_gw_cfg_http);
-                break;
-            case GW_CFG_HTTP_AUTH_TYPE_TOKEN:
-                gw_cfg_json_parse_http_auth_token(p_json_root, p_gw_cfg_http);
-                break;
-            case GW_CFG_HTTP_AUTH_TYPE_APIKEY:
-                gw_cfg_json_parse_http_auth_apikey(p_json_root, p_gw_cfg_http);
-                break;
-        }
-        if ((GW_CFG_HTTP_DATA_FORMAT_RUUVI == p_gw_cfg_http->data_format)
-            && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_gw_cfg_http->auth_type)
-            && (0 == strcmp(RUUVI_GATEWAY_HTTP_DEFAULT_URL, p_gw_cfg_http->http_url.buf)))
-        {
-            // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
-            // to ensure compatibility between configuration versions when upgrading firmware to a new version
-            // or rolling back to an old one
-            p_gw_cfg_http->use_http_ruuvi = true;
-            p_gw_cfg_http->use_http       = false;
-        }
-        if (p_gw_cfg_http->use_http)
-        {
-            if (!gw_cfg_json_get_uint32_val(p_json_root, "http_period", &p_gw_cfg_http->http_period))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_period");
-            }
-            if (!gw_cfg_json_get_bool_val(
-                    p_json_root,
-                    "http_use_extra_http_path",
-                    &p_gw_cfg_http->http_use_extra_http_path))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_path");
-            }
-            if (!gw_cfg_json_get_bool_val(
-                    p_json_root,
-                    "http_use_extra_http_query",
-                    &p_gw_cfg_http->http_use_extra_http_query))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_query");
-            }
-            if (!gw_cfg_json_get_bool_val(
-                    p_json_root,
-                    "http_use_extra_http_headers",
-                    &p_gw_cfg_http->http_use_extra_http_headers))
-            {
-                LOG_WARN("Can't find key '%s' in config-json", "http_use_extra_http_headers");
-            }
-            gw_cfg_json_parse_http_ssl_certs(p_json_root, p_gw_cfg_http);
-        }
+        gw_cfg_json_parse_http_auth(p_json_root, p_gw_cfg_http);
+        gw_cfg_json_patch_http_legacy_pre_v1_14(p_gw_cfg_http); // this function can disable 'use_http'
+        flag_warn_if_missing = p_gw_cfg_http->use_http;
     }
+
+    gw_cfg_json_get_uint32_or_log(p_json_root, "http_period", &p_gw_cfg_http->http_period, flag_warn_if_missing);
+    gw_cfg_json_get_bool_or_log(
+        p_json_root,
+        "http_use_extra_http_path",
+        &p_gw_cfg_http->http_use_extra_http_path,
+        flag_warn_if_missing);
+    gw_cfg_json_get_bool_or_log(
+        p_json_root,
+        "http_use_extra_http_query",
+        &p_gw_cfg_http->http_use_extra_http_query,
+        flag_warn_if_missing);
+    gw_cfg_json_get_bool_or_log(
+        p_json_root,
+        "http_use_extra_http_headers",
+        &p_gw_cfg_http->http_use_extra_http_headers,
+        flag_warn_if_missing);
+
+    gw_cfg_json_parse_http_ssl_certs(p_json_root, p_gw_cfg_http, flag_warn_if_missing);
 }

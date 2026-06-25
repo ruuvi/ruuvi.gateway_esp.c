@@ -497,8 +497,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_for_ui_client) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -588,8 +594,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -665,8 +677,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
         "\t\"use_http\":\ttrue,\n"
         "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
         "\",\n"
+        "\t\"http_period\":\t10,\n"
         "\t\"http_user\":\t\"\",\n"
         "\t\"http_pass\":\t\"\",\n"
+        "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+        "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+        "\t\"http_use_extra_http_path\":\tfalse,\n"
+        "\t\"http_use_extra_http_query\":\tfalse,\n"
+        "\t\"http_use_extra_http_headers\":\tfalse,\n"
         "\t\"use_http_stat\":\ttrue,\n"
         "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
         "\",\n"
@@ -762,8 +780,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_disabled) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -858,8 +882,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_enabled) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -959,8 +989,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_eth_enabled_dhcp_disabled) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1057,8 +1093,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_no) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1162,8 +1204,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_basic) // NOL
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1265,8 +1313,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_remote_cfg_enabled_auth_bearer) // NO
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1360,8 +1414,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_disabled) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1467,8 +1527,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_raw) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1573,8 +1639,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_TCP_disable_retained_mes
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1680,8 +1752,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_SSL_raw_and_decoded) // 
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1787,8 +1865,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WS_decoded) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1893,8 +1977,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_mqtt_enabled_WSS) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1997,15 +2087,15 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled) // NOLINT
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"https://my_url1.com/record\",\n"
+               "\t\"http_period\":\t15,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\ttrue,\n"
                "\t\"http_use_extra_http_path\":\tfalse,\n"
                "\t\"http_use_extra_http_query\":\tfalse,\n"
                "\t\"http_use_extra_http_headers\":\tfalse,\n"
-               "\t\"http_url\":\t\"https://my_url1.com/record\",\n"
-               "\t\"http_period\":\t15,\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2104,15 +2194,15 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled_with_extra_path) 
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"https://my_url1.com\",\n"
+               "\t\"http_period\":\t15,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_use_extra_http_path\":\ttrue,\n"
                "\t\"http_use_extra_http_query\":\tfalse,\n"
                "\t\"http_use_extra_http_headers\":\tfalse,\n"
-               "\t\"http_url\":\t\"https://my_url1.com\",\n"
-               "\t\"http_period\":\t15,\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2212,15 +2302,15 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled_with_extra_path_a
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"https://my_url1.com\",\n"
+               "\t\"http_period\":\t15,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_use_extra_http_path\":\ttrue,\n"
                "\t\"http_use_extra_http_query\":\ttrue,\n"
                "\t\"http_use_extra_http_headers\":\tfalse,\n"
-               "\t\"http_url\":\t\"https://my_url1.com\",\n"
-               "\t\"http_period\":\t15,\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2319,15 +2409,15 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_custom_http_enabled_with_extra_header
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\ttrue,\n"
+               "\t\"http_url\":\t\"https://my_url1.com\",\n"
+               "\t\"http_period\":\t15,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
                "\t\"http_use_ssl_client_cert\":\tfalse,\n"
                "\t\"http_use_ssl_server_cert\":\tfalse,\n"
                "\t\"http_use_extra_http_path\":\tfalse,\n"
                "\t\"http_use_extra_http_query\":\tfalse,\n"
                "\t\"http_use_extra_http_headers\":\ttrue,\n"
-               "\t\"http_url\":\t\"https://my_url1.com\",\n"
-               "\t\"http_period\":\t15,\n"
-               "\t\"http_data_format\":\t\"ruuvi\",\n"
-               "\t\"http_auth\":\t\"none\",\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2420,6 +2510,15 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_disabled) // NOLINT
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2516,17 +2615,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi) // NO
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
-               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
-               "\t\"http_use_extra_http_path\":\tfalse,\n"
-               "\t\"http_use_extra_http_query\":\tfalse,\n"
-               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
                "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2623,17 +2722,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi_raw_an
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
-               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
-               "\t\"http_use_extra_http_path\":\tfalse,\n"
-               "\t\"http_use_extra_http_query\":\tfalse,\n"
-               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
                "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi_raw_and_decoded\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2730,17 +2829,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_data_format_ruuvi_decode
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
-               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
-               "\t\"http_use_extra_http_path\":\tfalse,\n"
-               "\t\"http_use_extra_http_query\":\tfalse,\n"
-               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
                "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi_decoded\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2837,17 +2936,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_none) // NOLINT
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
-               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
-               "\t\"http_use_extra_http_path\":\tfalse,\n"
-               "\t\"http_use_extra_http_query\":\tfalse,\n"
-               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
                "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -2952,11 +3051,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_basic) // NOLINT
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
-               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
-               "\t\"http_use_extra_http_path\":\tfalse,\n"
-               "\t\"http_use_extra_http_query\":\tfalse,\n"
-               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
@@ -2965,6 +3059,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_basic) // NOLINT
                "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"user2\",\n"
                "\t\"http_pass\":\t\"pass2\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3065,11 +3164,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
-               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
-               "\t\"http_use_extra_http_path\":\tfalse,\n"
-               "\t\"http_use_extra_http_query\":\tfalse,\n"
-               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
@@ -3077,6 +3171,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_bearer) // NOLINT
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"bearer\",\n"
                "\t\"http_bearer_token\":\t\"token123\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3177,11 +3276,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
-               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
-               "\t\"http_use_extra_http_path\":\tfalse,\n"
-               "\t\"http_use_extra_http_query\":\tfalse,\n"
-               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
@@ -3189,6 +3283,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_token) // NOLINT
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"token\",\n"
                "\t\"http_api_key\":\t\"token123\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3289,11 +3388,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_apikey) // NOLINT
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
-               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
-               "\t\"http_use_extra_http_path\":\tfalse,\n"
-               "\t\"http_use_extra_http_query\":\tfalse,\n"
-               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://my_url1.com/status"
                "\",\n"
@@ -3301,6 +3395,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_auth_apikey) // NOLINT
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"api_key\",\n"
                "\t\"http_api_key\":\t\"apikey123\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3401,8 +3500,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default) // NOL
                "\t\"http_url\":\t\""
                "https://network.ruuvi.com/record"
                "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3509,11 +3614,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
-               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
-               "\t\"http_use_extra_http_path\":\tfalse,\n"
-               "\t\"http_use_extra_http_query\":\tfalse,\n"
-               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\""
                "https://network.ruuvi.com/record"
                "\",\n"
@@ -3522,6 +3622,11 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_enabled_equal_to_default_auth_di
                "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"user2\",\n"
                "\t\"http_pass\":\t\"pass2\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3614,8 +3719,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_disabled) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3720,8 +3831,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_http_stat_enabled) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://my_stat_url1.com/status\",\n"
                "\t\"http_stat_user\":\t\"user1\",\n"
@@ -3813,8 +3930,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_default) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -3912,8 +4035,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4018,8 +4147,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_ruuvi_with_api_key) // NOLIN
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4118,8 +4253,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_digest) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4218,8 +4359,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_basic) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4318,8 +4465,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_allow) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4417,8 +4570,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_lan_auth_deny) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4515,8 +4674,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_beta_tester) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4613,8 +4778,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_manual) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4707,8 +4878,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_auto_update_unknown) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4798,8 +4975,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_disabled) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4894,8 +5077,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_enabled_via_dhcp) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -4999,8 +5188,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_ntp_custom) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5095,8 +5290,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_enabled) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5191,8 +5392,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_filter_disabled) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5294,8 +5501,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_default) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5397,8 +5610,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_coded_phy_true) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5500,8 +5719,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_1mbit_phy_false) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5603,8 +5828,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_2mbit_phy_false) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5706,8 +5937,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_37_false) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5809,8 +6046,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_38_false) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -5912,8 +6155,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_channel_39_false) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -6016,8 +6265,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter1_not_allow_listed) // NOL
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -6121,8 +6376,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_scan_filter2_allow_listed) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -6216,8 +6477,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_coordinates) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -6382,8 +6649,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_default) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -6636,6 +6909,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_regular) /
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t0,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -6709,6 +6993,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                 .http_use_extra_http_query = false,
                 .http_use_extra_http_headers = false,
                 .http_url = { "https://myserver1.com" },
+                .http_period = 50,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -6889,6 +7174,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_beta_teste
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t50,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -6962,6 +7258,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                 .http_use_extra_http_query = false,
                 .http_use_extra_http_headers = false,
                 .http_url = { "https://myserver1.com" },
+                .http_period = 50,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -7142,6 +7439,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_manual) //
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t50,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -7224,8 +7532,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
           "\t\"http_url\":\t\"https://myserver1.com\",\n"
+          "\t\"http_period\":\t10,\n"
           "\t\"http_data_format\":\t\"ruuvi\",\n"
           "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\tfalse,\n"
           "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
           "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -7369,6 +7683,15 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_auto_update_unknown) /
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t10,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -7442,6 +7765,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                 .http_use_extra_http_query = false,
                 .http_use_extra_http_headers = false,
                 .http_url = { "https://myserver1.com" },
+                .http_period = 50,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -7622,6 +7946,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_disabled) // NOLIN
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t50,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -7695,6 +8030,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                 .http_use_extra_http_query = false,
                 .http_use_extra_http_headers = false,
                 .http_url = { "https://myserver1.com" },
+                .http_period = 50,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -7875,6 +8211,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_enabled_via_dhcp) 
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t50,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -7948,6 +8295,7 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                 .http_use_extra_http_query = false,
                 .http_use_extra_http_headers = false,
                 .http_url = { "https://myserver1.com" },
+                .http_period = 50,
                 .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
                 .auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC,
                 .auth = {
@@ -8128,6 +8476,17 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_parse_generate_ntp_custom) // NOLINT
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\tfalse,\n"
+               "\t\"http_url\":\t\"https://myserver1.com\",\n"
+               "\t\"http_period\":\t50,\n"
+               "\t\"http_data_format\":\t\"ruuvi\",\n"
+               "\t\"http_auth\":\t\"basic\",\n"
+               "\t\"http_user\":\t\"\",\n"
+               "\t\"http_pass\":\t\"\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\tfalse,\n"
                "\t\"http_stat_url\":\t\"https://myserver1.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -8217,8 +8576,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -8297,8 +8662,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
           "\t\"use_http_ruuvi\":\ttrue,\n"
           "\t\"use_http\":\ttrue,\n"
           "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+          "\t\"http_period\":\t10,\n"
           "\t\"http_data_format\":\t\"ruuvi\",\n"
           "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
           "\t\"http_stat_user\":\t\"\",\n"
@@ -8385,8 +8756,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi_conv_to_default) // NOLIN
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -8479,8 +8856,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -8569,8 +8952,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_lan_auth_ruuvi) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -8727,8 +9116,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_json) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -8947,8 +9342,14 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_empty_string) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -9030,10 +9431,19 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"remote_cfg_url\":\t\"\",\n"
           "\t\"remote_cfg_auth_type\":\t\"none\",\n"
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+          "\t\"use_http_ruuvi\":\ttrue,\n"
           "\t\"use_http\":\ttrue,\n"
           "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
           "\t\"http_user\":\t\"\",\n"
           "\t\"http_pass\":\t\"\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
           "\t\"http_stat_user\":\t\"\",\n"
@@ -9081,3462 +9491,489 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_malloc_failed) // NOLINT
           "\t\"coordinates\":\t\"\",\n"
           "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
           "}";
-    for (uint32_t i = 0; i < 170; ++i)
+    for (uint32_t i = 0; i < 190; ++i)
     {
         this->m_malloc_cnt         = 0;
         this->m_malloc_fail_on_cnt = i + 1;
         gw_cfg_t gw_cfg2           = get_gateway_config_default();
         if (gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2))
         {
-            ASSERT_FALSE(true);
+            ASSERT_FALSE(true) << "Failed at cycle number: " << i;
         }
-        ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+        ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty()) << "Failed at cycle number: " << i;
     }
 
     {
         this->m_malloc_cnt         = 0;
-        this->m_malloc_fail_on_cnt = 171;
+        this->m_malloc_fail_on_cnt = 191;
         gw_cfg_t gw_cfg2           = get_gateway_config_default();
         ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
         ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
     }
 }
 
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_json_creation) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 1;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't create json object"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 2;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: wifi_sta_config"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 3;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: wifi_sta_config"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 4;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ssid"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 5;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ssid"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_ssid_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 6;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ssid"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_password) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 7;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_password_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 8;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_sta_config_password_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 9;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 10;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: wifi_ap_config"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 11;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: wifi_ap_config"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_password) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 12;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_password_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 13;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_password_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 14;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: password"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_channel) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 15;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: channel"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_wifi_ap_config_channel_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 16;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: channel"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_eth) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 17;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_eth"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_eth_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 18;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_eth"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dhcp) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 19;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dhcp"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dhcp_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 20;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dhcp"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 21;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 22;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_static_ip_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 23;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_static_ip"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 24;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 25;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_netmask_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 26;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_netmask"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 27;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 28;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_gw_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 29;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_gw"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 30;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 31;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns1_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 32;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns1"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 33;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2_1) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 34;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_eth_dns2_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 35;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: eth_dns2"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 36;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 37;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 38;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 39;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_url_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 40;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 41;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_auth_type"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 42;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_auth_type"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_auth_type_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 43;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_auth_type"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_ssl_client_cert) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 44;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use_ssl_client_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_ssl_client_cert_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 45;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use_ssl_client_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_ssl_server_cert) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 46;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use_ssl_server_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_use_ssl_server_cert_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 47;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_use_ssl_server_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_interval_minutes) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 48;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_refresh_interval_minutes"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_remote_cfg_refresh_interval_minutes_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 49;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: remote_cfg_refresh_interval_minutes"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_ruuvi) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 50;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_ruuvi"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_ruuvi_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 51;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_ruuvi"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 52;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 53;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 54;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 55;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_url_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 56;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_data_format) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 57;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_data_format"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_data_format_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 58;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_data_format"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_data_format_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 59;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_data_format"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_auth) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 60;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_auth"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_auth_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 61;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_auth"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_auth_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 62;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_auth"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 63;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_stat"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_http_stat_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 64;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_http_stat"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 65;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 66;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_url_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 67;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 68;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 69;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_user_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 70;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 71;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_pass"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 72;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_pass"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_pass_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 73;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_pass"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_use_ssl_client_cert) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 74;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_use_ssl_client_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_use_ssl_client_cert_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 75;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_use_ssl_client_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_use_ssl_server_cert) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 76;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_use_ssl_server_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_http_stat_use_ssl_server_cert_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 76;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: http_stat_use_ssl_server_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 78;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_mqtt"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_mqtt_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 79;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: use_mqtt"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_disable_retained_messages) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 80;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_disable_retained_messages"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_disable_retained_messages_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 81;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_disable_retained_messages"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 82;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_transport"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 83;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_transport"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_trnasport_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 84;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_transport"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_data_format) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 85;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_data_format"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_data_format_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 86;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_data_format"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_data_format_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 87;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_data_format"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 88;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 89;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_server_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 90;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_server"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 91;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_port"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_port_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 92;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_port"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_mqtt_sending_interval) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 93;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_sending_interval"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_sending_interval_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 94;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_sending_interval"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 95;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 96;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_prefix_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 97;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_prefix"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 98;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 99;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_client_id_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 100;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_client_id"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 101;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 102;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_user_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 103;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 104;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 105;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_pass_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 106;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_pass"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_client_cert) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 107;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_use_ssl_client_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_client_cert_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 108;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_use_ssl_client_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_server_cert) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 109;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_use_ssl_server_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_mqtt_use_ssl_server_cert_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 110;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: mqtt_use_ssl_server_cert"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 111;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_type"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 112;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_type"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_type_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 113;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_type"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 114;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 115;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_user_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 116;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_user"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 117;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_pass"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 118;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_pass"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_pass_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 119;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_pass"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 120;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 121;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 122;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 123;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key_rw"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 124;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key_rw"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_lan_auth_api_key_rw_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 125;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: lan_auth_api_key_rw"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 126;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 127;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_cycle_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 128;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_cycle"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays_bitmask) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 129;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_weekdays_bitmask"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_weekdays_bitmask_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 130;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_weekdays_bitmask"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval_from) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 131;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_from"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval_from_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 132;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_from"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval_to) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 133;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_to"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_interval_to_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 134;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_interval_to"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 135;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_tz_offset_hours"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_auto_update_tz_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 136;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: auto_update_tz_offset_hours"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 137;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 138;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 139;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use_dhcp"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_use_dhcp_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 140;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_use_dhcp"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 141;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server1"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 142;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server1"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server1_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 143;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server1"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 144;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server2"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 145;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server2"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server2_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 146;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server2"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 147;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server3"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 148;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server3"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server3_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 149;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server3"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 150;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server4"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_1) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 151;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server4"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_ntp_server4_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 152;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: ntp_server4"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 153;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_id"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_company_id_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 154;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_id"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 155;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_use_filtering"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_filtering_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 156;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: company_use_filtering"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 157;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_coded_phy"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_coded_phy_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 158;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_coded_phy"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 159;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_1mbit_phy"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_1mbit_phy_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 160;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_1mbit_phy"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 161;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_2mbit_phy"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_extended_payload_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 162;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_2mbit_phy"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 163;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_37"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_37_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 164;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_37"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 165;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_38"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_38_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 166;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_38"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 167;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_39"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_use_channel_39_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 168;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_channel_39"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_default) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 169;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_default"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_default_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 170;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_default"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_allow_listed) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 171;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_filter_allow_listed"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_allow_listed_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 172;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_filter_allow_listed"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_list) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 173;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_filter_list"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_scan_filter_list_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 174;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: scan_filter_list"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 175;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 176;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_coordinates_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 177;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: coordinates"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_update_url) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 178;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_update_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_update_url_2) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 179;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_update_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_fw_update_url_3) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 180;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't add json item: fw_update_url"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
-}
-
-TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed_on_converting_to_json_string) // NOLINT
-{
-    const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
-    cjson_wrap_str_t json_str = cjson_wrap_str_null();
-
-    cJSON_Hooks hooks = {
-        .malloc_fn = &os_malloc,
-        .free_fn   = &os_free_internal,
-    };
-    cJSON_InitHooks(&hooks);
-    this->m_malloc_fail_on_cnt = 181;
-
-    ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
-    ASSERT_EQ(nullptr, json_str.p_str);
-    TEST_CHECK_LOG_RECORD(ESP_LOG_ERROR, string("Can't create json string"));
-    ASSERT_TRUE(esp_log_wrapper_is_empty());
-    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_malloc_failed) // NOLINT
+{
+    static const string expected_json
+        = "{\n"
+          "\t\"wifi_sta_config\":\t{\n"
+          "\t\t\"ssid\":\t\"\",\n"
+          "\t\t\"password\":\t\"\"\n"
+          "\t},\n"
+          "\t\"wifi_ap_config\":\t{\n"
+          "\t\t\"password\":\t\"\",\n"
+          "\t\t\"channel\":\t1\n"
+          "\t},\n"
+          "\t\"use_eth\":\ttrue,\n"
+          "\t\"eth_dhcp\":\ttrue,\n"
+          "\t\"eth_static_ip\":\t\"\",\n"
+          "\t\"eth_netmask\":\t\"\",\n"
+          "\t\"eth_gw\":\t\"\",\n"
+          "\t\"eth_dns1\":\t\"\",\n"
+          "\t\"eth_dns2\":\t\"\",\n"
+          "\t\"remote_cfg_use\":\tfalse,\n"
+          "\t\"remote_cfg_url\":\t\"\",\n"
+          "\t\"remote_cfg_auth_type\":\t\"none\",\n"
+          "\t\"remote_cfg_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"remote_cfg_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
+          "\t\"use_http_ruuvi\":\ttrue,\n"
+          "\t\"use_http\":\ttrue,\n"
+          "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
+          "\t\"use_http_stat\":\ttrue,\n"
+          "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
+          "\t\"http_stat_user\":\t\"\",\n"
+          "\t\"http_stat_pass\":\t\"\",\n"
+          "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"use_mqtt\":\tfalse,\n"
+          "\t\"mqtt_disable_retained_messages\":\tfalse,\n"
+          "\t\"mqtt_transport\":\t\"TCP\",\n"
+          "\t\"mqtt_data_format\":\t\"ruuvi_raw\",\n"
+          "\t\"mqtt_server\":\t\"test.mosquitto.org\",\n"
+          "\t\"mqtt_port\":\t1883,\n"
+          "\t\"mqtt_sending_interval\":\t0,\n"
+          "\t\"mqtt_prefix\":\t\"ruuvi/AA:BB:CC:DD:EE:FF/\",\n"
+          "\t\"mqtt_client_id\":\t\"AA:BB:CC:DD:EE:FF\",\n"
+          "\t\"mqtt_user\":\t\"\",\n"
+          "\t\"mqtt_pass\":\t\"\",\n"
+          "\t\"mqtt_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"mqtt_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"lan_auth_type\":\t\"lan_auth_ruuvi\",\n"
+          "\t\"lan_auth_user\":\t\"Admin\",\n"
+          "\t\"lan_auth_pass\":\t\"non_default_pass\",\n"
+          "\t\"lan_auth_api_key\":\t\"\",\n"
+          "\t\"lan_auth_api_key_rw\":\t\"\",\n"
+          "\t\"auto_update_cycle\":\t\"regular\",\n"
+          "\t\"auto_update_weekdays_bitmask\":\t127,\n"
+          "\t\"auto_update_interval_from\":\t0,\n"
+          "\t\"auto_update_interval_to\":\t24,\n"
+          "\t\"auto_update_tz_offset_hours\":\t3,\n"
+          "\t\"ntp_use\":\ttrue,\n"
+          "\t\"ntp_use_dhcp\":\tfalse,\n"
+          "\t\"ntp_server1\":\t\"time.google.com\",\n"
+          "\t\"ntp_server2\":\t\"time.cloudflare.com\",\n"
+          "\t\"ntp_server3\":\t\"pool.ntp.org\",\n"
+          "\t\"ntp_server4\":\t\"time.ruuvi.com\",\n"
+          "\t\"company_id\":\t1177,\n"
+          "\t\"company_use_filtering\":\ttrue,\n"
+          "\t\"scan_coded_phy\":\tfalse,\n"
+          "\t\"scan_1mbit_phy\":\ttrue,\n"
+          "\t\"scan_2mbit_phy\":\ttrue,\n"
+          "\t\"scan_channel_37\":\ttrue,\n"
+          "\t\"scan_channel_38\":\ttrue,\n"
+          "\t\"scan_channel_39\":\ttrue,\n"
+          "\t\"scan_default\":\ttrue,\n"
+          "\t\"scan_filter_allow_listed\":\tfalse,\n"
+          "\t\"scan_filter_list\":\t[],\n"
+          "\t\"coordinates\":\t\"\",\n"
+          "\t\"fw_update_url\":\t\"https://network.ruuvi.com/firmwareupdate\"\n"
+          "}";
+    static const string expected_logs[] = { "E gw_cfg: Can't create json object\n",
+                                            "E gw_cfg: Can't add json item: wifi_sta_config\n",
+                                            "E gw_cfg: Can't add json item: wifi_sta_config\n",
+                                            "E gw_cfg: Can't add json item: ssid\n",
+                                            "E gw_cfg: Can't add json item: ssid\n",
+                                            "E gw_cfg: Can't add json item: ssid\n",
+                                            "E gw_cfg: Can't add json item: password\n",
+                                            "E gw_cfg: Can't add json item: password\n",
+                                            "E gw_cfg: Can't add json item: password\n",
+                                            "E gw_cfg: Can't add json item: wifi_ap_config\n",
+                                            "E gw_cfg: Can't add json item: wifi_ap_config\n",
+                                            "E gw_cfg: Can't add json item: password\n",
+                                            "E gw_cfg: Can't add json item: password\n",
+                                            "E gw_cfg: Can't add json item: password\n",
+                                            "E gw_cfg: Can't add json item: channel\n",
+                                            "E gw_cfg: Can't add json item: channel\n",
+                                            "E gw_cfg: Can't add json item: use_eth\n",
+                                            "E gw_cfg: Can't add json item: use_eth\n",
+                                            "E gw_cfg: Can't add json item: eth_dhcp\n",
+                                            "E gw_cfg: Can't add json item: eth_dhcp\n",
+                                            "E gw_cfg: Can't add json item: eth_static_ip\n",
+                                            "E gw_cfg: Can't add json item: eth_static_ip\n",
+                                            "E gw_cfg: Can't add json item: eth_static_ip\n",
+                                            "E gw_cfg: Can't add json item: eth_netmask\n",
+                                            "E gw_cfg: Can't add json item: eth_netmask\n",
+                                            "E gw_cfg: Can't add json item: eth_netmask\n",
+                                            "E gw_cfg: Can't add json item: eth_gw\n",
+                                            "E gw_cfg: Can't add json item: eth_gw\n",
+                                            "E gw_cfg: Can't add json item: eth_gw\n",
+                                            "E gw_cfg: Can't add json item: eth_dns1\n",
+                                            "E gw_cfg: Can't add json item: eth_dns1\n",
+                                            "E gw_cfg: Can't add json item: eth_dns1\n",
+                                            "E gw_cfg: Can't add json item: eth_dns2\n",
+                                            "E gw_cfg: Can't add json item: eth_dns2\n",
+                                            "E gw_cfg: Can't add json item: eth_dns2\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_use\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_use\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_url\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_url\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_url\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_auth_type\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_auth_type\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_auth_type\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_use_ssl_client_cert\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_use_ssl_client_cert\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_use_ssl_server_cert\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_use_ssl_server_cert\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_refresh_interval_minutes\n",
+                                            "E gw_cfg: Can't add json item: remote_cfg_refresh_interval_minutes\n",
+                                            "E gw_cfg: Can't add json item: use_http_ruuvi\n",
+                                            "E gw_cfg: Can't add json item: use_http_ruuvi\n",
+                                            "E gw_cfg: Can't add json item: use_http\n",
+                                            "E gw_cfg: Can't add json item: use_http\n",
+                                            "E gw_cfg: Can't add json item: http_url\n",
+                                            "E gw_cfg: Can't add json item: http_url\n",
+                                            "E gw_cfg: Can't add json item: http_url\n",
+                                            "E gw_cfg: Can't add json item: http_period\n",
+                                            "E gw_cfg: Can't add json item: http_period\n",
+                                            "E gw_cfg: Can't add json item: http_data_format\n",
+                                            "E gw_cfg: Can't add json item: http_data_format\n",
+                                            "E gw_cfg: Can't add json item: http_data_format\n",
+                                            "E gw_cfg: Can't add json item: http_auth\n",
+                                            "E gw_cfg: Can't add json item: http_auth\n",
+                                            "E gw_cfg: Can't add json item: http_auth\n",
+                                            "E gw_cfg: Can't add json item: http_use_ssl_client_cert\n",
+                                            "E gw_cfg: Can't add json item: http_use_ssl_client_cert\n",
+                                            "E gw_cfg: Can't add json item: http_use_ssl_server_cert\n",
+                                            "E gw_cfg: Can't add json item: http_use_ssl_server_cert\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_path\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_path\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_query\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_query\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_headers\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_headers\n",
+                                            "E gw_cfg: Can't add json item: use_http_stat\n",
+                                            "E gw_cfg: Can't add json item: use_http_stat\n",
+                                            "E gw_cfg: Can't add json item: http_stat_url\n",
+                                            "E gw_cfg: Can't add json item: http_stat_url\n",
+                                            "E gw_cfg: Can't add json item: http_stat_url\n",
+                                            "E gw_cfg: Can't add json item: http_stat_user\n",
+                                            "E gw_cfg: Can't add json item: http_stat_user\n",
+                                            "E gw_cfg: Can't add json item: http_stat_user\n",
+                                            "E gw_cfg: Can't add json item: http_stat_pass\n",
+                                            "E gw_cfg: Can't add json item: http_stat_pass\n",
+                                            "E gw_cfg: Can't add json item: http_stat_pass\n",
+                                            "E gw_cfg: Can't add json item: http_stat_use_ssl_client_cert\n",
+                                            "E gw_cfg: Can't add json item: http_stat_use_ssl_client_cert\n",
+                                            "E gw_cfg: Can't add json item: http_stat_use_ssl_server_cert\n",
+                                            "E gw_cfg: Can't add json item: http_stat_use_ssl_server_cert\n",
+                                            "E gw_cfg: Can't add json item: use_mqtt\n",
+                                            "E gw_cfg: Can't add json item: use_mqtt\n",
+                                            "E gw_cfg: Can't add json item: mqtt_disable_retained_messages\n",
+                                            "E gw_cfg: Can't add json item: mqtt_disable_retained_messages\n",
+                                            "E gw_cfg: Can't add json item: mqtt_transport\n",
+                                            "E gw_cfg: Can't add json item: mqtt_transport\n",
+                                            "E gw_cfg: Can't add json item: mqtt_transport\n",
+                                            "E gw_cfg: Can't add json item: mqtt_data_format\n",
+                                            "E gw_cfg: Can't add json item: mqtt_data_format\n",
+                                            "E gw_cfg: Can't add json item: mqtt_data_format\n",
+                                            "E gw_cfg: Can't add json item: mqtt_server\n",
+                                            "E gw_cfg: Can't add json item: mqtt_server\n",
+                                            "E gw_cfg: Can't add json item: mqtt_server\n",
+                                            "E gw_cfg: Can't add json item: mqtt_port\n",
+                                            "E gw_cfg: Can't add json item: mqtt_port\n",
+                                            "E gw_cfg: Can't add json item: mqtt_sending_interval\n",
+                                            "E gw_cfg: Can't add json item: mqtt_sending_interval\n",
+                                            "E gw_cfg: Can't add json item: mqtt_prefix\n",
+                                            "E gw_cfg: Can't add json item: mqtt_prefix\n",
+                                            "E gw_cfg: Can't add json item: mqtt_prefix\n",
+                                            "E gw_cfg: Can't add json item: mqtt_client_id\n",
+                                            "E gw_cfg: Can't add json item: mqtt_client_id\n",
+                                            "E gw_cfg: Can't add json item: mqtt_client_id\n",
+                                            "E gw_cfg: Can't add json item: mqtt_user\n",
+                                            "E gw_cfg: Can't add json item: mqtt_user\n",
+                                            "E gw_cfg: Can't add json item: mqtt_user\n",
+                                            "E gw_cfg: Can't add json item: mqtt_pass\n",
+                                            "E gw_cfg: Can't add json item: mqtt_pass\n",
+                                            "E gw_cfg: Can't add json item: mqtt_pass\n",
+                                            "E gw_cfg: Can't add json item: mqtt_use_ssl_client_cert\n",
+                                            "E gw_cfg: Can't add json item: mqtt_use_ssl_client_cert\n",
+                                            "E gw_cfg: Can't add json item: mqtt_use_ssl_server_cert\n",
+                                            "E gw_cfg: Can't add json item: mqtt_use_ssl_server_cert\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_type\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_type\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_type\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_user\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_user\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_user\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_pass\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_pass\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_pass\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_api_key\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_api_key\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_api_key\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_api_key_rw\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_api_key_rw\n",
+                                            "E gw_cfg: Can't add json item: lan_auth_api_key_rw\n",
+                                            "E gw_cfg: Can't add json item: auto_update_cycle\n",
+                                            "E gw_cfg: Can't add json item: auto_update_cycle\n",
+                                            "E gw_cfg: Can't add json item: auto_update_cycle\n",
+                                            "E gw_cfg: Can't add json item: auto_update_weekdays_bitmask\n",
+                                            "E gw_cfg: Can't add json item: auto_update_weekdays_bitmask\n",
+                                            "E gw_cfg: Can't add json item: auto_update_interval_from\n",
+                                            "E gw_cfg: Can't add json item: auto_update_interval_from\n",
+                                            "E gw_cfg: Can't add json item: auto_update_interval_to\n",
+                                            "E gw_cfg: Can't add json item: auto_update_interval_to\n",
+                                            "E gw_cfg: Can't add json item: auto_update_tz_offset_hours\n",
+                                            "E gw_cfg: Can't add json item: auto_update_tz_offset_hours\n",
+                                            "E gw_cfg: Can't add json item: ntp_use\n",
+                                            "E gw_cfg: Can't add json item: ntp_use\n",
+                                            "E gw_cfg: Can't add json item: ntp_use_dhcp\n",
+                                            "E gw_cfg: Can't add json item: ntp_use_dhcp\n",
+                                            "E gw_cfg: Can't add json item: ntp_server1\n",
+                                            "E gw_cfg: Can't add json item: ntp_server1\n",
+                                            "E gw_cfg: Can't add json item: ntp_server1\n",
+                                            "E gw_cfg: Can't add json item: ntp_server2\n",
+                                            "E gw_cfg: Can't add json item: ntp_server2\n",
+                                            "E gw_cfg: Can't add json item: ntp_server2\n",
+                                            "E gw_cfg: Can't add json item: ntp_server3\n",
+                                            "E gw_cfg: Can't add json item: ntp_server3\n",
+                                            "E gw_cfg: Can't add json item: ntp_server3\n",
+                                            "E gw_cfg: Can't add json item: ntp_server4\n",
+                                            "E gw_cfg: Can't add json item: ntp_server4\n",
+                                            "E gw_cfg: Can't add json item: ntp_server4\n",
+                                            "E gw_cfg: Can't add json item: company_id\n",
+                                            "E gw_cfg: Can't add json item: company_id\n",
+                                            "E gw_cfg: Can't add json item: company_use_filtering\n",
+                                            "E gw_cfg: Can't add json item: company_use_filtering\n",
+                                            "E gw_cfg: Can't add json item: scan_coded_phy\n",
+                                            "E gw_cfg: Can't add json item: scan_coded_phy\n",
+                                            "E gw_cfg: Can't add json item: scan_1mbit_phy\n",
+                                            "E gw_cfg: Can't add json item: scan_1mbit_phy\n",
+                                            "E gw_cfg: Can't add json item: scan_2mbit_phy\n",
+                                            "E gw_cfg: Can't add json item: scan_2mbit_phy\n",
+                                            "E gw_cfg: Can't add json item: scan_channel_37\n",
+                                            "E gw_cfg: Can't add json item: scan_channel_37\n",
+                                            "E gw_cfg: Can't add json item: scan_channel_38\n",
+                                            "E gw_cfg: Can't add json item: scan_channel_38\n",
+                                            "E gw_cfg: Can't add json item: scan_channel_39\n",
+                                            "E gw_cfg: Can't add json item: scan_channel_39\n",
+                                            "E gw_cfg: Can't add json item: scan_default\n",
+                                            "E gw_cfg: Can't add json item: scan_default\n",
+                                            "E gw_cfg: Can't add json item: scan_filter_allow_listed\n",
+                                            "E gw_cfg: Can't add json item: scan_filter_allow_listed\n",
+                                            "E gw_cfg: Can't add json item: scan_filter_list\n",
+                                            "E gw_cfg: Can't add json item: scan_filter_list\n",
+                                            "E gw_cfg: Can't add json item: coordinates\n",
+                                            "E gw_cfg: Can't add json item: coordinates\n",
+                                            "E gw_cfg: Can't add json item: coordinates\n",
+                                            "E gw_cfg: Can't add json item: fw_update_url\n",
+                                            "E gw_cfg: Can't add json item: fw_update_url\n",
+                                            "E gw_cfg: Can't add json item: fw_update_url\n",
+                                            "E gw_cfg: Can't create json string\n",
+                                            "E gw_cfg: Can't create json string\n",
+                                            "E gw_cfg: Can't create json string\n",
+                                            "E gw_cfg: Can't create json string\n",
+                                            "E gw_cfg: Can't create json string\n",
+                                            "E gw_cfg: Can't create json string\n",
+                                            "" };
+
+    cJSON_Hooks hooks = {
+        .malloc_fn = &os_malloc,
+        .free_fn   = &os_free_internal,
+    };
+    cJSON_InitHooks(&hooks);
+
+    for (int32_t i = 0; i < std::size(expected_logs); ++i)
+    {
+        SCOPED_TRACE(::testing::Message() << "Simulate memory allocation failure on step: " << i);
+        this->m_malloc_cnt         = 0;
+        this->m_malloc_fail_on_cnt = i + 1;
+
+        const gw_cfg_t   gw_cfg   = get_gateway_config_default_lan_auth_ruuvi();
+        cjson_wrap_str_t json_str = cjson_wrap_str_null();
+
+        if (expected_logs[i] != "")
+        {
+            ASSERT_FALSE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+            ASSERT_EQ(nullptr, json_str.p_str);
+            ASSERT_EQ(expected_logs[i], esp_log_wrapper_get_logs());
+        }
+        else
+        {
+            ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+            ASSERT_NE(nullptr, json_str.p_str);
+            ASSERT_EQ(expected_json, string(json_str.p_str));
+            cjson_wrap_free_json_str(&json_str);
+        }
+        ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+    }
+}
+/**
+ * Verifies that when "use_http" is false but custom HTTP fields are present in
+ * the JSON, those fields are now parsed and preserved (issue-1325 fix).
+ * Previously, http_url/http_period/http_data_format/http_auth/SSL/extra flags
+ * were skipped whenever use_http was false, leaving stale values in p_gw_cfg_http.
+ */
+TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_use_http_false_preserves_custom_fields) // NOLINT
+{
+    const char* const p_json_str
+        = "{\n"
+          "\t\"use_http_ruuvi\":\tfalse,\n"
+          "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"https://custom.example.com/api\",\n"
+          "\t\"http_period\":\t42,\n"
+          "\t\"http_data_format\":\t\"ruuvi_decoded\",\n"
+          "\t\"http_auth\":\t\"bearer\",\n"
+          "\t\"http_use_ssl_client_cert\":\ttrue,\n"
+          "\t\"http_use_ssl_server_cert\":\ttrue,\n"
+          "\t\"http_use_extra_http_path\":\ttrue,\n"
+          "\t\"http_use_extra_http_query\":\ttrue,\n"
+          "\t\"http_use_extra_http_headers\":\ttrue\n"
+          "}";
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
+    // These values must reflect the JSON content, not the previous (default) values.
+    ASSERT_EQ(string("https://custom.example.com/api"), gw_cfg2.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(42, gw_cfg2.ruuvi_cfg.http.http_period);
+    ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED, gw_cfg2.ruuvi_cfg.http.data_format);
+    ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_BEARER, gw_cfg2.ruuvi_cfg.http.auth_type);
+    ASSERT_TRUE(gw_cfg2.ruuvi_cfg.http.http_use_ssl_client_cert);
+    ASSERT_TRUE(gw_cfg2.ruuvi_cfg.http.http_use_ssl_server_cert);
+    ASSERT_TRUE(gw_cfg2.ruuvi_cfg.http.http_use_extra_http_path);
+    ASSERT_TRUE(gw_cfg2.ruuvi_cfg.http.http_use_extra_http_query);
+    ASSERT_TRUE(gw_cfg2.ruuvi_cfg.http.http_use_extra_http_headers);
+}
+
+/**
+ * When use_http==true but the optional HTTP fields are missing from the JSON,
+ * the parser must emit warnings for each missing key (covers the
+ * flag_warn_if_missing=true branches added in the issue-1325 fix).
+ *
+ * Provide a non-default http_url so that the v1.13->v1.14 legacy patch in
+ * gw_cfg_json_patch_http_legacy_pre_v1_14() does NOT trigger and use_http
+ * stays true for the whole parse; otherwise the post-patch fields would
+ * (correctly) log at DEBUG instead of WARNING.
+ */
+TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_use_http_true_missing_fields_logs_warnings) // NOLINT
+{
+    const char* const p_json_str
+        = "{\n"
+          "\t\"use_http_ruuvi\":\tfalse,\n"
+          "\t\"use_http\":\ttrue,\n"
+          "\t\"http_url\":\t\"https://example.com/post\"\n"
+          "}";
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
+    // The legacy patch must NOT have triggered because http_url is non-default.
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http);
+    // Scan all log records to confirm the WARN is emitted for each missing optional
+    // HTTP field (covers the flag_warn_if_missing=true paths).
+    bool found_data_format = false;
+    bool found_auth        = false;
+    bool found_period      = false;
+    bool found_path        = false;
+    bool found_query       = false;
+    bool found_headers     = false;
+    bool found_ssl_client  = false;
+    bool found_ssl_server  = false;
+    while (!esp_log_wrapper_is_empty())
+    {
+        const LogRecord r = esp_log_wrapper_pop();
+        if (r.level != ESP_LOG_WARN)
+        {
+            continue;
+        }
+        const string& msg = r.parsed.msg;
+        if (msg == "Can't find key 'http_data_format' in config-json, leave the previous value 0 unchanged")
+            found_data_format = true;
+        else if (msg == "Can't find key 'http_auth' in config-json, leave the previous value 0 unchanged")
+            found_auth = true;
+        else if (msg == "Can't find key 'http_period' in config-json")
+            found_period = true;
+        else if (msg == "Can't find key 'http_use_extra_http_path' in config-json")
+            found_path = true;
+        else if (msg == "Can't find key 'http_use_extra_http_query' in config-json")
+            found_query = true;
+        else if (msg == "Can't find key 'http_use_extra_http_headers' in config-json")
+            found_headers = true;
+        else if (msg == "Can't find key 'http_use_ssl_client_cert' in config-json")
+            found_ssl_client = true;
+        else if (msg == "Can't find key 'http_use_ssl_server_cert' in config-json")
+            found_ssl_server = true;
+    }
+    ASSERT_TRUE(found_data_format);
+    ASSERT_TRUE(found_auth);
+    ASSERT_TRUE(found_period);
+    ASSERT_TRUE(found_path);
+    ASSERT_TRUE(found_query);
+    ASSERT_TRUE(found_headers);
+    ASSERT_TRUE(found_ssl_client);
+    ASSERT_TRUE(found_ssl_server);
+}
+
+/**
+ * Regression test for issue-1325: when the v1.13->v1.14 legacy compatibility
+ * patch (gw_cfg_json_patch_http_legacy_pre_v1_14) flips use_http from true to
+ * false, the parsing of the post-patch optional HTTP fields (http_period,
+ * http_use_extra_*, http_use_ssl_*) MUST switch from WARN to DEBUG logging,
+ * because HTTP has effectively been disabled by the patch and the missing
+ * keys are then expected.
+ *
+ * The input JSON below has the exact "pre-v1.14 Ruuvi default" shape
+ * (use_http=true, data_format=ruuvi, auth=none, url=Ruuvi default URL)
+ * that triggers the patch.
+ */
+TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_legacy_patch_silences_post_patch_warnings) // NOLINT
+{
+    const char* const p_json_str
+        = "{\n"
+          "\t\"use_http_ruuvi\":\tfalse,\n"
+          "\t\"use_http\":\ttrue\n"
+          "}";
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
+    // The compatibility patch promotes (use_http==true, data_format=ruuvi,
+    // auth=none, url=RUUVI default) back to (use_http_ruuvi=true, use_http=false).
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
+    // None of the post-patch optional HTTP fields must be reported as WARN,
+    // because use_http is false after the patch.
+    while (!esp_log_wrapper_is_empty())
+    {
+        const LogRecord r = esp_log_wrapper_pop();
+        if (r.level != ESP_LOG_WARN)
+        {
+            continue;
+        }
+        const string& msg = r.parsed.msg;
+        ASSERT_NE(msg, string("Can't find key 'http_period' in config-json"));
+        ASSERT_NE(msg, string("Can't find key 'http_use_extra_http_path' in config-json"));
+        ASSERT_NE(msg, string("Can't find key 'http_use_extra_http_query' in config-json"));
+        ASSERT_NE(msg, string("Can't find key 'http_use_extra_http_headers' in config-json"));
+        ASSERT_NE(msg, string("Can't find key 'http_use_ssl_client_cert' in config-json"));
+        ASSERT_NE(msg, string("Can't find key 'http_use_ssl_server_cert' in config-json"));
+    }
 }
