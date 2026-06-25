@@ -4321,7 +4321,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_mount_failed) //
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "esp_vfs_fat_rawflash_mount failed, err=261 (ESP_ERR_NOT_FOUND)");
     TEST_CHECK_LOG_RECORD_FFFS(
         ESP_LOG_WARN,
-        "Try to mount partition 'fatfs_nrf52' as FATFS (SPI-Flash) to the mount point /fs_nrf52");
+        "Try to mount partition 'fatfs_nrf52' as FATFS (SPI-Flash) to the mount point ./fs_nrf52");
     TEST_CHECK_LOG_RECORD_FFFS(ESP_LOG_ERROR, "esp_vfs_fat_spiflash_mount failed, err=261 (ESP_ERR_NOT_FOUND)");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_ERROR, "flashfatfs_mount failed");
     TEST_CHECK_LOG_RECORD_NRF52(ESP_LOG_INFO, "Deinit SWD");
