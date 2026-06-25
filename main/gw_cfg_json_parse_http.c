@@ -100,68 +100,76 @@ gw_cfg_json_copy_string_or_log(
     }
 }
 
-static gw_cfg_http_data_format_e
+static void
 gw_cfg_json_parse_http_data_format(
-    const cJSON* const              p_json_root,
-    const bool                      flag_warn_if_missing,
-    const gw_cfg_http_data_format_e default_value)
+    const cJSON* const               p_json_root,
+    const bool                       flag_warn_if_missing,
+    gw_cfg_http_data_format_e* const p_data_format)
 {
     char data_format_str[GW_CFG_HTTP_DATA_FORMAT_STR_SIZE];
     if (!gw_cfg_json_copy_string_val(p_json_root, "http_data_format", &data_format_str[0], sizeof(data_format_str)))
     {
-        gw_cfg_json_log_missing_key_with_default("http_data_format", default_value, flag_warn_if_missing);
-        return default_value;
+        gw_cfg_json_log_missing_key_with_default("http_data_format", *p_data_format, flag_warn_if_missing);
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI, data_format_str))
     {
-        return GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+        *p_data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_DATA_FORMAT_STR_RAW_AND_DECODED, data_format_str))
     {
-        return GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED;
+        *p_data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI_RAW_AND_DECODED;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_DATA_FORMAT_STR_DECODED, data_format_str))
     {
-        return GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED;
+        *p_data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI_DECODED;
+        return;
     }
     LOG_WARN("Unknown http_data_format='%s', use 'ruuvi'", data_format_str);
-    return GW_CFG_HTTP_DATA_FORMAT_RUUVI;
+    *p_data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI;
 }
 
-static gw_cfg_http_auth_type_e
+static void
 gw_cfg_json_parse_http_auth_type(
-    const cJSON* const            p_json_root,
-    const bool                    flag_warn_if_missing,
-    const gw_cfg_http_auth_type_e default_value)
+    const cJSON* const             p_json_root,
+    const bool                     flag_warn_if_missing,
+    gw_cfg_http_auth_type_e* const p_auth_type)
 {
     char auth_type_str[GW_CFG_HTTP_AUTH_TYPE_STR_SIZE];
     if (!gw_cfg_json_copy_string_val(p_json_root, "http_auth", &auth_type_str[0], sizeof(auth_type_str)))
     {
-        gw_cfg_json_log_missing_key_with_default("http_auth", default_value, flag_warn_if_missing);
-        return default_value;
+        gw_cfg_json_log_missing_key_with_default("http_auth", *p_auth_type, flag_warn_if_missing);
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_NONE, auth_type_str))
     {
-        return GW_CFG_HTTP_AUTH_TYPE_NONE;
+        *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_BASIC, auth_type_str))
     {
-        return GW_CFG_HTTP_AUTH_TYPE_BASIC;
+        *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_BEARER, auth_type_str))
     {
-        return GW_CFG_HTTP_AUTH_TYPE_BEARER;
+        *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_BEARER;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_TOKEN, auth_type_str))
     {
-        return GW_CFG_HTTP_AUTH_TYPE_TOKEN;
+        *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_TOKEN;
+        return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_APIKEY, auth_type_str))
     {
-        return GW_CFG_HTTP_AUTH_TYPE_APIKEY;
+        *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_APIKEY;
+        return;
     }
     LOG_WARN("Unknown http_auth='%s', use 'ruuvi'", auth_type_str);
-    return GW_CFG_HTTP_AUTH_TYPE_NONE;
+    *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
 }
 
 static void
@@ -288,14 +296,8 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
 
     const bool flag_warn_if_missing = p_gw_cfg_http->use_http;
 
-    p_gw_cfg_http->data_format = gw_cfg_json_parse_http_data_format(
-        p_json_root,
-        flag_warn_if_missing,
-        p_gw_cfg_http->data_format);
-    p_gw_cfg_http->auth_type = gw_cfg_json_parse_http_auth_type(
-        p_json_root,
-        flag_warn_if_missing,
-        p_gw_cfg_http->auth_type);
+    gw_cfg_json_parse_http_data_format(p_json_root, flag_warn_if_missing, &p_gw_cfg_http->data_format);
+    gw_cfg_json_parse_http_auth_type(p_json_root, flag_warn_if_missing, &p_gw_cfg_http->auth_type);
 
     gw_cfg_json_copy_string_or_log(
         p_json_root,
