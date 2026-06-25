@@ -205,7 +205,7 @@ nvs_erase_key(nvs_handle_t handle, const char* key)
 const char*
 wrap_esp_err_to_name_r(const esp_err_t code, char* const p_buf, const size_t buf_len)
 {
-    (void)snprintf(p_buf, buf_len, "Error 0x%x(%d)", code, code);
+    (void)snprintf(p_buf, buf_len, "Error 0x%x(%d)", (printf_uint_t)code, (printf_int_t)code);
     return p_buf;
 }
 
