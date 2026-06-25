@@ -181,32 +181,6 @@ gw_cfg_json_add_items_eth(cJSON* const p_json_root, const gw_cfg_eth_t* const p_
 }
 
 static bool
-gw_cfg_json_add_items_http_default(cJSON* const p_json_root)
-{
-    if (!gw_cfg_json_add_bool(p_json_root, "use_http_ruuvi", true))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(p_json_root, "use_http", true))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_string(p_json_root, "http_url", RUUVI_GATEWAY_HTTP_DEFAULT_URL))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_string(p_json_root, "http_data_format", GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_string(p_json_root, "http_auth", GW_CFG_HTTP_AUTH_TYPE_STR_NONE))
-    {
-        return false;
-    }
-    return true;
-}
-
-static bool
 gw_cfg_json_add_items_http_custom_auth_basic(
     cJSON* const                     p_json_root,
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
@@ -288,26 +262,6 @@ gw_cfg_json_add_items_http_custom_params(
     const ruuvi_gw_cfg_http_t* const p_cfg_http,
     const bool                       flag_hide_passwords)
 {
-    if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_client_cert", p_cfg_http->http_use_ssl_client_cert))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_server_cert", p_cfg_http->http_use_ssl_server_cert))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_path", p_cfg_http->http_use_extra_http_path))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_query", p_cfg_http->http_use_extra_http_query))
-    {
-        return false;
-    }
-    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_headers", p_cfg_http->http_use_extra_http_headers))
-    {
-        return false;
-    }
     if (!gw_cfg_json_add_string(p_json_root, "http_url", p_cfg_http->http_url.buf))
     {
         return false;
@@ -370,7 +324,44 @@ gw_cfg_json_add_items_http_custom_params(
             }
             break;
     }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_client_cert", p_cfg_http->http_use_ssl_client_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_ssl_server_cert", p_cfg_http->http_use_ssl_server_cert))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_path", p_cfg_http->http_use_extra_http_path))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_query", p_cfg_http->http_use_extra_http_query))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "http_use_extra_http_headers", p_cfg_http->http_use_extra_http_headers))
+    {
+        return false;
+    }
     return true;
+}
+
+static bool
+gw_cfg_json_add_items_http_default(
+    cJSON* const                     p_json_root,
+    const ruuvi_gw_cfg_http_t* const p_cfg_http,
+    const bool                       flag_hide_passwords)
+{
+    if (!gw_cfg_json_add_bool(p_json_root, "use_http_ruuvi", true))
+    {
+        return false;
+    }
+    if (!gw_cfg_json_add_bool(p_json_root, "use_http", true))
+    {
+        return false;
+    }
+    return gw_cfg_json_add_items_http_custom_params(p_json_root, p_cfg_http, flag_hide_passwords);
 }
 
 static bool
@@ -384,7 +375,7 @@ gw_cfg_json_add_items_http(
         // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
         // to ensure compatibility between configuration versions when upgrading firmware to a new version
         // or rolling back to an old one
-        return gw_cfg_json_add_items_http_default(p_json_root);
+        return gw_cfg_json_add_items_http_default(p_json_root, p_cfg_http, flag_hide_passwords);
     }
     if (p_cfg_http->use_http && (GW_CFG_HTTP_DATA_FORMAT_RUUVI == p_cfg_http->data_format)
         && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_cfg_http->auth_type)
@@ -393,7 +384,7 @@ gw_cfg_json_add_items_http(
         // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
         // to ensure compatibility between configuration versions when upgrading firmware to a new version
         // or rolling back to an old one
-        return gw_cfg_json_add_items_http_default(p_json_root);
+        return gw_cfg_json_add_items_http_default(p_json_root, p_cfg_http, flag_hide_passwords);
     }
 
     if (!gw_cfg_json_add_bool(p_json_root, "use_http_ruuvi", p_cfg_http->use_http_ruuvi))
@@ -404,11 +395,7 @@ gw_cfg_json_add_items_http(
     {
         return false;
     }
-    if (p_cfg_http->use_http)
-    {
-        return gw_cfg_json_add_items_http_custom_params(p_json_root, p_cfg_http, flag_hide_passwords);
-    }
-    return true;
+    return gw_cfg_json_add_items_http_custom_params(p_json_root, p_cfg_http, flag_hide_passwords);
 }
 
 static bool

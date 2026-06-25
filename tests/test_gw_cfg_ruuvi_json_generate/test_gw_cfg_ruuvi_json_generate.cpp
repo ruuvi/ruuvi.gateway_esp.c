@@ -405,8 +405,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default) // NOLINT
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -496,8 +502,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -589,8 +601,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -682,8 +700,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -777,8 +801,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -872,8 +902,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_diff_lan_a
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -963,8 +999,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1054,8 +1096,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1145,8 +1193,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_default_auto_updat
                "\t\"use_http_ruuvi\":\ttrue,\n"
                "\t\"use_http\":\ttrue,\n"
                "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL "\",\n"
+               "\t\"http_period\":\t10,\n"
                "\t\"http_data_format\":\t\"ruuvi\",\n"
                "\t\"http_auth\":\t\"none\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL "\",\n"
                "\t\"http_stat_user\":\t\"\",\n"
@@ -1335,16 +1389,16 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_ruuvi_json_generate_non_default) // NO
                "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
                "\t\"use_http_ruuvi\":\tfalse,\n"
                "\t\"use_http\":\ttrue,\n"
-               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
-               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
-               "\t\"http_use_extra_http_path\":\tfalse,\n"
-               "\t\"http_use_extra_http_query\":\tfalse,\n"
-               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"http_url\":\t\"https://my_server1.com\",\n"
                "\t\"http_period\":\t15,\n"
                "\t\"http_data_format\":\t\"ruuvi_raw_and_decoded\",\n"
                "\t\"http_auth\":\t\"basic\",\n"
                "\t\"http_user\":\t\"h_user1\",\n"
+               "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+               "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+               "\t\"http_use_extra_http_path\":\tfalse,\n"
+               "\t\"http_use_extra_http_query\":\tfalse,\n"
+               "\t\"http_use_extra_http_headers\":\tfalse,\n"
                "\t\"use_http_stat\":\ttrue,\n"
                "\t\"http_stat_url\":\t\"https://my_server2.com/status\",\n"
                "\t\"http_stat_user\":\t\"h_user2\",\n"
@@ -1428,8 +1482,14 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_default_ruuvi_json_generate_malloc_fai
           "\t\"use_http_ruuvi\":\ttrue,\n"
           "\t\"use_http\":\ttrue,\n"
           "\t\"http_url\":\t\"https://network.ruuvi.com/record\",\n"
+          "\t\"http_period\":\t10,\n"
           "\t\"http_data_format\":\t\"ruuvi\",\n"
           "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"https://network.ruuvi.com/status\",\n"
           "\t\"http_stat_user\":\t\"\",\n"
@@ -1539,12 +1599,24 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_default_ruuvi_json_generate_malloc_fai
                                             "E gw_cfg: Can't add json item: http_url\n",
                                             "E gw_cfg: Can't add json item: http_url\n",
                                             "E gw_cfg: Can't add json item: http_url\n",
+                                            "E gw_cfg: Can't add json item: http_period\n",
+                                            "E gw_cfg: Can't add json item: http_period\n",
                                             "E gw_cfg: Can't add json item: http_data_format\n",
                                             "E gw_cfg: Can't add json item: http_data_format\n",
                                             "E gw_cfg: Can't add json item: http_data_format\n",
                                             "E gw_cfg: Can't add json item: http_auth\n",
                                             "E gw_cfg: Can't add json item: http_auth\n",
                                             "E gw_cfg: Can't add json item: http_auth\n",
+                                            "E gw_cfg: Can't add json item: http_use_ssl_client_cert\n",
+                                            "E gw_cfg: Can't add json item: http_use_ssl_client_cert\n",
+                                            "E gw_cfg: Can't add json item: http_use_ssl_server_cert\n",
+                                            "E gw_cfg: Can't add json item: http_use_ssl_server_cert\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_path\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_path\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_query\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_query\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_headers\n",
+                                            "E gw_cfg: Can't add json item: http_use_extra_http_headers\n",
                                             "E gw_cfg: Can't add json item: use_http_stat\n",
                                             "E gw_cfg: Can't add json item: use_http_stat\n",
                                             "E gw_cfg: Can't add json item: http_stat_url\n",
@@ -1652,6 +1724,7 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_default_ruuvi_json_generate_malloc_fai
                                             "E gw_cfg: Can't add json item: fw_update_url\n",
                                             "E gw_cfg: Can't add json item: fw_update_url\n",
                                             "E gw_cfg: Can't add json item: fw_update_url\n",
+                                            "E gw_cfg: Can't create json string\n",
                                             "E gw_cfg: Can't create json string\n",
                                             "E gw_cfg: Can't create json string\n",
                                             "E gw_cfg: Can't create json string\n",
@@ -1723,15 +1796,15 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_non_default_ruuvi_json_generate_malloc
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
           "\t\"use_http_ruuvi\":\ttrue,\n"
           "\t\"use_http\":\ttrue,\n"
+          "\t\"http_url\":\t\"https://myserver.com\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"bearer\",\n"
           "\t\"http_use_ssl_client_cert\":\ttrue,\n"
           "\t\"http_use_ssl_server_cert\":\ttrue,\n"
           "\t\"http_use_extra_http_path\":\ttrue,\n"
           "\t\"http_use_extra_http_query\":\ttrue,\n"
           "\t\"http_use_extra_http_headers\":\ttrue,\n"
-          "\t\"http_url\":\t\"https://myserver.com\",\n"
-          "\t\"http_period\":\t10,\n"
-          "\t\"http_data_format\":\t\"ruuvi\",\n"
-          "\t\"http_auth\":\t\"bearer\",\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"https://myserver3.com/stat\",\n"
           "\t\"http_stat_user\":\t\"username2\",\n"
@@ -1842,16 +1915,6 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_non_default_ruuvi_json_generate_malloc
         "E gw_cfg: Can't add json item: use_http_ruuvi\n",
         "E gw_cfg: Can't add json item: use_http\n",
         "E gw_cfg: Can't add json item: use_http\n",
-        "E gw_cfg: Can't add json item: http_use_ssl_client_cert\n",
-        "E gw_cfg: Can't add json item: http_use_ssl_client_cert\n",
-        "E gw_cfg: Can't add json item: http_use_ssl_server_cert\n",
-        "E gw_cfg: Can't add json item: http_use_ssl_server_cert\n",
-        "E gw_cfg: Can't add json item: http_use_extra_http_path\n",
-        "E gw_cfg: Can't add json item: http_use_extra_http_path\n",
-        "E gw_cfg: Can't add json item: http_use_extra_http_query\n",
-        "E gw_cfg: Can't add json item: http_use_extra_http_query\n",
-        "E gw_cfg: Can't add json item: http_use_extra_http_headers\n",
-        "E gw_cfg: Can't add json item: http_use_extra_http_headers\n",
         "E gw_cfg: Can't add json item: http_url\n",
         "E gw_cfg: Can't add json item: http_url\n",
         "E gw_cfg: Can't add json item: http_url\n",
@@ -1863,6 +1926,16 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_non_default_ruuvi_json_generate_malloc
         "E gw_cfg: Can't add json item: http_auth\n",
         "E gw_cfg: Can't add json item: http_auth\n",
         "E gw_cfg: Can't add json item: http_auth\n",
+        "E gw_cfg: Can't add json item: http_use_ssl_client_cert\n",
+        "E gw_cfg: Can't add json item: http_use_ssl_client_cert\n",
+        "E gw_cfg: Can't add json item: http_use_ssl_server_cert\n",
+        "E gw_cfg: Can't add json item: http_use_ssl_server_cert\n",
+        "E gw_cfg: Can't add json item: http_use_extra_http_path\n",
+        "E gw_cfg: Can't add json item: http_use_extra_http_path\n",
+        "E gw_cfg: Can't add json item: http_use_extra_http_query\n",
+        "E gw_cfg: Can't add json item: http_use_extra_http_query\n",
+        "E gw_cfg: Can't add json item: http_use_extra_http_headers\n",
+        "E gw_cfg: Can't add json item: http_use_extra_http_headers\n",
         "E gw_cfg: Can't add json item: use_http_stat\n",
         "E gw_cfg: Can't add json item: use_http_stat\n",
         "E gw_cfg: Can't add json item: http_stat_url\n",
@@ -2504,9 +2577,10 @@ TEST_F(TestGwCfgRuuviJsonGenerate, gw_cfg_json_generate_http_custom_not_used) //
     ASSERT_NE(nullptr, json_str.p_str);
     ASSERT_NE(nullptr, strstr(json_str.p_str, "\"use_http_ruuvi\":\tfalse"));
     ASSERT_NE(nullptr, strstr(json_str.p_str, "\"use_http\":\tfalse"));
-    // No http_url, http_period, etc. when use_http=false
-    ASSERT_EQ(nullptr, strstr(json_str.p_str, "\"http_url\""));
-    ASSERT_EQ(nullptr, strstr(json_str.p_str, "\"http_period\""));
+    // http_url / http_period / etc. are always emitted now (regardless of
+    // use_http) so the UI/cloud can present the user-configured values.
+    ASSERT_NE(nullptr, strstr(json_str.p_str, "\"http_url\":\t\"https://unused.url\""));
+    ASSERT_NE(nullptr, strstr(json_str.p_str, "\"http_period\""));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     cjson_wrap_free_json_str(&json_str);
 }
