@@ -214,7 +214,7 @@ default_json_read_callback(gw_cfg_t* const p_gw_cfg_default)
 {
     (void)p_gw_cfg_default;
 
-    return true;
+    return false;
 }
 
 int
