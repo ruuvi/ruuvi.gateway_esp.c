@@ -90,8 +90,9 @@ The step uses `ALWAYS 1`, so the snapshot is refreshed on every firmware build.
   partition matches the C-level defaults compiled into the firmware. Any
   discrepancy is a bug (or an intentional override that should be documented).
 - **Reference for users.** When tweaking `gw_cfg_default.json` for a custom build,
-  developers can consult `gw_cfg_default_gen.json` to see every field the firmware
-  actually understands, with the same default values the C code would assign.
+  developers can consult `gw_cfg_default_gen.json` to see the fields emitted by the
+  current hardcoded defaults (some auth-specific fields are only present when enabled),
+  with the same default values the C code would assign.
 - **Code-review aid.** Changes to default values in `main/gw_cfg_default.c` show up
   as changes in `gw_cfg_default_gen.json`, making the effect of a code change on the
   shipped configuration visible in the diff.
