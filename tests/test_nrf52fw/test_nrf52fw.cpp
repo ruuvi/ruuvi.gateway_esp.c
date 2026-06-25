@@ -539,7 +539,9 @@ esp_vfs_fat_spiflash_mount(
 esp_err_t
 esp_vfs_fat_spiflash_unmount(const char* base_path, wl_handle_t wl_handle)
 {
+    (void)base_path;
     assert(g_pTestClass->m_mount_info.flag_mounted);
+    assert(g_pTestClass->m_mount_info.wl_handle == wl_handle);
     g_pTestClass->m_mount_info.flag_mounted = false;
     return g_pTestClass->m_mount_info.unmount_err;
 }

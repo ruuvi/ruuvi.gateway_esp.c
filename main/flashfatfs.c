@@ -72,16 +72,7 @@ flashfatfs_mount(const char* mount_point, const char* partition_label, const fla
             "Try to mount partition '%s' as FATFS (SPI-Flash) to the mount point %s",
             p_obj->partition_label,
             p_obj->mount_point);
-        const esp_vfs_fat_sdmmc_mount_config_t mount_config_spiflash = {
-            .format_if_mount_failed = false,
-            .max_files              = max_files,
-            .allocation_unit_size   = 512U,
-        };
-        err = esp_vfs_fat_spiflash_mount(
-            p_obj->mount_point,
-            p_obj->partition_label,
-            &mount_config_spiflash,
-            &p_obj->wl_handle);
+        err = esp_vfs_fat_spiflash_mount(p_obj->mount_point, p_obj->partition_label, &mount_config, &p_obj->wl_handle);
         if (ESP_OK != err)
         {
             LOG_ERR_ESP(err, "%s failed", "esp_vfs_fat_spiflash_mount");
