@@ -3342,9 +3342,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(
         ESP_LOG_DEBUG,
-        "Can't find key 'http_data_format' in config-json, use default value 0");
+        "Can't find key 'http_data_format' in config-json, leave the previous value 0 unchanged");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: not found");
-    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_auth' in config-json, use default value 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_DEBUG,
+        "Can't find key 'http_auth' in config-json, leave the previous value 0 unchanged");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_url' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");

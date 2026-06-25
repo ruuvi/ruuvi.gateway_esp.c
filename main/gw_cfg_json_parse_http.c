@@ -47,16 +47,16 @@ gw_cfg_json_log_missing_key(const char* const p_key, const bool flag_warn_if_mis
 static void
 gw_cfg_json_log_missing_key_with_default(
     const char* const  p_key,
-    const printf_int_t default_value,
+    const printf_int_t current_value,
     const bool         flag_warn_if_missing)
 {
     if (flag_warn_if_missing)
     {
-        LOG_WARN("Can't find key '%s' in config-json, use default value %d", p_key, default_value);
+        LOG_WARN("Can't find key '%s' in config-json, leave the previous value %d unchanged", p_key, current_value);
     }
     else
     {
-        LOG_DBG("Can't find key '%s' in config-json, use default value %d", p_key, default_value);
+        LOG_DBG("Can't find key '%s' in config-json, leave the previous value %d unchanged", p_key, current_value);
     }
 }
 

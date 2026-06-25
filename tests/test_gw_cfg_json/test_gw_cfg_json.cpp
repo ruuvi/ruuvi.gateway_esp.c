@@ -9907,9 +9907,9 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_use_http_true_missing_fields_logs_w
             continue;
         }
         const string& msg = r.parsed.msg;
-        if (msg == "Can't find key 'http_data_format' in config-json, use default value 0")
+        if (msg == "Can't find key 'http_data_format' in config-json, leave the previous value 0 unchanged")
             found_data_format = true;
-        else if (msg == "Can't find key 'http_auth' in config-json, use default value 0")
+        else if (msg == "Can't find key 'http_auth' in config-json, leave the previous value 0 unchanged")
             found_auth = true;
         else if (msg == "Can't find key 'http_period' in config-json")
             found_period = true;
