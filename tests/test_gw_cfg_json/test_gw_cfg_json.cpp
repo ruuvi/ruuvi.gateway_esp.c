@@ -9870,25 +9870,29 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_use_http_false_preserves_custom_fie
  * When use_http==true but the optional HTTP fields are missing from the JSON,
  * the parser must emit warnings for each missing key (covers the
  * flag_warn_if_missing=true branches added in the issue-1325 fix).
+ *
+ * Provide a non-default http_url so that the v1.13->v1.14 legacy patch in
+ * gw_cfg_json_patch_http_legacy_pre_v1_14() does NOT trigger and use_http
+ * stays true for the whole parse; otherwise the post-patch fields would
+ * (correctly) log at DEBUG instead of WARNING.
  */
 TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_use_http_true_missing_fields_logs_warnings) // NOLINT
 {
     const char* const p_json_str
         = "{\n"
           "\t\"use_http_ruuvi\":\tfalse,\n"
-          "\t\"use_http\":\ttrue\n"
+          "\t\"use_http\":\ttrue,\n"
+          "\t\"http_url\":\t\"https://example.com/post\"\n"
           "}";
     gw_cfg_t gw_cfg2 = get_gateway_config_default();
     ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
-    // The compatibility patch promotes (use_http==true, data_format=ruuvi,
-    // auth=none, url=RUUVI default) back to (use_http_ruuvi=true, use_http=false).
-    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
-    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
-    // Scan all log records to confirm the new HTTP warnings are emitted for
-    // each missing optional HTTP field (covers the flag_warn_if_missing=true paths).
+    // The legacy patch must NOT have triggered because http_url is non-default.
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http);
+    // Scan all log records to confirm the WARN is emitted for each missing optional
+    // HTTP field (covers the flag_warn_if_missing=true paths).
     bool found_data_format = false;
     bool found_auth        = false;
-    bool found_url         = false;
     bool found_period      = false;
     bool found_path        = false;
     bool found_query       = false;
@@ -9907,8 +9911,6 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_use_http_true_missing_fields_logs_w
             found_data_format = true;
         else if (msg == "Can't find key 'http_auth' in config-json, use default value 0")
             found_auth = true;
-        else if (msg == "Can't find key 'http_url' in config-json")
-            found_url = true;
         else if (msg == "Can't find key 'http_period' in config-json")
             found_period = true;
         else if (msg == "Can't find key 'http_use_extra_http_path' in config-json")
@@ -9924,11 +9926,54 @@ TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_use_http_true_missing_fields_logs_w
     }
     ASSERT_TRUE(found_data_format);
     ASSERT_TRUE(found_auth);
-    ASSERT_TRUE(found_url);
     ASSERT_TRUE(found_period);
     ASSERT_TRUE(found_path);
     ASSERT_TRUE(found_query);
     ASSERT_TRUE(found_headers);
     ASSERT_TRUE(found_ssl_client);
     ASSERT_TRUE(found_ssl_server);
+}
+
+/**
+ * Regression test for issue-1325: when the v1.13->v1.14 legacy compatibility
+ * patch (gw_cfg_json_patch_http_legacy_pre_v1_14) flips use_http from true to
+ * false, the parsing of the post-patch optional HTTP fields (http_period,
+ * http_use_extra_*, http_use_ssl_*) MUST switch from WARN to DEBUG logging,
+ * because HTTP has effectively been disabled by the patch and the missing
+ * keys are then expected.
+ *
+ * The input JSON below has the exact "pre-v1.14 Ruuvi default" shape
+ * (use_http=true, data_format=ruuvi, auth=none, url=Ruuvi default URL)
+ * that triggers the patch.
+ */
+TEST_F(TestGwCfgJson, gw_cfg_json_parse_http_legacy_patch_silences_post_patch_warnings) // NOLINT
+{
+    const char* const p_json_str
+        = "{\n"
+          "\t\"use_http_ruuvi\":\tfalse,\n"
+          "\t\"use_http\":\ttrue\n"
+          "}";
+    gw_cfg_t gw_cfg2 = get_gateway_config_default();
+    ASSERT_TRUE(gw_cfg_json_parse("my.json", nullptr, p_json_str, &gw_cfg2));
+    // The compatibility patch promotes (use_http==true, data_format=ruuvi,
+    // auth=none, url=RUUVI default) back to (use_http_ruuvi=true, use_http=false).
+    ASSERT_EQ(true, gw_cfg2.ruuvi_cfg.http.use_http_ruuvi);
+    ASSERT_EQ(false, gw_cfg2.ruuvi_cfg.http.use_http);
+    // None of the post-patch optional HTTP fields must be reported as WARN,
+    // because use_http is false after the patch.
+    while (!esp_log_wrapper_is_empty())
+    {
+        const LogRecord r = esp_log_wrapper_pop();
+        if (r.level != ESP_LOG_WARN)
+        {
+            continue;
+        }
+        const string& msg = r.parsed.msg;
+        ASSERT_NE(msg, string("Can't find key 'http_period' in config-json"));
+        ASSERT_NE(msg, string("Can't find key 'http_use_extra_http_path' in config-json"));
+        ASSERT_NE(msg, string("Can't find key 'http_use_extra_http_query' in config-json"));
+        ASSERT_NE(msg, string("Can't find key 'http_use_extra_http_headers' in config-json"));
+        ASSERT_NE(msg, string("Can't find key 'http_use_ssl_client_cert' in config-json"));
+        ASSERT_NE(msg, string("Can't find key 'http_use_ssl_server_cert' in config-json"));
+    }
 }

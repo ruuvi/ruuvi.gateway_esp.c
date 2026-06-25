@@ -297,7 +297,7 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
     gw_cfg_json_get_bool_or_log(p_json_root, "use_http_ruuvi", &p_gw_cfg_http->use_http_ruuvi, true);
     gw_cfg_json_get_bool_or_log(p_json_root, "use_http", &p_gw_cfg_http->use_http, true);
 
-    const bool flag_warn_if_missing = p_gw_cfg_http->use_http;
+    bool flag_warn_if_missing = p_gw_cfg_http->use_http;
 
     gw_cfg_json_parse_http_data_format(p_json_root, flag_warn_if_missing, &p_gw_cfg_http->data_format);
     gw_cfg_json_parse_http_auth_type(p_json_root, flag_warn_if_missing, &p_gw_cfg_http->auth_type);
@@ -312,7 +312,8 @@ gw_cfg_json_parse_http(const cJSON* const p_json_root, ruuvi_gw_cfg_http_t* cons
     if (p_gw_cfg_http->use_http)
     {
         gw_cfg_json_parse_http_auth(p_json_root, p_gw_cfg_http);
-        gw_cfg_json_patch_http_legacy_pre_v1_14(p_gw_cfg_http);
+        gw_cfg_json_patch_http_legacy_pre_v1_14(p_gw_cfg_http); // this function can disable 'use_http'
+        flag_warn_if_missing = p_gw_cfg_http->use_http;
     }
 
     gw_cfg_json_get_uint32_or_log(p_json_root, "http_period", &p_gw_cfg_http->http_period, flag_warn_if_missing);
