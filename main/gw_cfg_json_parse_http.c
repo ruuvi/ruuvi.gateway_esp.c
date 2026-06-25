@@ -46,9 +46,9 @@ gw_cfg_json_log_missing_key(const char* const p_key, const bool flag_warn_if_mis
 
 static void
 gw_cfg_json_log_missing_key_with_default(
-    const char* const p_key,
-    const int         default_value,
-    const bool        flag_warn_if_missing)
+    const char* const  p_key,
+    const printf_int_t default_value,
+    const bool         flag_warn_if_missing)
 {
     if (flag_warn_if_missing)
     {
@@ -109,7 +109,10 @@ gw_cfg_json_parse_http_data_format(
     char data_format_str[GW_CFG_HTTP_DATA_FORMAT_STR_SIZE];
     if (!gw_cfg_json_copy_string_val(p_json_root, "http_data_format", &data_format_str[0], sizeof(data_format_str)))
     {
-        gw_cfg_json_log_missing_key_with_default("http_data_format", *p_data_format, flag_warn_if_missing);
+        gw_cfg_json_log_missing_key_with_default(
+            "http_data_format",
+            (printf_int_t)*p_data_format,
+            flag_warn_if_missing);
         return;
     }
     if (0 == strcmp(GW_CFG_HTTP_DATA_FORMAT_STR_RUUVI, data_format_str))
@@ -140,7 +143,7 @@ gw_cfg_json_parse_http_auth_type(
     char auth_type_str[GW_CFG_HTTP_AUTH_TYPE_STR_SIZE];
     if (!gw_cfg_json_copy_string_val(p_json_root, "http_auth", &auth_type_str[0], sizeof(auth_type_str)))
     {
-        gw_cfg_json_log_missing_key_with_default("http_auth", *p_auth_type, flag_warn_if_missing);
+        gw_cfg_json_log_missing_key_with_default("http_auth", (printf_int_t)*p_auth_type, flag_warn_if_missing);
         return;
     }
     if (0 == strcmp(GW_CFG_HTTP_AUTH_TYPE_STR_NONE, auth_type_str))
@@ -168,7 +171,7 @@ gw_cfg_json_parse_http_auth_type(
         *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_APIKEY;
         return;
     }
-    LOG_WARN("Unknown http_auth='%s', use 'ruuvi'", auth_type_str);
+    LOG_WARN("Unknown http_auth='%s', use 'none'", auth_type_str);
     *p_auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE;
 }
 
