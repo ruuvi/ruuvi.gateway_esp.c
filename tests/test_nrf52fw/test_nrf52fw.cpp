@@ -194,6 +194,7 @@ protected:
         };
         this->m_calc_nrf52_sha256_digest_status    = true;
         this->m_uicr_fw_ver_num_reads_before_error = 0;
+        this->cb_after_updating_last_flag_success  = false;
     }
 
     void
@@ -252,6 +253,7 @@ public:
     list<ProgressInfo>        m_progress;
     uint32_t                  cb_before_updating_cnt;
     uint32_t                  cb_after_updating_cnt;
+    bool                      cb_after_updating_last_flag_success;
     uint32_t                  m_uicr_fw_ver;
     bool                      m_uicr_fw_ver_simulate_write_error;
     bool                      m_uicr_fw_ver_simulate_read_error;
@@ -3453,6 +3455,7 @@ static void
 cb_after_updating(const bool flag_success)
 {
     g_pTestClass->cb_after_updating_cnt += 1;
+    g_pTestClass->cb_after_updating_last_flag_success = flag_success;
 }
 
 TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_callbacks) // NOLINT
@@ -3557,6 +3560,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__update_required__with_
     ASSERT_EQ(697, cb_progress_cnt);
     ASSERT_EQ(1, this->cb_before_updating_cnt);
     ASSERT_EQ(1, this->cb_after_updating_cnt);
+    ASSERT_TRUE(this->cb_after_updating_last_flag_success);
 
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(3, this->m_memSegmentsWrite.size());
@@ -5495,6 +5499,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_write_firmware__
 
     ASSERT_EQ(1, this->cb_before_updating_cnt);
     ASSERT_EQ(1, this->cb_after_updating_cnt);
+    ASSERT_FALSE(this->cb_after_updating_last_flag_success);
     ASSERT_EQ(1, this->m_memSegmentsWrite.size());
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
     // nrf52fw_read_current_fw_ver should have been invoked to refresh fw_ver after the failure;
@@ -5597,6 +5602,7 @@ TEST_F(TestNRF52Fw, nrf52fw_update_firmware_if_necessary__error_read_current_fw_
 
     ASSERT_EQ(1, this->cb_before_updating_cnt);
     ASSERT_EQ(1, this->cb_after_updating_cnt);
+    ASSERT_FALSE(this->cb_after_updating_last_flag_success);
     ASSERT_LT(0, cb_prog_cnt);
     ASSERT_EQ(1, this->m_cnt_nrf52swd_erase_all);
     ASSERT_EQ(3, this->m_memSegmentsWrite.size());

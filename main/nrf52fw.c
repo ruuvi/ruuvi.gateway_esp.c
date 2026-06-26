@@ -719,7 +719,7 @@ nrf52fw_update_fw_step3(
         p_nrf52_fw_ver);
     if (NULL != cb_params.cb_after_updating)
     {
-        cb_params.cb_after_updating(true);
+        cb_params.cb_after_updating(res);
     }
     if (!res)
     {
