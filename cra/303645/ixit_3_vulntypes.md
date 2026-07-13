@@ -105,10 +105,10 @@ SDD implements software-side mitigations (e.g., permanent eFuse blowing for debu
 ## Detailed Action Descriptions
 
 1. Receipt and Acknowledgment
-  All vulnerability reports received via the official Vulnerability Disclosure Policy (VDP) channel (
-  e.g., security@ruuvi.com) are logged. The Security Incident Team (SIT) provides an initial
-  response to the reporter within the timeframe specified in the table above to confirm receipt and
-  request further technical details if necessary.
+  All vulnerability reports received via the official Vulnerability Disclosure Policy (VDP) channel
+  (published at https://ruuvi.com/terms/vulnerability-policy/) are logged. The Security Incident Team
+  (SIT) provides an initial response to the reporter within the timeframe specified in the table
+  above to confirm receipt and request further technical details if necessary.
 2. Investigation and Confirmation
   The SIT investigates the report to determine:
   - **Applicability**: Does the flaw affect the current firmware version of the Ruuvi Gateway?
