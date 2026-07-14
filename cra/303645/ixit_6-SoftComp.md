@@ -5,7 +5,7 @@ updatability, and their use of cryptographic primitives.
 
 ## Table C.6: IXIT 6-SoftComp (Software Components)
 
-### SoftComp-1: First-stage Bootloader (ROM)
+### SoftComp-ROMBoot: First-stage Bootloader (ROM)
 
 #### Description
 
@@ -25,7 +25,7 @@ No, side effects were not considered for this component as it is immutable hardw
 
 ---
 
-### SoftComp-2: ESP-IDF Second-stage Bootloader
+### SoftComp-SecondBoot: ESP-IDF Second-stage Bootloader
 
 #### Description
 
@@ -34,7 +34,7 @@ verifies the integrity/signature of the main application firmware before executi
 
 #### Update Mechanism
 
-The second-stage bootloader is updatable via USB described in UpdMech-3 (Local Manual Update (USB)).
+The second-stage bootloader is updatable via USB described in UpdMech-USB (Local Manual Update (USB)).
 
 #### Cryptographic Usage
 
@@ -45,7 +45,7 @@ Department (SDD) through rigorous validation of the boot sequence and secure-boo
 
 ---
 
-### SoftComp-3: Main Gateway Firmware (ESP32 Application)
+### SoftComp-MainFW: Main Gateway Firmware (ESP32 Application)
 
 #### Description
 
@@ -55,8 +55,8 @@ stack.
 
 #### Update Mechanism
 
-Updatable via the OTA mechanism described in UpdMech-1 (User-Initiated Network Update),
-UpdMech-2 (Automatic Background Update) and UpdMech-3 (Local Manual Update (USB)).
+Updatable via the OTA mechanism described in UpdMech-WebUI (User-Initiated Network Update),
+UpdMech-Auto (Automatic Background Update) and UpdMech-USB (Local Manual Update (USB)).
 
 #### Cryptographic Usage
 
@@ -68,7 +68,7 @@ backward compatibility with cloud endpoints and existing user credentials.
 
 ---
 
-### SoftComp-4: nRF52 Co-processor Firmware
+### SoftComp-nRF52FW: nRF52 Co-processor Firmware
 
 #### Description
 
@@ -77,7 +77,7 @@ data filtering, and radio communication with Ruuvi sensors.
 
 #### Update Mechanism
 
-Updatable via UpdMech-1, UpdMech-2 and UpdMech-3.
+Updatable via UpdMech-WebUI, UpdMech-Auto and UpdMech-USB.
 The ESP32 flashes the nRF52 via a serial/SWD interface during the system update.
 
 #### Cryptographic Usage
@@ -89,7 +89,7 @@ No, side effects are not applicable at this layer.
 
 ---
 
-### SoftComp-5: Web-UI Assets
+### SoftComp-WebUI: Web-UI Assets
 
 #### Description
 
@@ -98,7 +98,7 @@ configuration. Includes libraries such as crypto-js and elliptic.
 
 #### Update Mechanism
 
-Updatable via UpdMech-1, UpdMech-2 and UpdMech-3.
+Updatable via UpdMech-WebUI, UpdMech-Auto and UpdMech-USB.
 These assets are stored in a dedicated FAT-FS partition.
 
 #### Cryptographic Usage
@@ -112,10 +112,10 @@ testing and verification of the authentication handshake logic.
 
 ## Summary of Component Dependencies
 
-| Component ID | Updatable | Primary Responsibility                       |
-|--------------|-----------|----------------------------------------------|
-| SoftComp-1   | No        | Hardware Initialization / Root of Trust      |
-| SoftComp-2   | Yes       | Partition Management / Firmware Verification |
-| SoftComp-3   | Yes       | Networking, Logic, and Data Relaying         |
-| SoftComp-4   | Yes       | Bluetooth LE Scanning & Filtering            |
-| SoftComp-5   | Yes       | Local User Interface & Client-side Auth      |
+| Component ID        | Updatable | Primary Responsibility                       |
+|---------------------|-----------|----------------------------------------------|
+| SoftComp-ROMBoot    | No        | Hardware Initialization / Root of Trust      |
+| SoftComp-SecondBoot | Yes       | Partition Management / Firmware Verification |
+| SoftComp-MainFW     | Yes       | Networking, Logic, and Data Relaying         |
+| SoftComp-nRF52FW    | Yes       | Bluetooth LE Scanning & Filtering            |
+| SoftComp-WebUI      | Yes       | Local User Interface & Client-side Auth      |
