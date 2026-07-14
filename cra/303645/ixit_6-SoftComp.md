@@ -60,8 +60,9 @@ UpdMech-2 (Automatic Background Update) and UpdMech-3 (Local Manual Update (USB)
 
 #### Cryptographic Usage
 
-Yes, the firmware utilizes mbedtls for TLS tunnels, AES for credential encryption, and SHA-256 for
-authentication challenges.
+Yes, the firmware utilizes mbedtls for TLS connections, AES-CBC for Web-UI session payload
+encryption, HMAC-SHA256 for outbound payload authentication, and SHA-256/MD5 for the Web-UI
+authentication challenge.
 Yes, side effects of updating algorithms are considered via exhaustive regression testing, ensuring
 backward compatibility with cloud endpoints and existing user credentials.
 
