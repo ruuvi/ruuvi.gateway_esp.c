@@ -60,15 +60,20 @@ login credentials (`SecParam-LAN-WebUI-Credentials`) and the device network acce
   hexadecimal representation of the hardware `DEVICEID` (the nRF52 FICR identifier mapped under
   `SecParam-Hardware-DeviceID`) printed on the external casing sticker label. Custom administrative
   credentials and network SSIDs/passkeys are generated manually by the operator during the
-  multi-step onboarding wizard.
+  multi-step onboarding wizard. When the administrator provisions a custom access secret, the
+  frontend Web-UI concatenates the user parameters (
+  `username + ':' + gatewayName + ':' + unencrypted_password`) and runs an MD5 hashing block to
+  translate it into a secure signature hash array.
 * **Storage:** Persistently written within the main application configuration file (`ruuvi.json`)
   located inside the internal non-volatile flash partition (`nvs`). As defined in
-  `SecParam-LAN-WebUI-Credentials`, the password data is not encrypted at rest because flash
-  encryption is not enabled on the microcontroller layout. Protection against unauthorized data
-  disclosure is handled logically: the firmware's runtime engine explicitly strips or masks these
-  sensitive credential variables out of the `ruuvi.json` payload data stream whenever configuration
-  states are read via the network-facing Web-UI. Furthermore, these credential fields are completely
-  omitted from the diagnostic console trace maps streaming across `LogIntf-USB-UART-Log-Stream`.
+  `SecParam-LAN-WebUI-Credentials`, the password string itself is stored exclusively as a
+  pre-computed cryptographic hash digest format (`lan_auth_pass`). Network credentials (
+  `wifi_sta_config.password`) are retained in cleartext within `ruuvi.json` since flash encryption
+  is not enabled on the microcontroller layout. Protection against unauthorized data disclosure is
+  handled logically: the firmware's runtime engine explicitly strips or masks these sensitive
+  credential variables out of the `ruuvi.json` payload data stream whenever configuration states are
+  read via the network-facing Web-UI. Furthermore, these credential fields are completely omitted
+  from the diagnostic console trace maps streaming across `LogIntf-USB-UART-Log-Stream`.
 * **Updates:** Modified on-demand by an authenticated administrator holding an active session
   context established through the LAN Web-UI panel.
 * **Decommissioning, Archival & Destruction:** Eradication of these parameters is achieved via a
@@ -172,6 +177,6 @@ keys/certificates grouped under `SecParam-Remote-Config-Assets`,
 | Management Process ID                   | Target Parameters Governed                                          | Primary Provisioning Method                                    | Destruction / Decommissioning Mechanism                               | Associated Index ID                                                          |
 |:----------------------------------------|:--------------------------------------------------------------------|:---------------------------------------------------------------|:----------------------------------------------------------------------|:-----------------------------------------------------------------------------|
 | **SecMgmt-Hardware-Silicon-Root**       | `SecParam-Hardware-DeviceID`                                        | Pre-programmed by Silicon Vendor (nRF52 FICR registers)        | Physical Component Destruction Only                                   | **`SecParam-Hardware-DeviceID`**                                             |
-| **SecMgmt-Local-Credentials**           | `SecParam-LAN-WebUI-Credentials`<br>`SecParam-WiFi-STA-Credentials` | Automated Seed / Manual Admin Onboarding Setup                 | Local Factory Reset (Complete physical NVS partition formatting)      | **`SecParam-LAN-WebUI-Credentials`**<br>**`SecParam-WiFi-STA-Credentials`**  |
+| **SecMgmt-Local-Credentials**           | `SecParam-LAN-WebUI-Credentials`<br>`SecParam-WiFi-STA-Credentials` | MD5 Hashed Onboarding Setup / Manual Input                     | Local Factory Reset (Complete physical NVS partition formatting)      | **`SecParam-LAN-WebUI-Credentials`**<br>**`SecParam-WiFi-STA-Credentials`**  |
 | **SecMgmt-Programmatic-M2M-Tokens**     | `SecParam-LAN-Bearer-Tokens`                                        | Browser Web Crypto API / Direct M2M JSON Payload Configuration | UI Key Clearing / Local Factory Reset (Complete partition formatting) | **`SecParam-LAN-Bearer-Tokens`**                                             |
 | **SecMgmt-Outbound-Assets-And-Secrets** | `SecParam-HMAC-Symmetric-Secrets`<br>and Remote Telemetry Assets    | Manual Web Entry / Dynamic Header Session Key Rotation         | Local Factory Reset (Complete physical NVS partition formatting)      | **`SecParam-HMAC-Symmetric-Secrets`**<br>**`SecParam-Remote-Config-Assets`** |
