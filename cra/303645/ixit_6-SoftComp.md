@@ -1,121 +1,142 @@
 # IXIT 6-SoftComp: Software Components
 
-The following table lists the individual software components of the Ruuvi Gateway, their
-updatability, and their use of cryptographic primitives.
+The following declarations detail the individual software components comprising the Ruuvi Gateway,
+specifying division boundaries for updatability, flash partition mapping references, and structural
+cryptographic dependency matrices.
+
+---
 
 ## Table C.6: IXIT 6-SoftComp (Software Components)
 
-### SoftComp-ROMBoot: First-stage Bootloader (ROM)
+### **ID**: SoftComp-ROMBoot
 
 #### Description
 
-The internal primary bootloader residing in the ESP32 silicon ROM. It is responsible for
-initializing the hardware and loading the second-stage bootloader from flash memory.
+The internal first-stage bootloader hardwired inside the primary ESP32 silicon Mask ROM. It manages
+initial silicon power-on routines, checks GPIO hardware-strapping constraints, and loads the
+second-stage bootloader from flash memory.
 
 #### Update Mechanism
 
-The first-stage bootloader cannot be updated as it is a hardware-integrated component stored in Mask
-ROM.
+The first-stage bootloader cannot be updated as it is a hardware-integrated component structurally
+stored within Mask ROM.
 
 #### Cryptographic Usage
 
-Yes, the ROM bootloader contains the cryptographic primitives required to verify the digital
-signature of the second-stage bootloader (if Secure Boot is enabled).
-No, side effects were not considered for this component as it is immutable hardware.
+* **Cryptographic Primitives Utilized:** No. Because hardware secure boot fuses are not burned on
+  the production platform layout, the ROM bootloader performs standard dynamic instruction jumps
+  without parsing cryptographic keys.
+* **Side Effects Considered:** No. Side effects were not considered for this component as it is
+  immutable hardware.
 
 ---
 
-### SoftComp-SecondBoot: ESP-IDF Second-stage Bootloader
+### **ID**: SoftComp-SecondBoot
 
 #### Description
 
-The software-based bootloader provided by the ESP-IDF framework. It manages partition tables and
-verifies the integrity/signature of the main application firmware before execution.
+The software-based second-stage bootloader provided by the ESP-IDF framework. It resides at the base
+of the primary flash storage block, manages execution partition tables, and hands off system
+execution loops to the active application slot.
 
 #### Update Mechanism
 
-The second-stage bootloader is updatable via USB described in UpdMech-USB (Local Manual Update (USB)).
+Updatable via local direct physical connection paths described under `UpdMech-USB` (Local Manual
+Update via the Type-C USB port).
 
 #### Cryptographic Usage
 
-Yes, it performs hash-based integrity checks and digital signature verification of the application
-image.
-Yes, side effects of replacing these primitives are considered by the Software Development
-Department (SDD) through rigorous validation of the boot sequence and secure-boot path testing.
+* **Cryptographic Primitives Utilized:** Yes. Performs basic hash-based integrity validation
+  parameters over the partition layout map before jumping to the main application vector.
+* **Side Effects Considered:** Yes. Side effects of updating or replacing this runtime layer are
+  fully evaluated by the Software Development Department (SDD) through regression validation testing
+  of the early system boot sequence and flash partition layout constraints.
 
 ---
 
-### SoftComp-MainFW: Main Gateway Firmware (ESP32 Application)
+### **ID**: SoftComp-MainFW
 
 #### Description
 
-The core application firmware responsible for system logic, Wi-Fi/Ethernet connectivity, MQTT
-telemetry, and cloud synchronization. This component includes the mbedtls stack and LwIP network
-stack.
+The core application firmware executing within the active ESP32 partition slots (`ota_0` or
+`ota_1`). It handles the primary network connectivity stack (`LwIP`), system telemetry
+synchronization, outbound telemetry data clients, and the diagnostic console log loops.
 
 #### Update Mechanism
 
-Updatable via the OTA mechanism described in UpdMech-WebUI (User-Initiated Network Update),
-UpdMech-Auto (Automatic Background Update) and UpdMech-USB (Local Manual Update (USB)).
+Fully updatable via the network and local paths described under `UpdMech-WebUI` (User-Initiated
+Network Update), `UpdMech-Auto` (Automatic Background Update), and `UpdMech-USB` (Local Manual
+Update).
 
 #### Cryptographic Usage
 
-Yes, the firmware utilizes mbedtls for TLS connections, AES-CBC for Web-UI session payload
-encryption, HMAC-SHA256 for outbound payload authentication, and SHA-256/MD5 for the Web-UI
-authentication challenge.
-Yes, side effects of updating algorithms are considered via exhaustive regression testing, ensuring
-backward compatibility with cloud endpoints and existing user credentials.
+* **Cryptographic Primitives Utilized:** Yes. The firmware integrates the mature `mbedtls`
+  cryptographic library to negotiate secure outbound pipelines (`HTTPS`, `MQTTS`, `WSS`), implements
+  `HMAC-SHA256` payload validation signing transformations (using `SecParam-Hardware-DeviceID` as
+  the root seed), hashes incoming local credentials using `MD5`, and executes `esp_image_verify`
+  signature scans.
+* **Side Effects Considered:** Yes. Side effects of updating these primitives are considered by the
+  manufacturer through comprehensive positive and negative validation testing loops prior to
+  release, ensuring persistent compatibility with cloud endpoint targets and active NVS
+  configuration parameters.
 
 ---
 
-### SoftComp-nRF52FW: nRF52 Co-processor Firmware
+### **ID**: SoftComp-nRF52FW
 
 #### Description
 
-Firmware specifically for the nRF52 co-processor, managing Bluetooth Low Energy (BLE) scanning,
-data filtering, and radio communication with Ruuvi sensors.
+The low-level co-processor firmware running on the nRF52811 chip architecture. It controls the
+connectionless passive 2.4 GHz radio scanner loop, parses BLE broadcast advertisement frames over
+channels 37/38/39, and relays structured metrics matrices to the ESP32 over a local isolated serial
+bus (UART).
 
 #### Update Mechanism
 
-Updatable via UpdMech-WebUI, UpdMech-Auto and UpdMech-USB.
-The ESP32 flashes the nRF52 via a serial/SWD interface during the system update.
+Fully updatable via `UpdMech-WebUI`, `UpdMech-Auto`, and `UpdMech-USB`. The main ESP32 application
+acts as the programmer, streaming signed co-processor binary updates out of the read-only
+`fatfs_nrf52` or `fatfs_nrf52_2` partitions straight to the co-processor during system updates.
 
 #### Cryptographic Usage
 
-No, the current nRF52 firmware implementation does not utilize cryptographic primitives for its
-primary BLE scanning functions. (Link-layer encryption is handled by the ESP32 application layer
-where applicable).
-No, side effects are not applicable at this layer.
+* **Cryptographic Primitives Utilized:** No. The current co-processor firmware implementation does
+  not utilize cryptographic primitives for its passive, receive-only BLE scanning tasks.
+* **Side Effects Considered:** No. Side effects are not applicable at this layer.
 
 ---
 
-### SoftComp-WebUI: Web-UI Assets
+### **ID**: SoftComp-WebUI
 
 #### Description
 
-A collection of HTML, CSS, and JavaScript files served by the internal HTTP server for user
-configuration. Includes libraries such as crypto-js and elliptic.
+The complete collection of HTML, CSS, and compressed JavaScript frontend application bundles served
+by the internal HTTP server to present the management configuration wizard dashboard to the
+operator.
 
 #### Update Mechanism
 
-Updatable via UpdMech-WebUI, UpdMech-Auto and UpdMech-USB.
-These assets are stored in a dedicated FAT-FS partition.
+Fully updatable via `UpdMech-WebUI`, `UpdMech-Auto`, and `UpdMech-USB`. The frontend asset blocks
+are persistently managed within the read-only dual-filesystem partitions (`fatfs_gwui` and
+`fatfs_gwui_2`).
 
 #### Cryptographic Usage
 
-Yes, the JavaScript components utilize crypto-js and elliptic to perform client-side hashing and
-ECDH key exchange for secure authentication.
-Yes, side effects of replacing these libraries are considered through cross-browser compatibility
-testing and verification of the authentication handshake logic.
+* **Cryptographic Primitives Utilized:** Yes. The compiled JavaScript files utilize `crypto-js` and
+  `elliptic` library primitives to process client-side `MD5` concatenation pipelines for interactive
+  login verification challenges and execute ECDH key exchange parameters for local administrative
+  configuration encryption.
+* **Side Effects Considered:** Yes. Side effects of modifying or replacing these library assets are
+  managed through rigorous cross-browser compatibility verification and verification checks of the
+  client-side challenge-response validation logic.
 
-----------------------------------------------------------------------------------------------------
+---
 
-## Summary of Component Dependencies
+## Summary Matrix for the Technical File
 
-| Component ID        | Updatable | Primary Responsibility                       |
-|---------------------|-----------|----------------------------------------------|
-| SoftComp-ROMBoot    | No        | Hardware Initialization / Root of Trust      |
-| SoftComp-SecondBoot | Yes       | Partition Management / Firmware Verification |
-| SoftComp-MainFW     | Yes       | Networking, Logic, and Data Relaying         |
-| SoftComp-nRF52FW    | Yes       | Bluetooth LE Scanning & Filtering            |
-| SoftComp-WebUI      | Yes       | Local User Interface & Client-side Auth      |
+| Component ID            | Updatable? | Primary Stored Flash Partition  | Cryptographic Primitives Present? |  Side Effects Evaluated by SDD?  |
+|:------------------------|:----------:|:--------------------------------|:---------------------------------:|:--------------------------------:|
+| **SoftComp-ROMBoot**    |     No     | Silicon Mask ROM Block          |                No                 |     No (Immutable Hardware)      |
+| **SoftComp-SecondBoot** |    Yes     | Flash Base Sector               |     Yes (LwIP/Partition CRC)      |  Yes (Boot Validation Testing)   |
+| **SoftComp-MainFW**     |    Yes     | `ota_0` / `ota_1` Slots         |     Yes (mbedTLS, HMAC, MD5)      |  Yes (Exhaustive CI/CD Sweeps)   |
+| **SoftComp-nRF52FW**    |    Yes     | `fatfs_nrf52` / `fatfs_nrf52_2` |                No                 |    No (Rx-Only Radio Parser)     |
+| **SoftComp-WebUI**      |    Yes     | `fatfs_gwui` / `fatfs_gwui_2`   |     Yes (crypto-js, Elliptic)     | Yes (Handshake Integrity Checks) |
