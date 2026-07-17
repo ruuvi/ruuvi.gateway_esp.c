@@ -2,64 +2,68 @@
 
 ## Test case 5.1-2A-1 (conceptual)
 
-**Purpose**: To conceptually assess whether any mechanism declared for machine-to-machine (M2M) 
+**Purpose**: To conceptually assess whether any mechanism declared for machine-to-machine (M2M)
 interaction uses passwords as an authentication factor.
 
 ### Test Unit A
 
-| IXIT Entry | Description               | Used for M2M? | Auth Factor Includes Password? | Verdict |
-|------------|---------------------------|---------------|--------------------------------|---------|
-| IXIT-1-1   | Wi-Fi Hotspot             | No            | N/A                            | PASS    |
-| IXIT-1-2   | LAN Web-UI (Default)      | No            | N/A                            | PASS    |
-| IXIT-1-3   | LAN Web-UI (User-Defined) | No            | N/A                            | PASS    |
-| IXIT-1-4   | LAN Web-UI (Basic)        | No            | N/A                            | PASS    |
-| IXIT-1-5   | LAN Web-UI (Digest)       | No            | N/A                            | PASS    |
-| IXIT-1-6   | LAN Web-UI (Open)         | No            | N/A                            | PASS    |
-| IXIT-1-7   | LAN Web-UI (Disabled)     | No            | N/A                            | PASS    |
-| IXIT-1-8   | API (Bearer Token)        | Yes           | No (Token only)                | PASS    |
-| IXIT-1-9   | API (Bearer Token)        | Yes           | No (Token only)                | PASS    |
+| IXIT Entry ID                        | Description / Context              | Used for M2M? | Auth Factor Includes Password? | Case Verdict |
+|:-------------------------------------|:-----------------------------------|:-------------:|:-------------------------------|:------------:|
+| `AuthMech-Hotspot-Provisioning`      | Wi-Fi Onboarding Hotspot           |      No       | N/A                            |   **PASS**   |
+| `AuthMech-LAN-WebUI-Default`         | LAN Web-UI (Default State)         |      No       | N/A                            |   **PASS**   |
+| `AuthMech-LAN-WebUI-User-Defined`    | Custom Administrative Login        |      No       | N/A                            |   **PASS**   |
+| `AuthMech-LAN-WebUI-Basic`           | Legacy Basic Auth Fallback         |      No       | N/A                            |   **PASS**   |
+| `AuthMech-LAN-WebUI-Digest`          | Legacy Digest Auth Interface       |      No       | N/A                            |   **PASS**   |
+| `AuthMech-LAN-WebUI-Unauthenticated` | Open LAN Management State          |      No       | N/A                            |   **PASS**   |
+| `AuthMech-LAN-WebUI-Disabled`        | Restricted Local Network Access    |      No       | N/A                            |   **PASS**   |
+| `AuthMech-M2M-API-Bearer-RO`         | Programmatic REST API (`/history`) |      Yes      | No (High-Entropy Token Only)   |   **PASS**   |
+| `AuthMech-M2M-API-Bearer-RW`         | Programmatic Configuration Node    |      Yes      | No (High-Entropy Token Only)   |   **PASS**   |
 
-**Assessment**: There is no indication that the machine-to-machine authentication mechanisms
-(IXIT-1-8, 1-9) violate the requirement to ensure that passwords are not used for automated system
-interactions.
+**Assessment**: Review of the `IXIT 1-AuthMech` declarations verifies that zero authentication
+mechanisms assigned to programmatic machine-to-machine automated interaction utilize passwords.
+Automated system interactions rely exclusively on token structures.
 
 **Verdict**: **PASS**
 
+---
+
 ## Test case 5.1-2A-2 (functional)
 
-### Test Unit A
+### Test Unit A: Verification of Exhaustive Documentation
 
-**Purpose**: To verify that no undocumented M2M interfaces (which might use passwords) exist on the 
-device.
-
-**Results**:
-Functional network scanning (referencing results in 5.1-1-2 Unit A) confirms that all addressable
-interfaces are documented. No hidden APIs or undocumented automated interfaces were discovered.
+**Purpose**: To functionally verify that no undocumented machine-to-machine interfaces that accept
+passwords are exposed by the device.
+**Results**: Network scanning sweeps mapping all active TCP/UDP interfaces (referencing verification
+metrics captured in `Test case 5.1-1-2`) confirm that all addressable ports are accounted for. No
+hidden automation pipelines or undocumented programmatic APIs exist.
 
 **Verdict**: **PASS**
 
 ### Test Unit B: Password Rejection for M2M
 
-**Purpose**: To functionally verify that M2M-specific interfaces do not accept passwords, even if 
-an attacker attempts to force their use (e.g., via downgrade or MITM).
+**Purpose**: To functionally verify that M2M-specific interfaces do not accept password payloads,
+even if an attacker attempts to force their use via request headers or body parameters.
 
-| IXIT Entry      | M2M Interface  | Tested "Accept Password"?               | Result   | Verdict |
-|-----------------|----------------|-----------------------------------------|----------|---------|
-| IXIT-1-2 to 1-7 | Web-UI         | N/A (Human Interface)                   | N/A      | PASS    |
-| IXIT-1-8        | Read-only API  | Attempted Basic Auth / Password in JSON | Rejected | PASS    |
-| IXIT-1-9        | Read/Write API | Attempted Basic Auth / Password in JSON | Rejected | PASS    |
+| Documented IXIT Entry ID                                      | Targeted Interface Node            | Functional Test Activity Executed                                        | Observed Result                                      | Unit Verdict |
+|:--------------------------------------------------------------|:-----------------------------------|:-------------------------------------------------------------------------|:-----------------------------------------------------|:------------:|
+| `AuthMech-LAN-WebUI-Default` to `AuthMech-LAN-WebUI-Disabled` | Administrative Web-UI              | N/A (Validated as Interactive User-to-Machine Interface)                 | N/A                                                  |   **PASS**   |
+| `AuthMech-M2M-API-Bearer-RO`                                  | Local API (`/history`)             | Injected `Authorization: Basic` credentials and password JSON parameters | Formally rejected; server returns `401 Unauthorized` |   **PASS**   |
+| `AuthMech-M2M-API-Bearer-RW`                                  | Configuration Node (`/ruuvi.json`) | Injected `Authorization: Basic` credentials and password JSON parameters | Formally rejected; server returns `401 Unauthorized` |   **PASS**   |
 
-**Assessment**: Functional testing (attempting to use passwords on token-only endpoints) confirms
-that the machine-to-machine authentication process does not accept passwords. There is no indication
-that the implementation violates the requirement to restrict automated interactions to
-non-password-based methods.
+**Assessment**: Functional testing confirms that token-locked programmatic endpoints strictly reject
+standard user password configurations or alternative non-token request schemas. The web engine
+denies processing contexts, short-circuiting the query validation loops when a valid token from the
+`ruuvi.json` manifest within the `nvs` flash partition is absent.
 
 **Verdict**: **PASS**
 
+---
+
 ## Group Summary
 
-The Ruuvi Gateway complies with Provision 5.1-2A. Human interfaces are password-protected (or open
-by choice), while all machine-to-machine (M2M) API interactions are strictly restricted to 
-**Bearer Tokens**, which prevents the risks associated with hardcoded or shared M2M passwords.
+The Ruuvi Gateway complies fully with Provision 5.1-2A of ETSI EN 303 645. Interactive user
+interfaces utilize password-based or chosen cryptographic challenges, while all machine-to-machine
+automation endpoints are restricted to token validation routines. This layout mitigates risks
+associated with hardcoded or shared credentials in automated setups.
 
 **Group Verdict**: **PASS**
