@@ -96,7 +96,7 @@ Bearer API tokens, SSL certificates, and scanning layer PHY criteria blocks.
 
 #### Authentication Mechanism
 
-Cross-referenced to the validation matrices managed under **`SecComMech-WebUI-Session`**.
+Cross-referenced to the validation matrices managed under `SecComMech-WebUI-Session`.
 
 ---
 
@@ -127,6 +127,36 @@ provided a valid high-privilege bearer token payload is supplied.
 #### Authentication Mechanism
 
 Cross-referenced to the privilege parameters managed under `SecComMech-LAN-Bearer-Authentication`.
+
+---
+
+### **ID**: SoftServ-CoProcessor-Verification-Loop
+
+#### Description
+
+An internal background multi-chip monitoring and verification service loop that handles early-stage
+hardware integrity tracking. It runs strictly point-to-point via the isolated link-layer interface
+and cannot be queried, intercepted, or addressed by inbound network sockets.
+
+#### Status
+
+Active (Triggered automatically during every boot execution lifecycle and post-OTA flashing
+sequences).
+
+#### Justification
+
+Essential anti-tamper security mechanism required to cryptographically verify the co-processor's
+memory blocks before functional tasks are brought up. This structural check prevents persistent
+side-loading vectors or out-of-band code injection attacks on the Bluetooth radio layer.
+
+#### Allows Configuration (Yes/No)
+
+No. (The validation rules, registers, curve allocations, and signature arrays are immutable
+properties handled within the core image code segment).
+
+#### Authentication Mechanism
+
+N/A (Managed via direct bare-metal host control loops executing across `LogIntf-Internal-SWD-Bus`).
 
 ---
 
@@ -321,7 +351,8 @@ N/A
 An outbound firmware-update client that downloads release metadata and signed firmware images over
 HTTPS from the configured update server (`https://network.ruuvi.com/firmwareupdate`) and applies
 them to the inactive application slots. The full mechanism is described in `IXIT 7-UpdMech` (
-UpdMech-WebUI/UpdMech-Auto). The service is **not** accessible via an inbound network interface.
+`UpdMech-WebUI` / `UpdMech-Auto`). The service is **not** accessible via an inbound network
+interface.
 
 #### Status
 
@@ -345,16 +376,17 @@ N/A (Outbound client service loop; downloaded images are verified by RSA-3072-PS
 
 ## Summary Matrix for the Technical File
 
-| Service ID                                  | Directionality | Initial Status | Accessible via Network? | Allows Security Config? | Inbound Authentication Hook Reference      |
-|:--------------------------------------------|:--------------:|:--------------:|:-----------------------:|:-----------------------:|:-------------------------------------------|
-| **SoftServ-Hotspot-Orchestration**          |    Inbound     |   Transient    | Yes (Wireless Local AP) |           Yes           | `AuthMech-Hotspot-Provisioning`            |
-| **SoftServ-WiFi-WPS-Onboarding**            |    Inbound     |   Transient    | Yes (Wireless Local AP) |           Yes           | None (Out-of-Band Physical Proximity)      |
-| **SoftServ-Local-Management-WebUI**         |    Inbound     |    Enabled     |    Yes (LAN Port 80)    |           Yes           | **`SecComMech-WebUI-Session`**             |
-| **SoftServ-Local-Programmatic-API**         |    Inbound     |    Enabled     |    Yes (LAN Port 80)    |           Yes           | **`SecComMech-LAN-Bearer-Authentication`** |
-| **SoftServ-Centralized-Remote-Config**      |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                        |
-| **SoftServ-Telemetry-Relay-RuuviCloud**     |    Outbound    |    Enabled     |           No            |           No            | N/A                                        |
-| **SoftServ-Telemetry-Relay-CustomHTTP**     |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                        |
-| **SoftServ-Telemetry-Relay-MQTT**           |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                        |
-| **SoftServ-System-Diagnostics-Reporting**   |    Outbound    |    Enabled     |           No            |           No            | N/A                                        |
-| **SoftServ-Network-Infrastructure-Clients** |    Outbound    |    Enabled     |           No            |           No            | N/A                                        |
-| **SoftServ-OTA-Firmware-Updater**           |    Outbound    |    Enabled     |           No            |           No            | N/A                                        |
+| Service ID                                | Directionality | Initial Status | Accessible via Network? | Allows Security Config? | Inbound Authentication Hook Reference   |
+|:------------------------------------------|:--------------:|:--------------:|:-----------------------:|:-----------------------:|:----------------------------------------|
+| `SoftServ-Hotspot-Orchestration`          |    Inbound     |   Transient    | Yes (Wireless Local AP) |           Yes           | `AuthMech-Hotspot-Provisioning`         |
+| `SoftServ-WiFi-WPS-Onboarding`            |    Inbound     |   Transient    | Yes (Wireless Local AP) |           Yes           | None (Out-of-Band Physical Proximity)   |
+| `SoftServ-Local-Management-WebUI`         |    Inbound     |    Enabled     |    Yes (LAN Port 80)    |           Yes           | `SecComMech-WebUI-Session`              |
+| `SoftServ-Local-Programmatic-API`         |    Inbound     |    Enabled     |    Yes (LAN Port 80)    |           Yes           | `SecComMech-LAN-Bearer-Authentication`  |
+| `SoftServ-CoProcessor-Verification`       | Internal Loop  |    Enabled     |           No            |           No            | None (Hardware Inter-Chip Control Link) |
+| `SoftServ-Centralized-Remote-Config`      |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                     |
+| `SoftServ-Telemetry-Relay-RuuviCloud`     |    Outbound    |    Enabled     |           No            |           No            | N/A                                     |
+| `SoftServ-Telemetry-Relay-CustomHTTP`     |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                     |
+| `SoftServ-Telemetry-Relay-MQTT`           |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                     |
+| `SoftServ-System-Diagnostics-Reporting`   |    Outbound    |    Enabled     |           No            |           No            | N/A                                     |
+| `SoftServ-Network-Infrastructure-Clients` |    Outbound    |    Enabled     |           No            |           No            | N/A                                     |
+| `SoftServ-OTA-Firmware-Updater`           |    Outbound    |    Enabled     |           No            |           No            | N/A                                     |
