@@ -34,10 +34,19 @@ indices and signed binary assets from the official production update servers.
      the downloaded main binary array. Upon successful verification against the appended production
      RSA-3072 signature block, the engine configures the inactive slot as the primary boot target
      and executes a system restart.
-  7. Post-reboot, the new firmware initializes, validates its auxiliary file system partitions via
-     `esp_secure_boot_verify_rsa_signature_block` checks, and programmatically flashes the
-     co-processor over an internal serial bus if the nRF52 image version differs. If all
-     initialization checks succeed, the slot is marked valid.
+  7. Post-reboot, the new main firmware initializes, validates its auxiliary file system partitions
+     via `esp_secure_boot_verify_rsa_signature_block` checks, and invokes the co-processor
+     verification track (`nrf52fw_update_fw_step3`). Rather than relying on a loose alphanumeric
+     version string comparison, the ESP32 host halts the nRF52811 chip, injects a specialized
+     SHA-256 calculation binary stub into the co-processor's RAM via the hardware Serial Wire
+     Debug (SWD) bus (`nrf52swd_calc_sha256_digest_on_nrf52`), and manipulates the execution pointer
+     register. The host reads back the calculated cryptographic digest of the target's active flash
+     segments and compares it against the signed reference firmware array stored inside the freshly
+     staged `fatfs_nrf52` partition. The host bypasses update operations only if both the version
+     structure and the active flash SHA-256 digest match the reference block precisely. If a hash
+     collision mismatch or version delta is found, the host immediately executes
+     `nrf52fw_update_fw_step4` to programmatically flash and restore the co-processor. If all
+     initialization checks succeed, the system configuration slot is marked valid.
 
 #### Security Guarantees
 
@@ -54,8 +63,8 @@ manufacturer private key. The public key for verification (`SecParam-FW-Verifica
 integrated within the main application text segment. Because production units implement a legacy
 secondary bootloader block where hardware secure boot eFuses are not burned, signature validation is
 processed programmatically at the application layer post-boot. Automated rollback-on-failure is
-driven by the ESP-IDF partition table table mapping: if post-reboot asset validation fails, the
-system reverts execution to the prior known-good partition slot. Downgrade prevention via hardware
+driven by the ESP-IDF partition table mapping: if post-reboot asset validation fails, the system
+reverts execution to the prior known-good partition slot. Downgrade prevention via hardware
 secure-version eFuses is not enabled; block verification isolates malicious binaries, but older
 signed release images are not cryptographically blocked from installation.
 
@@ -98,7 +107,9 @@ See `UpdMech-WebUI`.
 
 #### Cryptographic Details
 
-See `UpdMech-WebUI`.
+See `UpdMech-WebUI`. The update validation track forces the same inter-chip SWD-injected SHA-256
+flash evaluation sequence before passing or invoking the automated nRF52 co-processor code
+restoration loop.
 
 #### Initiation and Interaction
 
@@ -174,8 +185,8 @@ Not applicable.
 
 ## Summary Matrix for the Technical File
 
-| Interface ID      | Delivery Medium              | Initiation Vector                | Cryptographic Verification Protocol            | Automated Rollback Active? | Downgrade Blocked by Fuses? |
-|:------------------|:-----------------------------|:---------------------------------|:-----------------------------------------------|:--------------------------:|:---------------------------:|
-| **UpdMech-WebUI** | Network (HTTPS / Port 443)   | User Manual Request (Web-UI)     | RSA-3072-PSS / SHA-256 Application Scan        |            Yes             |             No              |
-| **UpdMech-Auto**  | Network (HTTPS / Port 443)   | Automated Background Scheduler   | RSA-3072-PSS / SHA-256 Application Scan        |            Yes             |             No              |
-| **UpdMech-USB**   | Local Port (USB-UART Bridge) | Physical USB Connection Flashing | Boot RSA-3072-PSS Scan + Tool MD5 Verification |   N/A (Manual Overwrite)   |             No              |
+| Interface ID    | Delivery Medium              | Initiation Vector                | Cryptographic Verification Protocol                       | Automated Rollback Active? | Downgrade Blocked by Fuses? |
+|:----------------|:-----------------------------|:---------------------------------|:----------------------------------------------------------|:--------------------------:|:---------------------------:|
+| `UpdMech-WebUI` | Network (HTTPS / Port 443)   | User Manual Request (Web-UI)     | RSA-3072-PSS / SHA-256 ESP Scan + SWD nRF RAM Check Block |            Yes             |             No              |
+| `UpdMech-Auto`  | Network (HTTPS / Port 443)   | Automated Background Scheduler   | RSA-3072-PSS / SHA-256 ESP Scan + SWD nRF RAM Check Block |            Yes             |             No              |
+| `UpdMech-USB`   | Local Port (USB-UART Bridge) | Physical USB Connection Flashing | Boot RSA-3072-PSS Scan + Flasher Tool MD5 Sweep           |   N/A (Manual Overwrite)   |             No              |
