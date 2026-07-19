@@ -443,21 +443,62 @@ boundary to actors with immediate physical connection access to the physical USB
 
 ---
 
+### **ID**: LogIntf-Internal-SWD-Bus
+
+#### Description
+
+An unexposed internal hardware-tier inter-chip debug communication channel connecting the master
+ESP32 system microcontroller to the peripheral nRF52811 co-processor debug access port (DAP). It is
+driven programmatically by the master application layer via `libswd` to run early boot-time code
+integrity checks and force low-level binary restoration sequences.
+
+#### Access
+
+* Locally isolated on dedicated PCB trace copper layers entirely within the device enclosure. It has
+  no physical exposure outside the housing and cannot be addressed over any external wire segment,
+  network protocol socket, or over-the-air communication vector.
+
+#### Status
+
+Enabled. Active during early boot system initialization routines and firmware component flash
+writing phases.
+
+#### Debug Interface
+
+Yes (Internal Physical / Inter-Chip Master-Target Debug Link).
+
+#### Disclosed Information
+
+Enables complete bare-metal host access to the nRF52811 memory blocks, hardware control units,
+register arrays, and internal flash partitions. Access is security-relevant as it handles the raw
+code footprint of the co-processor radio layer.
+
+#### Resilience Measures
+
+The communication channel operates strictly point-to-point under total local programmatic control of
+the master ESP32 kernel. It relies entirely on the structural physical enclosure isolation of the
+gateway casing. Because it maps to internal PCB tracks, it is structurally invulnerable to remote
+network eavesdropping, Man-in-the-Middle (MitM) payload manipulation, or distributed socket
+starvation injections.
+
+---
+
 ## Summary Matrix for the Technical File
 
-| Interface ID                        | Type / Port     | Protocol          | Remote Network Access? | Initial Status | Security Relevant Disclosed Info                  |
-|:------------------------------------|:----------------|:------------------|:----------------------:|:---------------|:--------------------------------------------------|
-| **LogIntf-HTTP-Server**             | Server / 80     | HTTP              |    Yes (LAN / WLAN)    | Enabled        | None (Generic platform header signature only)     |
-| **LogIntf-Cloud-HTTPS-Telemetry**   | Client / 443    | HTTPS             |   Yes (WAN Network)    | Enabled        | None (TLS Encrypted Payload)                      |
-| **LogIntf-Custom-HTTP-Telemetry**   | Client / Config | HTTP/HTTPS        |  Yes (Local Network)   | Disabled       | None if HTTPS transport is selected               |
-| **LogIntf-Custom-Stream-Telemetry** | Client / Config | MQTT/MQTTS/WS/WSS |  Yes (Local Network)   | Disabled       | None if MQTTS/WSS transport is selected           |
-| **LogIntf-Cloud-HTTPS-Status**      | Client / 443    | HTTPS             |   Yes (WAN Network)    | Enabled        | None (TLS Encrypted Payload)                      |
-| **LogIntf-FW-Update-Client**        | Client / 443    | HTTPS             |   Yes (WAN Network)    | Enabled        | None (RSA Signed Firmware Payload Validation)     |
-| **LogIntf-Time-NTP-Client**         | Client / 123    | NTP / UDP         |   Yes (WAN Network)    | Enabled        | None                                              |
-| **LogIntf-Network-DHCP-Client**     | Client / 67, 68 | DHCP / UDP        |  Yes (Local Network)   | Enabled        | None (Exposes MAC and Hostname strings)           |
-| **LogIntf-Hotspot-DHCP-Server**     | Server / 67, 68 | DHCP / UDP        | No (Local Media Only)  | Transient      | None                                              |
-| **LogIntf-Network-DNS-Client**      | Client / 53     | DNS / UDP         |  Yes (Local Network)   | Enabled        | None (Reveals lookup destination domains)         |
-| **LogIntf-Hotspot-DNS-Server**      | Server / 53     | DNS / UDP         | No (Local Media Only)  | Transient      | None (Captive Portal structural redirection only) |
-| **LogIntf-WiFi-WPS-Client**         | Client / Mgmt   | 802.11 / WPS      | No (Local Media Only)  | Transient      | None (Exposes transient device attributes)        |
-| **LogIntf-USB-UART-Log-Stream**     | Stream / Serial | UART / Text       |  No (Local Port Only)  | Enabled        | Operational diagnostic traces only (No secrets)   |
-| **LogIntf-USB-Boot-Flasher**        | Server / ROM    | ROM Bootloader    |  No (Local Port Only)  | Enabled        | Full hardware flash memory control access         |
+| Interface ID                      | Type / Port        | Protocol          | Remote Network Access? | Initial Status | Security Relevant Disclosed Info                         |
+|:----------------------------------|:-------------------|:------------------|:----------------------:|:---------------|:---------------------------------------------------------|
+| `LogIntf-HTTP-Server`             | Server / 80        | HTTP              |    Yes (LAN / WLAN)    | Enabled        | None (Generic platform header signature only)            |
+| `LogIntf-Cloud-HTTPS-Telemetry`   | Client / 443       | HTTPS             |   Yes (WAN Network)    | Enabled        | None (TLS Encrypted Payload)                             |
+| `LogIntf-Custom-HTTP-Telemetry`   | Client / Config    | HTTP/HTTPS        |  Yes (Local Network)   | Disabled       | None if HTTPS transport is selected                      |
+| `LogIntf-Custom-Stream-Telemetry` | Client / Config    | MQTT/MQTTS/WS/WSS |  Yes (Local Network)   | Disabled       | None if MQTTS/WSS transport is selected                  |
+| `LogIntf-Cloud-HTTPS-Status`      | Client / 443       | HTTPS             |   Yes (WAN Network)    | Enabled        | None (TLS Encrypted Payload)                             |
+| `LogIntf-FW-Update-Client`        | Client / 443       | HTTPS             |   Yes (WAN Network)    | Enabled        | None (RSA Signed Firmware Payload Validation)            |
+| `LogIntf-Time-NTP-Client`         | Client / 123       | NTP / UDP         |   Yes (WAN Network)    | Enabled        | None                                                     |
+| `LogIntf-Network-DHCP-Client`     | Client / 67, 68    | DHCP / UDP        |  Yes (Local Network)   | Enabled        | None (Exposes MAC and Hostname strings)                  |
+| `LogIntf-Hotspot-DHCP-Server`     | Server / 67, 68    | DHCP / UDP        | No (Local Media Only)  | Transient      | None                                                     |
+| `LogIntf-Network-DNS-Client`      | Client / 53        | DNS / UDP         |  Yes (Local Network)   | Enabled        | None (Reveals lookup destination domains)                |
+| `LogIntf-Hotspot-DNS-Server`      | Server / 53        | DNS / UDP         | No (Local Media Only)  | Transient      | None (Captive Portal structural redirection only)        |
+| `LogIntf-WiFi-WPS-Client`         | Client / Mgmt      | 802.11 / WPS      | No (Local Media Only)  | Transient      | None (Exposes transient device attributes)               |
+| `LogIntf-USB-UART-Log-Stream`     | Stream / Serial    | UART / Text       |  No (Local Port Only)  | Enabled        | Operational diagnostic traces only (No secrets)          |
+| `LogIntf-USB-Boot-Flasher`        | Server / ROM       | ROM Bootloader    |  No (Local Port Only)  | Enabled        | Full hardware flash memory control access                |
+| `LogIntf-Internal-SWD-Bus`        | Master-Target Link | SWD               |   No (Internal Only)   | Enabled        | Bare-metal access to nRF52 register and flash structures |
