@@ -1,8 +1,8 @@
 # IXIT 10-SecParam: Security Parameters
 
-The following table lists all critical and public security parameters persistently stored on the
-Ruuvi Gateway (DUT) during intended usage, specifying their protection frameworks, provisioning
-contexts, and generation mechanisms.
+The following table lists all critical and public security parameters persistently or transiently
+stored on the Ruuvi Gateway (DUT) during intended usage, specifying their protection frameworks,
+provisioning contexts, and generation mechanisms.
 
 ## Table C.10: IXIT 10-SecParam (Security Parameters)
 
@@ -13,8 +13,8 @@ contexts, and generation mechanisms.
 The RSA-3072 public signature key embedded directly within the application image text segment. It
 serves as the static cryptographic root of trust utilized by the application-layer firmware
 validation pipeline (`main/fw_update.c`) to verify the integrity and authenticity of downloaded OTA
-applications and both data partition images (`fatfs_gwui.bin` / `fatfs_nrf52.bin`). It is not a
-hard-coded identity but is hard-coded in the device software binary code.
+applications and all data partition images (`fatfs_gwui.bin` / `fatfs_nrf52.bin`). It is hard-coded
+in the device software binary code.
 
 #### Type
 
@@ -168,6 +168,47 @@ N/A
 
 ---
 
+### **ID**: SecParam-CoProcessor-Verification-Stub
+
+#### Description
+
+The bare-metal compiled binary utility array (`sha256_stub_bin`) embedded within the main
+application text segment. During early boot sequence validation, the master ESP32 host
+programmatically streams this payload across the internal SWD bus into the nRF52811 RAM allocation
+table to orchestrate the hardware SHA-256 flash hash sweep.
+
+#### Type
+
+public
+
+#### Security Guarantees
+
+Ensures **Integrity** and **Access Control**. The verification tool must remain authentic to prevent
+an adversary from tampering with the validation metrics or generating dummy execution completion
+flags over the SWD link.
+
+#### Protection Scheme
+
+Compiled directly into the master software image, residing inside the active verified app slots (
+`ota_0` or `ota_1`). Any attempt to alter its payload structural logic requires rewriting the
+primary application storage flash.
+
+#### Provisioning Mechanism
+
+N/A
+
+#### Secure Communication Mechanisms
+
+`SecComMech-CoProcessor-SWD-Validation`. Transferred strictly locally over the isolated internal
+physical track infrastructure of `LogIntf-Internal-SWD-Bus`. It is inaccessible to external network
+adapters.
+
+#### Generation Mechanism
+
+N/A
+
+---
+
 ### **ID**: SecParam-Hardware-DeviceID
 
 #### Description
@@ -176,8 +217,7 @@ The 64-bit hardware-unique identifier ($DEVICEID$) extracted out of the internal
 Configuration Registers (FICR) inside the nRF52811 silicon chip structure. Formatted as uppercase
 pairs separated by colons (e.g., `AA:BB:CC:DD:EE:FF:00:11`), it acts directly as the factory-default
 Web-UI credential string and functions as the baseline symmetric secret key layer for outbound
-payload message signatures. It is a hard-coded unique per-device identity and is hard-coded in
-hardware silicon registers.
+payload message signatures. It is hard-coded in hardware silicon registers.
 
 #### Type
 
@@ -216,8 +256,7 @@ N/A
 
 The active username and password sequence utilized by the `x-ruuvi-interactive` challenge-response
 scheme to validate administrative access onto the local network configuration server. Represents the
-JSON keys `lan_auth_user` and `lan_auth_pass`. It is not a hard-coded identity and is not hard-coded
-in the source code.
+JSON keys `lan_auth_user` and `lan_auth_pass`. It is not hard-coded in the source code.
 
 #### Type
 
@@ -264,8 +303,7 @@ N/A
 
 The operational network SSID string and associated plaintext password block utilized by the internal
 wireless stack to join target customer local area access points. Represents the JSON keys
-`wifi_sta_config.ssid` and `wifi_sta_config.password`. It is not a hard-coded identity and is not
-hard-coded in the source code.
+`wifi_sta_config.ssid` and `wifi_sta_config.password`. It is not hard-coded in the source code.
 
 #### Type
 
@@ -308,8 +346,7 @@ The configuration credentials and cryptographic certificate files used explicitl
 client configuration thread to fetch automated gateway settings parameters. Maps to
 `remote_cfg_url`, `remote_cfg_auth_bearer_token`, `remote_cfg_auth_basic_user`,
 `remote_cfg_auth_basic_pass`, and the dedicated storage status files `rcfg_cli_key`,
-`rcfg_cli_cert`, and `rcfg_srv_cert`. It is not a hard-coded identity and is not hard-coded in the
-source code.
+`rcfg_cli_cert`, and `rcfg_srv_cert`. It is not hard-coded in the source code.
 
 #### Type
 
@@ -351,7 +388,7 @@ The access credentials and cryptographic certificate assets used to authenticate
 outbound data pushes to custom HTTP/HTTPS endpoints. Contains the basic auth credentials (
 `http_user`, `http_pass`), bearer/API keys (`http_bearer_token`, `http_api_key`), client private
 key (`http_cli_key`), client X.509 certificate (`http_cli_cert`), and target server root CA cert (
-`http_srv_cert`). It is not a hard-coded identity and is not hard-coded in the source code.
+`http_srv_cert`). It is not hard-coded in the source code.
 
 #### Type
 
@@ -391,8 +428,8 @@ N/A
 The access credentials and cryptographic certificate assets used to authenticate and secure
 long-lived stream connections over MQTT, MQTTS, WS, or WSS. Contains target broker parameters (
 `mqtt_user`, `mqtt_pass`), client private key (`mqtt_cli_key`), client X.509 certificate (
-`mqtt_cli_cert`), and broker server root CA cert (`mqtt_srv_cert`). It is not a hard-coded identity
-and is not hard-coded in the source code.
+`mqtt_cli_cert`), and broker server root CA cert (`mqtt_srv_cert`). It is not hard-coded in the
+source code.
 
 #### Type
 
@@ -433,7 +470,7 @@ The parameters and authentication assets required to process and secure the devi
 background diagnostic tracking stream. Contains target URL identifiers (`http_stat_url`), basic auth
 metrics (`http_stat_user`, `http_stat_pass`), local client private key (`stat_cli_key`), public
 client certificate (`stat_cli_cert`), and the receiving diagnostics node validation root CA cert (
-`stat_srv_cert`). It is not a hard-coded identity and is not hard-coded in the source code.
+`stat_srv_cert`). It is not hard-coded in the source code.
 
 #### Type
 
@@ -493,9 +530,9 @@ logging logs.
 
 #### Provisioning Mechanism
 
-Initialized by default using the unique 64-bit hardware $DEVICEID$ extracted out of the co-processor
-FICR registry cells. The keys can be dynamically rotated at runtime by a verified receiving cloud
-infrastructure via the `Ruuvi-HMAC-KEY` response header field.
+Initialized by default using the unique 64-bit hardware `DEVICEID` seed declared in
+`SecParam-Hardware-DeviceID`. The keys can be dynamically rotated at runtime by a verified receiving
+cloud infrastructure via the `Ruuvi-HMAC-KEY` response header field.
 
 #### Secure Communication Mechanisms
 
@@ -514,8 +551,7 @@ cloud server infrastructure using high-entropy random number generators.
 
 Automatically or manually generated high-entropy Bearer tokens utilized for Machine-to-Machine (M2M)
 interaction over the local network interface, separating access into read-only (`lan_auth_api_key`)
-or full read/write (`lan_auth_api_key_rw`) privileges. They are not hard-coded identities and are
-not hard-coded in the source code.
+or full read/write (`lan_auth_api_key_rw`) privileges. They are not hard-coded in the source code.
 
 #### Type
 
@@ -551,25 +587,26 @@ local network interfaces).
 
 Automatically generated on the user's browser client via secure pseudo-random structures using the
 following cryptographic pipeline:
-`crypto.enc.Base64.stringify(crypto.SHA256(crypto.lib.WordArray.random(32)))`
+`crypto.enc.Base64.stringify(crypto.SHA256(crypto.lib.WordArray.random(32)))`.
 This generates a high-entropy 256-bit token string that is completely unique per generation event.
 
 ---
 
 ## Summary Matrix for the Technical File
 
-| Parameter ID                                | Cryptographic Type |     Persistent Storage Type     | Access Privileges / Roles                                                                                              |
-|:--------------------------------------------|:------------------:|:-------------------------------:|:-----------------------------------------------------------------------------------------------------------------------|
-| **SecParam-FW-Verification-Key**            |       public       |     Application Flash Text      | Read: `fw_update.c` Verification Loop<br>Modify: Physical Flash Device Only                                            |
-| **SecParam-Main-Firmware-Signature**        |       public       |      tail of OTA partition      | Read: `esp_ota_end_patched`<br>Modify: Complete System OTA Update                                                      |
-| **SecParam-WebUI-Partition-Signature**      |       public       |     Application Flash Blobs     | Read: Boot Verification Context<br>Modify: Complete System OTA Update                                                  |
-| **SecParam-nRF52-Partition-Signature**      |       public       |     Application Flash Blobs     | Read: Boot Verification Context<br>Modify: Complete System OTA Update                                                  |
-| **SecParam-Hardware-DeviceID**              |      critical      |     Hardware Silicon (FICR)     | Read: Diagnostic Logs / Internal Tasks<br>Modify: Immutable (Direct Default Password & HMAC Root Key)                  |
-| **SecParam-LAN-WebUI-Credentials**          |      critical      | `ruuvi.json` on `nvs` Partition | Read: Internal Auth Handlers Only (Masked on Web-UI reads)<br>Modify: Authenticated Administrator (Stored as MD5 hash) |
-| **SecParam-WiFi-STA-Credentials**           |      critical      | `ruuvi.json` on `nvs` Partition | Read: Wi-Fi Stack Driver Initialization (Masked on Web-UI reads)<br>Modify: Provisioning Wizard / Admin Session        |
-| **SecParam-Remote-Config-Assets**           |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: Outbound Remote Sync Core Tasks<br>Modify: Authenticated Administrator                                           |
-| **SecParam-Custom-HTTP-Telemetry-Assets**   |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: HTTP Post Application Tasks<br>Modify: Authenticated Administrator                                               |
-| **SecParam-Custom-Stream-Telemetry-Assets** |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: MQTT Driver Task Lifecycle<br>Modify: Authenticated Administrator                                                |
-| **SecParam-System-Statistics-Assets**       |       mixed        | `ruuvi.json` on `nvs` Partition | Read: Background Diagnostic Log Loop<br>Modify: Authenticated Administrator                                            |
-| **SecParam-HMAC-Symmetric-Secrets**         |      critical      |     Static App Task Memory      | Read: `hmac_sha256.c` Hashing Contexts<br>Modify: Remote Cloud Server Rotation Header                                  |
-| **SecParam-LAN-Bearer-Tokens**              |      critical      | `ruuvi.json` on `nvs` Partition | Read: Local API Validation Guards<br>Modify: Authenticated Administrator                                               |
+| Parameter ID                              | Cryptographic Type |     Persistent Storage Type     | Access Privileges / Roles                                                                                              |
+|:------------------------------------------|:------------------:|:-------------------------------:|:-----------------------------------------------------------------------------------------------------------------------|
+| `SecParam-FW-Verification-Key`            |       public       |     Application Flash Text      | Read: `fw_update.c` Verification Loop<br>Modify: Physical Flash Device Only                                            |
+| `SecParam-Main-Firmware-Signature`        |       public       |      tail of OTA partition      | Read: `esp_ota_end_patched`<br>Modify: Complete System OTA Update                                                      |
+| `SecParam-WebUI-Partition-Signature`      |       public       |     Application Flash Blobs     | Read: Boot Verification Context<br>Modify: Complete System OTA Update                                                  |
+| `SecParam-nRF52-Partition-Signature`      |       public       |     Application Flash Blobs     | Read: Boot Verification Context<br>Modify: Complete System OTA Update                                                  |
+| `SecParam-CoProcessor-Verification-Stub`  |       public       |     Application Flash Blobs     | Read: SWD Boot-Time Calculation Launcher<br>Modify: Complete System OTA Update                                         |
+| `SecParam-Hardware-DeviceID`              |      critical      |     Hardware Silicon (FICR)     | Read: Diagnostic Logs / Internal Tasks<br>Modify: Immutable (Direct Default Password & HMAC Root Key)                  |
+| `SecParam-LAN-WebUI-Credentials`          |      critical      | `ruuvi.json` on `nvs` Partition | Read: Internal Auth Handlers Only (Masked on Web-UI reads)<br>Modify: Authenticated Administrator (Stored as MD5 hash) |
+| `SecParam-WiFi-STA-Credentials`           |      critical      | `ruuvi.json` on `nvs` Partition | Read: Wi-Fi Stack Driver Initialization (Masked on Web-UI reads)<br>Modify: Provisioning Wizard / Admin Session        |
+| `SecParam-Remote-Config-Assets`           |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: Outbound Remote Sync Core Tasks<br>Modify: Authenticated Administrator                                           |
+| `SecParam-Custom-HTTP-Telemetry-Assets`   |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: HTTP Post Application Tasks<br>Modify: Authenticated Administrator                                               |
+| `SecParam-Custom-Stream-Telemetry-Assets` |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: MQTT Driver Task Lifecycle<br>Modify: Authenticated Administrator                                                |
+| `SecParam-System-Statistics-Assets`       |       mixed        | `ruuvi.json` on `nvs` Partition | Read: Background Diagnostic Log Loop<br>Modify: Authenticated Administrator                                            |
+| `SecParam-HMAC-Symmetric-Secrets`         |      critical      |     Static App Task Memory      | Read: `hmac_sha256.c` Hashing Contexts<br>Modify: Remote Cloud Server Rotation Header                                  |
+| `SecParam-LAN-Bearer-Tokens`              |      critical      | `ruuvi.json` on `nvs` Partition | Read: Local API Validation Guards<br>Modify: Authenticated Administrator                                               |
