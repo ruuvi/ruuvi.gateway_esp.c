@@ -43,8 +43,7 @@ Governs the lifecycle management of the 64-bit hardware-unique identifier (
 
 #### Cross-Reference
 
-* Directly tracks and manages the physical parameters declared under **`SecParam-Hardware-DeviceID`
-  **.
+* Directly tracks and manages the physical parameters declared under `SecParam-Hardware-DeviceID`.
 
 ---
 
@@ -144,7 +143,7 @@ keys/certificates grouped under `SecParam-Remote-Config-Assets`,
 `SecParam-System-Statistics-Assets`.
 
 * **Generation & Provisioning:** HMAC keys are initialized by default using the unique 64-bit
-  hardware $DEVICEID$ seed declared in `SecParam-Hardware-DeviceID`. Custom telemetry destination
+  hardware `DEVICEID` seed declared in `SecParam-Hardware-DeviceID`. Custom telemetry destination
   credentials, cloud target passwords, and remote orchestration endpoints/SSL assets are provisioned
   manually by the system administrator.
 * **Storage:** Stored within secure application task memory contexts at runtime (
@@ -172,11 +171,45 @@ keys/certificates grouped under `SecParam-Remote-Config-Assets`,
 
 ---
 
+### **ID**: SecMgmt-CoProcessor-Integrity-Remediation
+
+#### Description
+
+Governs the boot-time secure initialization, anti-tamper tracking, and firmware verification layout
+of the physical nRF52811 co-processor sub-system.
+
+* **Hardening & Verification Mechanics:** Enforces a rigid automated code integrity check during the
+  early startup execution path. The master ESP32 host halts the nRF52811 chip over the physical
+  layout traces via the Serial Wire Debug (SWD) bus interface. It dynamically injects a secure
+  SHA-256 binary calculation tool directly into the target's internal RAM segment and updates the
+  core PC register block. The injected stub executes a bare-metal scan across the active nRF52 flash
+  memory locations, computing a full cryptographic digest (`nrf52swd_calc_sha256_digest_on_nrf52`).
+* **Storage & Reference Alignment:** The master ESP32 host reads the completed digest signature
+  block out of RAM and evaluates it against the production reference firmware payload preserved
+  inside the signature-verified `fatfs_nrf52` system flash partition. If the active memory block
+  digest matches the signed partition footprint, the check passes, and asynchronous serial
+  communication channels (UART link layer) are safely initialized.
+* **Compromise and Tamper Remediation:** This architectural loop provides definitive proof that an
+  attacker possessing specialized physical hardware emulation equipment (such as an external SWD
+  hardware debugger tool) cannot permanently compromise or maintain unauthorized code alterations
+  inside the co-processor's flash space. If an out-of-band firmware modification or a flash hash
+  discrepancy is identified at boot, the master host short-circuits execution, immediately triggers
+  an automated rollback recovery block (`nrf52fw_update_fw_step4`), and physically overwrites the
+  target co-processor's memory cells with the verified factory image before passing control.
+
+#### Cross-Reference
+
+* Directly maps to the physical component validation criteria declared under `SoftComp-nRF52FW` and
+  `SecComMech-CoProcessor-SWD-Validation`.
+
+---
+
 ## Summary Matrix for the Technical File
 
-| Management Process ID                   | Target Parameters Governed                                          | Primary Provisioning Method                                    | Destruction / Decommissioning Mechanism                               | Associated Index ID                                                          |
-|:----------------------------------------|:--------------------------------------------------------------------|:---------------------------------------------------------------|:----------------------------------------------------------------------|:-----------------------------------------------------------------------------|
-| **SecMgmt-Hardware-Silicon-Root**       | `SecParam-Hardware-DeviceID`                                        | Pre-programmed by Silicon Vendor (nRF52 FICR registers)        | Physical Component Destruction Only                                   | **`SecParam-Hardware-DeviceID`**                                             |
-| **SecMgmt-Local-Credentials**           | `SecParam-LAN-WebUI-Credentials`<br>`SecParam-WiFi-STA-Credentials` | MD5 Hashed Onboarding Setup / Manual Input                     | Local Factory Reset (Complete physical NVS partition formatting)      | **`SecParam-LAN-WebUI-Credentials`**<br>**`SecParam-WiFi-STA-Credentials`**  |
-| **SecMgmt-Programmatic-M2M-Tokens**     | `SecParam-LAN-Bearer-Tokens`                                        | Browser Web Crypto API / Direct M2M JSON Payload Configuration | UI Key Clearing / Local Factory Reset (Complete partition formatting) | **`SecParam-LAN-Bearer-Tokens`**                                             |
-| **SecMgmt-Outbound-Assets-And-Secrets** | `SecParam-HMAC-Symmetric-Secrets`<br>and Remote Telemetry Assets    | Manual Web Entry / Dynamic Header Session Key Rotation         | Local Factory Reset (Complete physical NVS partition formatting)      | **`SecParam-HMAC-Symmetric-Secrets`**<br>**`SecParam-Remote-Config-Assets`** |
+| Management Process ID                 | Target Parameters Governed                                          | Primary Provisioning Method                                    | Destruction / Decommissioning Mechanism                                     | Associated Index ID                                                  |
+|:--------------------------------------|:--------------------------------------------------------------------|:---------------------------------------------------------------|:----------------------------------------------------------------------------|:---------------------------------------------------------------------|
+| `SecMgmt-Hardware-Silicon-Root`       | `SecParam-Hardware-DeviceID`                                        | Pre-programmed by Silicon Vendor (nRF52 FICR registers)        | Physical Component Destruction Only                                         | `SecParam-Hardware-DeviceID`                                         |
+| `SecMgmt-Local-Credentials`           | `SecParam-LAN-WebUI-Credentials`<br>`SecParam-WiFi-STA-Credentials` | MD5 Hashed Onboarding Setup / Manual Input                     | Local Factory Reset (Complete physical NVS partition formatting)            | `SecParam-LAN-WebUI-Credentials`<br>`SecParam-WiFi-STA-Credentials`  |
+| `SecMgmt-Programmatic-M2M-Tokens`     | `SecParam-LAN-Bearer-Tokens`                                        | Browser Web Crypto API / Direct M2M JSON Payload Configuration | UI Key Clearing / Local Factory Reset (Complete partition formatting)       | `SecParam-LAN-Bearer-Tokens`                                         |
+| `SecMgmt-Outbound-Assets-And-Secrets` | `SecParam-HMAC-Symmetric-Secrets`<br>and Remote Telemetry Assets    | Manual Web Entry / Dynamic Header Session Key Rotation         | Local Factory Reset (Complete physical NVS partition formatting)            | `SecParam-HMAC-Symmetric-Secrets`<br>`SecParam-Remote-Config-Assets` |
+| `SecMgmt-CoProcessor-Integrity`       | `SoftComp-nRF52FW` Firmware Stack Blocks                            | Boot-Time Automated SWD Dynamic RAM Stub Injection             | Automatic Host Overwrite / NVS Firmware Rollback Flash Partition formatting | `SoftComp-nRF52FW`<br>`SecComMech-CoProcessor-SWD-Validation`        |
