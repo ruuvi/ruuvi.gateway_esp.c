@@ -99,9 +99,19 @@ acts as the programmer, streaming signed co-processor binary updates out of the 
 
 #### Cryptographic Usage
 
-* **Cryptographic Primitives Utilized:** No. The current co-processor firmware implementation does
-  not utilize cryptographic primitives for its passive, receive-only BLE scanning tasks.
-* **Side Effects Considered:** No. Side effects are not applicable at this layer.
+* **Cryptographic Primitives Utilized:** Yes. During the early boot validation sequence, the ESP32
+  supervisor host interacts directly with the nRF52811 via the hardware Serial Wire Debug (SWD)
+  interface. The host dynamically injects a specialized SHA-256 calculation binary stub into the
+  co-processor's RAM (`nrf52swd_calc_sha256_digest_on_nrf52`), hijacks the execution pointer (PC
+  register), and runs a boot-time hardware validation sweep across all flash memory segments. The
+  resulting cryptographic signature is evaluated against the reference digest of the signed firmware
+  block preserved within the read-only filesystem partitions (`fatfs_nrf52` / `fatfs_nrf52_2`). If a
+  hash collision mismatch occurs (indicating physical intervention or unauthorized out-of-band SWD
+  modification), the host executes an automated firmware replacement loop (
+  `nrf52fw_update_fw_step4`) to structurally restore code integrity.
+* **Side Effects Considered:** Yes. Side effects of replacing or modifying this cryptographic
+  validation wrapper are rigorously evaluated by the SDD through automated host-to-target SWD flash
+  verification checks and full regression testing of the system-wide early boot remediation loop.
 
 ---
 
@@ -133,10 +143,10 @@ are persistently managed within the read-only dual-filesystem partitions (`fatfs
 
 ## Summary Matrix for the Technical File
 
-| Component ID            | Updatable? | Primary Stored Flash Partition  | Cryptographic Primitives Present? |  Side Effects Evaluated by SDD?  |
-|:------------------------|:----------:|:--------------------------------|:---------------------------------:|:--------------------------------:|
-| **SoftComp-ROMBoot**    |     No     | Silicon Mask ROM Block          |                No                 |     No (Immutable Hardware)      |
-| **SoftComp-SecondBoot** |    Yes     | Flash Base Sector               |     Yes (LwIP/Partition CRC)      |  Yes (Boot Validation Testing)   |
-| **SoftComp-MainFW**     |    Yes     | `ota_0` / `ota_1` Slots         |     Yes (mbedTLS, HMAC, MD5)      |  Yes (Exhaustive CI/CD Sweeps)   |
-| **SoftComp-nRF52FW**    |    Yes     | `fatfs_nrf52` / `fatfs_nrf52_2` |                No                 |    No (Rx-Only Radio Parser)     |
-| **SoftComp-WebUI**      |    Yes     | `fatfs_gwui` / `fatfs_gwui_2`   |     Yes (crypto-js, Elliptic)     | Yes (Handshake Integrity Checks) |
+| Component ID            | Updatable? | Primary Stored Flash Partition  | Cryptographic Primitives Present? |   Side Effects Evaluated by SDD?   |
+|:------------------------|:----------:|:--------------------------------|:---------------------------------:|:----------------------------------:|
+| **SoftComp-ROMBoot**    |     No     | Silicon Mask ROM Block          |                No                 |      No (Immutable Hardware)       |
+| **SoftComp-SecondBoot** |    Yes     | Flash Base Sector               |     Yes (LwIP/Partition CRC)      |   Yes (Boot Validation Testing)    |
+| **SoftComp-MainFW**     |    Yes     | `ota_0` / `ota_1` Slots         |     Yes (mbedTLS, HMAC, MD5)      |   Yes (Exhaustive CI/CD Sweeps)    |
+| **SoftComp-nRF52FW**    |    Yes     | `fatfs_nrf52` / `fatfs_nrf52_2` |   Yes (Boot SWD SHA-256 Check)    | Yes (SWD Remediation Verification) |
+| **SoftComp-WebUI**      |    Yes     | `fatfs_gwui` / `fatfs_gwui_2`   |     Yes (crypto-js, Elliptic)     |  Yes (Handshake Integrity Checks)  |
