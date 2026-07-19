@@ -201,12 +201,50 @@ subsystems.
 
 ---
 
+### **ID**: SecComMech-CoProcessor-SWD-Validation
+
+#### Description
+
+A low-level inter-chip hardware-tier security mechanism that uses Serial Wire Debug (SWD) protocol
+sequences to validate the code integrity of the peripheral nRF52811 co-processor before functional
+metrics processing links are enabled.
+
+#### Interface
+
+* `LogIntf-Internal-SWD-Bus`, is locally isolated on internal PCB traces connecting the ESP32 host
+  pins to the target nRF52811 debug port.
+
+#### Security Guarantees
+
+Guarantees hardware code integrity and origin verification for the radio sub-system firmware blocks.
+It provides automated boot-time anti-tamper mitigation, ensuring that out-of-band flash
+manipulation (e.g., via physical chip programmers) is detected and rectified prior to processing
+functional asynchronous serial (UART) communication paths.
+
+#### Cryptographic Details
+
+During early system boot initialization (`nrf52fw_update_fw_step3`), the master ESP32 host halts the
+nRF52811 target over the SWD bus framework via `libswd`. The host dynamically injects a specialized
+SHA-256 hashing calculation binary stub directly into the co-processor's internal RAM segment (
+`NRF52SWD_SHA256_STUB_CODE_ADDR`) and updates the target's Cortex-M execution pointer (PC register).
+
+The injected stub runs a bare-metal hardware sweep across the active nRF52 flash sectors, computing
+a full SHA-256 digest (`nrf52swd_calc_sha256_digest_on_nrf52`). The master host reads the calculated
+signature block out of RAM (`NRF52SWD_SHA256_STUB_RES_ADDR`) and executes a strict byte comparison
+check (`memcmp`) against the reference digest of the signed firmware payload preserved within the
+verified `fatfs_nrf52` system flash partition. If a hash mismatch occurs, the host immediately trips
+the automated remediation pipeline (`nrf52fw_update_fw_step4`) to overwrite and restore the
+co-processor's memory structure before initializing the local BLE parsing tasks.
+
+---
+
 ## Summary Matrix for the Technical File
 
-| Mechanism ID                                   | Primary Target Layer    | Cryptographic Primitives                           | Covered Security Guarantees              |
-|:-----------------------------------------------|:------------------------|:---------------------------------------------------|:-----------------------------------------|
-| **SecComMech-TLS**                             | Transport / Sockets     | TLS 1.2 / 1.3, AES-GCM, ECDHE, SHA-256/384         | Confidentiality, Authenticity, Integrity |
-| **SecComMech-HMAC-Signing**                    | Application / Payload   | HMAC-SHA256 (mbedTLS generic MD API)               | Authenticity, Integrity                  |
-| **SecComMech-WebUI-Session**                   | Session / Local Web UI  | ECDH (P-256), AES-CBC (16-byte IV), SHA-256, MD5   | Authenticity, Confidentiality, Integrity |
-| **SecComMech-Firmware-Signature-Verification** | Application / Boot Loop | RSA-3072 PSS, SHA-256 (ESP32 Secure Boot v2)       | Authenticity, Integrity, Anti-Replay     |
-| **SecComMech-LAN-Bearer-Authentication**       | Application / M2M API   | Cleartext HTTP Bearer Headers (`ruuvi.json` match) | Access Control, Authenticity             |
+| Mechanism ID                                 | Primary Target Layer       | Cryptographic Primitives                            | Covered Security Guarantees                 |
+|:---------------------------------------------|:---------------------------|:----------------------------------------------------|:--------------------------------------------|
+| `SecComMech-TLS`                             | Transport / Sockets        | TLS 1.2 / 1.3, AES-GCM, ECDHE, SHA-256/384          | Confidentiality, Authenticity, Integrity    |
+| `SecComMech-HMAC-Signing`                    | Application / Payload      | HMAC-SHA256 (mbedTLS generic MD API)                | Authenticity, Integrity                     |
+| `SecComMech-WebUI-Session`                   | Session / Local Web UI     | ECDH (P-256), AES-CBC (16-byte IV), SHA-256, MD5    | Authenticity, Confidentiality, Integrity    |
+| `SecComMech-Firmware-Signature-Verification` | Application / Boot Loop    | RSA-3072 PSS, SHA-256 (ESP32 Secure Boot v2)        | Authenticity, Integrity, Anti-Replay        |
+| `SecComMech-LAN-Bearer-Authentication`       | Application / M2M API      | Cleartext HTTP Bearer Headers (`ruuvi.json` match)  | Access Control, Authenticity                |
+| `SecComMech-CoProcessor-SWD-Validation`      | Hardware / Inter-Chip Link | SWD RAM Injection, Host-Driven SHA-256 Verification | Hardware Integrity, Anti-Tamper Remediation |
