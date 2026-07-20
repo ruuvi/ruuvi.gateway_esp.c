@@ -209,8 +209,11 @@ Enabled (Active by default in the initialized state).
 Fulfills the primary out-of-the-box functionality of the gateway, allowing immediate data
 visualization and alert tracking via the official Ruuvi Cloud ecosystem without requiring custom
 database setups. Underlying transport loops employ stateless non-blocking asynchronous timers with a
-fixed 67-second backoff retry period during link degradation, ensuring task isolation as declared
-under `ResMech-Net-Telemetry-Protocol-Reconnection`.
+cloud-controlled 60-second cadence via `X-Ruuvi-Gateway-Rate` during successful operation and a
+fixed 67-second retry period during link degradation, ensuring task isolation as declared under
+`ResMech-Net-Telemetry-Protocol-Reconnection`. A one-hour network watchdog provides last-resort
+recovery if all configured telemetry paths remain unable to refresh successful network activity, as
+declared under `ResMech-Net-Watchdog-Recovery`.
 
 #### Allows Configuration (Yes/No)
 
@@ -245,7 +248,9 @@ Provides flexibility for corporate or private deployments, allowing sensor metri
 integrated directly into custom data warehouses or third-party analytical platforms. Underlying
 transport loops employ stateless non-blocking asynchronous timers with a fixed 67-second backoff
 retry period during link degradation, ensuring task isolation as declared under
-`ResMech-Net-Telemetry-Protocol-Reconnection`.
+`ResMech-Net-Telemetry-Protocol-Reconnection`. The same one-hour network watchdog provides
+last-resort recovery if all configured telemetry paths remain unable to refresh successful network
+activity, as declared under `ResMech-Net-Watchdog-Recovery`.
 
 #### Allows Configuration (Yes/No)
 
@@ -278,7 +283,8 @@ Disabled by default (Activated explicitly by the administrator via the Web-UI pa
 Provides real-time event-driven data streaming for industrial automation setups where polling
 latencies are unacceptable. Utilizes stateful socket monitor loops that implement an automated
 10-second background reconnect cadence (`disable_auto_reconnect = false`) as detailed under
-`ResMech-Net-Telemetry-Protocol-Reconnection`.
+`ResMech-Net-Telemetry-Protocol-Reconnection`, with the one-hour network watchdog acting as a
+last-resort recovery path if all configured telemetry paths remain unreachable.
 
 #### Allows Configuration (Yes/No)
 
@@ -389,7 +395,7 @@ N/A (Outbound client service loop; downloaded images are verified by RSA-3072-PS
 | `SoftServ-WiFi-WPS-Onboarding`            |    Inbound     |   Transient    | Yes (Wireless Local AP) |           Yes           | None (Out-of-Band Physical Proximity)   |
 | `SoftServ-Local-Management-WebUI`         |    Inbound     |    Enabled     |    Yes (LAN Port 80)    |           Yes           | `SecComMech-WebUI-Session`              |
 | `SoftServ-Local-Programmatic-API`         |    Inbound     |    Enabled     |    Yes (LAN Port 80)    |           Yes           | `SecComMech-LAN-Bearer-Authentication`  |
-| `SoftServ-CoProcessor-Verification`       | Internal Loop  |    Enabled     |           No            |           No            | None (Hardware Inter-Chip Control Link) |
+| `SoftServ-CoProcessor-Verification-Loop`  | Internal Loop  |    Enabled     |           No            |           No            | None (Hardware Inter-Chip Control Link) |
 | `SoftServ-Centralized-Remote-Config`      |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                     |
 | `SoftServ-Telemetry-Relay-RuuviCloud`     |    Outbound    |    Enabled     |           No            |           No            | N/A                                     |
 | `SoftServ-Telemetry-Relay-CustomHTTP`     |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                     |
