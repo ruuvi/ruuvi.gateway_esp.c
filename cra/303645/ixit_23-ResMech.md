@@ -143,6 +143,12 @@ manage transport failures safely.
   is full, sending is postponed via a 50 ms retry timer. This provides graceful recovery from
   backend downtime without a gateway reboot, subject to normal in-memory advertisement table
   capacity.
+* **Fleet Reconnection-Storm Control:** The HTTP recovery path does not implement exponential
+  backoff. Instead, the Ruuvi Cloud path uses the cloud-provided 60-second `X-Ruuvi-Gateway-Rate`
+  cadence during normal operation and switches to the fixed 67-second retry delay after failed
+  posts. Therefore, if Ruuvi Cloud recovers without immediately returning a valid
+  `X-Ruuvi-Gateway-Rate` header, gateways continue retrying at 67-second intervals rather than
+  falling back to the 10-second factory default.
 * **Implementation Status:** Implemented and evidenced in
   `main/adv_post_async_comm.c::adv_post_do_async_comm`,
   `main/adv_post_async_comm.c::adv_post_do_async_comm_in_progress`,
@@ -165,6 +171,51 @@ dropped stateless packages. This ensures immediate service alignment upon destin
 
 ---
 
+### **ID**: ResMech-Net-Watchdog-Recovery
+
+#### Description
+
+The gateway includes a network watchdog as a last-resort recovery mechanism for rare conditions
+where normal protocol retry logic cannot restore outbound communication, such as a deadlocked
+network task, leaked memory, or a broken client state that prevents all configured telemetry targets
+from being reached.
+
+* **Trigger Condition:** The `adv_post_task` thread spawns a periodic watchdog verification loop at
+  boot and initializes the last-success epoch timestamp. This variable tracking metric is
+  exclusively refreshed by valid outbound network activity, including successful HTTP advertisement
+  packet delivery to Ruuvi Cloud or custom HTTP(S) destinations, HTTP 429 rate-limiting responses (
+  which cryptographically verify server target reachability), and successful MQTT advertisement
+  publications in instant mode. If no configured outbound telemetry path can refresh the timestamp
+  for `RUUVI_NETWORK_WATCHDOG_TIMEOUT_SECONDS` (60 minutes), the watchdog invokes
+  `gateway_restart("Network watchdog")`.
+* **Check Cadence:** The watchdog evaluation loop is executed every
+  `RUUVI_NETWORK_WATCHDOG_PERIOD_SECONDS` (1 second). The reboot sequence is not utilized as a
+  primary connection recovery tool; it functions strictly as a fail-safe measure when the underlying
+  HTTP retry and MQTT auto-reconnect paths have failed to establish successful transaction cycles
+  for an uninterrupted one-hour window.
+* **Fleet Behavior:** During a prolonged Ruuvi Cloud service outage, each gateway's one-hour
+  watchdog timeout window is anchored cleanly to its own last successful data upload. In standard
+  operational states, uploads are naturally paced by the cloud-provided `X-Ruuvi-Gateway-Rate: 60`
+  header, meaning the fleet's last-success metrics are spread across a rolling one-minute interval
+  rather than synchronized to a single snapshot. If an outage exceeds the one-hour threshold,
+  watchdog reboots are distributed smoothly over that same interval. Following an interface restart,
+  if the target backend remains offline, the HTTP path enforces the fixed 67-second failure retry
+  delay instead of the 10-second factory default.
+
+#### Type
+
+Network connectivity
+
+#### Security Guarantees
+
+Protects system **Availability** by automatically recovering from stuck processing loops or socket
+lockups without generating synchronized fleet-wide reconnection events. The combination of
+distributed watchdog reboot timing and the post-boot 67-second fixed retry delay ensures the fleet
+cannot generate a self-inflicted Distributed Denial of Service (DDoS) packet storm against the cloud
+infrastructure during recovery windows.
+
+---
+
 ## Summary Matrix for the Technical File
 
 | Resilience ID                                 | Mitigation Objective          | Primary Technical Mechanism                                                       | Target Vulnerability / Threat                                             |
@@ -173,3 +224,4 @@ dropped stateless packages. This ensures immediate service alignment upon destin
 | `ResMech-Firmware-Redundancy-And-Rollback`    | Code Integrity / Self-Healing | Dual Partition Layout Arrays with Native ESP-IDF OTA Rollback                     | Bricked systems from failed updates or malicious partition modifications. |
 | `ResMech-Net-Link-Layer-Auto-Recovery`        | Link-Layer Persistence        | Automated Wi-Fi Association Retry Loops & Physical Ethernet Cable Hot-Plug Detect | Temporary wireless dropouts or physical cabling disruptions.              |
 | `ResMech-Net-Telemetry-Protocol-Reconnection` | Telemetry Stream Resilience   | Stateful Socket Re-Establishment & Stateless Frame-Drop Isolation                 | Remote cloud server outages, session drops, and routing freezes.          |
+| `ResMech-Net-Watchdog-Recovery`               | Last-Resort Network Recovery  | One-Hour Last-Success Watchdog with Distributed Reboot Timing                     | Rare deadlocks, leaks, or broken client states preventing all telemetry.  |
