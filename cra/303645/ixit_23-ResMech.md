@@ -111,17 +111,47 @@ functional again.
 #### Description
 
 Outbound data client layers incorporate connection handling specific to their protocol schemas to
-manage transit failures safely.
+manage transport failures safely.
 
 * **Stateful Connections (MQTT/MQTTS/WS/WSS):** For long-lived telemetry streams, the client loops
-  actively monitor server-side heartbeats. Upon socket termination or connection dropouts, the
-  driver flushes the broken interface context and automatically re-initiates connection and
-  handshake sequences until the stateful stream is fully restored.
+  actively monitor server-side heartbeats. Upon socket termination, connection dropout, or backend
+  unavailability, the ESP-MQTT client clears the connected status and uses automatic reconnect (
+  `disable_auto_reconnect = false`) with the default reconnect interval (`MQTT_RECON_DEFAULT_MS`, 10
+  seconds) to re-enter the connection and handshake sequence until the stateful stream is restored.
+  The gateway publishes an online status after `MQTT_EVENT_CONNECTED`; while disconnected,
+  advertisement publishing is gated by `gw_status_is_mqtt_connected()` so the application task does
+  not block on a dead backend.
 * **Stateless Connections (HTTP/HTTPS):** Because HTTP telemetry relays are designed as stateless
-  periodic JSON posts, individual transit failure events do not disrupt system state. The task
-  engine drops failed frames safely and proceeds to package the next incoming chunk of sensor
-  advertisements for the subsequent scheduled post interval, mitigating data-clogging
-  vulnerabilities.
+  periodic JSON posts, individual transit failure events do not disrupt system state. The async
+  communication loop polls the in-flight request at bounded 50 ms intervals and, on non-2xx status,
+  transport error, or unreachable backend, cleans up the HTTP client, releases the HTTP server
+  mutex, reports send failure, and relaunches the affected periodic advertisement timer with an
+  increased period. The normal HTTP advertisement period starts at
+  `ADV_POST_DEFAULT_INTERVAL_SECONDS` (10 seconds) and may be updated by the backend
+  `X-Ruuvi-Gateway-Rate` response header, bounded to 1-3600 seconds; for the Ruuvi Cloud target, the
+  cloud service sets this header to 60 seconds so successful cloud uploads settle to a 60-second
+  polling cadence. On send failure, `adv1_post_timer_relaunch_with_increased_period()` or
+  `adv2_post_timer_relaunch_with_increased_period()` changes the polling period to the fixed retry
+  delay `ADV_POST_DELAY_BEFORE_RETRYING_POST_AFTER_ERROR_MS` (67 seconds). On the next successful
+  post, `adv*_post_timer_relaunch_with_default_period()` restores the configured/default period. The
+  failed HTTP batch is not retried indefinitely; it is safely dropped and the next incoming
+  advertisement chunk is packaged for the subsequent scheduled post interval, mitigating
+  data-clogging vulnerabilities.
+* **MQTT Advertisement Delivery Modes:** Periodic MQTT delivery follows the same non-blocking async
+  task model and only starts when MQTT is connected. Instant-mode MQTT delivery is event-driven: if
+  MQTT is disconnected, advertisements remain in the retransmission list; if the MQTT publish buffer
+  is full, sending is postponed via a 50 ms retry timer. This provides graceful recovery from
+  backend downtime without a gateway reboot, subject to normal in-memory advertisement table
+  capacity.
+* **Implementation Status:** Implemented and evidenced in
+  `main/adv_post_async_comm.c::adv_post_do_async_comm`,
+  `main/adv_post_async_comm.c::adv_post_do_async_comm_in_progress`,
+  `main/adv_post_timers.c::adv1_post_timer_relaunch_with_default_period`,
+  `main/adv_post_timers.c::adv1_post_timer_relaunch_with_increased_period`,
+  `main/adv_post_timers.c::adv2_post_timer_relaunch_with_default_period`,
+  `main/adv_post_timers.c::adv2_post_timer_relaunch_with_increased_period`,
+  `main/http.c::http_async_poll`, `main/mqtt.c::mqtt_generate_client_config`,
+  `main/mqtt.c::mqtt_event_handler`, and `main/adv_mqtt_signals.c::adv_mqtt_handle_sig_recv_adv`.
 
 #### Type
 
@@ -129,17 +159,17 @@ Network connectivity
 
 #### Security Guarantees
 
-Protects system **Availability** and architectural stability. Isolates stateful task threads from
-locking up during a cloud backend outage, ensuring immediate service re-alignment upon destination
-availability.
+Protects system **Availability** and architectural stability. Isolates stateful task threads and
+prevents heap memory starvation or lockups during prolonged cloud backend outages by discarding
+dropped stateless packages. This ensures immediate service alignment upon destination availability.
 
 ---
 
 ## Summary Matrix for the Technical File
 
-| Resilience ID                                   | Mitigation Objective          | Primary Technical Mechanism                                                       | Target Vulnerability / Threat                                             |
-|:------------------------------------------------|:------------------------------|:----------------------------------------------------------------------------------|:--------------------------------------------------------------------------|
-| **ResMech-Power-NVS-Wear-Leveling**             | Storage Stability             | Append-Only NVS Transaction Split Logs (`nvs` / `gw_cfg_def`)                     | Flash sector corruption and partial-write states from hard power cuts.    |
-| **ResMech-Firmware-Redundancy-And-Rollback**    | Code Integrity / Self-Healing | Dual Partition Layout Arrays with Native ESP-IDF OTA Rollback                     | Bricked systems from failed updates or malicious partition modifications. |
-| **ResMech-Net-Link-Layer-Auto-Recovery**        | Link-Layer Persistence        | Automated Wi-Fi Association Retry Loops & Physical Ethernet Cable Hot-Plug Detect | Temporary wireless dropouts or physical cabling disruptions.              |
-| **ResMech-Net-Telemetry-Protocol-Reconnection** | Telemetry Stream Resilience   | Stateful Socket Re-Establishment & Stateless Frame-Drop Isolation                 | Remote cloud server outages, session drops, and routing freezes.          |
+| Resilience ID                                 | Mitigation Objective          | Primary Technical Mechanism                                                       | Target Vulnerability / Threat                                             |
+|:----------------------------------------------|:------------------------------|:----------------------------------------------------------------------------------|:--------------------------------------------------------------------------|
+| `ResMech-Power-NVS-Wear-Leveling`             | Storage Stability             | Append-Only NVS Transaction Split Logs (`nvs` / `gw_cfg_def`)                     | Flash sector corruption and partial-write states from hard power cuts.    |
+| `ResMech-Firmware-Redundancy-And-Rollback`    | Code Integrity / Self-Healing | Dual Partition Layout Arrays with Native ESP-IDF OTA Rollback                     | Bricked systems from failed updates or malicious partition modifications. |
+| `ResMech-Net-Link-Layer-Auto-Recovery`        | Link-Layer Persistence        | Automated Wi-Fi Association Retry Loops & Physical Ethernet Cable Hot-Plug Detect | Temporary wireless dropouts or physical cabling disruptions.              |
+| `ResMech-Net-Telemetry-Protocol-Reconnection` | Telemetry Stream Resilience   | Stateful Socket Re-Establishment & Stateless Frame-Drop Isolation                 | Remote cloud server outages, session drops, and routing freezes.          |
