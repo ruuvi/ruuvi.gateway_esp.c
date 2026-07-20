@@ -70,9 +70,11 @@ ensuring confidentiality across intermediate routing hops.
 
 The outbound communication layer utilizes the mature `mbedtls` engine, ensuring strict compliance
 with proper RFC TLS state machines, ordered cipher handshakes, and strict connection reset
-mechanisms. If network connectivity drops or remote target systems throttle connections, internal
-ring buffers safely queue items up to runtime memory bounds until automated connection recovery
-sequences execute.
+mechanisms. If network connectivity drops or Ruuvi Cloud throttles connections, the application
+returns to its scheduled HTTP posting loop: successful responses are paced by the cloud-provided
+`X-Ruuvi-Gateway-Rate` value of 60 seconds, while failed posts use the fixed 67-second retry period
+declared under `ResMech-Net-Telemetry-Protocol-Reconnection`. The one-hour network watchdog provides
+last-resort recovery for rare stuck states without relying on synchronized fleet-wide reconnects.
 
 ---
 
@@ -102,9 +104,11 @@ on the wire.
 
 #### Resilience Measures
 
-Governed by independent application-layer connection loops. Incorporates connection timeout flags
-and exponential retry backoff delays to manage connection dropouts or endpoint throttling without
-interrupting concurrent streams.
+Governed by independent application-layer connection loops. Failed posts cleanly release the HTTP
+client state and switch the affected periodic timer to the fixed 67-second retry delay, without
+interrupting concurrent streams. If all configured telemetry paths remain unable to refresh
+successful network activity for one hour, the network watchdog restarts the gateway as a last-resort
+recovery mechanism.
 
 ---
 
@@ -134,8 +138,10 @@ real-time sensor measurements to intermediate network hops if selected by the us
 #### Resilience Measures
 
 Maintains long-lived TCP keep-alive structures. Employs independent state machine tracking for
-automated reconnect logic, handling abrupt broker disconnections, network switches, or mass
-reconnection scenarios using randomized backoff intervals.
+automated reconnect logic, handling abrupt broker disconnections or network switches with the
+ESP-MQTT automatic reconnect interval of 10 seconds. If all configured telemetry paths remain
+unreachable for one hour, the network watchdog provides last-resort recovery; exponential or
+randomized MQTT reconnect backoff is not implemented in this firmware path.
 
 ---
 
@@ -224,9 +230,12 @@ risk for underlying device operations and contains no security-relevant context.
 
 #### Resilience Measures
 
-The internal SNTP engine follows standard multi-server selection logic. If targeted endpoint
-resources fail to respond, the engine cycles automatically through alternative system pool paths
-using backoff retry loops.
+The internal SNTP engine follows standard LwIP multi-server selection logic in poll mode. Normal
+resynchronization uses the configured SNTP update delay (`CONFIG_LWIP_SNTP_UPDATE_DELAY`,
+3600000 ms / 1 hour). If targeted endpoint resources fail to respond, the engine cycles through the
+configured system pool paths and uses the LwIP SNTP retry timeout behavior, where retry timeout is
+doubled up to the stack-defined maximum. This NTP polling behavior is independent of the telemetry
+network watchdog described in `ResMech-Net-Watchdog-Recovery`.
 
 ---
 
@@ -396,8 +405,8 @@ active deployment.
 #### Disclosed Information
 
 Discloses real-time system behaviors, BLE packet handling events, and general warning/error flags.
-**No security-critical parameters**, such as plaintext user configuration blocks, encryption secrets,
-or authentication hashes, are ever written to the log stream.
+**No security-critical parameters**, such as plaintext user configuration blocks, encryption
+secrets, or authentication hashes, are ever written to the log stream.
 
 #### Resilience Measures
 
