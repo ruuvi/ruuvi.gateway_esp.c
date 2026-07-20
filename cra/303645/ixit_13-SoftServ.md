@@ -208,7 +208,9 @@ Enabled (Active by default in the initialized state).
 
 Fulfills the primary out-of-the-box functionality of the gateway, allowing immediate data
 visualization and alert tracking via the official Ruuvi Cloud ecosystem without requiring custom
-database setups.
+database setups. Underlying transport loops employ stateless non-blocking asynchronous timers with a
+fixed 67-second backoff retry period during link degradation, ensuring task isolation as declared
+under `ResMech-Net-Telemetry-Protocol-Reconnection`.
 
 #### Allows Configuration (Yes/No)
 
@@ -240,7 +242,10 @@ Disabled by default (Activated explicitly by the administrator via the Web-UI pa
 #### Justification
 
 Provides flexibility for corporate or private deployments, allowing sensor metrics to be natively
-integrated directly into custom data warehouses or third-party analytical platforms.
+integrated directly into custom data warehouses or third-party analytical platforms. Underlying
+transport loops employ stateless non-blocking asynchronous timers with a fixed 67-second backoff
+retry period during link degradation, ensuring task isolation as declared under
+`ResMech-Net-Telemetry-Protocol-Reconnection`.
 
 #### Allows Configuration (Yes/No)
 
@@ -271,7 +276,9 @@ Disabled by default (Activated explicitly by the administrator via the Web-UI pa
 #### Justification
 
 Provides real-time event-driven data streaming for industrial automation setups where polling
-latencies are unacceptable.
+latencies are unacceptable. Utilizes stateful socket monitor loops that implement an automated
+10-second background reconnect cadence (`disable_auto_reconnect = false`) as detailed under
+`ResMech-Net-Telemetry-Protocol-Reconnection`.
 
 #### Allows Configuration (Yes/No)
 
