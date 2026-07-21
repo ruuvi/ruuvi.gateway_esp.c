@@ -179,11 +179,9 @@ operating behaviors from a secure remote endpoint.
 
 #### Allows Configuration (Yes/No)
 
-Yes. While it transfers parameters outbound and does not allow inbound connection requests, the
-local Web-UI allows the administrator to explicitly provision and configure custom SSL client
-certificates and associated private keys (`SecParam-Remote-Config-Assets`). This enables mutual
-TLS (mTLS) authentication during the handshake, allowing the corporate management infrastructure to
-securely authenticate the identity of the specific gateway client pulling configurations.
+Yes. Ingests and processes remote configuration JSON manifests from the corporate server to modify
+device parameters in `ruuvi.json`. Mutual TLS (mTLS) credentials (`SecParam-Remote-Config-Assets`)
+are configured locally via the Web-UI or API.
 
 #### Authentication Mechanism
 
@@ -217,9 +215,9 @@ declared under `ResMech-Net-Watchdog-Recovery`.
 
 #### Allows Configuration (Yes/No)
 
-No. The destination schema parameters and target endpoints are fixed for this cloud connection
-pipeline, and it does not support custom client SSL certificate provisioning. The user can only
-choose to toggle the runtime operational status of the client loop to disabled.
+No. Outbound client data pipeline only. Receiver response headers (such as `X-Ruuvi-Gateway-Rate`)
+dynamically throttle runtime memory posting intervals (1–3600s), but do not modify persistent
+security configurations or device settings.
 
 #### Authentication Mechanism
 
@@ -254,10 +252,9 @@ activity, as declared under `ResMech-Net-Watchdog-Recovery`.
 
 #### Allows Configuration (Yes/No)
 
-Yes. While it transfers metrics outbound and does not allow external entities to modify gateway
-behaviors, the local Web-UI allows the user to configure custom SSL client certificates and private
-keys (`SecParam-Custom-HTTP-Telemetry-Assets`). This enables mutual TLS (mTLS) authentication,
-allowing the target server to cryptographically verify and authenticate the gateway client.
+No. Outbound client data pipeline only. Receiver response headers (such as `X-Ruuvi-Gateway-Rate`)
+dynamically throttle runtime memory posting intervals (1–3600s), but do not modify persistent
+security configurations or device settings.
 
 #### Authentication Mechanism
 
@@ -288,10 +285,8 @@ last-resort recovery path if all configured telemetry paths remain unreachable.
 
 #### Allows Configuration (Yes/No)
 
-Yes. The local Web-UI allows the administrator to explicitly provision and configure custom SSL
-client certificates and associated private keys (`SecParam-Custom-Stream-Telemetry-Assets`). This
-allows the user's MQTT broker infrastructure to authenticate and validate the identity of the
-connection client during the secure MQTTS/WSS handshake sequence.
+No. Outbound streaming client pipeline only; does not accept inbound connections or allow remote
+device parameter modification.
 
 #### Authentication Mechanism
 
@@ -319,8 +314,8 @@ maintenance and fleet health tracking.
 
 #### Allows Configuration (Yes/No)
 
-No. (The destination endpoints are fixed, though the user has full control to toggle the active
-operational state of the reporting client to disabled).
+No. Outbound status stream only; destination parameters are fixed and no remote configuration inputs
+are parsed.
 
 #### Authentication Mechanism
 
@@ -377,8 +372,9 @@ Required to keep the device firmware current and to deliver security fixes.
 
 #### Allows Configuration (Yes/No)
 
-Yes (update URL, auto-update cycle and schedule are user-configurable via the Web-UI), but the
-service does not expose any inbound configuration interface.
+No. While the update policy parameters (e.g., target branch, auto-update schedule) are configured
+locally by an administrator via the Web-UI or API, the updater client routine itself does not expose
+an inbound interface to configure device parameters.
 
 #### Authentication Mechanism
 
@@ -396,10 +392,10 @@ N/A (Outbound client service loop; downloaded images are verified by RSA-3072-PS
 | `SoftServ-Local-Management-WebUI`         |    Inbound     |    Enabled     |    Yes (LAN Port 80)    |           Yes           | `SecComMech-WebUI-Session`              |
 | `SoftServ-Local-Programmatic-API`         |    Inbound     |    Enabled     |    Yes (LAN Port 80)    |           Yes           | `SecComMech-LAN-Bearer-Authentication`  |
 | `SoftServ-CoProcessor-Verification-Loop`  | Internal Loop  |    Enabled     |           No            |           No            | None (Hardware Inter-Chip Control Link) |
-| `SoftServ-Centralized-Remote-Config`      |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                     |
+| `SoftServ-Centralized-Remote-Config`      |    Outbound    |    Disabled    |           No            | Yes (Remote Manifests)  | N/A                                     |
 | `SoftServ-Telemetry-Relay-RuuviCloud`     |    Outbound    |    Enabled     |           No            |           No            | N/A                                     |
-| `SoftServ-Telemetry-Relay-CustomHTTP`     |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                     |
-| `SoftServ-Telemetry-Relay-MQTT`           |    Outbound    |    Disabled    |           No            |    Yes (mTLS Certs)     | N/A                                     |
+| `SoftServ-Telemetry-Relay-CustomHTTP`     |    Outbound    |    Disabled    |           No            |           No            | N/A                                     |
+| `SoftServ-Telemetry-Relay-MQTT`           |    Outbound    |    Disabled    |           No            |           No            | N/A                                     |
 | `SoftServ-System-Diagnostics-Reporting`   |    Outbound    |    Enabled     |           No            |           No            | N/A                                     |
 | `SoftServ-Network-Infrastructure-Clients` |    Outbound    |    Enabled     |           No            |           No            | N/A                                     |
 | `SoftServ-OTA-Firmware-Updater`           |    Outbound    |    Enabled     |           No            |           No            | N/A                                     |
