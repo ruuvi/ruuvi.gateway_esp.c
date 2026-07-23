@@ -30,7 +30,7 @@ framework vendors.
   tracker ([https://www.trustedfirmware.org/projects/mbed-tls/](https://www.trustedfirmware.org/projects/mbed-tls/))
   to capture downstream vulnerabilities affecting the TLS cryptographic engine layers used inside
   the device's outbound HTTPS tasks.
-* **Execution Interval:** Managed actively by the SIT on a weekly schedule.
+* **Execution Interval:** Managed actively by the SIT on a monthly schedule.
 
 ---
 
