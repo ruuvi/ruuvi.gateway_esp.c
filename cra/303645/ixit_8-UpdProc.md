@@ -3,6 +3,8 @@
 The following table details the lifecycle of a security update at Ruuvi, tracking the process from
 development to global deployment.
 
+---
+
 ## Table C.8: IXIT 8-UpdProc (Update Procedures)
 
 ### **ID**: Ruuvi-UpdProc-Sec: Security Update Lifecycle
@@ -23,8 +25,10 @@ SIT)** and the **Software Development Department (SDD)**.
    validation checks (confirming that core gateway tasks like MQTT/HTTP telemetry streams and
    connectionless BLE scanning match functionality baselines).
 4. **Signing:** The final firmware binaries are cryptographically signed using the manufacturer's
-   private RSA-3072 key (enforcing ESP32 Secure Boot v2 via RSA-PSS configuration parameters) within
-   a hardware-isolated, secure build environment.
+   private RSA-3072 key (enforcing ESP32 Secure Boot v2 via RSA-PSS configuration parameters).
+   The private key is maintained as an encrypted pipeline secret (`GitHub Secrets`), scoped
+   strictly to protected, access-controlled release branches and executed within automated,
+   ephemeral build environments.
 5. **Deployment:** The SDD uploads the signed binaries and version descriptor files to the official
    update infrastructure. Initial index verification flags resolve to
    `https://network.ruuvi.com/firmwareupdate`, and binary asset fetches execute via
@@ -48,9 +52,10 @@ defined in the operational policy indices:
 * **Ticket Traceability:** Every security patch commit must reference a unique vulnerability
   tracking ID (CVE or internal identifier) to guarantee complete verification transparency during
   the release cycle.
-* **Automated CI/CD Pipeline:** Ruuvi implements automated build pipelines that force static
-  analysis scans and software composition analysis (SCA) dependency runs on every code modification,
-  minimizing integration overhead.
+* **Automated CI/CD Pipeline & Secret Scoping:** Ruuvi implements automated build pipelines that
+  force static analysis scans and software composition analysis (SCA) dependency runs on every code
+  modification. Cryptographic signing keys are restricted to protected environment scopes, ensuring
+  build jobs on untrusted developer branches cannot access or extract production signing assets.
 * **Staged Rollout Strategy:** Major security updates leverage the transient Beta track subsystem (
   as detailed in `IXIT 7-UpdMech`). New code images are deployed to the optional beta branch (
   `https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/`) to track stability in
