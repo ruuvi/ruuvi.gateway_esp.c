@@ -23,23 +23,31 @@ Governs the lifecycle management of the 64-bit hardware-unique identifier (
   system initialization, the running firmware on the nRF52811 reads this value from FICR and passes
   it over the internal UART bus to the ESP32. The ESP32 application tasks cache this value
   dynamically in RAM (static application task memory). This identifier serves two primary functions:
-  1. It acts as the static baseline symmetric secret key layer for calculating message authenticity
-     headers (`SecComMech-HMAC-Signing`) on outbound telemetry data packets sent to the Ruuvi Cloud.
+  1. It acts as the default symmetric secret key layer for calculating message authenticity headers
+     (`SecComMech-HMAC-Signing`) on outbound telemetry data packets sent to the Ruuvi Cloud.
   2. It functions as the static seed for the hardware-unique factory-default administrative
      credential string (`SecComMech-WebUI-Session`) used to gate access to the local Web-UI.
-* **Updates & Archival:** Statically immutable; no update, modification, or archival mechanism
-  exists.
+* **Updates & Archival:** Statically immutable in hardware silicon; no update or archival mechanism
+  exists for the underlying register value.
 * **Decommissioning & Destruction:** Relies on physical destruction of the underlying co-processor
   silicon package, as the register cells are non-volatile and physically permanent.
-* **Compromise Management:** This identifier is printed onto a physical sticker label attached to
-  the underside of the gateway enclosure and exposed via the local diagnostic
-  `LogIntf-USB-UART-Log-Stream` console trace to facilitate initial out-of-the-box administrative
-  deployment. Because it acts as the default Web-UI access password and the HMAC signature seed,
-  exposure of the raw string prior to initial provisioning constitutes a compromise of the default
-  state access barrier. To mitigate this risk, the gateway enforces an architectural requirement
-  where this value is strictly a transitionary administrative secret; the administrator must
-  establish custom, user-defined credentials to complete the onboarding wizard, rendering the
-  exposed hardware ID ineffective for remote management attacks post-setup.
+* **Compromise & Risk Management:**
+  * *Default Password Compliance:* The identifier is printed on a physical sticker label attached to
+    the underside of the gateway enclosure and printed to the local diagnostic console trace
+    (`LogIntf-USB-UART-Log-Stream`) to facilitate out-of-the-box deployment. Because the credential
+    is unique per device and 64 bits in length (high entropy), it satisfies
+    `ETSI EN 303 645 Provision 5.1-2` natively as a unique pre-installed password. Updating the
+    administrative credentials during or after onboarding is fully supported via the Web-UI but is
+    not forced.
+  * *Sensitive Data Exposure Protection:* Sensitive security parameters (such as user-defined
+    passwords, Wi-Fi passkeys, and API tokens) are logically filtered and never exposed or returned
+    in cleartext over the Web-UI configuration interface or diagnostic log streams.
+  * *HMAC Key Exposure & Dynamic Rotation:* An attacker possessing physical access to the device
+    casing can read the `DEVICEID` sticker to attempt telemetry spoofing for that specific gateway.
+    Because `DEVICEID` is globally unique, this physical attack vector is strictly localized and
+    cannot scale to other fleet units. Furthermore, the Ruuvi Cloud backend mitigates this risk by
+    dynamically rotating the active `HMAC-SHA256` key at runtime via the `Ruuvi-HMAC-KEY` inbound
+    HTTPS response header, decoupling the runtime signing secret from the physical label.
 
 #### Cross-Reference
 
