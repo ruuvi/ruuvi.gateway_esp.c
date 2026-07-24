@@ -30,10 +30,12 @@ software library dependencies.
 
 For every software update procedure declared under `IXIT 8-UpdProc`, the required infrastructure is
 active and operators are briefed to satisfy the designated target response time frames.
-Cryptographically signed firmware images are compiled within a controlled, isolated build
-environment, pushed securely to the centralized release distribution server (
-`https://network.ruuvi.com/firmwareupdate`), and delivered to endpoint devices via the network-based
-update tracks.
+Cryptographically signed firmware images are compiled and signed within automated CI/CD build
+environments using branch-scoped, access-controlled release secrets. Version index descriptors are
+hosted on the central management endpoint (`https://network.ruuvi.com/firmwareupdate`), while
+signed binary payload assets are pushed securely to dedicated release distribution channels (
+`https://fwupdate.ruuvi.com` for production releases and designated GitHub release tracks for beta
+builds) and delivered to endpoint devices via the network-based update tracks.
 
 ### **Confirmation of Secure Management**: Yes
 
