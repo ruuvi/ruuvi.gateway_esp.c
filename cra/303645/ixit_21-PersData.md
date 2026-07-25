@@ -1,8 +1,9 @@
 # IXIT 21-PersData: Personal Data
 
-The following declarations list all categories of metadata and network-layer routing footprints
-processed by the Device Under Test (DUT) that can be linked back to an identifiable user, specifying
-their processing environments, lifecycle bounds, and consent withdrawal metrics.
+The following declarations list all categories of metadata, environmental telemetry, and
+network-layer routing footprints processed by the Device Under Test (DUT) that can be linked back to
+an identifiable user, specifying their processing environments, lifecycle bounds, and consent
+withdrawal metrics.
 
 ---
 
@@ -70,8 +71,8 @@ configuration wizard.
 
 The user can completely withdraw consent and terminate IP processing loops by disconnecting the
 physical network media or erasing station credentials via a 7-second hold of the physical
-`CONFIGURE` button, which forces a complete low-level formatting block-erasure across the `nvs`
-flash partition.
+`CONFIGURE` button (`DelFunc-Hardware-Factory-Reset`), which forces a complete low-level formatting
+block-erasure across the `nvs` flash partition.
 
 #### Storing Consent
 
@@ -135,7 +136,8 @@ credentials to bridge the gateway onto their local network.
 #### Withdrawing Consent
 
 The user can cease local MAC exposure instantly by disconnecting the physical network media or
-wiping stored network credentials via the hardware factory reset routine.
+wiping stored network credentials via the hardware factory reset routine (
+`DelFunc-Hardware-Factory-Reset`).
 
 #### Storing Consent
 
@@ -314,7 +316,8 @@ Alphanumeric parameters (passwords/bearer keys) reside within the standard non-v
 configurations file (`ruuvi.json` on the `nvs` partition). High-volume cryptographic assets, such as
 user x509 PEM certificates and companion private keys, are stored as separate allocation blocks on
 the expanded size NVS storage partition named `gw_cfg_def`. These items are held persistently until
-cleared via the Web-UI or erased completely during a hardware factory reset loop.
+cleared via the Web-UI or erased completely during a hardware factory reset loop (
+`DelFunc-Hardware-Factory-Reset`).
 
 #### Processing Activities
 
@@ -340,7 +343,8 @@ into the device configuration profile.
 #### Withdrawing Consent
 
 The consumer can withdraw consent instantly by clearing the credential fields inside the Web-UI form
-or executing a physical hardware factory reset to format the NVS storage partition blocks.
+or executing a physical hardware factory reset (`DelFunc-Hardware-Factory-Reset`) to format the NVS
+storage partition blocks.
 
 #### Storing Consent
 
@@ -353,12 +357,100 @@ No.
 
 ---
 
+### **ID**: PersData-BLE-Sensor-Telemetry
+
+#### Description
+
+Environmental measurements and status metrics collected passively by the gateway from nearby BLE
+sensor tags (e.g., temperature, relative humidity, atmospheric pressure, acceleration, battery
+voltage, movement counters, RSSI, and BLE tag MAC addresses).
+
+#### Purpose
+
+* Enables continuous real-time environmental monitoring, historical trends, and alerting for the
+  user via the Ruuvi Cloud ecosystem or user-defined custom endpoints.
+* *Personal Data Note:* While individual raw physical sensor measurements (such as temperature or
+  humidity) are inherently environmental readings, when bound to a specific gateway MAC identifier (
+  `gw_mac`), IP address, or user account (which often incorporates the user's name and email), the
+  aggregated stream can reveal daily routines, presence, and home/facility occupancy patterns.
+
+#### Aggregation
+
+No
+
+#### Authorized Parties
+
+* Ruuvi Innovations Oy (when outbound Ruuvi Cloud telemetry relay is active).
+* Authorized operators of user-configured third-party target servers (HTTP/HTTPS/MQTT/MQTTS/WS/WSS
+  endpoints).
+* Authenticated local network API clients holding valid M2M Bearer tokens (
+  `SoftServ-Local-Programmatic-API`).
+
+#### Lifecycle
+
+* **On-Device:** Telemetry packages are processed in volatile system RAM queues and are discarded
+  dynamically as fresh radio data arrives. Transient ring buffers are completely wiped on reboot,
+  power interruption, or hardware factory reset (`DelFunc-Hardware-Factory-Reset`).
+* **On Associated Services:** Retained on Ruuvi Cloud infrastructure for the duration of the active
+  user subscription or account lifecycle. Data is purged upon explicit account deletion (
+  `DelFunc-Service-Account-Deletion`).
+
+#### Processing Activities
+
+The nRF52 radio co-processor passively captures connectionless BLE advertisement packets over the
+air. Received advertisement frames are passed via the internal UART link to the main ESP32
+application processor, buffered in runtime memory, compiled into structured JSON/MQTT payload
+blocks, and transmitted over network channels to configured telemetry targets. Communication with
+the official Ruuvi Cloud backend strictly enforces encrypted channels (`HTTPS`). For user-configured
+custom targets, protocol selection is determined by user configuration: custom HTTP endpoints
+implicitly select secure (`HTTPS`) or cleartext (`HTTP`) transport based on the URL prefix (
+`http://` or `https://`), while custom stream endpoints allow explicit administrator selection among
+`MQTT` (default), `MQTTS`, `WS`, and `WSS`.
+
+#### Secure Communication Mechanisms
+
+`SecComMech-TLS`, `SecComMech-HMAC-Signing`, `SecComMech-LAN-Bearer-Authentication`. The
+communication partner is an associated service when posting to `https://network.ruuvi.com/record`,
+and a non-associated service when posting to custom user destinations. Transport-layer encryption (
+`SecComMech-TLS`) is enforced for official Ruuvi Cloud communications and applies to custom targets
+when secure transport schemes (`HTTPS`, `MQTTS`, `WSS`) are selected. If cleartext transport
+schemes (`HTTP`, `MQTT`, `WS`) are configured, transport-layer encryption is not applied.
+
+#### Sensitive (Yes/No)
+
+Yes (Can be processed to infer household occupancy, activity levels, or personal routines linked to
+an identified user account).
+
+#### Obtaining Consent
+
+Implicitly or explicitly provided when the user completes network provisioning, configures sensor
+scanning rules, and enables outbound cloud or custom data targets.
+
+#### Withdrawing Consent
+
+The user can withdraw consent at any time on the device by toggling off telemetry relays in the
+Web-UI or executing a hardware factory reset (`DelFunc-Hardware-Factory-Reset`). For cloud-stored
+data, consent is withdrawn by requesting account termination (`DelFunc-Service-Account-Deletion`).
+
+#### Storing Consent
+
+Stored locally in non-volatile flash memory (`ruuvi.json` on `nvs`) as active telemetry target
+configuration flags.
+
+#### Anonymization
+
+No (Telemetry payloads explicitly preserve sensor and gateway MAC addresses to permit accurate data
+attribution and time-series graphing).
+
+---
+
 ## Summary Matrix for the Technical File
 
-| Parameter ID                              | Category of Personal Data                | Solely Aggregated? | Authorized Receivers                       | Sensitive? | Anonymization Applied? |
-|:------------------------------------------|:-----------------------------------------|:------------------:|:-------------------------------------------|:----------:|:----------------------:|
-| **PersData-Network-IP-Footprints**        | Network Address Metadata                 |         No         | Upstream ISPs / Configured Cloud Targets   |     No     |           No           |
-| **PersData-Gateway-LAN-MAC**              | Local Network Interface MAC              |         No         | Local Network Infrastructure Only          |     No     |           No           |
-| **PersData-Hardware-DeviceID**            | Unique 64-bit Hardware ID Seed           |         No         | Ruuvi Innovations Oy Only                  |    Yes     |           No           |
-| **PersData-Gateway-MAC-Identifier**       | nRF52 Bluetooth MAC Address              |         No         | Cloud / Configured Endpoints               |     No     |           No           |
-| **PersData-Custom-Target-Access-Secrets** | Private API Keys, Passwords & mTLS Certs |         No         | Configured Ingestion/Orchestration Targets |    Yes     |           No           |
+| Parameter ID                            | Category of Personal Data                | Solely Aggregated? | Authorized Receivers                            | Sensitive? | Anonymization Applied? |
+|:----------------------------------------|:-----------------------------------------|:------------------:|:------------------------------------------------|:----------:|:----------------------:|
+| `PersData-Network-IP-Footprints`        | Network Address Metadata                 |         No         | Upstream ISPs / Configured Cloud Targets        |     No     |           No           |
+| `PersData-Gateway-LAN-MAC`              | Local Network Interface MAC              |         No         | Local Network Infrastructure Only               |     No     |           No           |
+| `PersData-Hardware-DeviceID`            | Unique 64-bit Hardware ID Seed           |         No         | Ruuvi Innovations Oy Only                       |    Yes     |           No           |
+| `PersData-Gateway-MAC-Identifier`       | nRF52 Bluetooth MAC Address              |         No         | Cloud / Configured Endpoints                    |     No     |           No           |
+| `PersData-Custom-Target-Access-Secrets` | Private API Keys, Passwords & mTLS Certs |         No         | Configured Ingestion/Orchestration Targets      |    Yes     |           No           |
+| `PersData-BLE-Sensor-Telemetry`         | Environmental Metrics & BLE Payloads     |         No         | Ruuvi Cloud / Custom User Endpoints / Local API |    Yes     |           No           |
