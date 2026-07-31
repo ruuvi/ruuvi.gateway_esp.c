@@ -52,8 +52,10 @@ parameter classification consistency (`a`), alignment of security guarantees wit
     `lan_auth_pass`). The cleartext password is never stored.
   * **Network Credentials & Tokens (`SecParam-WiFi-STA-Credentials`, `SecParam-LAN-Bearer-Tokens`,
     Telemetry Assets):** Outbound Web-UI API handlers (`ruuvi.json` serialization) dynamically
-    filter and scrub all password, token, and key fields from HTTP responses. Diagnostic log streams
-    on UART/USB are scrubbed of all secret parameters.
+    filter and scrub all password, token, and key fields from HTTP responses. Unauthenticated
+    requests to `/ruuvi.json` are gated via HTTP 302 redirects to `/#auth` (returning HTTP 401
+    Unauthorized), preventing data leaks. Diagnostic log streams on UART/USB are scrubbed of all
+    secret parameters.
   * **Code & Public Key Integrity (`SecParam-FW-Verification-Key`):** Statically compiled into
     application text segments protected by RSA-3072-PSS boot validation loops.
 * **Verdict**: **PASS**
@@ -82,16 +84,16 @@ are implemented correctly on the DUT without deviations or unauthenticated expos
 `GET /ruuvi.json`), API token manipulation attempts, Web-UI settings exports, and serial terminal
 log sweeps (`LogIntf-USB-UART-Log-Stream`) to verify that secrets remain protected.
 
-| Tested Security Parameter (`IXIT 10-SecParam`)     | Documented Protection Scheme                                                                 | Observed Functional DUT Behavior                                                                                                                                                                 | Unit Verdict |
-|:---------------------------------------------------|:---------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------:|
-| `SecParam-LAN-WebUI-Credentials`                   | MD5 password hashing; JSON payload scrubbing; UART log suppression.                          | Unauthenticated GET requests to `/ruuvi.json` return HTTP 401. Authenticated JSON responses scrub `lan_auth_pass`. Serial logs omit password strings.                                            |   **PASS**   |
-| `SecParam-WiFi-STA-Credentials`                    | JSON payload scrubbing; local memory scoping; UART log suppression.                          | Web-UI responses return empty/masked password fields. Serial log output contains zero Wi-Fi WPA2 passphrase strings during boot/connection loops.                                                |   **PASS**   |
-| `SecParam-LAN-Bearer-Tokens`                       | Omitted from standard configuration outputs; UART log suppression.                           | Tokens are hidden from regular configuration reads and are absent from UART serial debug logs. Endpoint access without valid `Authorization` headers returns HTTP 401.                           |   **PASS**   |
-| `SecParam-Remote-Config-Assets` / Telemetry Assets | Private keys & bearer tokens scrubbed from Web-UI exports; mbedTLS runtime memory isolation. | Private keys (`http_cli_key`, `mqtt_cli_key`) and bearer tokens are omitted from Web-UI queries and debug log lines. Loaded exclusively into mbedTLS memory contexts during TLS handshake setup. |   **PASS**   |
+| Tested Security Parameter (`IXIT 10-SecParam`)     | Documented Protection Scheme                                                                                     | Observed Functional DUT Behavior                                                                                                                                                                                                                                  | Unit Verdict |
+|:---------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------:|
+| `SecParam-LAN-WebUI-Credentials`                   | MD5 password hashing; JSON payload scrubbing; HTTP 302 redirect on unauthenticated access; UART log suppression. | Unauthenticated GET requests to `/ruuvi.json` return **HTTP 302 Found** (`Location: http://<hostname>.local/#auth`). Requesting `/auth` returns **HTTP 401 Unauthorized**. Authenticated JSON responses scrub `lan_auth_pass`. Serial logs omit password strings. |   **PASS**   |
+| `SecParam-WiFi-STA-Credentials`                    | JSON payload scrubbing; local memory scoping; HTTP 302 redirect on unauthenticated access; UART log suppression. | Unauthenticated requests are redirected via HTTP 302. Authenticated Web-UI responses return empty/masked password fields. Serial log output contains zero Wi-Fi WPA2 passphrase strings during boot/connection loops.                                             |   **PASS**   |
+| `SecParam-LAN-Bearer-Tokens`                       | Omitted from standard configuration outputs; UART log suppression; HTTP 302 redirect / HTTP 401 gating.          | Tokens are hidden from regular configuration reads and are absent from UART serial debug logs. Endpoint access without valid `Authorization` headers or active session is redirected to `/#auth` / returns HTTP 401.                                              |   **PASS**   |
+| `SecParam-Remote-Config-Assets` / Telemetry Assets | Private keys & bearer tokens scrubbed from Web-UI exports; mbedTLS runtime memory isolation.                     | Private keys (`http_cli_key`, `mqtt_cli_key`) and bearer tokens are omitted from Web-UI queries and debug log lines. Loaded exclusively into mbedTLS memory contexts during TLS handshake setup.                                                                  |   **PASS**   |
 
 **Assessment Justification**: Functional testing demonstrates that the protection schemes documented
-in `IXIT 10-SecParam` are fully enforced in firmware. Unauthenticated remote routes, API reads, and
-local serial diagnostic streams cannot extract critical security parameters.
+in `IXIT 10-SecParam` are fully enforced in firmware. Unauthenticated remote routes, REST API reads,
+and local serial diagnostic streams cannot extract critical security parameters.
 
 **Verdict**: **PASS**
 
@@ -99,13 +101,13 @@ local serial diagnostic streams cannot extract critical security parameters.
 
 ## Summary Matrix for Test Case 5.4-1-1 & 5.4-1-2
 
-| Test Case          | Purpose / Focus                      | Assessment Summary                                                                                      | Verdict  |
-|:-------------------|:-------------------------------------|:--------------------------------------------------------------------------------------------------------|:--------:|
-| **5.4-1-1 Unit a** | Parameter Classification Consistency | `critical` vs. `public` classifications align with functional parameter descriptions.                   | **PASS** |
-| **5.4-1-1 Unit b** | Guarantees vs. Protection Needs      | Guarantees meet minimal needs (confidentiality/integrity for CSPs; integrity for public params).        | **PASS** |
-| **5.4-1-1 Unit c** | Protection Scheme Suitability        | MD5 password hashing, dynamic JSON payload scrubbing, and memory isolation fulfill claimed guarantees.  | **PASS** |
-| **5.4-1-1 Unit d** | IXIT Documentation Completeness      | Complete cross-reference against `IXIT 1`, `IXIT 7`, and `IXIT 11` confirms zero missing parameters.    | **PASS** |
-| **5.4-1-2 Unit a** | Functional Protection Enforcement    | Functional testing confirms secrets are scrubbed from Web-UI payloads, REST endpoints, and serial logs. | **PASS** |
+| Test Case          | Purpose / Focus                      | Assessment Summary                                                                                                                                                | Verdict  |
+|:-------------------|:-------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------:|
+| **5.4-1-1 Unit a** | Parameter Classification Consistency | `critical` vs. `public` classifications align with functional parameter descriptions.                                                                             | **PASS** |
+| **5.4-1-1 Unit b** | Guarantees vs. Protection Needs      | Guarantees meet minimal needs (confidentiality/integrity for CSPs; integrity for public params).                                                                  | **PASS** |
+| **5.4-1-1 Unit c** | Protection Scheme Suitability        | MD5 password hashing, dynamic JSON payload scrubbing, HTTP 302/401 endpoint gating, and memory isolation fulfill claimed guarantees.                              | **PASS** |
+| **5.4-1-1 Unit d** | IXIT Documentation Completeness      | Complete cross-reference against `IXIT 1`, `IXIT 7`, and `IXIT 11` confirms zero missing parameters.                                                              | **PASS** |
+| **5.4-1-2 Unit a** | Functional Protection Enforcement    | Functional testing confirms unauthenticated REST queries redirect to `/#auth` (returning HTTP 401) and secrets are scrubbed from Web-UI payloads and serial logs. | **PASS** |
 
 ---
 
@@ -114,7 +116,8 @@ local serial diagnostic streams cannot extract critical security parameters.
 The Ruuvi Gateway complies fully with Mandatory Provision 5.4-1 of `ETSI EN 303 645`. All sensitive
 security parameters are cataloged in `IXIT 10-SecParam` with consistent types, appropriate security
 guarantees, and suitable protection schemes. Functional testing confirms that logical protection
-mechanisms—including MD5 password hashing, dynamic Web-UI JSON payload scrubbing, and UART log
-suppression—are correctly enforced to protect critical parameters from unauthorized disclosure.
+mechanisms—including MD5 password hashing, dynamic Web-UI JSON payload scrubbing, HTTP 302 redirect
+gating to `/#auth` (HTTP 401), and UART log suppression—are correctly enforced to protect critical
+parameters from unauthorized disclosure.
 
 **Group Verdict**: **PASS**
