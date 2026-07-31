@@ -39,7 +39,8 @@ grants access strictly to authenticated subjects with proper rights (`d`).
 * **Evaluation**:
   * **Web-UI Administrative Sessions:** Discriminate subjects via username/password pairs (
     `AuthMech-LAN-WebUI-Default` / `User-Defined`). Nonced challenge-response verification evaluates
-    `SHA256(challenge:MD5_result)`, rejecting invalid passwords or tampered challenge tokens.
+    `SHA256(challenge:MD5_result)` submitted via `POST /auth`, rejecting invalid passwords or
+    tampered challenge tokens with an HTTP 401 response.
   * **M2M Programmatic API:** Discriminates client roles using distinct 256-bit Bearer tokens (
     `lan_auth_api_key` vs `lan_auth_api_key_rw`). Mismatched or invalid tokens are immediately
     rejected.
@@ -63,9 +64,10 @@ grants access strictly to authenticated subjects with proper rights (`d`).
 * **Requirement**: Assess whether the authorization process grants access to subjects with proper
   access rights and denies access to unauthenticated subjects or subjects with inadequate rights.
 * **Evaluation**:
-  * **Unauthenticated Requests:** Inbound HTTP POST/GET requests targeting restricted endpoints (
-    `/ruuvi.json`, `/history`) without valid authentication parameters are blocked with HTTP
-    `401 Unauthorized` responses.
+  * **Unauthenticated Requests:** Inbound HTTP requests targeting restricted endpoints (
+    `/ruuvi.json`, `/history`) without valid authentication parameters are gated via an HTTP
+    `302 Found` redirect (`Location: http://<hostname>.local/#auth`). Subsequent unauthenticated
+    requests to `/auth` return HTTP `401 Unauthorized`.
   * **Privilege Separation (M2M API):** Clients presenting a read-only token (`lan_auth_api_key`)
     are granted access to read environmental data (`/history`) and configuration snapshots, but are
     explicitly blocked from executing configuration updates via `POST /ruuvi.json`. Configuration
@@ -85,14 +87,15 @@ documentation (`c`).
 
 ### Test Units Functional Assessment Matrix
 
-| Test Unit / Scenario                              | Action Executed on DUT                                                                                                                                                    | Observed Functional DUT Behavior                                                                                                                                                                     | Unit Verdict |
-|:--------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------:|
-| **Unit a: Deny Unauthenticated / Invalid Access** | 1. Send unauthenticated `GET /ruuvi.json`.<br>2. Submit invalid login credentials to `/auth`.<br>3. Send `POST /ruuvi.json` using a Read-Only token (`lan_auth_api_key`). | 1. Server returns HTTP `401 Unauthorized`.<br>2. Challenge check fails; server returns HTTP `401 Unauthorized` after ~1s delay.<br>3. Server rejects configuration update with HTTP `403 Forbidden`. |   **PASS**   |
-| **Unit b: Grant Authorized Access**               | 1. Authenticate via Web-UI using valid credentials.<br>2. Send `GET /history` using valid Read-Only token.<br>3. Send `POST /ruuvi.json` using valid Read/Write token.    | 1. Authentication succeeds; ECDH session established.<br>2. Server returns JSON sensor metrics array.<br>3. Server processes configuration update and saves to NVS.                                  |   **PASS**   |
-| **Unit c: Verify Protection Conformance**         | Monitor network traffic during authentication handshakes and API requests.                                                                                                | Handshake logs confirm `WWW-Authenticate` challenge headers, `Ruuvi-Ecdh-Pub-Key` exchange, and AES-CBC encrypted configuration payloads. Passwords are never sent in cleartext.                     |   **PASS**   |
+| Test Unit / Scenario                              | Action Executed on DUT                                                                                                                                                                                                     | Observed Functional DUT Behavior                                                                                                                                                                                                                                                              | Unit Verdict |
+|:--------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------:|
+| **Unit a: Deny Unauthenticated / Invalid Access** | 1. Send unauthenticated `GET /ruuvi.json`.<br>2. Send unauthenticated `GET /auth`.<br>3. Submit invalid login payload `POST /auth`.<br>4. Send `POST /ruuvi.json` using a Read-Only token (`lan_auth_api_key`).            | 1. Server returns HTTP `302 Found` (`Location: http://<hostname>.local/#auth`).<br>2. Server returns HTTP `401 Unauthorized`.<br>3. Password verification fails; server returns HTTP `401 Unauthorized` after ~1s delay.<br>4. Server rejects configuration update with HTTP `403 Forbidden`. |   **PASS**   |
+| **Unit b: Grant Authorized Access**               | 1. Authenticate via Web-UI sending valid `POST /auth` payload (`{"login":"user","password":"<hash>"}`).<br>2. Send `GET /history` using valid Read-Only token.<br>3. Send `POST /ruuvi.json` using valid Read/Write token. | 1. Authentication succeeds; ECDH session established and resource access granted.<br>2. Server returns JSON sensor metrics array.<br>3. Server processes configuration update and saves to NVS.                                                                                               |   **PASS**   |
+| **Unit c: Verify Protection Conformance**         | Monitor network traffic during authentication handshakes and API requests.                                                                                                                                                 | Handshake logs confirm `WWW-Authenticate` challenge headers, `Ruuvi-Ecdh-Pub-Key` exchange, encrypted JSON password challenge payloads (`POST /auth`), and AES-CBC encrypted configuration payloads. Passwords are never sent in cleartext.                                                   |   **PASS**   |
 
 **Assessment Justification**: Functional network testing confirms that the DUT strictly enforces
-authentication and authorization boundaries. Unauthenticated or improperly authorized requests are
+authentication and authorization boundaries. Unauthenticated REST queries are redirected via HTTP
+302 to `/#auth` (returning HTTP 401), invalid login attempts or improperly authorized requests are
 rejected, valid credentials grant appropriate access, and cryptographic challenge-response and token
 verification schemes operate as documented in `IXIT 1-AuthMech`.
 
@@ -102,13 +105,13 @@ verification schemes operate as documented in `IXIT 1-AuthMech`.
 
 ## Summary Matrix for Test Case 5.5-4-1 & 5.5-4-2
 
-| Test Case             | Purpose / Focus                    | Assessment Summary                                                                                      | Verdict  |
-|:----------------------|:-----------------------------------|:--------------------------------------------------------------------------------------------------------|:--------:|
-| **5.5-4-1 Unit a**    | Authentication Reference Check     | All network-exposed services in the initialized state reference an active authentication mechanism.     | **PASS** |
-| **5.5-4-1 Unit b**    | Subject Discrimination & Rejection | Authenticates distinct subjects/roles and reliably rejects invalid credentials or tokens.               | **PASS** |
-| **5.5-4-1 Unit c**    | Protection Scheme Resilience       | Nonced challenge-response, high-entropy tokens, and server login delays protect authentication.         | **PASS** |
-| **5.5-4-1 Unit d**    | Authorization & Access Control     | Enforces strict privilege separation (read-only vs. read/write tokens) and blocks unauthorized actions. | **PASS** |
-| **5.5-4-2 Units a-c** | Functional Access Testing          | Functional testing verifies rejection of invalid/unauthorized requests and correct handshake behavior.  | **PASS** |
+| Test Case             | Purpose / Focus                    | Assessment Summary                                                                                                                             | Verdict  |
+|:----------------------|:-----------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------|:--------:|
+| **5.5-4-1 Unit a**    | Authentication Reference Check     | All network-exposed services in the initialized state reference an active authentication mechanism.                                            | **PASS** |
+| **5.5-4-1 Unit b**    | Subject Discrimination & Rejection | Authenticates distinct subjects/roles and reliably rejects invalid credentials or tokens.                                                      | **PASS** |
+| **5.5-4-1 Unit c**    | Protection Scheme Resilience       | Nonced challenge-response, high-entropy tokens, and server login delays protect authentication.                                                | **PASS** |
+| **5.5-4-1 Unit d**    | Authorization & Access Control     | Enforces strict privilege separation (read-only vs. read/write tokens) and blocks unauthorized actions via HTTP 302/401/403 controls.          | **PASS** |
+| **5.5-4-2 Units a-c** | Functional Access Testing          | Functional testing verifies HTTP 302/401 rejection of unauthenticated/invalid requests, HTTP 403 write blocks, and correct handshake behavior. | **PASS** |
 
 ---
 
@@ -118,7 +121,8 @@ The Ruuvi Gateway complies fully with Recommendation Provision 5.5-4 of `ETSI EN
 all network-exposed functionalities in the initialized operational state (
 `SoftServ-Local-Management-WebUI`, `SoftServ-Local-Programmatic-API`) requires authentication and
 authorization. The platform discriminates subjects, protects authentication handshakes via nonced
-SHA-256 challenge-responses (`x-ruuvi-interactive`) and 256-bit high-entropy Bearer tokens, and
-enforces strict role-based privilege separation.
+SHA-256 challenge-responses (`x-ruuvi-interactive` with encrypted password payloads) and 256-bit
+high-entropy Bearer tokens, gates unauthenticated REST requests via HTTP 302 redirects to `/#auth` (
+HTTP 401), and enforces strict role-based privilege separation.
 
 **Group Verdict**: **PASS**
