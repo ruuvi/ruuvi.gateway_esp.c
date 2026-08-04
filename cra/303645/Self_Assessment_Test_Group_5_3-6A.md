@@ -52,11 +52,39 @@ Configuration") and `IXIT 26-UserDec` (`UserDec-5-Automatic-Updates`).
 
 ---
 
+## Test case 5.3-6A-2 (functional)
+
+**Purpose**: To functionally assess on the DUT that the user is provided with the ability to enable,
+disable, and postpone the automatic installation of software updates for `UpdMech-Auto`.
+
+### Test Unit A: Functional Assessment of Automatic Update Controls
+
+**Testing Methodology**: The test laboratory configured each automatic update setting on the DUT via
+the Web-UI (`UserDec-5-Automatic-Updates`), observing the functional background update task
+behavior, network traffic, and installation timing.
+
+| Automatic Mechanism | Action Executed on DUT                                                                                                           | Observed DUT Functional Behavior & Network Traffic Audit                                                                                                                                                                 | Unit Verdict |
+|:--------------------|:---------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------:|
+| `UpdMech-Auto`      | **1. Enable Functional Test:** Select `Auto update` policy in LAN Web-UI.                                                        | The DUT initializes the background update task, querying `https://network.ruuvi.com/firmwareupdate` 2 hours post-boot and every 12 hours thereafter.                                                                     |   **PASS**   |
+| `UpdMech-Auto`      | **2. Disable Functional Test:** Select `Manual updates only` policy in Web-UI.                                                   | The background update task deactivates immediately. Network packet captures confirm zero outbound background polling requests are sent to `network.ruuvi.com`.                                                           |   **PASS**   |
+| `UpdMech-Auto`      | **3. Postpone Functional Test:** Set schedule mask to restrict updates to Sunday 02:00–04:00 while a newer version is available. | When a newer signed firmware release is published on `network.ruuvi.com`, the DUT defers background downloading and rebooting outside the allowed window, executing the update strictly when the scheduled window opens. |   **PASS**   |
+
+**Assessment Justification**: Functional testing on the DUT verifies that the automatic update
+mechanism (`UpdMech-Auto`) can be enabled, disabled, and postponed by the user as described in
+`IXIT 7-UpdMech` and `IXIT 26-UserDec`. Selecting `Manual updates only` halts background polling
+completely, while configuring schedule masks defers background installation and rebooting until the
+designated maintenance window.
+
+**Verdict**: **PASS**
+
+---
+
 ## Group Summary
 
 The Ruuvi Gateway complies fully with Provision 5.3-6A of `ETSI EN 303 645`. The automatic update
 mechanism (`UpdMech-Auto`) provides the user with clear controls via the Web-UI (
 `UserDec-5-Automatic-Updates` in `IXIT 26-UserDec`) to enable, disable, or postpone automatic
-updates through configurable schedule masks.
+updates through configurable schedule masks. Conceptual and functional assessments confirm that all
+three control states operate reliably on the DUT.
 
 **Group Verdict**: **PASS**
