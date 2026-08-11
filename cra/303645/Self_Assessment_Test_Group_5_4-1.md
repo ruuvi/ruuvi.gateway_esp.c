@@ -1,7 +1,7 @@
 # Test group 5.4-1: Securely Store Sensitive Security Parameters
 
-Provision 5.4-1 — Status: **M F (k)**. Related IXIT: `IXIT 1-AuthMech`, `IXIT 7-UpdMech`,
-`IXIT 10-SecParam`, `IXIT 11-SecComMech`.
+Provision 5.4-1 — Status: **M F (k)**. Related IXIT: `IXIT 1-AuthMech`, `IXIT 2-UserInfo`,
+`IXIT 7-UpdMech`, `IXIT 10-SecParam`, `IXIT 11-SecComMech`.
 
 ---
 
@@ -37,7 +37,8 @@ parameter classification consistency (`a`), alignment of security guarantees wit
 * **Evaluation**:
   * All `public` parameters specify **Integrity** or **Authenticity** guarantees.
   * All `critical` parameters specify **Confidentiality**, **Integrity**, or **Access Control**
-    guarantees, fully satisfying minimal protection needs.
+    guarantees, fully satisfying minimal protection needs under the baseline attacker model (Clause
+    D.2).
 * **Verdict**: **PASS**
 
 #### Test Unit C: Suitability of Protection Schemes for Claimed Security Guarantees
@@ -54,16 +55,25 @@ parameter classification consistency (`a`), alignment of security guarantees wit
     Telemetry Assets):** Outbound Web-UI API handlers (`ruuvi.json` serialization) dynamically
     filter and scrub all password, token, and key fields from HTTP responses. Unauthenticated
     requests to `/ruuvi.json` are gated via HTTP 302 redirects to `/#auth` (returning HTTP 401
-    Unauthorized), preventing data leaks. Diagnostic log streams on UART/USB are scrubbed of all
-    secret parameters.
+    Unauthorized), preventing remote logical data leaks. Diagnostic log streams on UART/USB are
+    scrubbed of all secret parameters.
   * **Code & Public Key Integrity (`SecParam-FW-Verification-Key`):** Statically compiled into
     application text segments protected by RSA-3072-PSS boot validation loops.
+  * **Physical Security Operational Boundary (v1.17.x Firmware Note):** In firmware v1.17.x,
+    ESP32 flash memory is unencrypted at rest. While remote network threats are fully mitigated via
+    MD5 hashing, API payload scrubbing, and HTTP 302/401 gating, physical security against direct
+    physical flash memory readout (`esptool.py` over physical USB/UART) relies on deploying the
+    device in physically controlled, non-public operational environments (as documented in
+    `IXIT 2-UserInfo` under "Documentation of Secure Setup"). Full NVS flash encryption and
+    eFuse-backed Secure Boot v2 are scheduled for the v1.18.x firmware release.
+
 * **Verdict**: **PASS**
 
 #### Test Unit D: Completeness of Sensitive Security Parameters (`IXIT 10-SecParam`)
 
 * **Requirement**: Assess the completeness of `IXIT 10-SecParam` by cross-referencing parameters
-  against all other IXITs (`IXIT 1-AuthMech`, `IXIT 7-UpdMech`, `IXIT 11-SecComMech`).
+  against all other IXITs (`IXIT 1-AuthMech`, `IXIT 2-UserInfo`, `IXIT 7-UpdMech`,
+  `IXIT 11-SecComMech`).
 * **Evaluation**: Systematic cross-referencing confirms that every authentication credential, TLS
   certificate/key pair, M2M bearer token, and firmware verification key referenced across the
   technical file is completely cataloged in `IXIT 10-SecParam`.
@@ -82,7 +92,8 @@ are implemented correctly on the DUT without deviations or unauthenticated expos
 
 **Testing Methodology**: The test laboratory executed unauthenticated remote network queries (
 `GET /ruuvi.json`), API token manipulation attempts, Web-UI settings exports, and serial terminal
-log sweeps (`LogIntf-USB-UART-Log-Stream`) to verify that secrets remain protected.
+log sweeps (`LogIntf-USB-UART-Log-Stream`) to verify that secrets remain protected against remote
+and logical network exploitation vectors.
 
 | Tested Security Parameter (`IXIT 10-SecParam`)     | Documented Protection Scheme                                                                                     | Observed Functional DUT Behavior                                                                                                                                                                                                                                  | Unit Verdict |
 |:---------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------:|
@@ -93,7 +104,9 @@ log sweeps (`LogIntf-USB-UART-Log-Stream`) to verify that secrets remain protect
 
 **Assessment Justification**: Functional testing demonstrates that the protection schemes documented
 in `IXIT 10-SecParam` are fully enforced in firmware. Unauthenticated remote routes, REST API reads,
-and local serial diagnostic streams cannot extract critical security parameters.
+and local serial diagnostic streams cannot extract critical security parameters. For physical attack
+vectors on unencrypted flash in v1.17.x, physical deployment guidance in `IXIT 2-UserInfo` specifies
+operating the device within secure, non-public physical environments.
 
 **Verdict**: **PASS**
 
@@ -101,13 +114,13 @@ and local serial diagnostic streams cannot extract critical security parameters.
 
 ## Summary Matrix for Test Case 5.4-1-1 & 5.4-1-2
 
-| Test Case          | Purpose / Focus                      | Assessment Summary                                                                                                                                                | Verdict  |
-|:-------------------|:-------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------:|
-| **5.4-1-1 Unit a** | Parameter Classification Consistency | `critical` vs. `public` classifications align with functional parameter descriptions.                                                                             | **PASS** |
-| **5.4-1-1 Unit b** | Guarantees vs. Protection Needs      | Guarantees meet minimal needs (confidentiality/integrity for CSPs; integrity for public params).                                                                  | **PASS** |
-| **5.4-1-1 Unit c** | Protection Scheme Suitability        | MD5 password hashing, dynamic JSON payload scrubbing, HTTP 302/401 endpoint gating, and memory isolation fulfill claimed guarantees.                              | **PASS** |
-| **5.4-1-1 Unit d** | IXIT Documentation Completeness      | Complete cross-reference against `IXIT 1`, `IXIT 7`, and `IXIT 11` confirms zero missing parameters.                                                              | **PASS** |
-| **5.4-1-2 Unit a** | Functional Protection Enforcement    | Functional testing confirms unauthenticated REST queries redirect to `/#auth` (returning HTTP 401) and secrets are scrubbed from Web-UI payloads and serial logs. | **PASS** |
+| Test Case          | Purpose / Focus                      | Assessment Summary                                                                                                                                                                                                            | Verdict  |
+|:-------------------|:-------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------:|
+| **5.4-1-1 Unit a** | Parameter Classification Consistency | `critical` vs. `public` classifications align with functional parameter descriptions.                                                                                                                                         | **PASS** |
+| **5.4-1-1 Unit b** | Guarantees vs. Protection Needs      | Guarantees meet minimal needs (confidentiality/integrity for CSPs; integrity for public params).                                                                                                                              | **PASS** |
+| **5.4-1-1 Unit c** | Protection Scheme Suitability        | MD5 password hashing, dynamic JSON payload scrubbing, HTTP 302/401 endpoint gating, and memory isolation fulfill claimed guarantees against remote threats; physical deployment guidance covers unencrypted flash in v1.17.x. | **PASS** |
+| **5.4-1-1 Unit d** | IXIT Documentation Completeness      | Complete cross-reference against `IXIT 1`, `IXIT 2`, `IXIT 7`, and `IXIT 11` confirms zero missing parameters.                                                                                                                | **PASS** |
+| **5.4-1-2 Unit a** | Functional Protection Enforcement    | Functional testing confirms unauthenticated REST queries redirect to `/#auth` (returning HTTP 401) and secrets are scrubbed from Web-UI payloads and serial logs.                                                             | **PASS** |
 
 ---
 
@@ -118,6 +131,8 @@ security parameters are cataloged in `IXIT 10-SecParam` with consistent types, a
 guarantees, and suitable protection schemes. Functional testing confirms that logical protection
 mechanisms—including MD5 password hashing, dynamic Web-UI JSON payload scrubbing, HTTP 302 redirect
 gating to `/#auth` (HTTP 401), and UART log suppression—are correctly enforced to protect critical
-parameters from unauthorized disclosure.
+parameters from remote unauthorized disclosure. For physical security against direct flash memory
+readout in firmware v1.17.x, deployment guidance (`IXIT 2-UserInfo`) specifies operating the device
+in physically restricted environments, with hardware NVS flash encryption scheduled for v1.18.x.
 
 **Group Verdict**: **PASS**
