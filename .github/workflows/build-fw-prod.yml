@@ -36,14 +36,14 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
           submodules: recursive
 
       - name: Set up Python 3.8
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.8'
 
@@ -67,7 +67,7 @@ jobs:
 
       - name: Cache ESP-IDF and tools
         id: cache-esp-idf
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/esp
@@ -122,7 +122,7 @@ jobs:
           cd ..
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ruuvi_gateway_fw
           path: ${{ env.RELEASE_FILES }}
@@ -161,7 +161,7 @@ jobs:
 
       - name: Upload release zip as workflow artifact
         if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ruuvi_gateway_fw-prod-release-zip
           path: ${{ steps.create_zip.outputs.artifact_path }}
@@ -181,7 +181,7 @@ jobs:
       ARTIFACT_NAME: ${{ needs.build.outputs.release_zip_name }}
     steps:
       - name: Download release zip artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ruuvi_gateway_fw-prod-release-zip
           path: release_asset
