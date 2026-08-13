@@ -25,6 +25,8 @@ extern "C" {
 #define RUUVI_GATEWAY_HTTP_DEFAULT_URL \
     RUUVI_GATEWAY_HTTP_DEFAULT_SCHEMA RUUVI_GATEWAY_HTTP_HOST RUUVI_GATEWAY_HTTP_DEFAULT_PATH
 
+#define RUUVI_GATEWAY_HTTP_DEFAULT_PERIOD (10U)
+
 #define RUUVI_GATEWAY_HTTP_STATUS_URL RUUVI_GATEWAY_HTTP_DEFAULT_SCHEMA RUUVI_GATEWAY_HTTP_HOST "/status"
 
 #define RUUVI_GATEWAY_FW_UPDATE_URL RUUVI_GATEWAY_HTTP_DEFAULT_SCHEMA RUUVI_GATEWAY_HTTP_HOST "/firmwareupdate"
@@ -61,6 +63,9 @@ gw_cfg_default_get(gw_cfg_t* const p_gw_cfg);
 
 const gw_cfg_device_info_t*
 gw_cfg_default_device_info(void);
+
+const ruuvi_gw_cfg_http_t*
+gw_cfg_default_get_http(void);
 
 const ruuvi_gw_cfg_mqtt_t*
 gw_cfg_default_get_mqtt(void);
