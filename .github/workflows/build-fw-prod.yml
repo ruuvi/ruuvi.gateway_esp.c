@@ -180,24 +180,41 @@ jobs:
       TAG: ${{ github.ref_name }}
       ARTIFACT_NAME: ${{ needs.build.outputs.release_zip_name }}
     steps:
+      - name: Download firmware artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ruuvi_gateway_fw
+          path: release_files
+
       - name: Download release zip artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ruuvi_gateway_fw-prod-release-zip
           path: release_asset
 
-      - name: Create release and upload asset
+      - name: Create release and upload assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          set -xe
+          set -xeuo pipefail
           command -v gh >/dev/null 2>&1 || { echo "gh CLI not found"; exit 1; }
-          ARTIFACT_PATH="$GITHUB_WORKSPACE/release_asset/${ARTIFACT_NAME}.zip"
-          if [ ! -f "$ARTIFACT_PATH" ]; then
-            echo "Artifact not found at $ARTIFACT_PATH"; ls -la "$GITHUB_WORKSPACE/release_asset" || true
+          RELEASE_DIR="$GITHUB_WORKSPACE/release_files"
+          ZIP_PATH="$GITHUB_WORKSPACE/release_asset/${ARTIFACT_NAME}.zip"
+          if [ ! -d "$RELEASE_DIR" ]; then
+            echo "Release files directory not found at $RELEASE_DIR"
             exit 1
           fi
+          mapfile -t ASSETS < <(find "$RELEASE_DIR" -type f | sort)
+          if [ "${#ASSETS[@]}" -eq 0 ]; then
+            echo "No release files found under $RELEASE_DIR"
+            exit 1
+          fi
+          if [ ! -f "$ZIP_PATH" ]; then
+            echo "Artifact not found at $ZIP_PATH"; ls -la "$GITHUB_WORKSPACE/release_asset" || true
+            exit 1
+          fi
+          ASSETS+=("$ZIP_PATH")
           # create if missing; on failure re-check to tolerate races with the dev workflow
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             if ! gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes "Automated release" --prerelease; then
@@ -208,4 +225,4 @@ jobs:
               fi
             fi
           fi
-          gh release upload "$TAG" "$ARTIFACT_PATH" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$TAG" "${ASSETS[@]}" --repo "$GITHUB_REPOSITORY" --clobber
