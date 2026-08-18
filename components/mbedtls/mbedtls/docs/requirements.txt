@@ -10,7 +10,7 @@ babel==2.12.1
     # via sphinx
 breathe==4.35.0
     # via -r requirements.in
-certifi==2024.2.2
+certifi==2024.7.4
     # via
     #   -r requirements.in
     #   requests
