@@ -1488,6 +1488,26 @@ TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_key_not_found
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_rejects_percent_encoded_nul) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("url=https%3A%2F%2Fgood.example%00ignored", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=https%3A%2F%2Fgood.example%00ignored");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        "HTTP params: key 'url=': value (encoded): https%3A%2F%2Fgood.example%00ignored");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        "HTTP params: key 'url=': Can't decode value: https%3A%2F%2Fgood.example%00ignored");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
 TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_malloc_fail_on_get_params) // NOLINT
 {
     g_pTestClass->m_malloc_fail_on_cnt = 1;

@@ -201,3 +201,27 @@ TEST_F(TestUrlEncode, test_decode_fail_3) // NOLINT
     const str_buf_t val_decoded = url_decode_with_alloc(val_encoded.c_str());
     ASSERT_EQ(nullptr, val_decoded.buf);
 }
+
+TEST_F(TestUrlEncode, test_decode_fail_nul_at_beginning) // NOLINT
+{
+    const str_buf_t val_decoded = url_decode_with_alloc("%00ignored");
+
+    ASSERT_EQ(nullptr, val_decoded.buf);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestUrlEncode, test_decode_fail_nul_in_middle) // NOLINT
+{
+    const str_buf_t val_decoded = url_decode_with_alloc("https%3A%2F%2Fgood.example%00ignored");
+
+    ASSERT_EQ(nullptr, val_decoded.buf);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestUrlEncode, test_decode_fail_nul_at_end) // NOLINT
+{
+    const str_buf_t val_decoded = url_decode_with_alloc("https%3A%2F%2Fgood.example%00");
+
+    ASSERT_EQ(nullptr, val_decoded.buf);
+    ASSERT_TRUE(this->m_mem_alloc_trace.is_empty());
+}
