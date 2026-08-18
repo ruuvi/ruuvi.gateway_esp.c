@@ -20,6 +20,10 @@
 #include "log.h"
 static const char TAG[] = "http_server";
 
+#if (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG) && !RUUVI_TESTS
+#warning Debug log level prints out the passwords as a "plaintext".
+#endif
+
 #define MQTT_URL_PREFIX_LEN (20)
 
 #define BASE_10 (10)
