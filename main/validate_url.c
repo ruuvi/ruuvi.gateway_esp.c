@@ -730,7 +730,6 @@ validate_url_check_remote_cfg(const validate_url_params_t* const p_params)
             p_saved_password = p_saved_remote_cfg->auth.auth_apikey.api_key.buf;
             break;
     }
-    os_free(p_saved_remote_cfg);
     const http_check_params_t params = {
         .p_url               = p_params->url.buf,
         .auth_type           = p_params->auth_type,
@@ -748,6 +747,7 @@ validate_url_check_remote_cfg(const validate_url_params_t* const p_params)
     LOG_INFO("Validate URL (GET remote_cfg): use_ssl_client_cert=%d", p_params->use_ssl_client_cert);
     LOG_INFO("Validate URL (GET remote_cfg): use_ssl_server_cert=%d", p_params->use_ssl_server_cert);
     const http_server_resp_t http_resp = validate_url_on_get_check_remote_cfg(&params);
+    os_free(p_saved_remote_cfg);
     return http_resp;
 }
 
