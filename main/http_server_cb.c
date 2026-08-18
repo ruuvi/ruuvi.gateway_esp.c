@@ -16,7 +16,6 @@
 #include "http.h"
 #include "fw_update.h"
 #include "os_time.h"
-#include "time_str.h"
 #include "reset_task.h"
 #include "gw_cfg.h"
 #include "gw_cfg_json_parse.h"
@@ -705,8 +704,16 @@ http_server_cb_gen_resp_json(const http_resp_code_e resp_code, const char* const
 str_buf_t
 http_server_get_from_params(const char* const p_params, const char* const p_key)
 {
-    const size_t      key_len = strlen(p_key);
-    const char* const p_param = strstr(p_params, p_key);
+    const size_t key_len = strlen(p_key);
+    const char*  p_param = p_params;
+    while (NULL != (p_param = strstr(p_param, p_key)))
+    {
+        if ((p_param == p_params) || ('&' == p_param[-1]))
+        {
+            break;
+        }
+        p_param += 1;
+    }
     if (NULL == p_param)
     {
         LOG_DBG("Can't find key '%s' in URL params", p_key);
