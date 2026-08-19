@@ -16,10 +16,16 @@ import sys
 import zlib
 from pathlib import Path
 
-from cryptography import exceptions
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
+try:
+    from cryptography import exceptions
+    from cryptography.hazmat.backends import default_backend
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
+except ImportError as error:
+    raise SystemExit(
+        "error: missing Python dependency 'cryptography'; activate the ESP-IDF "
+        "environment or install it with: python -m pip install cryptography"
+    ) from error
 
 SECTOR_SIZE = 4096
 SIGNATURE_BLOCK_SIZE = 1216
