@@ -7781,6 +7781,104 @@ TEST_F(
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_remote_cfg__uses_saved_basic_password) // NOLINT
+{
+    static const char saved_password[] = "saved-basic-password";
+    gw_cfg_t          gw_cfg           = { 0 };
+    gw_cfg_get_copy(&gw_cfg);
+    gw_cfg.ruuvi_cfg.remote.auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
+    (void)snprintf(
+        gw_cfg.ruuvi_cfg.remote.auth.auth_basic.password.buf,
+        sizeof(gw_cfg.ruuvi_cfg.remote.auth.auth_basic.password.buf),
+        "%s",
+        saved_password);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
+
+    bool download_called                 = false;
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t,
+                                               void*,
+                                               bool) -> http_server_resp_t {
+        download_called = true;
+        EXPECT_STREQ("https://myserver.com/gw_cfg.json", p_param->base.p_url);
+        EXPECT_EQ(GW_CFG_HTTP_AUTH_TYPE_BASIC, p_param->auth_type);
+        EXPECT_NE(nullptr, p_param->p_http_auth);
+        if (nullptr != p_param->p_http_auth)
+        {
+            EXPECT_STREQ("test-user", p_param->p_http_auth->auth_basic.user.buf);
+            EXPECT_STREQ(saved_password, p_param->p_http_auth->auth_basic.password.buf);
+        }
+        return http_server_resp_400();
+    };
+
+    esp_log_wrapper_clear();
+    const char* const p_uri_params
+        = "validate_type=check_remote_cfg"
+          "&url=https://myserver.com/gw_cfg.json"
+          "&auth_type=basic"
+          "&user=test-user"
+          "&use_saved_password=true"
+          "&use_ssl_client_cert=false"
+          "&use_ssl_server_cert=false";
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    EXPECT_TRUE(download_called);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_remote_cfg__uses_saved_bearer_token) // NOLINT
+{
+    static const char saved_token[] = "saved-bearer-token";
+    gw_cfg_t          gw_cfg        = { 0 };
+    gw_cfg_get_copy(&gw_cfg);
+    gw_cfg.ruuvi_cfg.remote.auth_type = GW_CFG_HTTP_AUTH_TYPE_BEARER;
+    (void)snprintf(
+        gw_cfg.ruuvi_cfg.remote.auth.auth_bearer.token.buf,
+        sizeof(gw_cfg.ruuvi_cfg.remote.auth.auth_bearer.token.buf),
+        "%s",
+        saved_token);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
+
+    bool download_called                 = false;
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t,
+                                               void*,
+                                               bool) -> http_server_resp_t {
+        download_called = true;
+        EXPECT_STREQ("https://myserver.com/gw_cfg.json", p_param->base.p_url);
+        EXPECT_EQ(GW_CFG_HTTP_AUTH_TYPE_BEARER, p_param->auth_type);
+        EXPECT_NE(nullptr, p_param->p_http_auth);
+        if (nullptr != p_param->p_http_auth)
+        {
+            EXPECT_STREQ(saved_token, p_param->p_http_auth->auth_bearer.token.buf);
+        }
+        return http_server_resp_400();
+    };
+
+    esp_log_wrapper_clear();
+    const char* const p_uri_params
+        = "validate_type=check_remote_cfg"
+          "&url=https://myserver.com/gw_cfg.json"
+          "&auth_type=bearer"
+          "&use_saved_password=true"
+          "&use_ssl_client_cert=false"
+          "&use_ssl_server_cert=false";
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    EXPECT_TRUE(download_called);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__latest_only) // NOLINT
 {
     {
