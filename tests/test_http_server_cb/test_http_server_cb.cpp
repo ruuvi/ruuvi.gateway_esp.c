@@ -1418,6 +1418,50 @@ TEST_F(TestHttpServerCb, http_server_get_from_params_key_not_found) // NOLINT
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
+TEST_F(TestHttpServerCb, http_server_get_from_params_key_is_suffix_of_another_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("noturl=https://example.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_key_is_inside_another_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("note=url=https://example.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_skips_invalid_match_before_exact_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("noturl=invalid&url=https://example.com", "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("https://example.com"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=https://example.com");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
 TEST_F(TestHttpServerCb, http_server_get_from_params_malloc_fail) // NOLINT
 {
     g_pTestClass->m_malloc_fail_on_cnt = 1;
@@ -1482,6 +1526,76 @@ TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_key_not_found
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'key=' in URL params");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'key='");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_empty_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("url=&other=1", "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string(""), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (encoded): ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (decoded): ");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_key_is_suffix_of_another_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("noturl=https%3A%2F%2Fexample.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'url='");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_key_is_inside_another_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("note=url=https%3A%2F%2Fexample.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'url='");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_skips_invalid_match_before_exact_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding(
+        "noturl=invalid&url=https%3A%2F%2Fexample.com",
+        "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("https://example.com"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=https%3A%2F%2Fexample.com");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        "HTTP params: key 'url=': value (encoded): https%3A%2F%2Fexample.com");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (decoded): https://example.com");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
