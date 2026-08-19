@@ -1418,6 +1418,50 @@ TEST_F(TestHttpServerCb, http_server_get_from_params_key_not_found) // NOLINT
     ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
+TEST_F(TestHttpServerCb, http_server_get_from_params_key_is_suffix_of_another_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("noturl=https://example.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_key_is_inside_another_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("note=url=https://example.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_skips_invalid_match_before_exact_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("noturl=invalid&url=https://example.com", "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("https://example.com"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=https://example.com");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
 TEST_F(TestHttpServerCb, http_server_get_from_params_malloc_fail) // NOLINT
 {
     g_pTestClass->m_malloc_fail_on_cnt = 1;
@@ -1502,6 +1546,76 @@ TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_rejects_perce
         ESP_LOG_ERROR,
         "HTTP params: key 'url=': Can't decode value: https%3A%2F%2Fgood.example%00ignored");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_empty_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("url=&other=1", "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string(""), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (encoded): ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (decoded): ");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_key_is_suffix_of_another_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("noturl=https%3A%2F%2Fexample.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'url='");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_key_is_inside_another_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("note=url=https%3A%2F%2Fexample.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'url='");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_skips_invalid_match_before_exact_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding(
+        "noturl=invalid&url=https%3A%2F%2Fexample.com",
+        "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("https://example.com"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=https%3A%2F%2Fexample.com");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        "HTTP params: key 'url=': value (encoded): https%3A%2F%2Fexample.com");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (decoded): https://example.com");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
@@ -7681,6 +7795,104 @@ TEST_F(
         "I http_server: Validate URL (POST advs): use_extra_http_headers=1\n",
         esp_log_wrapper_get_logs());
     http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_remote_cfg__uses_saved_basic_password) // NOLINT
+{
+    static const char saved_password[] = "saved-basic-password";
+    gw_cfg_t          gw_cfg           = { 0 };
+    gw_cfg_get_copy(&gw_cfg);
+    gw_cfg.ruuvi_cfg.remote.auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
+    (void)snprintf(
+        gw_cfg.ruuvi_cfg.remote.auth.auth_basic.password.buf,
+        sizeof(gw_cfg.ruuvi_cfg.remote.auth.auth_basic.password.buf),
+        "%s",
+        saved_password);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
+
+    bool download_called                 = false;
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t,
+                                               void*,
+                                               bool) -> http_server_resp_t {
+        download_called = true;
+        EXPECT_STREQ("https://myserver.com/gw_cfg.json", p_param->base.p_url);
+        EXPECT_EQ(GW_CFG_HTTP_AUTH_TYPE_BASIC, p_param->auth_type);
+        EXPECT_NE(nullptr, p_param->p_http_auth);
+        if (nullptr != p_param->p_http_auth)
+        {
+            EXPECT_STREQ("test-user", p_param->p_http_auth->auth_basic.user.buf);
+            EXPECT_STREQ(saved_password, p_param->p_http_auth->auth_basic.password.buf);
+        }
+        return http_server_resp_400();
+    };
+
+    esp_log_wrapper_clear();
+    const char* const p_uri_params
+        = "validate_type=check_remote_cfg"
+          "&url=https://myserver.com/gw_cfg.json"
+          "&auth_type=basic"
+          "&user=test-user"
+          "&use_saved_password=true"
+          "&use_ssl_client_cert=false"
+          "&use_ssl_server_cert=false";
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    EXPECT_TRUE(download_called);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_remote_cfg__uses_saved_bearer_token) // NOLINT
+{
+    static const char saved_token[] = "saved-bearer-token";
+    gw_cfg_t          gw_cfg        = { 0 };
+    gw_cfg_get_copy(&gw_cfg);
+    gw_cfg.ruuvi_cfg.remote.auth_type = GW_CFG_HTTP_AUTH_TYPE_BEARER;
+    (void)snprintf(
+        gw_cfg.ruuvi_cfg.remote.auth.auth_bearer.token.buf,
+        sizeof(gw_cfg.ruuvi_cfg.remote.auth.auth_bearer.token.buf),
+        "%s",
+        saved_token);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
+
+    bool download_called                 = false;
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t,
+                                               void*,
+                                               bool) -> http_server_resp_t {
+        download_called = true;
+        EXPECT_STREQ("https://myserver.com/gw_cfg.json", p_param->base.p_url);
+        EXPECT_EQ(GW_CFG_HTTP_AUTH_TYPE_BEARER, p_param->auth_type);
+        EXPECT_NE(nullptr, p_param->p_http_auth);
+        if (nullptr != p_param->p_http_auth)
+        {
+            EXPECT_STREQ(saved_token, p_param->p_http_auth->auth_bearer.token.buf);
+        }
+        return http_server_resp_400();
+    };
+
+    esp_log_wrapper_clear();
+    const char* const p_uri_params
+        = "validate_type=check_remote_cfg"
+          "&url=https://myserver.com/gw_cfg.json"
+          "&auth_type=bearer"
+          "&use_saved_password=true"
+          "&use_ssl_client_cert=false"
+          "&use_ssl_server_cert=false";
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    EXPECT_TRUE(download_called);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
     os_malloc_trace_dump();
     ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
