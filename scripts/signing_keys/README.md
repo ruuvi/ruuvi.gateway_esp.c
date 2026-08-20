@@ -24,34 +24,46 @@ For use by `check_fw_signature.sh`, save the resulting trusted key as either
 
 ## Verify firmware against a specified private key
 
-### Compare with a trusted repository key
+### Extract and compare keys without ESP-IDF
 
-The easiest method is to verify the firmware with `check_fw_signature.sh`, then
-confirm that the specified private key corresponds to the trusted public key
-reported by the script.
+The easiest method does not require ESP-IDF or `espsecure.py`. First extract the
+public key from the firmware and compare it with a trusted public key in this
+repository. Then derive the public key corresponding to the specified private
+key and compare it with the same trusted key.
+
+This method requires OpenSSL and the Python `cryptography` package:
 
 ```bash
-source ~/esp-idf-env.sh
+python -m pip install cryptography
+```
 
-scripts/check_fw_signature.sh build/ruuvi_gateway_esp.bin
-# Expected output for the production key:
-# PROD: firmware signature is valid
+For example, to verify production firmware:
 
-temporary_public_key="$(mktemp)"
-trap 'rm -f "${temporary_public_key}"' EXIT
+```bash
+firmware_public_key="$(mktemp)"
+private_key_public_key="$(mktemp)"
+trap 'rm -f "${firmware_public_key}" "${private_key_public_key}"' EXIT
+
+scripts/extract_signing_key_pub.py \
+  build/ruuvi_gateway_esp.bin \
+  "${firmware_public_key}"
+
+cmp "${firmware_public_key}" \
+  scripts/signing_keys/signing_key_pub-prod.pem
 
 openssl pkey \
   -in /path/to/secure_boot_signing_key.pem \
   -pubout \
-  -out "${temporary_public_key}"
+  -out "${private_key_public_key}"
 
-cmp "${temporary_public_key}" \
+cmp "${private_key_public_key}" \
   scripts/signing_keys/signing_key_pub-prod.pem
 ```
 
-If `check_fw_signature.sh` reports `PROD` and `cmp` succeeds, the firmware was
-signed with the specified production private key. For a development key,
-expect `DEV: firmware signature is valid` and compare against
+The extraction script validates the firmware signature before writing its
+embedded public key. If both `cmp` commands succeed, the firmware signature and
+the specified private key correspond to the trusted production public key. For
+a development key, compare both generated files against
 `signing_key_pub-dev.pem` instead.
 
 `cmp` exits silently with status `0` when the public keys are identical. If PEM
@@ -59,7 +71,7 @@ formatting differs, compare their canonical DER encodings instead:
 
 ```bash
 cmp \
-  <(openssl pkey -pubin -in "${temporary_public_key}" -outform DER) \
+  <(openssl pkey -pubin -in "${firmware_public_key}" -outform DER) \
   <(openssl pkey -pubin \
       -in scripts/signing_keys/signing_key_pub-prod.pem \
       -outform DER)
