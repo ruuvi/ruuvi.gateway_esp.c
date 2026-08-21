@@ -49,7 +49,11 @@ target infrastructure environment are maintained within the onboarding documenta
   * https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages
 * **Scope:** The deployment layout details the initial captive portal setup environment, interface
   lock rules, mandatory password configuration adjustments, and how to verify that automatic profile
-  configuration download targets are securely provisioned.
+  configuration download targets are securely provisioned. To complement logical network access
+  controls for firmware v1.17.x deployments, physical installation in secure, controlled-access
+  locations (such as non-public indoor spaces or restricted private premises) is explicitly
+  recommended to protect the physical hardware enclosure and USB debug interfaces against direct
+  physical tampering.
 
 ## Documentation of Setup Check
 
@@ -136,7 +140,7 @@ deletion pathways are formally cataloged in the core user manuals and privacy fr
   underside surface of the gateway product enclosure casing.
 * **Traceability:** The device documentation manual instructs the user to visually inspect this
   physical label to identify model validation sequences, product certification markings, and the
-  factory default administrative
+  factory default administrative credentials.
 
 ## Support Period
 
@@ -179,12 +183,12 @@ and update capabilities, managed via secure dual-slot flash layouts (`ota_0` and
 
 ## Summary Matrix for the Technical File
 
-| Documentation Domain      | Primary Publication Vector  | User Access Interface / URL                                                                  | Compliance Verification Reference           |
-|:--------------------------|:----------------------------|:---------------------------------------------------------------------------------------------|:--------------------------------------------|
-| **Change Mechanisms**     | Online Document Portal      | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/access-settings-from-lan    | Hardening dashboard verification.           |
-| **Sensors & Filtering**   | Online Document Portal      | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/bluetooth-scanning-settings | Radio constraint adjustments.               |
-| **Secure Setup Rules**    | Setup Wizard Manual         | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/access-settings-from-lan    | Wizard execution workflow tracking.         |
-| **Data & Token Deletion** | Technical & Privacy Manuals | https://docs.ruuvi.com/ruuvi-gateway-firmware/                                               | Physical formatting and cloud deactivation. |
-| **Model Labeling**        | Casing Enclosure Layout     | Underneath casing structure sticker label                                                    | Direct physical visual identification.      |
-| **Support Promises**      | Lifecycle Index Page        | https://ruuvi.com/terms/lifecycle-promises/                                                  | Enforces 5-year security patch tracking.    |
-| **Vulnerability Gating**  | Security Disclosure Page    | https://ruuvi.com/terms/vulnerability-policy/                                                | Standardized report coordination drop.      |
+| Documentation Domain      | Primary Publication Vector  | User Access Interface / URL                                                                  | Compliance Verification Reference                          |
+|:--------------------------|:----------------------------|:---------------------------------------------------------------------------------------------|:-----------------------------------------------------------|
+| **Change Mechanisms**     | Online Document Portal      | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/access-settings-from-lan    | Hardening dashboard verification.                          |
+| **Sensors & Filtering**   | Online Document Portal      | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/bluetooth-scanning-settings | Radio constraint adjustments.                              |
+| **Secure Setup Rules**    | Setup Wizard Manual         | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/access-settings-from-lan    | Wizard execution workflow & physical environment guidance. |
+| **Data & Token Deletion** | Technical & Privacy Manuals | https://docs.ruuvi.com/ruuvi-gateway-firmware/                                               | Physical formatting and cloud deactivation.                |
+| **Model Labeling**        | Casing Enclosure Layout     | Underneath casing structure sticker label                                                    | Direct physical visual identification.                     |
+| **Support Promises**      | Lifecycle Index Page        | https://ruuvi.com/terms/lifecycle-promises/                                                  | Enforces 5-year security patch tracking.                   |
+| **Vulnerability Gating**  | Security Disclosure Page    | https://ruuvi.com/terms/vulnerability-policy/                                                | Standardized report coordination drop.                     |
