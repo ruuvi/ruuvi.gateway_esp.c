@@ -110,15 +110,17 @@ No
 
 #### Lifecycle
 
-Persistent on the ESP32 Wi-Fi/Ethernet controller hardware registry cells. It is read dynamically
-during interface initialization and remains visible on the local network segment as long as the
-device is physically connected.
+Permanently burned into non-volatile hardware eFuse registers on the ESP32 chip structure. Read at
+system boot via ESP-IDF APIs (`esp_read_mac` with `ESP_MAC_WIFI_STA` and `ESP_MAC_ETH` arguments)
+and held in system RAM. It remains visible on the local network segment as long as the device is
+physically connected.
 
 #### Processing Activities
 
-Broadcasted locally across the physical network layer to announce the gateway's presence to local
-routers, handle ARP resolution queries, and establish local socket connections for the management
-Web-UI framework.
+Extracted from ESP32 eFuse cells during early interface initialization routines. Broadcasted
+locally across the physical network layer to announce the gateway's presence to local routers,
+handle ARP resolution queries, and establish local socket connections for the management Web-UI
+framework.
 
 #### Secure Communication Mechanisms
 
@@ -177,17 +179,17 @@ No
 
 #### Lifecycle
 
-Permanently burned into non-volatile, read-only factory silicon cells (FICR) during chip
-fabrication. It is structurally immutable and persists for the physical lifespan of the hardware
-package.
+Permanently burned into non-volatile, read-only factory silicon cells (FICR) inside the nRF52811
+chip. Extracted dynamically by the host ESP32 over internal buses during system boot execution and
+held in volatile system RAM. It is not written to NVS flash storage.
 
 #### Processing Activities
 
-Extracted locally from hardware registers during early system boot execution steps. It is printed
-directly onto a physical serial sticker label affixed to the external gateway housing and routed to
-the local diagnostic `LogIntf-USB-UART-Log-Stream` for out-of-the-box installation tracking. At
-runtime, internal tasks consume it locally within isolated memory blocks to calculate cryptographic
-HMAC signatures over outbound metrics streams.
+Extracted locally from nRF52811 hardware registers during early system boot steps and held in
+volatile task memory. Printed directly onto a physical serial sticker label affixed to the external
+gateway housing and routed to the local diagnostic `LogIntf-USB-UART-Log-Stream` for installation
+tracking. At runtime, internal tasks consume it in volatile memory to calculate cryptographic HMAC
+signatures over outbound metrics streams.
 
 #### Secure Communication Mechanisms
 
@@ -210,8 +212,8 @@ telemetry streams or turning off diagnostics reporting inside the settings dashb
 
 #### Storing Consent
 
-Stored locally within non-volatile parameter configurations (`ruuvi.json` on the `nvs` partition) by
-preserving the user's explicit target active state selections.
+Stored locally within non-volatile parameter configurations (`ruuvi.json` on the `nvs` partition) as
+active telemetry target selection flags (`use_ruuvi_cloud: true/false`).
 
 #### Anonymization
 
@@ -244,17 +246,15 @@ No
 
 #### Lifecycle
 
-Persistent on the radio controller chip. It is retrieved during initialization, written dynamically
-into system memory configuration blocks, and persists as a visible configuration field over the
-operational lifetime of the device setup.
+Persistent on the radio controller chip. Retrieved from the nRF52811 co-processor during system boot
+initialization and held in volatile system RAM (`gw_mac`). It is not stored in NVS flash memory.
 
 #### Processing Activities
 
-During the initialization phase, the firmware reads the address from the nRF52 radio chip and writes
-it directly to the active configuration profile matrix as a read-only parameter (visible when
-reading configuration parameters as `"gw_mac": "XX:XX:XX:XX:XX:XX"`). This unique string is
-subsequently wrapped inside outbound JSON telemetry envelopes, acting as the explicit origin header
-to map incoming metrics records at the server tier.
+During the initialization phase, the main application processor reads the address from the nRF52
+radio co-processor over the internal bus and preserves it in volatile RAM (`gw_mac`). At runtime,
+this unique string is wrapped inside outbound JSON telemetry envelopes as an origin header to map
+incoming metrics records at the receiving server tier.
 
 #### Secure Communication Mechanisms
 
@@ -277,8 +277,9 @@ destinations or disconnecting network links.
 
 #### Storing Consent
 
-Stored locally within non-volatile parameter partitions (`ruuvi.json` on the `nvs` partition) by
-saving the user's connectivity choice.
+Stored locally within non-volatile parameter partitions (`ruuvi.json` on the `nvs` partition) as
+active telemetry target selection flags (`use_ruuvi_cloud: true/false`,
+`use_custom_server: true/false`).
 
 #### Anonymization
 
