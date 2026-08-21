@@ -216,8 +216,9 @@ N/A
 The 64-bit hardware-unique identifier ($DEVICEID$) extracted out of the internal Factory Information
 Configuration Registers (FICR) inside the nRF52811 silicon chip structure. Formatted as uppercase
 pairs separated by colons (e.g., `AA:BB:CC:DD:EE:FF:00:11`), it acts directly as the factory-default
-Web-UI credential string and functions as the baseline symmetric secret key layer for outbound
-payload message signatures. It is hard-coded in hardware silicon registers.
+Web-UI credential password string for initial system authentication, and functions as the baseline
+symmetric secret key layer for outbound payload message signatures. It is hard-coded in hardware
+silicon registers.
 
 #### Type
 
@@ -271,13 +272,19 @@ gateway operation routing rules and structural data target updates.
 
 Stored inside the configuration file (`ruuvi.json`) within the device non-volatile flash partition (
 `nvs`). The password sequence is protected by **only saving a pre-computed MD5 cryptographic hash
-value** (`lan_auth_pass`) rather than a cleartext string. Because ESP32 flash encryption is not
-enabled, the value is not encrypted at rest on the raw silicon tiers. Beyond the security provided
-by hashing, logical network protections apply: the firmware's runtime engine explicitly filters and
-removes the `lan_auth_pass` string block completely from outbound JSON payloads whenever settings
-are queried via the Web-UI. Additionally, the field is completely withheld from the local
-`LogIntf-USB-UART-Log-Stream` serial outputs. Changes are allowed only for users holding an
-authenticated session context established via ECDH key negotiation.
+value** (`lan_auth_pass`) rather than a cleartext string.
+
+* **Physical Operational Note (Firmware v1.17.x):** Flash storage is unencrypted at rest. Logical
+  protection relies on MD5 password hashing, dynamic Web-UI payload scrubbing, HTTP 302/401 endpoint
+  gating, and local network isolation. Physical security against flash dumping is provided by
+  deploying the DUT in physically restricted/controlled access environments (e.g. non-public indoor
+  spaces). ESP32 NVS Flash Encryption is scheduled for the v1.18.x firmware release.
+
+Beyond the security provided by hashing, logical network protections apply: the firmware's runtime
+engine explicitly filters and removes the `lan_auth_pass` string block completely from outbound JSON
+payloads whenever settings are queried via the Web-UI. Additionally, the field is completely
+withheld from the local `LogIntf-USB-UART-Log-Stream` serial outputs. Changes are allowed only for
+users holding an authenticated session context established via ECDH key negotiation.
 
 #### Provisioning Mechanism
 
@@ -317,10 +324,17 @@ actors scanning raw flash storage layout dumps.
 #### Protection Scheme
 
 Stored inside the configuration file (`ruuvi.json`) within the device non-volatile flash partition (
-`nvs`). ESP32 flash encryption is not enabled, so the cleartext password resides unencrypted at rest
-within the storage block. It is logically inaccessible via unauthenticated HTTP endpoint routes; the
-firmware configuration engine scrubs the password sub-elements completely from configuration reads
-and Web-UI network payloads to prevent credential leaks, and the string is never written to
+`nvs`).
+
+* **Physical Operational Note (Firmware v1.17.x):** Flash storage is unencrypted at rest. Logical
+  protection relies on API payload scrubbing, memory scoping, and local network isolation. Physical
+  security against flash dumping is provided by deploying the DUT in physically
+  restricted/controlled access environments (e.g. non-public indoor spaces). ESP32 NVS Flash
+  Encryption is scheduled for the v1.18.x firmware release.
+
+It is logically inaccessible via unauthenticated HTTP endpoint routes; the firmware configuration
+engine scrubs the password sub-elements completely from configuration reads and Web-UI network
+payloads to prevent credential leaks, and the string is never written to
 `LogIntf-USB-UART-Log-Stream`.
 
 #### Provisioning Mechanism
@@ -361,9 +375,16 @@ configuration interception or arbitrary configuration injection attacks.
 
 Symmetric parameters are stored inside the configuration file (`ruuvi.json`) within the device
 non-volatile flash partition (`nvs`). TLS PEM certificates and keys are written to distinct
-allocation tables within a dedicated NVS namespace (`gw_cfg_storage`). Flash encryption is not
-enabled. Raw private key and credential values are omitted from network JSON configuration queries
-and are suppressed from diagnostic log stream output.
+allocation tables within a dedicated NVS namespace (`gw_cfg_storage`).
+
+* **Physical Operational Note (Firmware v1.17.x):** Flash storage is unencrypted at rest. Logical
+  protection relies on API payload scrubbing, diagnostic log suppression, and memory scoping.
+  Physical security against flash dumping is provided by deploying the DUT in physically
+  restricted/controlled access environments. ESP32 NVS Flash Encryption is scheduled for the v1.18.x
+  firmware release.
+
+Raw private key and credential values are omitted from network JSON configuration queries and are
+suppressed from diagnostic log stream output.
 
 #### Provisioning Mechanism
 
@@ -402,9 +423,17 @@ snooping and target platform endpoint spoofing.
 #### Protection Scheme
 
 Stored inside `ruuvi.json` on the `nvs` partition, with heavy certificates utilizing the
-`gw_cfg_storage` namespace. Passwords and keys are scrubbed during Web-UI query calls and are
-withheld from the UART serial terminal logs. Client keys are loaded into runtime task memory solely
-within the execution scope of the HTTP telemetry thread handler loop.
+`gw_cfg_storage` namespace.
+
+* **Physical Operational Note (Firmware v1.17.x):** Flash storage is unencrypted at rest. Logical
+  protection relies on API payload scrubbing, diagnostic log suppression, and task memory scoping.
+  Physical security against flash dumping is provided by deploying the DUT in physically
+  restricted/controlled access environments. ESP32 NVS Flash Encryption is scheduled for the
+  v1.18.x firmware release.
+
+Passwords and keys are scrubbed during Web-UI query calls and are withheld from the UART serial
+terminal logs. Client keys are loaded into runtime task memory solely within the execution scope of
+the HTTP telemetry thread handler loop.
 
 #### Provisioning Mechanism
 
@@ -442,10 +471,17 @@ injection vulnerabilities or passive line wiretapping.
 
 #### Protection Scheme
 
-Persistent configuration parameters reside inside `ruuvi.json` on the `nvs` partition (not encrypted
-at rest, as flash encryption is not enabled). Private keys are stripped from administrative Web-UI
-exports and diagnostic log lines, and are accessed solely by the MQTT task loop to build connection
-handshakes via mbedTLS context handles.
+Persistent configuration parameters reside inside `ruuvi.json` on the `nvs` partition and
+`gw_cfg_storage` namespace.
+
+* **Physical Operational Note (Firmware v1.17.x):** Flash storage is unencrypted at rest. Logical
+  protection relies on Web-UI export filtering, UART debug log scrubbing, and runtime mbedTLS memory
+  isolation. Physical security against flash dumping is provided by deploying the DUT in physically
+  restricted/controlled access environments. ESP32 NVS Flash Encryption is scheduled for the
+  v1.18.x firmware release.
+
+Private keys are stripped from administrative Web-UI exports and diagnostic log lines, and are
+accessed solely by the MQTT task loop to build connection handshakes via mbedTLS context handles.
 
 #### Provisioning Mechanism
 
@@ -483,10 +519,17 @@ firmware tracking manipulation or server endpoint hijacking.
 
 #### Protection Scheme
 
-Maintained inside `ruuvi.json` on the `nvs` partition (not encrypted at rest). Secret values are
-stripped by application filters from network request routing pipelines and are entirely omitted from
-console debug outputs. The background diagnostic logging task manages the isolated runtime memory
-lifecycle of the private key.
+Maintained inside `ruuvi.json` on the `nvs` partition.
+
+* **Physical Operational Note (Firmware v1.17.x):** Flash storage is unencrypted at rest. Logical
+  protection relies on API request payload filtering, UART debug log scrubbing, and runtime memory
+  isolation. Physical security against flash dumping is provided by deploying the DUT in physically
+  restricted/controlled access environments. ESP32 NVS Flash Encryption is scheduled for the
+  v1.18.x firmware release.
+
+Secret values are stripped by application filters from network request routing pipelines and are
+entirely omitted from console debug outputs. The background diagnostic logging task manages the
+isolated runtime memory lifecycle of the private key.
 
 #### Provisioning Mechanism
 
@@ -565,11 +608,18 @@ restricting API execution to clients presenting a structurally valid token signa
 #### Protection Scheme
 
 Stored inside the configuration file (`ruuvi.json`) within the device non-volatile flash partition (
-`nvs`) not encrypted at rest. Because these tokens are passed via standard, unencrypted HTTP
-`Authorization` headers over Port 80, they do not inherit the application-layer encryption used by
-the interactive Web-UI. Their protection relies entirely on the isolation of the local network
-architecture. Tokens are hidden from regular configuration outputs and never dumped to the local
-serial log stream.
+`nvs`).
+
+* **Physical Operational Note (Firmware v1.17.x):** Flash storage is unencrypted at rest. Logical
+  protection relies on API payload scrubbing, UART debug log suppression, and local network
+  architecture isolation. Physical security against flash dumping is provided by deploying the DUT
+  in physically restricted/controlled access environments. ESP32 NVS Flash Encryption is scheduled
+  for the v1.18.x firmware release.
+
+Because these tokens are passed via standard, unencrypted HTTP `Authorization` headers over Port 80,
+they do not inherit the application-layer encryption used by the interactive Web-UI. Their
+protection relies entirely on the isolation of the local network architecture. Tokens are hidden
+from regular configuration outputs and never dumped to the local serial log stream.
 
 #### Provisioning Mechanism
 
@@ -594,19 +644,19 @@ This generates a high-entropy 256-bit token string that is completely unique per
 
 ## Summary Matrix for the Technical File
 
-| Parameter ID                              | Cryptographic Type |     Persistent Storage Type     | Access Privileges / Roles                                                                                              |
-|:------------------------------------------|:------------------:|:-------------------------------:|:-----------------------------------------------------------------------------------------------------------------------|
-| `SecParam-FW-Verification-Key`            |       public       |     Application Flash Text      | Read: `fw_update.c` Verification Loop<br>Modify: Physical Flash Device Only                                            |
-| `SecParam-Main-Firmware-Signature`        |       public       |      tail of OTA partition      | Read: `esp_ota_end_patched`<br>Modify: Complete System OTA Update                                                      |
-| `SecParam-WebUI-Partition-Signature`      |       public       |     Application Flash Blobs     | Read: Boot Verification Context<br>Modify: Complete System OTA Update                                                  |
-| `SecParam-nRF52-Partition-Signature`      |       public       |     Application Flash Blobs     | Read: Boot Verification Context<br>Modify: Complete System OTA Update                                                  |
-| `SecParam-CoProcessor-Verification-Stub`  |       public       |     Application Flash Blobs     | Read: SWD Boot-Time Calculation Launcher<br>Modify: Complete System OTA Update                                         |
-| `SecParam-Hardware-DeviceID`              |      critical      |     Hardware Silicon (FICR)     | Read: Diagnostic Logs / Internal Tasks<br>Modify: Immutable (Direct Default Password & HMAC Root Key)                  |
-| `SecParam-LAN-WebUI-Credentials`          |      critical      | `ruuvi.json` on `nvs` Partition | Read: Internal Auth Handlers Only (Masked on Web-UI reads)<br>Modify: Authenticated Administrator (Stored as MD5 hash) |
-| `SecParam-WiFi-STA-Credentials`           |      critical      | `ruuvi.json` on `nvs` Partition | Read: Wi-Fi Stack Driver Initialization (Masked on Web-UI reads)<br>Modify: Provisioning Wizard / Admin Session        |
-| `SecParam-Remote-Config-Assets`           |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: Outbound Remote Sync Core Tasks<br>Modify: Authenticated Administrator                                           |
-| `SecParam-Custom-HTTP-Telemetry-Assets`   |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: HTTP Post Application Tasks<br>Modify: Authenticated Administrator                                               |
-| `SecParam-Custom-Stream-Telemetry-Assets` |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: MQTT Driver Task Lifecycle<br>Modify: Authenticated Administrator                                                |
-| `SecParam-System-Statistics-Assets`       |       mixed        | `ruuvi.json` on `nvs` Partition | Read: Background Diagnostic Log Loop<br>Modify: Authenticated Administrator                                            |
-| `SecParam-HMAC-Symmetric-Secrets`         |      critical      |     Static App Task Memory      | Read: `hmac_sha256.c` Hashing Contexts<br>Modify: Remote Cloud Server Rotation Header                                  |
-| `SecParam-LAN-Bearer-Tokens`              |      critical      | `ruuvi.json` on `nvs` Partition | Read: Local API Validation Guards<br>Modify: Authenticated Administrator                                               |
+| Parameter ID                              | Cryptographic Type |     Persistent Storage Type     | Access Privileges / Roles                                                                                              |                 Flash Encryption Status                 |
+|:------------------------------------------|:------------------:|:-------------------------------:|:-----------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------:|
+| `SecParam-FW-Verification-Key`            |       public       |     Application Flash Text      | Read: `fw_update.c` Verification Loop<br>Modify: Physical Flash Device Only                                            |                    N/A (Public Key)                     |
+| `SecParam-Main-Firmware-Signature`        |       public       |      tail of OTA partition      | Read: `esp_ota_end_patched`<br>Modify: Complete System OTA Update                                                      |                 N/A (Public Signature)                  |
+| `SecParam-WebUI-Partition-Signature`      |       public       |     Application Flash Blobs     | Read: Boot Verification Context<br>Modify: Complete System OTA Update                                                  |                 N/A (Public Signature)                  |
+| `SecParam-nRF52-Partition-Signature`      |       public       |     Application Flash Blobs     | Read: Boot Verification Context<br>Modify: Complete System OTA Update                                                  |                 N/A (Public Signature)                  |
+| `SecParam-CoProcessor-Verification-Stub`  |       public       |     Application Flash Blobs     | Read: SWD Boot-Time Calculation Launcher<br>Modify: Complete System OTA Update                                         |                 N/A (Public Stub Code)                  |
+| `SecParam-Hardware-DeviceID`              |      critical      |     Hardware Silicon (FICR)     | Read: Diagnostic Logs / Internal Tasks<br>Modify: Immutable (Direct Default Password & HMAC Root Key)                  |                 N/A (Silicon Register)                  |
+| `SecParam-LAN-WebUI-Credentials`          |      critical      | `ruuvi.json` on `nvs` Partition | Read: Internal Auth Handlers Only (Masked on Web-UI reads)<br>Modify: Authenticated Administrator (Stored as MD5 hash) | Unencrypted in v1.17.x (Physically Isolated Deployment) |
+| `SecParam-WiFi-STA-Credentials`           |      critical      | `ruuvi.json` on `nvs` Partition | Read: Wi-Fi Stack Driver Initialization (Masked on Web-UI reads)<br>Modify: Provisioning Wizard / Admin Session        | Unencrypted in v1.17.x (Physically Isolated Deployment) |
+| `SecParam-Remote-Config-Assets`           |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: Outbound Remote Sync Core Tasks<br>Modify: Authenticated Administrator                                           | Unencrypted in v1.17.x (Physically Isolated Deployment) |
+| `SecParam-Custom-HTTP-Telemetry-Assets`   |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: HTTP Post Application Tasks<br>Modify: Authenticated Administrator                                               | Unencrypted in v1.17.x (Physically Isolated Deployment) |
+| `SecParam-Custom-Stream-Telemetry-Assets` |       mixed        | `ruuvi.json` / `gw_cfg_storage` | Read: MQTT Driver Task Lifecycle<br>Modify: Authenticated Administrator                                                | Unencrypted in v1.17.x (Physically Isolated Deployment) |
+| `SecParam-System-Statistics-Assets`       |       mixed        | `ruuvi.json` on `nvs` Partition | Read: Background Diagnostic Log Loop<br>Modify: Authenticated Administrator                                            | Unencrypted in v1.17.x (Physically Isolated Deployment) |
+| `SecParam-HMAC-Symmetric-Secrets`         |      critical      |     Static App Task Memory      | Read: `hmac_sha256.c` Hashing Contexts<br>Modify: Remote Cloud Server Rotation Header                                  |                   N/A (Volatile RAM)                    |
+| `SecParam-LAN-Bearer-Tokens`              |      critical      | `ruuvi.json` on `nvs` Partition | Read: Local API Validation Guards<br>Modify: Authenticated Administrator                                               | Unencrypted in v1.17.x (Physically Isolated Deployment) |
