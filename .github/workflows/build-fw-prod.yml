@@ -120,6 +120,12 @@ jobs:
           cmake .. -G Ninja
           ninja
           cd ..
+          signature_check_result="$(scripts/check_fw_signature.sh build/ruuvi_gateway_esp.bin)"
+          echo "${signature_check_result}"
+          if [[ "${signature_check_result}" != "PROD: firmware signature is valid" ]]; then
+            echo "Production firmware was not signed with the PROD key" >&2
+            exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
