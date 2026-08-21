@@ -348,10 +348,7 @@ gw_cfg_json_add_items_http_custom_params(
 }
 
 static bool
-gw_cfg_json_add_items_http_default(
-    cJSON* const                     p_json_root,
-    const ruuvi_gw_cfg_http_t* const p_cfg_http,
-    const bool                       flag_hide_passwords)
+gw_cfg_json_add_items_http_default(cJSON* const p_json_root, const bool flag_hide_passwords)
 {
     if (!gw_cfg_json_add_bool(p_json_root, "use_http_ruuvi", true))
     {
@@ -361,7 +358,8 @@ gw_cfg_json_add_items_http_default(
     {
         return false;
     }
-    return gw_cfg_json_add_items_http_custom_params(p_json_root, p_cfg_http, flag_hide_passwords);
+
+    return gw_cfg_json_add_items_http_custom_params(p_json_root, gw_cfg_default_get_http(), flag_hide_passwords);
 }
 
 static bool
@@ -375,7 +373,7 @@ gw_cfg_json_add_items_http(
         // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
         // to ensure compatibility between configuration versions when upgrading firmware to a new version
         // or rolling back to an old one
-        return gw_cfg_json_add_items_http_default(p_json_root, p_cfg_http, flag_hide_passwords);
+        return gw_cfg_json_add_items_http_default(p_json_root, flag_hide_passwords);
     }
     if (p_cfg_http->use_http && (GW_CFG_HTTP_DATA_FORMAT_RUUVI == p_cfg_http->data_format)
         && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_cfg_http->auth_type)
@@ -384,7 +382,7 @@ gw_cfg_json_add_items_http(
         // 'use_http_ruuvi' was added in v1.14, so we need to patch configuration
         // to ensure compatibility between configuration versions when upgrading firmware to a new version
         // or rolling back to an old one
-        return gw_cfg_json_add_items_http_default(p_json_root, p_cfg_http, flag_hide_passwords);
+        return gw_cfg_json_add_items_http_default(p_json_root, flag_hide_passwords);
     }
 
     if (!gw_cfg_json_add_bool(p_json_root, "use_http_ruuvi", p_cfg_http->use_http_ruuvi))

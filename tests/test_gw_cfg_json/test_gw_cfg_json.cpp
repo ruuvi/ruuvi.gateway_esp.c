@@ -660,6 +660,34 @@ TEST_F(TestGwCfgJson, gw_cfg_json_generate_default) // NOLINT
     ASSERT_TRUE(0 == memcmp(&gw_cfg, &gw_cfg2, sizeof(gw_cfg)));
 }
 
+TEST_F(TestGwCfgJson, gw_cfg_json_generate_ruuvi_http_uses_default_url_and_period) // NOLINT
+{
+    gw_cfg_t gw_cfg                      = get_gateway_config_default();
+    gw_cfg.ruuvi_cfg.http.use_http_ruuvi = true;
+    gw_cfg.ruuvi_cfg.http.use_http       = false;
+    gw_cfg.ruuvi_cfg.http.http_url       = { "" };
+    gw_cfg.ruuvi_cfg.http.http_period    = 30;
+    cjson_wrap_str_t json_str            = cjson_wrap_str_null();
+
+    ASSERT_TRUE(gw_cfg_json_generate_for_saving(&gw_cfg, &json_str));
+    ASSERT_NE(nullptr, json_str.p_str);
+
+    cJSON* const p_json_root = cJSON_Parse(json_str.p_str);
+    ASSERT_NE(nullptr, p_json_root);
+    const cJSON* const p_use_http_ruuvi = cJSON_GetObjectItem(p_json_root, "use_http_ruuvi");
+    const cJSON* const p_use_http       = cJSON_GetObjectItem(p_json_root, "use_http");
+    const cJSON* const p_http_url       = cJSON_GetObjectItem(p_json_root, "http_url");
+    const cJSON* const p_http_period    = cJSON_GetObjectItem(p_json_root, "http_period");
+    ASSERT_TRUE(cJSON_IsTrue(p_use_http_ruuvi));
+    ASSERT_TRUE(cJSON_IsTrue(p_use_http));
+    ASSERT_NE(nullptr, p_http_url);
+    ASSERT_NE(nullptr, p_http_period);
+    ASSERT_STREQ(RUUVI_GATEWAY_HTTP_DEFAULT_URL, p_http_url->valuestring);
+    ASSERT_EQ(RUUVI_GATEWAY_HTTP_DEFAULT_PERIOD, p_http_period->valueint);
+    cJSON_Delete(p_json_root);
+    cjson_wrap_free_json_str(&json_str);
+}
+
 TEST_F(TestGwCfgJson, gw_cfg_json_parse_default_company_id_0x0500) // NOLINT
 {
     gw_cfg_t gw_cfg                    = get_gateway_config_default();

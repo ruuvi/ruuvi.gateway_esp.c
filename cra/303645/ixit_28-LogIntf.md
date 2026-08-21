@@ -12,7 +12,7 @@ exposure risks, and transport layer resilience measures.
 
 The DUT hosts an internal HTTP server (Port 80) acting as the execution environment for the Web-UI
 and primary local configuration wizard. It handles endpoint execution routines such as `/auth` (
-authentication binds) and `/history` (sensor data logs).
+authentication binds), `/ruuvi.json` (device settings), and `/history` (sensor data logs).
 
 #### Access
 
@@ -26,11 +26,15 @@ path setup.
 
 #### Disclosed Information
 
-Unauthenticated requests to the root server disclose generic structural HTTP response headers. By
-default, these headers reveal only the server type platform signature (`lwIP/ESP-IDF HTTP Server`)
-without disclosing specific software patch versions or framework revisions. Unauthenticated access
-to system parameters or active sensor historical arrays is strictly blocked, returning standard
-`401 Unauthorized` error frames. This carries low security relevance.
+Unauthenticated requests to the root server or restricted endpoints disclose generic structural HTTP
+response headers. By default, these headers reveal only the generic platform signature
+(`Server: Ruuvi Gateway`) without disclosing specific software patch versions, framework revisions,
+or build hashes. Unauthenticated access to system parameters (`/ruuvi.json`) or active sensor
+historical arrays (`/history`) is strictly blocked: the server responds with an **HTTP 302 Found**
+redirect setting the `Location` header to the Web-UI authentication entry point (
+`http://<hostname>.local/#auth`). Subsequent unauthenticated requests to the `/auth` router endpoint
+return standard **HTTP 401 Unauthorized** error frames until valid encrypted credentials (
+`{"login": "<user>", "password": "<hash>"}`) are posted. This carries low security relevance.
 
 #### Resilience Measures
 
@@ -496,7 +500,7 @@ starvation injections.
 
 | Interface ID                      | Type / Port        | Protocol          | Remote Network Access? | Initial Status | Security Relevant Disclosed Info                         |
 |:----------------------------------|:-------------------|:------------------|:----------------------:|:---------------|:---------------------------------------------------------|
-| `LogIntf-HTTP-Server`             | Server / 80        | HTTP              |    Yes (LAN / WLAN)    | Enabled        | None (Generic platform header signature only)            |
+| `LogIntf-HTTP-Server`             | Server / 80        | HTTP              |    Yes (LAN / WLAN)    | Enabled        | None (`Server: Ruuvi Gateway` header; 302/401 gated)     |
 | `LogIntf-Cloud-HTTPS-Telemetry`   | Client / 443       | HTTPS             |   Yes (WAN Network)    | Enabled        | None (TLS Encrypted Payload)                             |
 | `LogIntf-Custom-HTTP-Telemetry`   | Client / Config    | HTTP/HTTPS        |  Yes (Local Network)   | Disabled       | None if HTTPS transport is selected                      |
 | `LogIntf-Custom-Stream-Telemetry` | Client / Config    | MQTT/MQTTS/WS/WSS |  Yes (Local Network)   | Disabled       | None if MQTTS/WSS transport is selected                  |
