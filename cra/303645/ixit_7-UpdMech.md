@@ -60,13 +60,13 @@ and Man-in-the-Middle (MitM) payload manipulation during network transit.
 Authenticity and integrity are enforced by a firmware image signed with the ESP32 Secure Boot v2
 signature layout: **RSA-3072 with RSA-PSS padding over a SHA-256 digest**, compiled using the
 manufacturer private key. The public key for verification (`SecParam-FW-Verification-Key`) is
-integrated within the main application text segment. Because production units implement a legacy
-secondary bootloader block where hardware secure boot eFuses are not burned, signature validation is
-processed programmatically at the application layer post-boot. Automated rollback-on-failure is
-driven by the ESP-IDF partition table mapping: if post-reboot asset validation fails, the system
-reverts execution to the prior known-good partition slot. Downgrade prevention via hardware
-secure-version eFuses is not enabled; block verification isolates malicious binaries, but older
-signed release images are not cryptographically blocked from installation.
+integrated within the main application text segment. Because production units running v1.17.x
+implement a secondary bootloader block where hardware secure boot eFuses are not burned, signature
+validation is processed programmatically at the application layer post-boot. Automated
+rollback-on-failure is driven by the ESP-IDF partition table mapping: if post-reboot asset
+validation fails, the system reverts execution to the prior known-good partition slot. Downgrade
+prevention via hardware secure-version eFuses is not enabled; block verification isolates malicious
+binaries, but older signed release images are not cryptographically blocked from installation.
 
 #### Initiation and Interaction
 
@@ -143,17 +143,25 @@ updates to ensure a seamless operational deployment experience.
 #### Description
 
 A local, physical, non-network update mechanism utilizing a virtual serial connection over the
-on-board USB-to-UART bridge controller interface. Images are written directly to flash sectors using
-development tools (such as `esptool.py` or the manufacturer's flashing utility script). This
-interface serves as the primary path for factory provisioning, recovery operations, or offline
-maintenance environments.
+on-board USB-to-UART bridge controller interface (`PhyIntf-USB`). Images are written directly to
+flash sectors using development tools (such as `esptool.py` or the manufacturer's flashing utility
+script). This interface serves as the primary path for factory provisioning, recovery operations, or
+offline maintenance environments.
+
+* **Physical Access Boundary Note:** Operating over the physical USB port bypasses the network stack
+  entirely. On production units running v1.17.x firmware (where hardware eFuse Secure Boot and NVS
+  flash encryption are not enabled), an actor with direct physical access to the device casing can
+  read flash sectors or flash custom binaries via `esptool.py`. This threat vector is strictly
+  contained to actors holding physical access to the hardware enclosure (`PhyIntf-USB`).
+  Enabling ESP32 eFuse Secure Boot v2 and NVS Flash Encryption is scheduled for the v1.18.x
+  firmware release.
 
 #### Security Guarantees
 
 The mechanism requires immediate physical proximity access to the device's Type-C USB interface
 port. The interface operates outside of the network stack, completely isolating the flasher state
-from remote network exploits. Image verification signatures are validated at boot by the application
-layer post-flashing.
+from remote network exploits. For standard signed images, image verification signatures are
+validated at boot by the application layer post-flashing.
 
 #### Cryptographic Details
 
@@ -185,8 +193,8 @@ Not applicable.
 
 ## Summary Matrix for the Technical File
 
-| Interface ID    | Delivery Medium              | Initiation Vector                | Cryptographic Verification Protocol                       | Automated Rollback Active? | Downgrade Blocked by Fuses? |
-|:----------------|:-----------------------------|:---------------------------------|:----------------------------------------------------------|:--------------------------:|:---------------------------:|
-| `UpdMech-WebUI` | Network (HTTPS / Port 443)   | User Manual Request (Web-UI)     | RSA-3072-PSS / SHA-256 ESP Scan + SWD nRF RAM Check Block |            Yes             |             No              |
-| `UpdMech-Auto`  | Network (HTTPS / Port 443)   | Automated Background Scheduler   | RSA-3072-PSS / SHA-256 ESP Scan + SWD nRF RAM Check Block |            Yes             |             No              |
-| `UpdMech-USB`   | Local Port (USB-UART Bridge) | Physical USB Connection Flashing | Boot RSA-3072-PSS Scan + Flasher Tool MD5 Sweep           |   N/A (Manual Overwrite)   |             No              |
+| Interface ID    | Delivery Medium              | Initiation Vector                | Cryptographic Verification Protocol                       | Automated Rollback Active? | Downgrade Blocked by Fuses? | Physical Access Required? |
+|:----------------|:-----------------------------|:---------------------------------|:----------------------------------------------------------|:--------------------------:|:---------------------------:|:-------------------------:|
+| `UpdMech-WebUI` | Network (HTTPS / Port 443)   | User Manual Request (Web-UI)     | RSA-3072-PSS / SHA-256 ESP Scan + SWD nRF RAM Check Block |            Yes             |             No              |            No             |
+| `UpdMech-Auto`  | Network (HTTPS / Port 443)   | Automated Background Scheduler   | RSA-3072-PSS / SHA-256 ESP Scan + SWD nRF RAM Check Block |            Yes             |             No              |            No             |
+| `UpdMech-USB`   | Local Port (USB-UART Bridge) | Physical USB Connection Flashing | Boot RSA-3072-PSS Scan + Flasher Tool MD5 Sweep           |   N/A (Manual Overwrite)   |             No              |          **Yes**          |
