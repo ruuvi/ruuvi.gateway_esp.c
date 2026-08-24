@@ -133,27 +133,6 @@ jobs:
           name: ruuvi_gateway_fw
           path: ${{ env.RELEASE_FILES }}
 
-      - name: Upload ruuvi_gateway_esp.bin artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ruuvi_gateway_esp.bin
-          path: build/ruuvi_gateway_esp.bin
-          if-no-files-found: error
-
-      - name: Upload fatfs_gwui.bin artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: fatfs_gwui.bin
-          path: build/fatfs_gwui.bin
-          if-no-files-found: error
-
-      - name: Upload fatfs_nrf52.bin artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: fatfs_nrf52.bin
-          path: build/fatfs_nrf52.bin
-          if-no-files-found: error
-
       - name: Create release zip
         id: create_zip
         if: startsWith(github.ref, 'refs/tags/')
@@ -207,22 +186,10 @@ jobs:
       TAG: ${{ github.ref_name }}
       ARTIFACT_NAME: ${{ needs.build.outputs.release_zip_name }}
     steps:
-      - name: Download ruuvi_gateway_esp.bin artifact
+      - name: Download firmware artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: ruuvi_gateway_esp.bin
-          path: release_files
-
-      - name: Download fatfs_gwui.bin artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: fatfs_gwui.bin
-          path: release_files
-
-      - name: Download fatfs_nrf52.bin artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: fatfs_nrf52.bin
+          name: ruuvi_gateway_fw
           path: release_files
 
       - name: Download release zip artifact
