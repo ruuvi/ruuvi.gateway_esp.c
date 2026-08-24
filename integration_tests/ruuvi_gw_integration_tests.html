@@ -1167,59 +1167,14 @@
 <li>Check that the firmware version at the bottom of the page is v1.14.2.</li>
 </ul></li>
 </ul>
-<h3 id="tst-006-af003-test-installing-firmware-from-the-manually-entered-url-pointed-to-jenkins-server">TST-006-AF003: Test installing firmware from the manually entered URL pointed to Jenkins server</h3>
-<h4 id="setup-25">Setup</h4>
-<ul>
-<li>Connect Ethernet cable to the gateway.</li>
-</ul>
-<h4 id="test-steps-25">Test steps</h4>
-<ul>
-<li><p><strong>Action</strong>: Erase flash and write firmware.</p>
-<pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
-<p><strong>Checks</strong>:</p>
-<ul>
-<li>LED: ‘G’</li>
-</ul></li>
-<li><p><strong>Action</strong>: Use a browser to open the gateway’s hostname ruuvigateway<XXXX>.local.</p>
-<p><strong>Checks</strong>:</p>
-<ul>
-<li>Check that the ‘<strong>Login to Settings Page</strong>’ page is opened in the browser.</li>
-</ul></li>
-<li><p><strong>Action</strong>: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).</p>
-<p><strong>Checks</strong>:</p>
-<ul>
-<li>Check that the ‘<strong>Setup Wizard</strong>’ page is opened in the browser.</li>
-</ul></li>
-<li><p><strong>Action</strong>: Update firmware on <strong>Software Update</strong> page</p>
-<p><strong>Steps</strong>:</p>
-<ul>
-<li>Page <strong>Setup Wizard</strong>: Click <strong>Let’s get started</strong>.</li>
-<li>Page <strong>Internet Connection</strong>: click <strong>Skip</strong>.</li>
-<li>Page <strong>Software Update</strong>: Click <strong>Advanced Settings</strong>.</li>
-<li>Page <strong>Software Update</strong>: Enable checkbox <strong>Don’t use the software update provided by Ruuvi but download binary files from URL address instead.</strong>.</li>
-<li>Page <strong>Software Update</strong>: Enter URL: https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/1275/artifact/build/</li>
-<li>Page <strong>Software Update</strong>: Click <strong>Update</strong>.</li>
-<li>Wait until updating is finished.</li>
-</ul>
-<p><strong>Checks</strong>:</p>
-<ul>
-<li>Page <strong>Finished!</strong>: message ‘<strong>All good! Update was successful.</strong>’ must be displayed.</li>
-<li>LED: ‘G’</li>
-</ul></li>
-<li><p><strong>Action</strong>: Check firmware version in UI - refresh the page in the browser.</p>
-<p><strong>Checks</strong>:</p>
-<ul>
-<li>Check that the firmware version at the bottom of the page is v1.14.1-86-g70f9ebc.</li>
-</ul></li>
-</ul>
 <h3 id="tst-006-af003-test-installing-firmware-from-the-manually-entered-url-pointed-to-local-server">TST-006-AF003: Test installing firmware from the manually entered URL pointed to local server</h3>
-<h4 id="setup-26">Setup</h4>
+<h4 id="setup-25">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 <li>Configure mDNS on your computer, set host-name to ‘my-https-server’, set domain-name to ‘local’.</li>
 <li>Run a local HTTP server. <code>shell     python3 ./ruuvi.gwui.html/scripts/http_server_auth.py --port 8000</code></li>
 </ul>
-<h4 id="test-steps-26">Test steps</h4>
+<h4 id="test-steps-25">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1260,13 +1215,13 @@
 </ul></li>
 </ul>
 <h3 id="tst-006-af004-test-updating-firmware-to-the-latest-release">TST-006-AF004: Test updating firmware to the latest release</h3>
-<h4 id="setup-27">Setup</h4>
+<h4 id="setup-26">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 <li>Configure mDNS on your computer, set host-name to ‘my-https-server’, set domain-name to ‘local’.</li>
 <li>Run a local HTTP server. <code>shell     python3 ./ruuvi.gwui.html/scripts/http_server_auth.py --port 8000</code></li>
 </ul>
-<h4 id="test-steps-27">Test steps</h4>
+<h4 id="test-steps-26">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1330,13 +1285,13 @@
 </ul></li>
 </ul>
 <h3 id="tst-006-af005-test-auto-updating-firmware-to-the-latest-release-v1.14.3">TST-006-AF005: Test auto updating firmware to the latest release v1.14.3</h3>
-<h4 id="setup-28">Setup</h4>
+<h4 id="setup-27">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 <li>Configure mDNS on your computer, set host-name to ‘my-https-server’, set domain-name to ‘local’.</li>
 <li>Run a local HTTP server. <code>shell     python3 ./ruuvi.gwui.html/scripts/http_server_auth.py --port 8000</code></li>
 </ul>
-<h4 id="test-steps-28">Test steps</h4>
+<h4 id="test-steps-27">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1386,13 +1341,13 @@
 </ul></li>
 </ul>
 <h3 id="tst-006-af006-test-auto-updating-firmware-to-the-latest-beta-version-v1.14.2">TST-006-AF006: Test auto updating firmware to the latest beta version v1.14.2</h3>
-<h4 id="setup-29">Setup</h4>
+<h4 id="setup-28">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 <li>Configure mDNS on your computer, set host-name to ‘my-https-server’, set domain-name to ‘local’.</li>
 <li>Run a local HTTP server. <code>shell     python3 ./ruuvi.gwui.html/scripts/http_server_auth.py --port 8000</code></li>
 </ul>
-<h4 id="test-steps-29">Test steps</h4>
+<h4 id="test-steps-28">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1459,13 +1414,13 @@
 </ul></li>
 </ul>
 <h3 id="tst-006-af007-test-manual-firmware-updating-mode">TST-006-AF007: Test manual firmware updating mode</h3>
-<h4 id="setup-30">Setup</h4>
+<h4 id="setup-29">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 <li>Configure mDNS on your computer, set host-name to ‘my-https-server’, set domain-name to ‘local’.</li>
 <li>Run a local HTTP server. <code>shell     python3 ./ruuvi.gwui.html/scripts/http_server_auth.py --port 8000</code></li>
 </ul>
-<h4 id="test-steps-30">Test steps</h4>
+<h4 id="test-steps-29">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1532,7 +1487,7 @@
 </ul></li>
 </ul>
 <h2 id="tst-007-custom-https-server-tests">TST-007: Custom HTTP(S) server tests</h2>
-<h3 id="setup-31">Setup</h3>
+<h3 id="setup-30">Setup</h3>
 <ul>
 <li><p>Create a directory for the tests. <code>shell     mkdir -p integration_tests/.test_results</code></p></li>
 <li><p>Prepare ‘integration_tests/.test_results/secrets.json’ with the configuration. <code>json     {       "gw_mac": "XX:XX:XX:XX:9C:2C",       "gw_id": "XX:XX:XX:XX:XX:XX:XX:XX",       "url": "http://ruuvigateway9c2c.local",       "http_server": "http://my-https-server.local:8000",       "https_server": "https://my-https-server.local:8001",     }</code></p>
@@ -1546,11 +1501,11 @@
 <li><p>Generate self-signed certificates <code>shell     cd integration_tests/.test_results     openssl genrsa -out server_key.pem 2048     openssl req -new -key server_key.pem -out server_csr.pem -subj "/C=FI/ST=Uusimaa/L=Helsinki/O=Ruuvi/OU=/CN=my-https-server.local"     openssl x509 -req -in server_csr.pem -signkey server_key.pem -out server_cert.pem -days 365     openssl genrsa -out client_key.pem 2048     openssl req -new -key client_key.pem -out client_csr.pem -subj "/C=FI/ST=Uusimaa/L=Helsinki/O=Ruuvi/OU=/CN=ruuvigateway9c2c.local"     openssl x509 -req -in client_csr.pem -signkey client_key.pem -out client_cert.pem -days 365</code></p></li>
 </ul>
 <h3 id="tst-007-ag001-test-sending-data-to-http-server-without-authentication">TST-007-AG001: Test sending data to HTTP server without authentication</h3>
-<h4 id="setup-32">Setup</h4>
+<h4 id="setup-31">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 </ul>
-<h4 id="test-steps-31">Test steps</h4>
+<h4 id="test-steps-30">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1576,11 +1531,11 @@ node scripts/ruuvi_gw_ui_tester.js --config tests/test_http.yaml --secrets ../in
 </ul></li>
 </ul>
 <h3 id="tst-007-ag002-test-sending-data-to-http-server-with-authentication">TST-007-AG002: Test sending data to HTTP server with authentication</h3>
-<h4 id="setup-33">Setup</h4>
+<h4 id="setup-32">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 </ul>
-<h4 id="test-steps-32">Test steps</h4>
+<h4 id="test-steps-31">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: (Optionally) Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1606,11 +1561,11 @@ node scripts/ruuvi_gw_ui_tester.js --config tests/test_http_with_auth.yaml --sec
 </ul></li>
 </ul>
 <h3 id="tst-007-ag003-test-sending-data-to-local-https-server-with-the-server-certificate-checking">TST-007-AG003: Test sending data to local HTTPS server with the server certificate checking</h3>
-<h4 id="setup-34">Setup</h4>
+<h4 id="setup-33">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 </ul>
-<h4 id="test-steps-33">Test steps</h4>
+<h4 id="test-steps-32">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: (Optionally) Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1638,11 +1593,11 @@ node scripts/ruuvi_gw_ui_tester.js --config tests/test_https_with_server_cert_ch
 </ul></li>
 </ul>
 <h3 id="tst-007-ag004-test-sending-data-to-local-https-server-with-the-server-and-client-certificates-checking">TST-007-AG004: Test sending data to local HTTPS server with the server and client certificates checking</h3>
-<h4 id="setup-35">Setup</h4>
+<h4 id="setup-34">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 </ul>
-<h4 id="test-steps-34">Test steps</h4>
+<h4 id="test-steps-33">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: (Optionally) Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1671,7 +1626,7 @@ node scripts/ruuvi_gw_ui_tester.js --config tests/test_https_with_server_and_cli
 </ul></li>
 </ul>
 <h2 id="tst-008-mqtt-server-tests">TST-008: MQTT server tests</h2>
-<h3 id="setup-36">Setup</h3>
+<h3 id="setup-35">Setup</h3>
 <ul>
 <li><p>Create a directory for the tests. <code>shell     mkdir -p integration_tests/.test_results</code></p></li>
 <li><p>Prepare ‘integration_tests/.test_results/secrets.json’ with the configuration. <code>json     {       "gw_mac": "XX:XX:XX:XX:9C:2C",       "gw_id": "XX:XX:XX:XX:XX:XX:XX:XX",       "url": "http://ruuvigateway9c2c.local",       "http_server": "http://my-https-server.local:8000",       "https_server": "https://my-https-server.local:8001",       "mqtt_client_cert": [         "-----BEGIN CERTIFICATE-----",         ... certificate content ...,         "-----END CERTIFICATE-----"       ],       "mqtt_client_key": [         "-----BEGIN RSA PRIVATE KEY-----",         ... key content ...,         "-----END RSA PRIVATE KEY-----"       ],       "mqtt_server_cert": [         "-----BEGIN CERTIFICATE-----",         ... certificate content ...,         "-----END CERTIFICATE-----"       ]     }</code></p>
@@ -1687,11 +1642,11 @@ node scripts/ruuvi_gw_ui_tester.js --config tests/test_https_with_server_and_cli
 </ul></li>
 </ul>
 <h3 id="tst-008-ae001-test-sending-data-to-mqtt-server-via-tcp">TST-008-AE001: Test sending data to MQTT server via TCP</h3>
-<h4 id="setup-37">Setup</h4>
+<h4 id="setup-36">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 </ul>
-<h4 id="test-steps-35">Test steps</h4>
+<h4 id="test-steps-34">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1713,11 +1668,11 @@ node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_tcp.yaml --secrets .
 </ul></li>
 </ul>
 <h3 id="tst-008-ae002-test-sending-data-to-mqtt-server-via-ssl">TST-008-AE002: Test sending data to MQTT server via SSL</h3>
-<h4 id="setup-38">Setup</h4>
+<h4 id="setup-37">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 </ul>
-<h4 id="test-steps-36">Test steps</h4>
+<h4 id="test-steps-35">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: (Optionally) Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1739,11 +1694,11 @@ node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_ssl.yaml --secrets .
 </ul></li>
 </ul>
 <h3 id="tst-008-ae003-test-sending-data-to-mqtt-server-via-websocket">TST-008-AE003: Test sending data to MQTT server via WebSocket</h3>
-<h4 id="setup-39">Setup</h4>
+<h4 id="setup-38">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 </ul>
-<h4 id="test-steps-37">Test steps</h4>
+<h4 id="test-steps-36">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: (Optionally) Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1765,11 +1720,11 @@ node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_ws.yaml --secrets ..
 </ul></li>
 </ul>
 <h3 id="tst-008-ae004-test-sending-data-to-mqtt-server-via-secure-websocket">TST-008-AE004: Test sending data to MQTT server via Secure WebSocket</h3>
-<h4 id="setup-40">Setup</h4>
+<h4 id="setup-39">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 </ul>
-<h4 id="test-steps-38">Test steps</h4>
+<h4 id="test-steps-37">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: (Optionally) Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>
@@ -1791,11 +1746,11 @@ node scripts/ruuvi_gw_ui_tester.js --config tests/test_mqtt_wss.yaml --secrets .
 </ul></li>
 </ul>
 <h3 id="tst-008-ae005-test-sending-data-to-aws-mqtt-server">TST-008-AE005: Test sending data to AWS MQTT server</h3>
-<h4 id="setup-41">Setup</h4>
+<h4 id="setup-40">Setup</h4>
 <ul>
 <li>Connect Ethernet cable to the gateway.</li>
 </ul>
-<h4 id="test-steps-39">Test steps</h4>
+<h4 id="test-steps-38">Test steps</h4>
 <ul>
 <li><p><strong>Action</strong>: (Optionally) Erase flash and write firmware.</p>
 <pre class="shell"><code>python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash</code></pre>

@@ -2,7 +2,7 @@
 
 Developed with:
 * Hardware: Ruuvi Gateway Rev A2.
-* ESP-IDF version [v4.2.2](https://github.com/espressif/esp-idf/releases/tag/v4.2.2)
+* ESP-IDF version [v4.2.5](https://github.com/espressif/esp-idf/releases/tag/v4.2.5)
 
 Latest documentation and roadmap is at https://docs.ruuvi.com/gw-esp32-firmware. 
 
@@ -20,12 +20,12 @@ However, if you have any problems, you can try to [reinstall the driver yourself
 
 If you want to build firmware from source, you will need to install the ESP-IDF framework and 
 the toolchain to compile code for ESP32. See the
-[Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/v4.2.2/esp32/get-started/index.html)
+[Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/v4.2.5/esp32/get-started/index.html)
 for detailed instructions on how to install all the necessary components for the various platforms. 
 
-**Please note that you need to install ESP-IDF version v4.2.2**:
+**Please note that you need to install ESP-IDF version v4.2.5**:
 ```shell
-git clone -b v4.2.2 --recursive git@github.com:espressif/esp-idf.git
+git clone -b v4.2.5 --recursive https://github.com/espressif/esp-idf.git
 ```
 
 ### The console utility `esptool.py`
@@ -224,9 +224,6 @@ idf.py build
 
 Release versions of Ruuvi Gateway firmware can be downloaded from here: 
 [releases](https://github.com/ruuvi/ruuvi.gateway_esp.c/releases).
-
-Pre-built images of firmware versions for developers can be found here: 
-[Ruuvi Jenkins](https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/).
 
 ### Flash the firmware images
 

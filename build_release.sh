@@ -1,6 +1,6 @@
 IDF_VERSION_EXPECTED=`cat CMakeLists.txt | sed -r -e '/^set\(EXPECTED_IDF_VERSION\s+(v.*)\)$/!d' -e 's/^set\(EXPECTED_IDF_VERSION\s+(v.*)\)$/\1/g'`
 test ${?} -eq 0 || exit 1
-IDF_VERSION_ACTUAL=`(cd $IDF_PATH && git describe --always --tags --dirty --match v4.2.2*)`
+IDF_VERSION_ACTUAL=`(cd $IDF_PATH && git describe --always --tags --dirty --match v4.2.5*)`
 test ${?} -eq 0 || exit 1
 
 if [ "$IDF_VERSION_EXPECTED" != "$IDF_VERSION_ACTUAL" ]; then

@@ -1399,57 +1399,6 @@
 
     - Check that the firmware version at the bottom of the page is v1.14.2.
 
-### TST-006-AF003: Test installing firmware from the manually entered URL pointed to Jenkins server
-
-#### Setup
-- Connect Ethernet cable to the gateway.
-
-#### Test steps
-- **Action**: Erase flash and write firmware.
-
-    ```shell
-    python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
-    ```
-
-    **Checks**:
-
-    - LED: 'G'
-
-- **Action**: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
-
-    **Checks**:
-
-    - Check that the '**Login to Settings Page**' page is opened in the browser.
-
-- **Action**: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
-
-    **Checks**:
-
-    - Check that the '**Setup Wizard**' page is opened in the browser.
-
-- **Action**: Update firmware on **Software Update** page
-
-    **Steps**:
-
-    - Page **Setup Wizard**: Click **Let's get started**.
-    - Page **Internet Connection**: click **Skip**.
-    - Page **Software Update**: Click **Advanced Settings**.
-    - Page **Software Update**: Enable checkbox **Don't use the software update provided by Ruuvi but download binary files from URL address instead.**.
-    - Page **Software Update**: Enter URL: https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/1275/artifact/build/
-    - Page **Software Update**: Click **Update**.
-    - Wait until updating is finished.
-
-    **Checks**:
-
-    - Page **Finished!**: message '**All good! Update was successful.**' must be displayed.
-    - LED: 'G'
-
-- **Action**: Check firmware version in UI - refresh the page in the browser.
-
-    **Checks**:
-
-    - Check that the firmware version at the bottom of the page is v1.14.1-86-g70f9ebc.
-
 ### TST-006-AF003: Test installing firmware from the manually entered URL pointed to local server
 
 #### Setup
