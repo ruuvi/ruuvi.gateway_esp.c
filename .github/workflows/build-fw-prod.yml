@@ -198,12 +198,12 @@ jobs:
           name: ruuvi_gateway_fw-prod-release-zip
           path: release_asset
 
-      - name: Create release and upload asset
+      - name: Create release and upload assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          set -xe
+          set -xeuo pipefail
           command -v gh >/dev/null 2>&1 || { echo "gh CLI not found"; exit 1; }
           ARTIFACT_PATH="$GITHUB_WORKSPACE/release_asset/${ARTIFACT_NAME}.zip"
           if [ ! -f "$ARTIFACT_PATH" ]; then
