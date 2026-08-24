@@ -205,22 +205,11 @@ jobs:
         run: |
           set -xeuo pipefail
           command -v gh >/dev/null 2>&1 || { echo "gh CLI not found"; exit 1; }
-          RELEASE_DIR="$GITHUB_WORKSPACE/release_files"
-          ZIP_PATH="$GITHUB_WORKSPACE/release_asset/${ARTIFACT_NAME}.zip"
-          if [ ! -d "$RELEASE_DIR" ]; then
-            echo "Release files directory not found at $RELEASE_DIR"
+          ARTIFACT_PATH="$GITHUB_WORKSPACE/release_asset/${ARTIFACT_NAME}.zip"
+          if [ ! -f "$ARTIFACT_PATH" ]; then
+            echo "Artifact not found at $ARTIFACT_PATH"; ls -la "$GITHUB_WORKSPACE/release_asset" || true
             exit 1
           fi
-          mapfile -t ASSETS < <(find "$RELEASE_DIR" -type f | sort)
-          if [ "${#ASSETS[@]}" -eq 0 ]; then
-            echo "No release files found under $RELEASE_DIR"
-            exit 1
-          fi
-          if [ ! -f "$ZIP_PATH" ]; then
-            echo "Artifact not found at $ZIP_PATH"; ls -la "$GITHUB_WORKSPACE/release_asset" || true
-            exit 1
-          fi
-          ASSETS+=("$ZIP_PATH")
           # create if missing; on failure re-check to tolerate races with the dev workflow
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             if ! gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes "Automated release" --prerelease; then
@@ -231,4 +220,24 @@ jobs:
               fi
             fi
           fi
+          gh release upload "$TAG" "$ARTIFACT_PATH" --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Upload production firmware files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -xeuo pipefail
+          RELEASE_DIR="$GITHUB_WORKSPACE/release_files"
+          ASSETS=(
+            "$RELEASE_DIR/ruuvi_gateway_esp.bin"
+            "$RELEASE_DIR/fatfs_gwui.bin"
+            "$RELEASE_DIR/fatfs_nrf52.bin"
+          )
+          for asset in "${ASSETS[@]}"; do
+            if [ ! -f "$asset" ]; then
+              echo "Release file not found at $asset"
+              exit 1
+            fi
+          done
           gh release upload "$TAG" "${ASSETS[@]}" --repo "$GITHUB_REPOSITORY" --clobber
