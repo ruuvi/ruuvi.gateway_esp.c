@@ -45,7 +45,7 @@ static const gw_cfg_ruuvi_t g_gateway_config_default_ruuvi = {
             .http_use_ssl_client_cert = false,
             .http_use_ssl_server_cert = false,
             .http_url = { { RUUVI_GATEWAY_HTTP_DEFAULT_URL } },
-            .http_period = 10,
+            .http_period = RUUVI_GATEWAY_HTTP_DEFAULT_PERIOD,
             .data_format = GW_CFG_HTTP_DATA_FORMAT_RUUVI,
             .auth_type = GW_CFG_HTTP_AUTH_TYPE_NONE,
             .auth = {
@@ -267,6 +267,12 @@ const gw_cfg_device_info_t*
 gw_cfg_default_device_info(void)
 {
     return &g_gw_cfg_default.device_info;
+}
+
+const ruuvi_gw_cfg_http_t*
+gw_cfg_default_get_http(void)
+{
+    return &g_gw_cfg_default.ruuvi_cfg.http;
 }
 
 const ruuvi_gw_cfg_mqtt_t*

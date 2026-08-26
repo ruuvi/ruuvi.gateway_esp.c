@@ -142,6 +142,10 @@ public:
     bool m_flag_storage_stat_srv_cert { false };
     bool m_flag_storage_mqtt_srv_cert { false };
     bool m_flag_storage_remote_cfg_srv_cert { false };
+
+    bool m_flag_storage_http_path { false };
+    bool m_flag_storage_http_query { false };
+    bool m_flag_storage_http_headers { false };
 };
 
 TestJsonRuuvi::TestJsonRuuvi()
@@ -260,57 +264,80 @@ gw_cfg_storage_check(void)
 }
 
 bool
-gw_cfg_storage_check_file(const char* const p_file_name)
+gw_cfg_storage_check_file(const char* const p_file_name, const bool is_blob, size_t* const p_file_size)
 {
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, p_file_name))
+    if (nullptr != p_file_size)
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_cert;
+        *p_file_size = 0;
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, p_file_name))
+    if (!is_blob)
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_key;
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_CLI_KEY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_cli_key;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_key;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_key;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_key;
+        }
+
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_srv_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_srv_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_srv_cert;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_srv_cert;
+        }
     }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_CERT, p_file_name))
+    else
     {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_CLI_KEY, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_cli_key;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_CLI_KEY, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_cli_key;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_CLI_KEY, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_cli_key;
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_PATH, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_path;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_QUERY, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_query;
+        }
+        if (0 == strcmp(GW_CFG_STORAGE_HTTP_HEADERS, p_file_name))
+        {
+            return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_headers;
+        }
     }
 
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_HTTP_SRV_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_http_srv_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_STAT_SRV_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_stat_srv_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_MQTT_SRV_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_mqtt_srv_cert;
-    }
-    if (0 == strcmp(GW_CFG_STORAGE_SSL_REMOTE_CFG_SRV_CERT, p_file_name))
-    {
-        return g_pTestClass->m_flag_storage_ready && g_pTestClass->m_flag_storage_remote_cfg_srv_cert;
-    }
     return false;
 }
 
@@ -461,6 +488,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
         "\t\"use_http\":\ttrue,\n"
         "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
         "\t\"http_period\":\t15,\n"
+        "\t\"http_use_extra_http_path\":\tfalse,\n"
+        "\t\"http_use_extra_http_query\":\tfalse,\n"
+        "\t\"http_use_extra_http_headers\":\tfalse,\n"
         "\t\"http_use_ssl_client_cert\":\tfalse,\n"
         "\t\"http_use_ssl_server_cert\":\tfalse,\n"
         "\t\"http_data_format\":\t\"ruuvi\",\n"
@@ -605,6 +635,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: 15");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
@@ -673,6 +706,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_raw_and_decoded) // NOLI
         "\t\"use_http_ruuvi\":\tfalse,\n"
         "\t\"use_http\":\ttrue,\n"
         "\t\"http_url\":\t\"https://api.ruuvi.com:456/api\",\n"
+        "\t\"http_use_extra_http_path\":\tfalse,\n"
+        "\t\"http_use_extra_http_query\":\tfalse,\n"
+        "\t\"http_use_extra_http_headers\":\tfalse,\n"
         "\t\"http_use_ssl_client_cert\":\tfalse,\n"
         "\t\"http_use_ssl_server_cert\":\tfalse,\n"
         "\t\"http_data_format\":\t\"ruuvi_raw_and_decoded\",\n"
@@ -818,6 +854,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_raw_and_decoded) // NOLI
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
@@ -898,6 +937,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
         "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
         "\t\"http_stat_user\":\t\"user678\",\n"
         "\t\"http_stat_pass\":\t\"pass678\",\n"
+        "\t\"http_use_extra_http_path\":\tfalse,\n"
+        "\t\"http_use_extra_http_query\":\tfalse,\n"
+        "\t\"http_use_extra_http_headers\":\tfalse,\n"
         "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
         "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
 
@@ -1031,6 +1073,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_data_format_decoded) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_user: user567");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_pass: pass567");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: 20");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
@@ -1110,6 +1155,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
         "\t\"use_http_stat\":\ttrue,\n"
         "\t\"http_stat_url\":\t\"https://api.ruuvi.com:456/status\",\n"
         "\t\"http_stat_user\":\t\"user678\",\n"
+        "\t\"http_use_extra_http_path\":\tfalse,\n"
+        "\t\"http_use_extra_http_query\":\tfalse,\n"
+        "\t\"http_use_extra_http_headers\":\tfalse,\n"
         "\t\"http_stat_use_ssl_client_cert\":\tfalse,\n"
         "\t\"http_stat_use_ssl_server_cert\":\tfalse,\n"
 
@@ -1274,6 +1322,9 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords) // NOLINT
         ESP_LOG_INFO,
         "Can't find key 'http_pass' in config-json, leave the previous value unchanged");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: 20");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
@@ -1468,7 +1519,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -1519,6 +1570,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_without_passwords_and_remote_cfg_auth_cha
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
@@ -1685,7 +1751,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -1729,6 +1795,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_empty_prefix_and_client_id) // NOLIN
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -1886,7 +1967,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -1930,6 +2011,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_no_prefix_and_client_id) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -2089,7 +2185,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl_raw_and_decoded) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -2133,6 +2229,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_ssl_raw_and_decoded) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -2286,7 +2397,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket_decoded) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -2330,6 +2441,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_websocket_decoded) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -2483,7 +2609,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -2527,6 +2653,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_mqtt_secure_websocket) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -2682,7 +2823,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -2726,6 +2867,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_full_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -2871,7 +3027,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -2915,6 +3071,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_disabled_with_min_config) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -3061,7 +3232,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -3105,6 +3276,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_via_dhcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -3254,7 +3440,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -3298,6 +3484,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_custom) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -3455,7 +3656,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -3499,6 +3700,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_ntp_enabled_default) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: https://api.ruuvi.com:456/status");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: user678");
@@ -3654,7 +3870,7 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
 
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http_ruuvi);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.use_http);
-    ASSERT_EQ(string("https://network.ruuvi.com/record"), gw_cfg.ruuvi_cfg.http.http_url.buf);
+    ASSERT_EQ(string("https://api.ruuvi.com:456/api"), gw_cfg.ruuvi_cfg.http.http_url.buf);
     ASSERT_EQ(GW_CFG_HTTP_DATA_FORMAT_RUUVI, gw_cfg.ruuvi_cfg.http.data_format);
     ASSERT_EQ(GW_CFG_HTTP_AUTH_TYPE_NONE, gw_cfg.ruuvi_cfg.http.auth_type);
     ASSERT_FALSE(gw_cfg.ruuvi_cfg.http.http_use_ssl_client_cert);
@@ -3691,6 +3907,21 @@ TEST_F(TestJsonRuuvi, json_ruuvi_parse_http_body) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: https://api.ruuvi.com:456/api");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");

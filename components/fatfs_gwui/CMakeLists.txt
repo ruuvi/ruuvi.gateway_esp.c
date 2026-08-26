@@ -29,7 +29,7 @@ endif()
 if(NOT BOOTLOADER_BUILD AND CONFIG_SECURE_SIGNED_APPS AND CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES)
     add_custom_command(
             OUTPUT "${build_dir}/.signed_gwui_timestamp" "${GWUI_SIGNED}"
-            COMMAND ${ESPSECUREPY} sign_data --version ${secure_boot_version} --keyfile ${secure_boot_signing_key}
+            COMMAND ${ESPSECUREPY} sign_data --version ${secure_boot_version} --keyfile "${secure_boot_signing_key}"
             -o "${GWUI_SIGNED}" "${GWUI_UNSIGNED}"
             COMMAND ${CMAKE_COMMAND} -E echo "Generated signed binary image ${GWUI_SIGNED} from ${GWUI_UNSIGNED}"
             COMMAND ${CMAKE_COMMAND} -E md5sum "${GWUI_SIGNED}" > "${build_dir}/.signed_gwui_timestamp"

@@ -38,7 +38,7 @@ extern "C" {
 #define HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_LATEST_RELEASE_INFO (HTTP_SERVER_USER_REQ_CODE_1)
 #define HTTP_SERVER_USER_REQ_CODE_DOWNLOAD_GW_CFG              (HTTP_SERVER_USER_REQ_CODE_2)
 
-#define RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS  (40U * 60U)
+#define RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_REBOOT_SECONDS  (2U * 60U * 60U)
 #define RUUVI_CHECK_FOR_FW_UPDATES_DELAY_AFTER_SUCCESS_SECONDS (12U * 60U * 60U)
 #define RUUVI_CHECK_FOR_FW_UPDATES_DELAY_BEFORE_RETRY_SECONDS  (40U * 60U)
 
@@ -58,6 +58,7 @@ extern "C" {
 #define RUUVI_MQTT_TLS_OUT_CONTENT_LEN (4096)
 
 extern volatile uint32_t IRAM_ATTR g_network_disconnect_cnt;
+extern volatile uint32_t IRAM_ATTR g_wifi_cnt_mic_failure;
 
 void
 timer_cfg_mode_deactivation_start_with_delay(const TimeUnitsSeconds_t delay_sec);
@@ -152,6 +153,12 @@ start_wifi_ap_without_blocking_req_from_lan(void);
 
 void
 ruuvi_log_heap_usage(void);
+
+bool
+ruuvi_gw_mark_app_valid_cancel_rollback(void);
+
+bool
+ruuvi_gw_fw_update_is_in_progress(void);
 
 #ifdef __cplusplus
 }

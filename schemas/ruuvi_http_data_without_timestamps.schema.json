@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "http://ruuvi.com/schemas/ruuvi_http_data_without_timestamps.schema.json",
   "title": "Data from Bluetooth-sensors (without timestamps) relayed via HTTP/HTTPS",
   "type": "object",
@@ -26,14 +26,15 @@
           ]
         },
         "nonce": {
-          "type": "string",
+          "type": "integer",
           "title": "Nonce - sequentially incremented number for each message, the initial value of which is set randomly",
           "examples": [
-            "2636366621"
+            2636366621
           ]
         },
         "gw_mac": {
           "type": "string",
+          "pattern": "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$",
           "title": "MAC-address of Ruuvi Gateway",
           "examples": [
             "C8:25:2D:8E:9C:2C"
@@ -41,45 +42,72 @@
         },
         "tags": {
           "type": "object",
-          "title": "Array of records with relayed messages from Bluetooth-sensors",
-          "items": {
-            "type": "object",
-            "patternProperties": {
-              "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$": {
-                "type": "object",
-                "title": "MAC-address of Bluetooth-sensor",
-                "required": [
-                  "rssi",
-                  "counter",
-                  "data"
-                ],
-                "properties": {
-                  "rssi": {
-                    "type": "integer",
-                    "title": "RSSI",
-                    "examples": [
-                      -71
-                    ]
-                  },
-                  "counter": {
-                    "type": "string",
-                    "title": "Counter of messages from Bluetooth-sensors that were received by Gateway",
-                    "examples": [
-                      "363"
-                    ]
-                  },
-                  "data": {
-                    "type": "string",
-                    "title": "Relayed message from Bluetooth-sensor in hex encoding",
-                    "examples": [
-                      "0201061BFF99040513C85714C7CC00240008041CAB76F41C3CC6A5B9E0AD06"
-                    ]
-                  }
+          "title": "Map of records with relayed messages from Bluetooth-sensors keyed by sensor MAC address",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$": {
+              "type": "object",
+              "title": "MAC-address of Bluetooth-sensor",
+              "additionalProperties": false,
+              "required": [
+                "rssi",
+                "counter",
+                "ble_phy",
+                "ble_chan",
+                "data"
+              ],
+              "properties": {
+                "rssi": {
+                  "type": "integer",
+                  "title": "RSSI",
+                  "examples": [
+                    -71
+                  ]
+                },
+                "counter": {
+                  "type": "integer",
+                  "title": "Counter of messages from Bluetooth-sensors that were received by Gateway",
+                  "examples": [
+                    363
+                  ]
+                },
+                "ble_phy": {
+                  "type": "string",
+                  "enum": ["1M", "2M", "Coded"],
+                  "title": "BLE PHY used for communication",
+                  "examples": [
+                    "1M",
+                    "2M",
+                    "Coded"
+                  ]
+                },
+                "ble_chan": {
+                  "type": "integer",
+                  "title": "BLE channel used for communication",
+                  "examples": [
+                    37,
+                    38,
+                    39
+                  ]
+                },
+                "ble_tx_power": {
+                  "type": "integer",
+                  "title": "BLE transmit power used for communication",
+                  "examples": [
+                    7,
+                    8
+                  ]
+                },
+                "data": {
+                  "type": "string",
+                  "title": "Relayed message from Bluetooth-sensor in hex encoding",
+                  "pattern": "^([0-9A-Fa-f]{2})+$",
+                  "examples": [
+                    "0201061BFF99040513C85714C7CC00240008041CAB76F41C3CC6A5B9E0AD06"
+                  ]
                 }
               }
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            }
           }
         }
       }
@@ -89,18 +117,37 @@
     {
       "data": {
         "coordinates": "",
-        "nonce": "2896361039",
+        "nonce": 2896361039,
         "gw_mac": "C8:25:2D:8E:9C:2C",
         "tags": {
           "E3:75:CF:37:4E:23": {
             "rssi": -50,
-            "counter": "363",
+            "counter": 363,
+            "ble_phy": "1M",
+            "ble_chan": 37,
             "data": "0201061BFF990405158A5B05C6810004004403DCAB767A45BDE375CF374E23"
           },
           "F4:1F:0C:28:CB:D6": {
             "rssi": -32,
-            "counter": "365",
+            "counter": 365,
+            "ble_phy": "1M",
+            "ble_chan": 38,
             "data": "0201061BFF990405166455D5C6DD0008FFF803F0ADB60F2A92F41F0C28CBD6"
+          },
+          "E1:9D:F3:4F:8A:A5": {
+            "rssi": -44,
+            "counter":366,
+            "ble_phy": "1M",
+            "ble_chan": 37,
+            "data": "020106030398FC17FF990406143A6194C636005A0330D500F7FF10944F8AA5"
+          },
+          "FD:54:6F:6C:52:92": {
+            "rssi": -77,
+            "counter":367,
+            "ble_phy": "2M",
+            "ble_chan": 10,
+            "ble_tx_power": 8,
+            "data": "2BFF9904E114595CB0C6460030003A0041004402364300FFFFFFFFFFFF103B37F8FFFFFFFFFFFD546F6C5292030398FC"
           }
         }
       }

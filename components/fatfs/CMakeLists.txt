@@ -13,7 +13,7 @@ set(srcs "${ORIG}/diskio/diskio.c"
          "${ORIG}/src/ffunicode.c"
          "${ORIG}/vfs/vfs_fat.c"
          "${ORIG}/vfs/vfs_fat_sdmmc.c"
-         "${ORIG}/vfs/vfs_fat_spiflash.c")
+         "vfs/vfs_fat_spiflash.c")
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS "${ORIG}/diskio" "${ORIG}/vfs" "${ORIG}/src"

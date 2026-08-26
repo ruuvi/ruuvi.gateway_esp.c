@@ -774,6 +774,17 @@ gw_cfg_get_coordinates(void)
     return coordinates;
 }
 
+str_buf_t
+gw_cfg_get_coordinates_str_buf(void)
+{
+    assert(NULL != g_gw_cfg_mutex);
+    const gw_cfg_t*                         p_gw_cfg      = gw_cfg_lock_ro();
+    const ruuvi_gw_cfg_coordinates_t* const p_coordinates = &p_gw_cfg->ruuvi_cfg.coordinates;
+    const str_buf_t                         coordinates   = str_buf_printf_with_alloc("%s", p_coordinates->buf);
+    gw_cfg_unlock_ro(&p_gw_cfg);
+    return coordinates;
+}
+
 wifiman_config_t
 gw_cfg_get_wifi_cfg(void)
 {

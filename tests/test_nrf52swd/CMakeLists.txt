@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.22)
 
 project(ruuvi_gateway_esp-test-nrf52swd)
 set(ProjectId ruuvi_gateway_esp-test-nrf52swd)
@@ -12,17 +12,18 @@ add_executable(${ProjectId}
 
 set_target_properties(${ProjectId} PROPERTIES
         C_STANDARD 11
-        CXX_STANDARD 14
+        CXX_STANDARD 17
 )
 
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
         ${RUUVI_GW_SRC}
+        include
+        ../include
         ${WIFI_MANAGER_INC}
         ../../components/libSWD-esp32/include
         ../../components/ruuvi.boards.c
-        include
         ${CMAKE_CURRENT_SOURCE_DIR}
         $ENV{IDF_PATH}/components/driver/include
         $ENV{IDF_PATH}/components/soc/include

@@ -1,12 +1,14 @@
 {
   "data": {
     "coordinates": "",
-    "timestamp": "1687922293",
+    "timestamp": 1687922293,
     "gw_mac": "C8:25:2D:8E:9C:2C",
     "tags": {
       "F4:1F:0C:28:CB:D6": {
         "rssi": -51,
-        "timestamp": "1687922293",
+        "timestamp": 1687922293,
+        "ble_phy":"1M",
+        "ble_chan":37,
         "data": "0201061BFF990405167546CAC67C000CFFB403E07796A44D5FF41F0C28CBD6",
         "dataFormat": 5,
         "temperature": 28.745,
@@ -23,7 +25,9 @@
       },
       "F4:C6:46:2C:3E:B4": {
         "rssi": -46,
-        "timestamp": "1687922292",
+        "timestamp": 1687922292,
+        "ble_phy":"1M",
+        "ble_chan":38,
         "data": "0201061BFF99040515EF481EC6630038001003F08376502051F4C6462C3EB4",
         "dataFormat": 5,
         "temperature": 28.075,
@@ -41,4 +45,3 @@
     }
   }
 }
-

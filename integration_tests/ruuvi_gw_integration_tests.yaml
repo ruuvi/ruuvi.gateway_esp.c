@@ -935,39 +935,6 @@ integration_tests:
             checks:
               - "Check that the firmware version at the bottom of the page is v1.14.2."
       - test_id: AF003
-        title: Test installing firmware from the manually entered URL pointed to Jenkins server
-        setup:
-          - setup_step: Connect Ethernet cable to the gateway.
-        steps:
-          - action: Erase flash and write firmware.
-            detail: |
-              ```shell
-              python3 scripts/ruuvi_gw_flash.py v1.15.0 --erase_flash
-              ```
-            checks:
-              - "LED: 'G'"
-          - action: Use a browser to open the gateway's hostname ruuvigateway<XXXX>.local.
-            checks:
-              - "Check that the '**Login to Settings Page**' page is opened in the browser."
-          - action: Use default credentials to log in (use Device ID (XX:XX:XX:XX:XX:XX:XX:XX) as the password).
-            checks:
-              - "Check that the '**Setup Wizard**' page is opened in the browser."
-          - action: Update firmware on **Software Update** page
-            steps:
-              - "Page **Setup Wizard**: Click **Let's get started**."
-              - "Page **Internet Connection**: click **Skip**."
-              - "Page **Software Update**: Click **Advanced Settings**."
-              - "Page **Software Update**: Enable checkbox **Don't use the software update provided by Ruuvi but download binary files from URL address instead.**."
-              - "Page **Software Update**: Enter URL: https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/1275/artifact/build/"
-              - "Page **Software Update**: Click **Update**."
-              - "Wait until updating is finished."
-            checks:
-              - "Page **Finished!**: message '**All good! Update was successful.**' must be displayed."
-              - "LED: 'G'"
-          - action: Check firmware version in UI - refresh the page in the browser.
-            checks:
-              - "Check that the firmware version at the bottom of the page is v1.14.1-86-g70f9ebc."
-      - test_id: AF003
         title: Test installing firmware from the manually entered URL pointed to local server
         setup:
           - setup_step: Connect Ethernet cable to the gateway.
@@ -1098,7 +1065,7 @@ integration_tests:
           - action: Power off/on the gateway.
             checks:
               - "LED: 'G'"
-          - action: Wait 45 minutes.
+          - action: Wait 2 hours 5 minutes.
             checks:
               - "LED: 'G'"
           - action: Refresh the page in the browser
@@ -1155,7 +1122,7 @@ integration_tests:
           - action: Power off/on the gateway.
             checks:
               - "LED: 'G'"
-          - action: Wait 45 minutes.
+          - action: Wait 2 hours 5 minutes.
             checks:
               - "LED: 'G'"
           - action: Refresh the page in the browser
@@ -1212,7 +1179,7 @@ integration_tests:
           - action: Power off/on the gateway.
             checks:
               - "LED: 'G'"
-          - action: Wait 45 minutes.
+          - action: Wait 2 hours 5 minutes.
             checks:
               - "LED: 'G'"
           - action: Refresh the page in the browser

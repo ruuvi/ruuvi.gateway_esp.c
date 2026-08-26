@@ -212,6 +212,11 @@ esp_ota_helper_calc_pub_key_digest_for_signature_in_flash(
     const ets_secure_boot_signature_t* const p_sig_block = bootloader_mmap(
         signature_addr,
         sizeof(ets_secure_boot_signature_t));
+    if (NULL == p_sig_block)
+    {
+        LOG_ERR("bootloader_mmap failed for address 0x%08x", signature_addr);
+        return false;
+    }
     LOG_DUMP_DBG(
         (void*)&p_sig_block->block[0].key,
         sizeof(p_sig_block->block[0].key),

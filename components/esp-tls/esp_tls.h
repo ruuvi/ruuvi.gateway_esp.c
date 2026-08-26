@@ -49,6 +49,24 @@ typedef enum esp_tls_role {
 } esp_tls_role_t;
 
 /**
+ *  @brief ESP-TLS synchronous connection result
+ */
+typedef enum esp_tls_sync_conn_result {
+    ESP_TLS_SYNC_CONN_SUCCESS = 1, /*!< Connection establishment successful */
+    ESP_TLS_SYNC_CONN_TIMEOUT = 0, /*!< Connection establishment timed out */
+    ESP_TLS_SYNC_CONN_ERROR = -1,  /*!< Connection establishment failed */
+} esp_tls_sync_conn_result_e;
+
+/**
+ *  @brief ESP-TLS asynchronous connection result
+ */
+typedef enum esp_tls_async_conn_result {
+    ESP_TLS_ASYNC_CONN_SUCCESS = 1,     /*!< Connection establishment successful */
+    ESP_TLS_ASYNC_CONN_IN_PROGRESS = 0, /*!< Connection establishment is in progress */
+    ESP_TLS_ASYNC_CONN_ERROR = -1,      /*!< Connection establishment failed */
+} esp_tls_async_conn_result_e;
+
+/**
  *  @brief ESP-TLS preshared key and hint structure
  */
 typedef struct psk_key_hint {
@@ -376,11 +394,11 @@ esp_tls_t *esp_tls_conn_http_new(const char *url, const esp_tls_cfg_t *cfg) __at
  * @param[in]  tls       Pointer to esp-tls as esp-tls handle.
  *
  * @return
- *             - -1      If connection establishment fails.
- *             -  1      If connection establishment is successful.
- *             -  0      If connection state is in progress.
+ *         - ESP_TLS_SYNC_CONN_ERROR      If a connection establishment fails.
+ *         - ESP_TLS_SYNC_CONN_SUCCESS    If a connection establishment is successful.
+ *         - ESP_TLS_SYNC_CONN_TIMEOUT    If timeout occurred.
  */
-int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls);
+esp_tls_sync_conn_result_e esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls);
 
 /**
  * @brief      Create a new blocking TLS/SSL connection with a given "HTTP" url
@@ -395,11 +413,11 @@ int esp_tls_conn_new_sync(const char *hostname, int hostlen, int port, const esp
  * @param[in]  tls       Pointer to esp-tls as esp-tls handle.
  *
  * @return
- *             - -1      If connection establishment fails.
- *             -  1      If connection establishment is successful.
- *             -  0      If connection state is in progress.
+ *         - ESP_TLS_SYNC_CONN_ERROR      If a connection establishment fails.
+ *         - ESP_TLS_SYNC_CONN_SUCCESS    If a connection establishment is successful.
+ *         - ESP_TLS_SYNC_CONN_TIMEOUT    If timeout occurred.
  */
-int esp_tls_conn_http_new_sync(const char *url, const esp_tls_cfg_t *cfg, esp_tls_t *tls);
+esp_tls_sync_conn_result_e esp_tls_conn_http_new_sync(const char *url, const esp_tls_cfg_t *cfg, esp_tls_t *tls);
 
 /**
  * @brief      Create a new non-blocking TLS/SSL connection
@@ -415,11 +433,11 @@ int esp_tls_conn_http_new_sync(const char *url, const esp_tls_cfg_t *cfg, esp_tl
  * @param[in]  tls       pointer to esp-tls as esp-tls handle.
  *
  * @return
- *             - -1      If connection establishment fails.
- *             -  0      If connection establishment is in progress.
- *             -  1      If connection establishment is successful.
+ *         - ESP_TLS_ASYNC_CONN_ERROR        If a connection establishment fails.
+ *         - ESP_TLS_ASYNC_CONN_IN_PROGRESS  If a connection establishment is in progress.
+ *         - ESP_TLS_ASYNC_CONN_SUCCESS      If a connection establishment is successful.
  */
-int esp_tls_conn_new_async(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls);
+esp_tls_async_conn_result_e esp_tls_conn_new_async(const char *hostname, int hostlen, int port, const esp_tls_cfg_t *cfg, esp_tls_t *tls);
 
 /**
  * @brief      Create a new non-blocking TLS/SSL connection with a given "HTTP" url
@@ -431,11 +449,11 @@ int esp_tls_conn_new_async(const char *hostname, int hostlen, int port, const es
  * @param[in]  tls     pointer to esp-tls as esp-tls handle.
  *
  * @return
- *             - -1     If connection establishment fails.
- *             -  0     If connection establishment is in progress.
- *             -  1     If connection establishment is successful.
+ *         - ESP_TLS_ASYNC_CONN_ERROR        If a connection establishment fails.
+ *         - ESP_TLS_ASYNC_CONN_IN_PROGRESS  If a connection establishment is in progress.
+ *         - ESP_TLS_ASYNC_CONN_SUCCESS      If a connection establishment is successful.
  */
-int esp_tls_conn_http_new_async(const char *url, const esp_tls_cfg_t *cfg, esp_tls_t *tls);
+esp_tls_async_conn_result_e esp_tls_conn_http_new_async(const char *url, const esp_tls_cfg_t *cfg, esp_tls_t *tls);
 
 /**
  * @brief      Write from buffer 'data' into specified tls connection.

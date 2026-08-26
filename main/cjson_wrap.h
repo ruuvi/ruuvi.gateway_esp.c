@@ -21,8 +21,8 @@ typedef double cjson_number_t;
 
 typedef union cjson_wrap_str_t
 {
-    const char* p_str;
-    void*       p_mem;
+    char* p_str;
+    void* p_mem;
 } cjson_wrap_str_t;
 
 void

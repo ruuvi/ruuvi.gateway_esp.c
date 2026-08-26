@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "http://ruuvi.com/schemas/ruuvi_mqtt_data_without_timestamps.schema.json",
   "title": "Data from Bluetooth-sensors (without timestamps) relayed via MQTT",
   "type": "object",
@@ -34,14 +34,15 @@
     },
     "cnt": {
       "title": "Counter of messages from Bluetooth-sensors that were received by Gateway",
-      "type": "string",
+      "type": "integer",
       "examples": [
-        "338"
+        338
       ]
     },
     "data": {
       "title": "Relayed message from Bluetooth-sensor in hex encoding",
       "type": "string",
+      "pattern": "^([0-9A-Fa-f]{2})+$",
       "examples": [
         "0201061BFF99040515AE4C6DC6D7000CFFF803F4ADB6AD697FF41F0C28CBD6"
       ]
@@ -59,7 +60,7 @@
       "gw_mac": "C8:25:2D:8E:9C:2C",
       "rssi": -25,
       "aoa": [],
-      "cnt": "338",
+      "cnt": 338,
       "data": "0201061BFF990405166455D5C6DE0008FFF403F0AE760F2A8BF41F0C28CBD6",
       "coords": ""
     }

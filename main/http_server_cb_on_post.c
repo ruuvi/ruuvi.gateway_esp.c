@@ -231,28 +231,62 @@ http_server_cb_on_post_gw_cfg_download(void)
 
 HTTP_SERVER_CB_STATIC
 http_server_resp_t
-http_server_cb_on_post_ssl_cert(const char* const p_body, const char* const p_uri_params)
+http_server_cb_on_post_extra_cfg(const char* const p_body, const char* const p_uri_params)
 {
-    LOG_DBG("POST /ssl_cert %s", (NULL != p_uri_params) ? p_uri_params : "NULL");
+    LOG_INFO("POST /extra_cfg %s", (NULL != p_uri_params) ? p_uri_params : "NULL");
     str_buf_t filename_str_buf = http_server_get_from_params_with_decoding(p_uri_params, "file=");
     if (NULL == filename_str_buf.buf)
     {
-        LOG_ERR("HTTP post_ssl_cert: can't find 'file' in params: %s", p_uri_params);
+        LOG_ERR("HTTP extra_cfg: can't find 'file' in params: %s", p_uri_params);
         return http_server_resp_400();
     }
-    LOG_DBG("Content: %s", p_body);
-    if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf))
+    if (LOG_LOCAL_LEVEL >= LOG_LEVEL_DEBUG)
     {
-        LOG_ERR("HTTP post_ssl_cert: Unknown file name: %s", filename_str_buf.buf);
+        LOG_DBG("Content (length: %zu): %s", strlen(p_body), p_body);
+    }
+    else
+    {
+        LOG_INFO("Content length: %zu", strlen(p_body));
+    }
+    bool is_blob = false;
+    if (!gw_cfg_storage_is_known_filename(filename_str_buf.buf, &is_blob))
+    {
+        LOG_ERR("HTTP extra_cfg: Unknown file name: %s", filename_str_buf.buf);
         str_buf_free_buf(&filename_str_buf);
         return http_server_resp_400();
     }
 
-    if (!gw_cfg_storage_write_file(filename_str_buf.buf, p_body))
+    if (!is_blob)
     {
-        LOG_ERR("Can't write file '%s', length=%lu", filename_str_buf.buf, (printf_ulong_t)strlen(p_body));
-        str_buf_free_buf(&filename_str_buf);
-        return http_server_resp_500();
+        if (!gw_cfg_storage_write_file_as_string(filename_str_buf.buf, p_body))
+        {
+            LOG_ERR("Can't write file '%s', length=%lu", filename_str_buf.buf, (printf_ulong_t)strlen(p_body));
+            str_buf_free_buf(&filename_str_buf);
+            return http_server_resp_500();
+        }
+    }
+    else
+    {
+        const size_t content_length = strlen(p_body);
+        if (0 == strcmp(filename_str_buf.buf, GW_CFG_STORAGE_HTTP_HEADERS))
+        {
+            const char* const p_eol = "\r\n";
+            if ((content_length < strlen(p_eol)) || (0 != strcmp(&p_body[content_length - strlen(p_eol)], p_eol)))
+            {
+                LOG_ERR(
+                    "Can't write blob file '%s' with length=%zu: HTTP headers should end with CRLF",
+                    filename_str_buf.buf,
+                    content_length);
+                str_buf_free_buf(&filename_str_buf);
+                return http_server_resp_400();
+            }
+        }
+        if (!gw_cfg_storage_write_file_as_blob(filename_str_buf.buf, (const uint8_t*)p_body, content_length))
+        {
+            LOG_ERR("Can't write blob file '%s', length=%zu", filename_str_buf.buf, content_length);
+            str_buf_free_buf(&filename_str_buf);
+            return http_server_resp_500();
+        }
     }
     str_buf_free_buf(&filename_str_buf);
 
@@ -281,7 +315,7 @@ http_server_cb_on_post(
     const bool        flag_access_from_lan)
 {
     LOG_DBG("http_server_cb_on_post /%s, params=%s", p_file_name, (NULL != p_uri_params) ? p_uri_params : "");
-    if (fw_update_is_in_progress())
+    if (ruuvi_gw_fw_update_is_in_progress())
     {
         LOG_ERR(
             "FW update in progress, cannot handle POST request: /%s, params=%s, flag_access_from_lan=%d",
@@ -323,7 +357,11 @@ http_server_cb_on_post(
     }
     if (0 == strcmp(p_file_name, "ssl_cert"))
     {
-        return http_server_cb_on_post_ssl_cert(p_body, p_uri_params);
+        return http_server_cb_on_post_extra_cfg(p_body, p_uri_params);
+    }
+    if (0 == strcmp(p_file_name, "extra_cfg"))
+    {
+        return http_server_cb_on_post_extra_cfg(p_body, p_uri_params);
     }
     if (0 == strcmp(p_file_name, "init_storage"))
     {

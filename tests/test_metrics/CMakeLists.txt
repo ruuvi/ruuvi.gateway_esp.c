@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.22)
 
 project(ruuvi_gateway_esp-test-metrics)
 set(ProjectId ruuvi_gateway_esp-test-metrics)
@@ -17,6 +17,10 @@ add_executable(${ProjectId}
         ${RUUVI_GW_SRC}/gw_cfg_default.h
         ${RUUVI_GW_SRC}/gw_cfg_json_generate.c
         ${RUUVI_GW_SRC}/gw_cfg_json_generate.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_internal.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_internal.h
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_remote.c
+        ${RUUVI_GW_SRC}/gw_cfg_json_generate_remote.h
         ${RUUVI_GW_SRC}/gw_cfg_log.c
         ${RUUVI_GW_SRC}/gw_cfg_log.h
         ${RUUVI_GW_SRC}/cjson_wrap.c
@@ -55,14 +59,15 @@ add_executable(${ProjectId}
 
 set_target_properties(${ProjectId} PROPERTIES
         C_STANDARD 11
-        CXX_STANDARD 14
+        CXX_STANDARD 17
 )
 
 target_include_directories(${ProjectId} PUBLIC
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
-        ${WIFI_MANAGER_INC}
         include
+        ../include
+        ${WIFI_MANAGER_INC}
         ${COMPONENTS}/ruuvi.comm_tester.c/components/ruuvi.endpoints.c/src
         $ENV{IDF_PATH}/components/json/cJSON
         $ENV{IDF_PATH}/components/app_update/include

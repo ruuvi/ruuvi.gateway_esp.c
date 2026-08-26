@@ -127,12 +127,6 @@ For example: `https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.
 Here you will find a list of the releases available for download: 
 https://github.com/ruuvi/ruuvi.gateway_esp.c/releases
 
-If you want to use a developer build, you can provide a link to the Jenkins build server
-`https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/<BUILD>/artifact/build/`
-where you need to replace **<BUILD>** with the build number you need.
-
-For example: `https://jenkins.ruuvi.com/job/ruuvi_gateway_esp-PR/805/artifact/build/`
-
 To start the firmware update process press the *Update* button.  
 The firmware update process takes a few minutes,and you will see the progress on the screen.
 It's important to make sure that your Ruuvi Gateway remains powered during this time.

@@ -7,7 +7,11 @@
 
 #include "http_server_cb.h"
 #include <cstring>
+#include <cerrno>
+#include <sys/time.h>
 #include <utility>
+#include <vector>
+#include <functional>
 #include "gtest/gtest.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -32,7 +36,11 @@
 #include "partition_table.h"
 #include "http.h"
 #include "http_server_resp.h"
+#include "cjson_wrap.h"
 #include "ruuvi_gateway.h"
+#include "http_post_helper.h"
+#include "http_download.h"
+#include "fw_update.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +59,16 @@ using namespace std;
 
 class TestHttpServerCb;
 static TestHttpServerCb* g_pTestClass;
+
+static struct
+{
+    const char* p_file_name;
+    bool        flag_file_exists;
+    size_t      file_size;
+    const char* p_content;
+    bool        flag_write_success;
+    bool        flag_delete_success;
+} g_extra_cfg_storage;
 
 struct flash_fat_fs_t
 {
@@ -148,12 +166,6 @@ network_timeout_update_timestamp(void)
 void
 settings_save_to_flash(const gw_cfg_t* const p_gw_cfg);
 
-bool
-time_is_synchronized(void)
-{
-    return true;
-}
-
 void
 main_task_on_get_history(void)
 {
@@ -194,15 +206,16 @@ gw_status_resume_http_relaying(void)
 http_server_resp_t
 http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsSeconds_t timeout_seconds)
 {
-    if ((0 == strcmp(p_params->p_url, "https://myserver.com/")) && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_params->auth_type))
+    if ((0 == strcmp(p_params->p_url, "https://myserver.com/")) && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_params->auth_type)
+        && (!p_params->use_extra_http_path) && (!p_params->use_extra_http_query) && (!p_params->use_extra_http_headers))
     {
         static const char resp_content[]
             = "{\n"
               "\t\"status\":\t200,\n"
               "\t\"message\":\t\"{}\"\n"
               "}";
-        const char* p_resp = strdup(resp_content);
-        assert(NULL != p_resp);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", resp_content);
+        assert(NULL != str_buf.buf);
         const http_server_resp_t resp = {
             .http_resp_code       = HTTP_RESP_CODE_200,
             .content_location     = HTTP_CONTENT_LOCATION_HEAP,
@@ -210,11 +223,40 @@ http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsS
             .flag_add_header_date = true,
             .content_type         = HTTP_CONTENT_TYPE_APPLICATION_JSON,
             .p_content_type_param = NULL,
-            .content_len          = strlen(p_resp),
+            .content_len          = strlen(str_buf.buf),
             .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
             .select_location = {
-                .memory = {
-                    .p_buf = (const uint8_t*)p_resp,
+                .heap = {
+                    .p_buf = (uint8_t*)str_buf.buf,
+                },
+            },
+        };
+        return resp;
+    }
+    else if (
+        (0 == strcmp(p_params->p_url, "https://myserver.com:8000"))
+        && (GW_CFG_HTTP_AUTH_TYPE_NONE == p_params->auth_type) && (p_params->use_extra_http_path)
+        && (p_params->use_extra_http_query) && (p_params->use_extra_http_headers))
+    {
+        static const char resp_content[]
+            = "{\n"
+              "\t\"status\":\t200,\n"
+              "\t\"message\":\t\"{}\"\n"
+              "}";
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", resp_content);
+        assert(NULL != str_buf.buf);
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_HEAP,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_APPLICATION_JSON,
+            .p_content_type_param = NULL,
+            .content_len          = strlen(str_buf.buf),
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+            .select_location = {
+                .heap = {
+                    .p_buf = (uint8_t*)str_buf.buf,
                 },
             },
         };
@@ -231,11 +273,6 @@ http_check_post_advs(const http_check_params_t* const p_params, const TimeUnitsS
             .p_content_type_param = NULL,
             .content_len          = 0,
             .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
-            .select_location = {
-                .memory = {
-                    .p_buf = NULL,
-                },
-            },
         };
         return resp;
     }
@@ -253,11 +290,6 @@ http_check_post_stat(const http_check_params_t* const p_params, const TimeUnitsS
         .p_content_type_param = NULL,
         .content_len          = 0,
         .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
-        .select_location = {
-            .memory = {
-                .p_buf = NULL,
-            },
-        },
     };
     return resp;
 }
@@ -274,11 +306,6 @@ http_check_mqtt(const ruuvi_gw_cfg_mqtt_t* const p_mqtt_cfg, const TimeUnitsSeco
         .p_content_type_param = NULL,
         .content_len          = 0,
         .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
-        .select_location = {
-            .memory = {
-                .p_buf = NULL,
-            },
-        },
     };
     return resp;
 }
@@ -321,27 +348,66 @@ gw_cfg_storage_check(void)
 }
 
 bool
-gw_cfg_storage_check_file(const char* const p_file_name)
+gw_cfg_storage_check_file(const char* const p_file_name, const bool is_blob, size_t* const p_file_size)
 {
+    if (nullptr != p_file_size)
+    {
+        *p_file_size = 0;
+    }
+    if ((nullptr != g_extra_cfg_storage.p_file_name) && (0 == strcmp(p_file_name, g_extra_cfg_storage.p_file_name)))
+    {
+        if (g_extra_cfg_storage.flag_file_exists)
+        {
+            if (nullptr != p_file_size)
+            {
+                *p_file_size = g_extra_cfg_storage.file_size;
+            }
+            return true;
+        }
+        return false;
+    }
     return false;
 }
 
 str_buf_t
-gw_cfg_storage_read_file(const char* const p_file_name)
+gw_cfg_storage_read_file_as_string(const char* const p_file_name)
 {
     return str_buf_init_null();
 }
 
-bool
-gw_cfg_storage_write_file(const char* const p_file_name, const char* const p_content)
+str_buf_t
+gw_cfg_storage_read_file_as_blob(const char* const p_file_name)
 {
-    return false;
+    if ((nullptr != g_extra_cfg_storage.p_file_name) && (0 == strcmp(p_file_name, g_extra_cfg_storage.p_file_name))
+        && (nullptr != g_extra_cfg_storage.p_content))
+    {
+        const char* const p_content = g_extra_cfg_storage.p_content;
+        char*             p_buf     = static_cast<char*>(os_malloc(strlen(p_content) + 1));
+        if (nullptr != p_buf)
+        {
+            strcpy(p_buf, p_content);
+            return str_buf_init(p_buf, strlen(p_content) + 1);
+        }
+    }
+    return str_buf_init_null();
+}
+
+bool
+gw_cfg_storage_write_file_as_string(const char* const p_file_name, const char* const p_content)
+{
+    return g_extra_cfg_storage.flag_write_success;
+}
+
+bool
+gw_cfg_storage_write_file_as_blob(const char* const p_file_name, const uint8_t* const p_content, const size_t len)
+{
+    return g_extra_cfg_storage.flag_write_success;
 }
 
 bool
 gw_cfg_storage_delete_file(const char* const p_file_name)
 {
-    return false;
+    return g_extra_cfg_storage.flag_delete_success;
 }
 
 bool
@@ -358,45 +424,6 @@ wrap_esp_err_to_name_r(const esp_err_t code, char* const p_buf, const size_t buf
 }
 
 } // extern "C"
-
-class MemAllocTrace
-{
-    vector<void*> allocated_mem;
-
-    std::vector<void*>::iterator
-    find(void* ptr)
-    {
-        for (auto iter = this->allocated_mem.begin(); iter != this->allocated_mem.end(); ++iter)
-        {
-            if (*iter == ptr)
-            {
-                return iter;
-            }
-        }
-        return this->allocated_mem.end();
-    }
-
-public:
-    void
-    add(void* ptr)
-    {
-        auto iter = find(ptr);
-        assert(iter == this->allocated_mem.end()); // ptr was found in the list of allocated memory blocks
-        this->allocated_mem.push_back(ptr);
-    }
-    void
-    remove(void* ptr)
-    {
-        auto iter = find(ptr);
-        assert(iter != this->allocated_mem.end()); // ptr was not found in the list of allocated memory blocks
-        this->allocated_mem.erase(iter);
-    }
-    bool
-    is_empty()
-    {
-        return this->allocated_mem.empty();
-    }
-};
 
 class FileInfo
 {
@@ -425,14 +452,11 @@ protected:
     void
     SetUp() override
     {
+        os_malloc_trace_init();
         esp_log_wrapper_init();
         g_pTestClass = this;
 
-        cJSON_Hooks hooks = {
-            .malloc_fn = &os_malloc,
-            .free_fn   = &os_free_internal,
-        };
-        cJSON_InitHooks(&hooks);
+        cjson_wrap_init();
 
         g_cnt_cfg_button_pressed = 0;
 
@@ -461,17 +485,37 @@ protected:
         this->m_firmware_update_resp             = str_buf_init_null();
         this->m_fw_updating_reason               = FW_UPDATE_REASON_NONE;
         this->m_fw_update_is_in_progress         = false;
+
+        this->m_alloc_free_call_count       = 0;
+        this->m_flag_alloc_counting_enabled = true;
+
+        this->m_mock_async_resp_set = false;
+        memset(&this->m_mock_async_resp, 0, sizeof(this->m_mock_async_resp));
+        this->m_mock_esp_http_client_cleanup_called   = false;
+        this->m_mock_http_async_info_free_data_called = false;
+        this->m_mock_http_download_with_auth          = nullptr;
+
+        this->m_time_is_synchronized  = true;
+        this->m_request_timestamp     = 0;
+        this->m_settimeofday_call_cnt = 0;
+        this->m_settimeofday_tv       = { 0, 0 };
+        this->m_settimeofday_fail     = false;
+
+        memset(&g_extra_cfg_storage, 0, sizeof(g_extra_cfg_storage));
     }
 
     void
     TearDown() override
     {
+        this->m_flag_alloc_counting_enabled = false;
+        this->m_alloc_free_call_count       = 0;
         http_server_cb_deinit();
         gw_cfg_deinit();
         gw_cfg_default_deinit();
         this->m_files.clear();
         this->m_fd   = -1;
         g_pTestClass = nullptr;
+        os_malloc_trace_deinit();
         esp_log_wrapper_deinit();
     }
 
@@ -480,7 +524,6 @@ public:
 
     ~TestHttpServerCb() override;
 
-    MemAllocTrace         m_mem_alloc_trace;
     uint32_t              m_malloc_cnt;
     uint32_t              m_malloc_fail_on_cnt;
     bool                  m_flag_settings_saved_to_flash;
@@ -497,6 +540,29 @@ public:
     size_t                m_http_check_with_auth_num_of_urls;
     fw_updating_reason_e  m_fw_updating_reason;
     bool                  m_fw_update_is_in_progress;
+
+    bool m_flag_alloc_counting_enabled;
+    int  m_alloc_free_call_count;
+
+    http_server_resp_t m_mock_async_resp;
+    bool               m_mock_async_resp_set;
+    bool               m_mock_esp_http_client_cleanup_called;
+    bool               m_mock_http_async_info_free_data_called;
+
+    // Mock for http_download_with_auth used by http_download_json tests
+    using http_download_mock_cb_t = std::function<http_server_resp_t(
+        const http_download_param_with_auth_t* p_param,
+        http_download_cb_on_data_t             p_cb_on_data,
+        void*                                  p_user_data,
+        bool                                   flag_use_big_tls_buf)>;
+    http_download_mock_cb_t m_mock_http_download_with_auth;
+
+    // Mocks for the new firmware-update time-seeding logic
+    bool           m_time_is_synchronized;
+    time_t         m_request_timestamp;
+    uint32_t       m_settimeofday_call_cnt;
+    struct timeval m_settimeofday_tv;
+    bool           m_settimeofday_fail;
 };
 
 TestHttpServerCb::TestHttpServerCb()
@@ -508,6 +574,12 @@ TestHttpServerCb::TestHttpServerCb()
     , m_is_fatfs_mounted(false)
     , m_is_fatfs_mount_fail(false)
     , m_fd(-1)
+    , m_flag_alloc_counting_enabled(false)
+    , m_alloc_free_call_count(0)
+    , m_mock_async_resp()
+    , m_mock_async_resp_set(false)
+    , m_mock_esp_http_client_cleanup_called(false)
+    , m_mock_http_async_info_free_data_called(false)
     , Test()
 {
 }
@@ -515,51 +587,108 @@ TestHttpServerCb::TestHttpServerCb()
 extern "C" {
 
 void*
-os_malloc(const size_t size)
+__wrap_malloc(size_t size)
 {
-    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    extern void* __real_malloc(size_t _size) __THROW __attribute_malloc__ __attribute_alloc_size__((1)) __wur;
+    extern void                                                           __real_free(void* _ptr) __THROW;
+
+    void* ptr = __real_malloc(size);
+    assert(nullptr != ptr);
+    if (nullptr == ptr)
     {
         return nullptr;
     }
-    void* ptr = malloc(size);
+    if (g_pTestClass && g_pTestClass->m_malloc_fail_on_cnt > 0)
+    {
+        g_pTestClass->m_malloc_cnt += 1;
+        if (g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+        {
+            __real_free(ptr);
+            return nullptr;
+        }
+    }
+    if (g_pTestClass && g_pTestClass->m_flag_alloc_counting_enabled)
+    {
+        g_pTestClass->m_alloc_free_call_count += 1;
+    }
+    return ptr;
+}
+
+void*
+__wrap_calloc(size_t nmemb, size_t size)
+{
+    extern void*                     __real_calloc(size_t _nmemb, size_t _size)
+        __THROW __attribute_malloc__ __attribute_alloc_size__((1, 2)) __wur;
+    extern void                      __real_free(void* _ptr) __THROW;
+
+    void* ptr = __real_calloc(nmemb, size);
     assert(nullptr != ptr);
-    g_pTestClass->m_mem_alloc_trace.add(ptr);
+    if (nullptr == ptr)
+    {
+        return nullptr;
+    }
+    if (g_pTestClass && g_pTestClass->m_malloc_fail_on_cnt > 0)
+    {
+        g_pTestClass->m_malloc_cnt += 1;
+        if (g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+        {
+            __real_free(ptr);
+            return nullptr;
+        }
+    }
+    if (g_pTestClass && g_pTestClass->m_flag_alloc_counting_enabled)
+    {
+        g_pTestClass->m_alloc_free_call_count += 1;
+    }
     return ptr;
 }
 
 void
-os_free_internal(void* ptr)
+__wrap_free(void* ptr)
 {
-    g_pTestClass->m_mem_alloc_trace.remove(ptr);
-    free(ptr);
-}
+    extern void __real_free(void* _ptr) __THROW;
 
-void*
-os_calloc(const size_t nmemb, const size_t size)
-{
-    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    __real_free(ptr);
+    if (nullptr == ptr)
     {
-        return nullptr;
+        return;
     }
-    void* ptr = calloc(nmemb, size);
-    assert(nullptr != ptr);
-    g_pTestClass->m_mem_alloc_trace.add(ptr);
-    return ptr;
+    if (g_pTestClass && g_pTestClass->m_flag_alloc_counting_enabled)
+    {
+        g_pTestClass->m_alloc_free_call_count -= 1;
+    }
 }
 
-ATTR_NONNULL(1)
+int
+__wrap_settimeofday(const struct timeval* tv, const struct timezone* tz)
+{
+    (void)tz;
+    if (nullptr != g_pTestClass)
+    {
+        g_pTestClass->m_settimeofday_call_cnt += 1;
+        if (nullptr != tv)
+        {
+            g_pTestClass->m_settimeofday_tv = *tv;
+        }
+        if (g_pTestClass->m_settimeofday_fail)
+        {
+            errno = EPERM;
+            return -1;
+        }
+    }
+    return 0;
+}
+
 bool
-os_realloc_safe_and_clean(void** const p_ptr, const size_t size)
+time_is_synchronized(void)
 {
-    void* ptr       = *p_ptr;
-    void* p_new_ptr = realloc(ptr, size);
-    if (nullptr == p_new_ptr)
-    {
-        os_free(*p_ptr);
-        return false;
-    }
-    *p_ptr = p_new_ptr;
-    return true;
+    return (nullptr != g_pTestClass) ? g_pTestClass->m_time_is_synchronized : true;
+}
+
+time_t
+http_server_get_request_timestamp(void)
+{
+    return (nullptr != g_pTestClass) ? g_pTestClass->m_request_timestamp : 0;
 }
 
 os_mutex_recursive_t
@@ -592,7 +721,7 @@ os_mutex_create_static(os_mutex_static_t* const p_mutex_static)
 void
 os_mutex_delete(os_mutex_t* const ph_mutex)
 {
-    (void)ph_mutex;
+    *ph_mutex = NULL;
 }
 
 void
@@ -811,6 +940,10 @@ http_download_with_auth(
     void* const                                  p_user_data,
     const bool                                   flag_use_big_tls_buf)
 {
+    if (g_pTestClass->m_mock_http_download_with_auth)
+    {
+        return g_pTestClass->m_mock_http_download_with_auth(p_param, p_cb_on_data, p_user_data, flag_use_big_tls_buf);
+    }
     if (0 == strcmp(p_param->base.p_url, "https://network.ruuvi.com/firmwareupdate"))
     {
         // Request for json always performed from the beginning (partial content is not supported)
@@ -861,9 +994,52 @@ adv_post_nrf52_cfg_update(const ruuvi_gw_cfg_scan_t* const p_scan, const ruuvi_g
 }
 
 bool
-fw_update_is_in_progress(void)
+ruuvi_gw_fw_update_is_in_progress(void)
 {
     return g_pTestClass->m_fw_update_is_in_progress;
+}
+
+http_server_resp_t
+http_wait_until_async_req_completed(
+    esp_http_client_handle_t   p_http_handle,
+    http_resp_cb_info_t* const p_cb_info,
+    const bool                 flag_feed_task_watchdog,
+    const TimeUnitsSeconds_t   timeout_seconds)
+{
+    (void)p_http_handle;
+    (void)p_cb_info;
+    (void)flag_feed_task_watchdog;
+    (void)timeout_seconds;
+    if (g_pTestClass->m_mock_async_resp_set)
+    {
+        return g_pTestClass->m_mock_async_resp;
+    }
+    const http_server_resp_t resp = {
+        .http_resp_code       = HTTP_RESP_CODE_200,
+        .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+        .flag_no_cache        = true,
+        .flag_add_header_date = true,
+        .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+        .p_content_type_param = NULL,
+        .content_len          = 0,
+        .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+    };
+    return resp;
+}
+
+esp_err_t
+esp_http_client_cleanup(esp_http_client_handle_t client)
+{
+    (void)client;
+    g_pTestClass->m_mock_esp_http_client_cleanup_called = true;
+    return ESP_OK;
+}
+
+void
+http_async_info_free_data(http_async_info_t* const p_http_async_info)
+{
+    (void)p_http_async_info;
+    g_pTestClass->m_mock_http_async_info_free_data_called = true;
 }
 
 } // extern "C"
@@ -900,6 +1076,734 @@ TEST_F(TestHttpServerCb, http_server_cb_init_ok_deinit_ok) // NOLINT
     http_server_cb_deinit();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_ok) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "OK");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t200,\n"
+          "\t\"message\":\t\"OK\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_with_error_code) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_502, "%s", "Bad Gateway");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t502,\n"
+          "\t\"message\":\t\"Bad Gateway\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_with_formatted_message) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_400, "Incorrect URL: '%s'", "http://bad");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t400,\n"
+          "\t\"message\":\t\"Incorrect URL: 'http://bad'\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_with_empty_message) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t200,\n"
+          "\t\"message\":\t\"\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected_json), resp.content_len);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_malloc_fail_on_str_buf) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 1;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "OK");
+
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't allocate memory for response");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_malloc_fail_on_cjson_create) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 2;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "OK");
+
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't create json object");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_malloc_fail_on_add_status) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 3;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "OK");
+
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't add json item: status");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_malloc_fail_on_add_message) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 5;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_gen_resp(HTTP_RESP_CODE_200, "%s", "OK");
+
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't add json item: message");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_json_ok) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp_json(HTTP_RESP_CODE_200, "{\"key\":\"val\"}");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected = "{\"status\": 200, \"json\": {\"key\":\"val\"}}";
+    ASSERT_EQ(string(expected), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected), resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_json_with_error_code) // NOLINT
+{
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_cb_gen_resp_json(HTTP_RESP_CODE_502, "{\"err\":true}");
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected = "{\"status\": 502, \"json\": {\"err\":true}}";
+    ASSERT_EQ(string(expected), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(strlen(expected), resp.content_len);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_gen_resp_json_malloc_fail) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 1;
+
+    esp_log_wrapper_clear();
+    const http_server_resp_t resp = http_server_cb_gen_resp_json(HTTP_RESP_CODE_200, "{\"key\":\"val\"}");
+
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_NO_CONTENT, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_HTML, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_EQ(0, resp.content_len);
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't allocate memory for response");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_ok_single_param) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("key=value123", "key=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("value123"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=value123");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_ok_multiple_params) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("first=aaa&key=value456&other=zzz", "key=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("value456"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=value456");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_ok_last_param) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("first=aaa&key=lastval", "key=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("lastval"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=lastval");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_ok_empty_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("key=&other=val", "key=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string(""), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_key_not_found) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("other=value", "key=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'key=' in URL params");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_key_is_suffix_of_another_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("noturl=https://example.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_key_is_inside_another_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("note=url=https://example.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_skips_invalid_match_before_exact_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("noturl=invalid&url=https://example.com", "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("https://example.com"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=https://example.com");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_malloc_fail) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 1;
+
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params("key=value123", "key=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=value123");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't allocate memory param key=value123");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_ok) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("url=http%3A%2F%2Fexample.com&other=1", "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("http://example.com"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=http%3A%2F%2Fexample.com");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        "HTTP params: key 'url=': value (encoded): http%3A%2F%2Fexample.com");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (decoded): http://example.com");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_no_encoding_needed) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("key=plain_value", "key=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("plain_value"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=plain_value");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'key=': value (encoded): plain_value");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'key=': value (decoded): plain_value");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_key_not_found) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("other=value", "key=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'key=' in URL params");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'key='");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_rejects_percent_encoded_nul) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("url=https%3A%2F%2Fgood.example%00ignored", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=https%3A%2F%2Fgood.example%00ignored");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        "HTTP params: key 'url=': value (encoded): https%3A%2F%2Fgood.example%00ignored");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_ERROR,
+        "HTTP params: key 'url=': Can't decode value: https%3A%2F%2Fgood.example%00ignored");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_empty_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("url=&other=1", "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string(""), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (encoded): ");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (decoded): ");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_key_is_suffix_of_another_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("noturl=https%3A%2F%2Fexample.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'url='");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_key_is_inside_another_value) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("note=url=https%3A%2F%2Fexample.com", "url=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Can't find key 'url=' in URL params");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'url='");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_skips_invalid_match_before_exact_key) // NOLINT
+{
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding(
+        "noturl=invalid&url=https%3A%2F%2Fexample.com",
+        "url=");
+
+    ASSERT_NE(nullptr, result.buf);
+    ASSERT_EQ(string("https://example.com"), string(result.buf));
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: url=https%3A%2F%2Fexample.com");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(
+        ESP_LOG_DEBUG,
+        "HTTP params: key 'url=': value (encoded): https%3A%2F%2Fexample.com");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'url=': value (decoded): https://example.com");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    str_buf_free_buf(&result);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_malloc_fail_on_get_params) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 1;
+
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("key=hello%20world", "key=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=hello%20world");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't allocate memory param key=hello%20world");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: Can't find 'key='");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_get_from_params_with_decoding_malloc_fail_on_decode) // NOLINT
+{
+    g_pTestClass->m_malloc_fail_on_cnt = 2;
+
+    esp_log_wrapper_clear();
+    str_buf_t result = http_server_get_from_params_with_decoding("key=hello%20world", "key=");
+
+    ASSERT_EQ(nullptr, result.buf);
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key=hello%20world");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "HTTP params: key 'key=': value (encoded): hello%20world");
+    TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "HTTP params: key 'key=': Can't decode value: hello%20world");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_post_helper_wait_and_gen_resp_ok_200) // NOLINT
+{
+    const char* json_content = "{\"data\":\"test\"}";
+    char*       p_heap_buf   = static_cast<char*>(os_malloc(strlen(json_content) + 1));
+    ASSERT_NE(nullptr, p_heap_buf);
+    strcpy(p_heap_buf, json_content);
+
+    this->m_mock_async_resp_set = true;
+    this->m_mock_async_resp     = (http_server_resp_t){
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_HEAP,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_APPLICATION_JSON,
+            .p_content_type_param = NULL,
+            .content_len          = strlen(json_content),
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+            .select_location = {
+                .heap = {
+                    .p_buf = reinterpret_cast<uint8_t*>(p_heap_buf),
+                },
+            },
+    };
+
+    http_async_info_t async_info    = {};
+    async_info.p_http_client_handle = reinterpret_cast<esp_http_client_handle_t>(0x1234);
+
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_post_helper_wait_until_async_req_completed_and_gen_resp(&async_info, 10);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t200,\n"
+          "\t\"message\":\t\"{\\\"data\\\":\\\"test\\\"}\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+
+    ASSERT_TRUE(this->m_mock_esp_http_client_cleanup_called);
+    ASSERT_TRUE(this->m_mock_http_async_info_free_data_called);
+    ASSERT_EQ(nullptr, async_info.p_http_client_handle);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_post_helper_wait_and_gen_resp_429_returns_200) // NOLINT
+{
+    const char* json_content = "{\"error\":\"too many\"}";
+    char*       p_heap_buf   = static_cast<char*>(os_malloc(strlen(json_content) + 1));
+    ASSERT_NE(nullptr, p_heap_buf);
+    strcpy(p_heap_buf, json_content);
+
+    this->m_mock_async_resp_set = true;
+    this->m_mock_async_resp     = (http_server_resp_t){
+            .http_resp_code       = HTTP_RESP_CODE_429,
+            .content_location     = HTTP_CONTENT_LOCATION_HEAP,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_APPLICATION_JSON,
+            .p_content_type_param = NULL,
+            .content_len          = strlen(json_content),
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+            .select_location = {
+                .heap = {
+                    .p_buf = reinterpret_cast<uint8_t*>(p_heap_buf),
+                },
+            },
+    };
+
+    http_async_info_t async_info    = {};
+    async_info.p_http_client_handle = reinterpret_cast<esp_http_client_handle_t>(0x1234);
+
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_post_helper_wait_until_async_req_completed_and_gen_resp(&async_info, 10);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    // HTTP_RESP_CODE_429 is converted to HTTP_RESP_CODE_200 in the status field
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t200,\n"
+          "\t\"message\":\t\"{\\\"error\\\":\\\"too many\\\"}\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+
+    ASSERT_TRUE(this->m_mock_esp_http_client_cleanup_called);
+    ASSERT_TRUE(this->m_mock_http_async_info_free_data_called);
+    ASSERT_EQ(nullptr, async_info.p_http_client_handle);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_post_helper_wait_and_gen_resp_500_error) // NOLINT
+{
+    this->m_mock_async_resp_set = true;
+    this->m_mock_async_resp     = (http_server_resp_t) {
+            .http_resp_code       = HTTP_RESP_CODE_500,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+    };
+
+    http_async_info_t async_info    = {};
+    async_info.p_http_client_handle = reinterpret_cast<esp_http_client_handle_t>(0x5678);
+
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_post_helper_wait_until_async_req_completed_and_gen_resp(&async_info, 30);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+
+    // No content -> p_json is NULL -> empty message
+    const char* expected_json
+        = "{\n"
+          "\t\"status\":\t500,\n"
+          "\t\"message\":\t\"\"\n"
+          "}";
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+
+    ASSERT_TRUE(this->m_mock_esp_http_client_cleanup_called);
+    ASSERT_TRUE(this->m_mock_http_async_info_free_data_called);
+    ASSERT_EQ(nullptr, async_info.p_http_client_handle);
+
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_deinit_of_not_initialized) // NOLINT
@@ -908,6 +1812,10 @@ TEST_F(TestHttpServerCb, http_server_cb_deinit_of_not_initialized) // NOLINT
     http_server_cb_deinit();
     ASSERT_TRUE(esp_log_wrapper_is_empty());
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_init_failed) // NOLINT
@@ -918,6 +1826,10 @@ TEST_F(TestHttpServerCb, http_server_cb_init_failed) // NOLINT
     ASSERT_FALSE(g_pTestClass->m_is_fatfs_mounted);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "flashfatfs_mount: failed to mount partition 'fatfs_gwui'");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
@@ -952,6 +1864,16 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
 
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -1044,20 +1966,25 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_ok) // NOLINT
     gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_resp_json_ruuvi();
+    http_server_resp_t resp = http_server_resp_json_ruuvi();
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
@@ -1092,6 +2019,11 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_1) // NOLINT
             &gw_cfg,
             &flag_network_cfg));
     ASSERT_FALSE(flag_network_cfg);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
@@ -1138,9 +2070,12 @@ TEST_F(TestHttpServerCb, resp_json_ruuvi_malloc_failed_2) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_ERROR, string("Can't add json item: fw_ver"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
@@ -1176,8 +2111,14 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
           "\t\"use_http\":\ttrue,\n"
           "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
           "\",\n"
+          "\t\"http_period\":\t10,\n"
           "\t\"http_data_format\":\t\"ruuvi\",\n"
           "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -1272,20 +2213,25 @@ TEST_F(TestHttpServerCb, resp_json_ok) // NOLINT
     gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_resp_json("ruuvi.json", false);
+    http_server_resp_t resp = http_server_resp_json("ruuvi.json", false);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
@@ -1299,15 +2245,18 @@ TEST_F(TestHttpServerCb, resp_json_unknown) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("Request to unknown json: unknown.json"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
 {
-    const char*              expected_resp = "metrics_info";
-    const http_server_resp_t resp          = http_server_resp_metrics();
+    const char*        expected_resp = "metrics_info";
+    http_server_resp_t resp          = http_server_resp_metrics();
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1317,10 +2266,15 @@ TEST_F(TestHttpServerCb, resp_metrics_ok) // NOLINT
     ASSERT_EQ(string("version=0.0.4"), string(resp.p_content_type_param));
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_metrics_malloc_failed) // NOLINT
@@ -1335,9 +2289,12 @@ TEST_F(TestHttpServerCb, resp_metrics_malloc_failed) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Not enough memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_get_content_type_by_ext) // NOLINT
@@ -1350,6 +2307,10 @@ TEST_F(TestHttpServerCb, http_get_content_type_by_ext) // NOLINT
     ASSERT_EQ(HTTP_CONTENT_TYPE_IMAGE_SVG_XML, http_get_content_type_by_ext(".svg"));
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_OCTET_STREAM, http_get_content_type_by_ext(".ttf"));
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_OCTET_STREAM, http_get_content_type_by_ext(".unk"));
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLINT
@@ -1368,10 +2329,13 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_partition_not_ready) // NOLIN
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "GWUI partition is not ready");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
@@ -1392,12 +2356,15 @@ TEST_F(TestHttpServerCb, resp_file_index_html_fail_file_name_too_long) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ") + string(file_name));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_ERROR,
         string("Temporary buffer is not enough for the file path '") + string(file_name) + string("'"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
@@ -1421,6 +2388,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
@@ -1444,6 +2415,10 @@ TEST_F(TestHttpServerCb, resp_file_index_html_gzipped) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=2");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
@@ -1467,6 +2442,10 @@ TEST_F(TestHttpServerCb, resp_file_app_js_gzipped) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: app.js"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
@@ -1490,6 +2469,10 @@ TEST_F(TestHttpServerCb, resp_file_app_css_gzipped) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: style.css"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File style.css.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
@@ -1513,6 +2496,10 @@ TEST_F(TestHttpServerCb, resp_file_binary_without_extension) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: binary"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File binary was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
@@ -1527,10 +2514,13 @@ TEST_F(TestHttpServerCb, resp_file_unknown_html) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: unknown.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't find file: unknown.html"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
@@ -1550,10 +2540,13 @@ TEST_F(TestHttpServerCb, resp_file_index_html_failed_on_open) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "Try to find file: index.html");
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Can't open file: index.html"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
@@ -1574,6 +2567,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ruuvi.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't find file: ruuvi.html");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_default_during_fw_update) // NOLINT
@@ -1595,6 +2592,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_default_during_fw_update) // NOLI
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: ruuvi.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, "Can't find file: ruuvi.html");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
@@ -1619,6 +2620,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html_during_fw_update) // NOLINT
@@ -1644,6 +2649,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_index_html_during_fw_update) // N
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: index.html"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File index.html.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
@@ -1668,6 +2677,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_app_js) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Try to find file: app.js"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, "File app.js.gz was opened successfully, fd=1");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
@@ -1701,6 +2714,16 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -1791,21 +2814,26 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json) // NOLINT
     gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // NOLINT
@@ -1841,6 +2869,16 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // N
           "\t\"remote_cfg_refresh_interval_minutes\":\t0,\n"
           "\t\"use_http_ruuvi\":\tfalse,\n"
           "\t\"use_http\":\tfalse,\n"
+          "\t\"http_url\":\t\"" RUUVI_GATEWAY_HTTP_DEFAULT_URL
+          "\",\n"
+          "\t\"http_period\":\t10,\n"
+          "\t\"http_data_format\":\t\"ruuvi\",\n"
+          "\t\"http_auth\":\t\"none\",\n"
+          "\t\"http_use_ssl_client_cert\":\tfalse,\n"
+          "\t\"http_use_ssl_server_cert\":\tfalse,\n"
+          "\t\"http_use_extra_http_path\":\tfalse,\n"
+          "\t\"http_use_extra_http_query\":\tfalse,\n"
+          "\t\"http_use_extra_http_headers\":\tfalse,\n"
           "\t\"use_http_stat\":\ttrue,\n"
           "\t\"http_stat_url\":\t\"" RUUVI_GATEWAY_HTTP_STATUS_URL
           "\",\n"
@@ -1931,27 +2969,32 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_ruuvi_json_during_fw_update) // N
     gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
 
     esp_log_wrapper_clear();
-    const http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("ruuvi.json", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /ruuvi.json"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("ruuvi.json: ") + string(expected_json));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Activate cfg_mode"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
 {
-    const char*              expected_resp = "metrics_info";
-    const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
+    const char*        expected_resp = "metrics_info";
+    http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1961,18 +3004,23 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics) // NOLINT
     ASSERT_EQ(string("version=0.0.4"), string(resp.p_content_type_param));
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics_during_fw_update) // NOLINT
 {
-    this->m_fw_update_is_in_progress       = true;
-    const char*              expected_resp = "metrics_info";
-    const http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
+    this->m_fw_update_is_in_progress = true;
+    const char*        expected_resp = "metrics_info";
+    http_server_resp_t resp          = http_server_cb_on_get("metrics", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
@@ -1982,11 +3030,16 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_metrics_during_fw_update) // NOLI
     ASSERT_EQ(string("version=0.0.4"), string(resp.p_content_type_param));
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /metrics"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("metrics: ") + string(expected_resp));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
@@ -2016,7 +3069,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
           "    }\n"
           "  }\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
@@ -2047,6 +3100,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history) // NOLINT
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 60 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history_during_fw_update) // NOLINT
@@ -2077,7 +3135,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_during_fw_update) // NOLI
           "    }\n"
           "  }\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
@@ -2108,6 +3166,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_during_fw_update) // NOLI
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 60 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) // NOLINT
@@ -2137,7 +3200,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
           "    }\n"
           "  }\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", "time=20", false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("history", "time=20", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
@@ -2170,6 +3233,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_with_time_interval_20) //
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'decode=' in URL params"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history on 20 seconds interval"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NOLINT
@@ -2203,7 +3271,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
           "    }\n"
           "  }\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("history", nullptr, false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
@@ -2234,6 +3302,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps) // NO
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_get /history"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history (without filtering)"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_filter_counter_10) // NOLINT
@@ -2267,7 +3340,7 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
           "    }\n"
           "  }\n"
           "}";
-    const http_server_resp_t resp = http_server_cb_on_get("history", "counter=10", false, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("history", "counter=10", false, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_JSON_GENERATOR, resp.content_location);
@@ -2300,6 +3373,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_history_without_timestamps_with_f
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("Can't find key 'decode=' in URL params"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("Requested /history starting from counter 10"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg) // NOLINT
@@ -2325,8 +3403,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2342,6 +3420,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS1: ");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_INFO, "config: eth: DNS2: ");
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
@@ -2367,8 +3449,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=1"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2391,6 +3473,28 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http_ruuvi' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_DEBUG,
+        "Can't find key 'http_data_format' in config-json, leave the previous value 0 unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(
+        ESP_LOG_DEBUG,
+        "Can't find key 'http_auth' in config-json, leave the previous value 0 unchanged");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_url' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
 
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: not found");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_WARN, "Can't find key 'use_http_stat' in config-json");
@@ -2541,6 +3645,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_network_cfg_from_lan) // NOLINT
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
@@ -2599,8 +3707,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2649,6 +3757,21 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -2773,6 +3896,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_ok_mqtt_tcp) // NOLINT
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
@@ -2819,7 +3946,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2848,6 +3974,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed1) // NOLINT
                "}"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to allocate memory for gw_cfg"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
@@ -2894,7 +4024,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2923,6 +4052,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed2) // NOLINT
                "}"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
@@ -2969,7 +4102,6 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("POST /ruuvi.json, flag_access_from_lan=0"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_DEBUG,
@@ -2998,6 +4130,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_malloc_failed3) // NOLINT
                "}"));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_ERROR, string("Failed to parse json or no memory"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth) // NOLINT
@@ -3070,8 +4206,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_INFO,
@@ -3123,6 +4259,21 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -3246,6 +4397,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_save_prev_lan_auth
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth) // NOLINT
@@ -3324,8 +4479,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_INFO,
@@ -3382,6 +4537,21 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -3503,6 +4673,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_overwrite_lan_auth
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
@@ -3560,8 +4734,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_INFO,
@@ -3614,6 +4788,21 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -3738,6 +4927,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok) // NOLINT
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) // NOLINT
@@ -3796,8 +4989,8 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(strlen(expected_resp), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
-    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.flash.p_buf);
+    ASSERT_EQ(string(expected_resp), string(reinterpret_cast<const char*>(resp.select_location.flash.p_buf)));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /ruuvi.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_INFO,
@@ -3850,6 +5043,21 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "remote_cfg_refresh_interval_minutes: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_ruuvi: 0");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http: 0");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_data_format: ruuvi");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_auth: none");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_url: " RUUVI_GATEWAY_HTTP_DEFAULT_URL);
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_period: not found or invalid");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_period' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_path: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_path' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_query: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_query' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_extra_http_headers: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_extra_http_headers' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_client_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_client_cert' in config-json");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_use_ssl_server_cert: not found");
+    TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "Can't find key 'http_use_ssl_server_cert' in config-json");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "use_http_stat: 1");
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_url: " RUUVI_GATEWAY_HTTP_STATUS_URL);
     TEST_CHECK_LOG_RECORD_GW_CFG(ESP_LOG_DEBUG, "http_stat_user: ");
@@ -3974,6 +5182,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_ok_wifi_ap_active) //
         ESP_LOG_INFO,
         string("config: fw_update: url: https://network.ruuvi.com/firmwareupdate"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
@@ -4018,10 +5230,13 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_unknown_json) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_DEBUG, string("http_server_cb_on_post /unknown.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_WARN, string("POST /unknown.json"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
@@ -4035,9 +5250,261 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete) // NOLINT
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("DELETE /unknown.json, params="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__no_file_param) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_get("extra_cfg", "param=abc", false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__unknown_file) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_get("extra_cfg", "file=unknown_file", false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__non_blob_file_access_denied) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_get(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
+        false,
+        nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_403, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__blob_file_not_exist) // NOLINT
+{
+    g_extra_cfg_storage.p_file_name      = GW_CFG_STORAGE_HTTP_PATH;
+    g_extra_cfg_storage.flag_file_exists = false;
+    const http_server_resp_t resp        = http_server_cb_on_get(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_PATH,
+        false,
+        nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_404, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__blob_file_read_fail) // NOLINT
+{
+    g_extra_cfg_storage.p_file_name      = GW_CFG_STORAGE_HTTP_PATH;
+    g_extra_cfg_storage.flag_file_exists = true;
+    g_extra_cfg_storage.file_size        = 10;
+    g_extra_cfg_storage.p_content        = nullptr;
+    const http_server_resp_t resp        = http_server_cb_on_get(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_PATH,
+        false,
+        nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_extra_cfg__blob_file_ok) // NOLINT
+{
+    g_extra_cfg_storage.p_file_name      = GW_CFG_STORAGE_HTTP_PATH;
+    g_extra_cfg_storage.flag_file_exists = true;
+    g_extra_cfg_storage.file_size        = 14;
+    g_extra_cfg_storage.p_content        = "/my/extra/path";
+    http_server_resp_t resp = http_server_cb_on_get("extra_cfg", "file=" GW_CFG_STORAGE_HTTP_PATH, false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_TEXT_PLAIN, resp.content_type);
+    ASSERT_EQ(14, resp.content_len);
+    ASSERT_EQ(string("/my/extra/path"), string((const char*)resp.select_location.heap.p_buf, resp.content_len));
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__no_file_param) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_post("extra_cfg", "param=abc", "content", false);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__unknown_file) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_post("extra_cfg", "file=unknown_file", "content", false);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__blob_write_ok) // NOLINT
+{
+    g_extra_cfg_storage.flag_write_success = true;
+    http_server_resp_t resp                = http_server_cb_on_post(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_PATH,
+        "/my/extra/path",
+        false);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__blob_write_fail) // NOLINT
+{
+    g_extra_cfg_storage.flag_write_success = false;
+    const http_server_resp_t resp          = http_server_cb_on_post(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_PATH,
+        "/my/extra/path",
+        false);
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__http_headers_without_crlf) // NOLINT
+{
+    g_extra_cfg_storage.flag_write_success = true;
+    const http_server_resp_t resp          = http_server_cb_on_post(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_HEADERS,
+        "X-My-Header: value",
+        false);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__http_headers_with_crlf_ok) // NOLINT
+{
+    g_extra_cfg_storage.flag_write_success = true;
+    http_server_resp_t resp                = http_server_cb_on_post(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_HEADERS,
+        "X-My-Header: value\r\n",
+        false);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_post_extra_cfg__string_write_ok) // NOLINT
+{
+    g_extra_cfg_storage.flag_write_success = true;
+    http_server_resp_t resp                = http_server_cb_on_post(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_SSL_HTTP_CLI_CERT,
+        "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----\n",
+        false);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_delete_extra_cfg__blob_file_ok) // NOLINT
+{
+    g_extra_cfg_storage.flag_delete_success = true;
+    http_server_resp_t resp = http_server_cb_on_delete("extra_cfg", "file=" GW_CFG_STORAGE_HTTP_PATH, false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_delete_extra_cfg__no_file_param) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_delete("extra_cfg", "param=abc", false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_delete_extra_cfg__unknown_file) // NOLINT
+{
+    const http_server_resp_t resp = http_server_cb_on_delete("extra_cfg", "file=unknown_file", false, nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_400, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_delete_extra_cfg__delete_fail) // NOLINT
+{
+    g_extra_cfg_storage.flag_delete_success = false;
+    const http_server_resp_t resp           = http_server_cb_on_delete(
+        "extra_cfg",
+        "file=" GW_CFG_STORAGE_HTTP_PATH,
+        false,
+        nullptr);
+    ASSERT_EQ(HTTP_RESP_CODE_500, resp.http_resp_code);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_download_is_url_valid) // NOLINT
@@ -4052,6 +5519,10 @@ TEST_F(TestHttpServerCb, test_http_download_is_url_valid) // NOLINT
     ASSERT_TRUE(http_download_is_url_valid("https://a.c"));
     ASSERT_TRUE(http_download_is_url_valid("http://a.c:80"));
     ASSERT_TRUE(http_download_is_url_valid("https://a.c:443"));
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4087,17 +5558,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4116,6 +5587,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4128,6 +5602,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4163,17 +5642,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4192,6 +5671,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4204,6 +5686,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4239,17 +5726,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4268,6 +5755,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4280,6 +5770,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4315,17 +5810,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4344,6 +5839,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4356,6 +5854,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4391,17 +5894,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4420,6 +5923,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4432,6 +5938,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4467,17 +5978,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4496,6 +6007,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4508,6 +6022,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4551,17 +6070,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4580,6 +6099,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4592,6 +6114,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4637,17 +6164,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4666,6 +6193,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4678,6 +6208,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4721,17 +6256,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4750,6 +6285,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4762,6 +6300,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4805,17 +6348,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4834,6 +6377,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4846,6 +6392,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4891,17 +6442,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -4920,6 +6471,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -4932,6 +6486,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -4975,17 +6534,17 @@ TEST_F(
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5004,6 +6563,9 @@ TEST_F(
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5016,6 +6578,11 @@ TEST_F(
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__good_json_missing_files) // NOLINT
@@ -5038,17 +6605,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5067,6 +6634,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5077,6 +6647,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
             "E http_server: Failed to download ruuvi_gateway_esp.bin, HTTP error: 404\n"
             "E http_server: Failed to download firmware update: http_resp_code=404, failed to download file: ruuvi_gateway_esp.bin\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_json) // NOLINT
@@ -5099,17 +6674,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5128,6 +6703,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5136,6 +6714,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
             "E http_server: Firmware_update info 'latest/version' is empty\n"
             "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__invalid_json) // NOLINT
@@ -5157,17 +6740,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5186,6 +6769,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5193,6 +6779,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_version) // NOLINT
@@ -5215,17 +6806,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5244,6 +6835,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5252,6 +6846,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Firmware_update info 'latest/version' is empty\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__no_version) // NOLINT
@@ -5273,17 +6872,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5302,6 +6901,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5310,6 +6912,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key 'latest/version' in firmware_update info\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_url) // NOLINT
@@ -5332,17 +6939,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5361,6 +6968,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5369,6 +6979,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Firmware_update info 'latest/url' is empty\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__no_url) // NOLINT
@@ -5390,17 +7005,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5419,6 +7034,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5427,6 +7045,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key 'latest/url' in firmware_update info\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__invalid_url) // NOLINT
@@ -5449,17 +7072,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5478,6 +7101,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5486,6 +7112,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Firmware_update info 'latest/url' is invalid: qqq://abc.com\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__no_latest) // NOLINT
@@ -5503,17 +7134,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5532,6 +7163,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5540,6 +7174,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key 'latest' in firmware_update info\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__empty_resp) // NOLINT
@@ -5555,17 +7194,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5584,6 +7223,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5591,6 +7233,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
         "E http_server: Failed to parse fw_update_info: " + string(p_firmwareUpdateJson) + "\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_empty_version) // NOLINT
@@ -5625,17 +7272,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5654,6 +7301,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5666,6 +7316,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_no_version) // NOLINT
@@ -5698,17 +7353,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5727,6 +7382,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5739,6 +7397,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_empty_url) // NOLINT
@@ -5772,17 +7435,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5801,6 +7464,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5813,6 +7479,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
             "I http_download: http_check: completed within 0 ticks\n"
             "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_invalid_url) // NOLINT
@@ -5846,17 +7517,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5875,6 +7546,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5887,6 +7561,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url__json_with_beta_no_url) // NOLINT
@@ -5918,17 +7597,17 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
     const char* const p_uri_params
         = "validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(strlen(expected_json), resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get /validate_url?validate_type=check_fw_update_url&url=https://network.ruuvi.com/firmwareupdate&auth_type=none\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
@@ -5947,6 +7626,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "E http_server: Can't find key: use_saved_password=\n"
         "E http_server: Can't find prefix 'use_ssl_client_cert='\n"
         "E http_server: Can't find prefix 'use_ssl_server_cert='\n"
+        "D http_server: Can't find prefix 'use_extra_http_path='\n"
+        "D http_server: Can't find prefix 'use_extra_http_query='\n"
+        "D http_server: Can't find prefix 'use_extra_http_headers='\n"
         "D http_server: Got URL from params: https://network.ruuvi.com/firmwareupdate\n"
         "I http_server: Found validate_type: check_fw_update_url\n"
         "I http_download: cb_on_http_download_json_data: buf_size=" + std::to_string(strlen(p_firmwareUpdateJson)) + "\n"
@@ -5959,6 +7641,11 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_fw_update_url_
         "I http_download: http_check: completed within 0 ticks\n"
         "D http_server: Feed watchdog\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__custom_http) // NOLINT
@@ -5966,24 +7653,36 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
     const char* const expected_json = "{\n\t\"status\":\t200,\n\t\"message\":\t\"{}\"\n}";
 
     const char* const p_uri_params
-        = "validate_type=check_post_advs&url=https://myserver.com/"
-          "&auth_type=none&use_ssl_client_cert=false&use_ssl_server_cert=false";
+        = "validate_type=check_post_advs"
+          "&url=https://myserver.com/"
+          "&auth_type=none"
+          "&use_ssl_client_cert=false"
+          "&use_ssl_server_cert=false"
+          "&use_extra_http_path=false"
+          "&use_extra_http_query=false"
+          "&use_extra_http_headers=false";
 
-    const http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
 
     ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
     ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
     ASSERT_TRUE(resp.flag_no_cache);
     ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
     ASSERT_EQ(nullptr, resp.p_content_type_param);
-    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.memory.p_buf)));
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_NE(nullptr, resp.select_location.memory.p_buf);
 
     ASSERT_EQ(
         "D http_server: http_server_cb_on_get "
-        "/validate_url?validate_type=check_post_advs&url=https://myserver.com/"
-        "&auth_type=none&use_ssl_client_cert=false&use_ssl_server_cert=false\n"
+        "/validate_url?validate_type=check_post_advs"
+        "&url=https://myserver.com/"
+        "&auth_type=none&"
+        "use_ssl_client_cert=false"
+        "&use_ssl_server_cert=false"
+        "&use_extra_http_path=false"
+        "&use_extra_http_query=false"
+        "&use_extra_http_headers=false\n"
         "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
         "D http_server: HTTP params: auth_type=none\n"
         "D http_server: HTTP params: key 'auth_type=': value (encoded): none\n"
@@ -6000,6 +7699,9 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
         "E http_server: Can't find key: use_saved_password=\n"
         "I http_server: Found use_ssl_client_cert: false\n"
         "I http_server: Found use_ssl_server_cert: false\n"
+        "I http_server: Found use_extra_http_path: false\n"
+        "I http_server: Found use_extra_http_query: false\n"
+        "I http_server: Found use_extra_http_headers: false\n"
         "D http_server: Got URL from params: https://myserver.com/\n"
         "I http_server: Found validate_type: check_post_advs\n"
         "I http_server: Validate URL (POST advs): https://myserver.com/\n"
@@ -6009,8 +7711,192 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_post_advs__cus
         "D http_server: Validate URL (POST advs): saved_password=\n"
         "D http_server: Validate URL (POST advs): password=NULL\n"
         "I http_server: Validate URL (POST advs): use_ssl_client_cert=0\n"
-        "I http_server: Validate URL (POST advs): use_ssl_server_cert=0\n",
+        "I http_server: Validate URL (POST advs): use_ssl_server_cert=0\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_path=0\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_query=0\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_headers=0\n",
         esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(
+    TestHttpServerCb,
+    http_server_cb_on_get_validate_url_check_post_advs__custom_http_with_extra_path_query_and_headers) // NOLINT
+{
+    const char* const expected_json = "{\n\t\"status\":\t200,\n\t\"message\":\t\"{}\"\n}";
+
+    const char* const p_uri_params
+        = "validate_type=check_post_advs"
+          "&url=https://myserver.com:8000"
+          "&auth_type=none"
+          "&use_ssl_client_cert=false"
+          "&use_ssl_server_cert=false"
+          "&use_extra_http_path=true"
+          "&use_extra_http_query=true"
+          "&use_extra_http_headers=true";
+
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_TRUE(resp.flag_no_cache);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_EQ(nullptr, resp.p_content_type_param);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(expected_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
+
+    ASSERT_EQ(
+        "D http_server: http_server_cb_on_get "
+        "/validate_url"
+        "?validate_type=check_post_advs"
+        "&url=https://myserver.com:8000"
+        "&auth_type=none&"
+        "use_ssl_client_cert=false"
+        "&use_ssl_server_cert=false"
+        "&use_extra_http_path=true"
+        "&use_extra_http_query=true"
+        "&use_extra_http_headers=true\n"
+        "I http_server: http_server_cb_on_get: Clear all saved TLS session tickets\n"
+        "D http_server: HTTP params: auth_type=none\n"
+        "D http_server: HTTP params: key 'auth_type=': value (encoded): none\n"
+        "D http_server: HTTP params: key 'auth_type=': value (decoded): none\n"
+        "D http_server: HTTP params: url=https://myserver.com:8000\n"
+        "D http_server: HTTP params: key 'url=': value (encoded): https://myserver.com:8000\n"
+        "D http_server: HTTP params: key 'url=': value (decoded): https://myserver.com:8000\n"
+        "D http_server: Can't find key 'user=' in URL params\n"
+        "E http_server: HTTP params: Can't find 'user='\n"
+        "D http_server: Can't find key 'encrypted_password=' in URL params\n"
+        "E http_server: HTTP params: Can't find 'encrypted_password='\n"
+        "D http_server: Can't find key 'use_saved_password=' in URL params\n"
+        "E http_server: HTTP params: Can't find 'use_saved_password='\n"
+        "E http_server: Can't find key: use_saved_password=\n"
+        "I http_server: Found use_ssl_client_cert: false\n"
+        "I http_server: Found use_ssl_server_cert: false\n"
+        "I http_server: Found use_extra_http_path: true\n"
+        "I http_server: Found use_extra_http_query: true\n"
+        "I http_server: Found use_extra_http_headers: true\n"
+        "D http_server: Got URL from params: https://myserver.com:8000\n"
+        "I http_server: Found validate_type: check_post_advs\n"
+        "I http_server: Validate URL (POST advs): https://myserver.com:8000\n"
+        "I http_server: Validate URL (POST advs): auth_type=none\n"
+        "I http_server: Validate URL (POST advs): user=NULL\n"
+        "I http_server: Validate URL (POST advs): use_saved_password=0\n"
+        "D http_server: Validate URL (POST advs): saved_password=\n"
+        "D http_server: Validate URL (POST advs): password=NULL\n"
+        "I http_server: Validate URL (POST advs): use_ssl_client_cert=0\n"
+        "I http_server: Validate URL (POST advs): use_ssl_server_cert=0\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_path=1\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_query=1\n"
+        "I http_server: Validate URL (POST advs): use_extra_http_headers=1\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_remote_cfg__uses_saved_basic_password) // NOLINT
+{
+    static const char saved_password[] = "saved-basic-password";
+    gw_cfg_t          gw_cfg           = { 0 };
+    gw_cfg_get_copy(&gw_cfg);
+    gw_cfg.ruuvi_cfg.remote.auth_type = GW_CFG_HTTP_AUTH_TYPE_BASIC;
+    (void)snprintf(
+        gw_cfg.ruuvi_cfg.remote.auth.auth_basic.password.buf,
+        sizeof(gw_cfg.ruuvi_cfg.remote.auth.auth_basic.password.buf),
+        "%s",
+        saved_password);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
+
+    bool download_called                 = false;
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t,
+                                               void*,
+                                               bool) -> http_server_resp_t {
+        download_called = true;
+        EXPECT_STREQ("https://myserver.com/gw_cfg.json", p_param->base.p_url);
+        EXPECT_EQ(GW_CFG_HTTP_AUTH_TYPE_BASIC, p_param->auth_type);
+        EXPECT_NE(nullptr, p_param->p_http_auth);
+        if (nullptr != p_param->p_http_auth)
+        {
+            EXPECT_STREQ("test-user", p_param->p_http_auth->auth_basic.user.buf);
+            EXPECT_STREQ(saved_password, p_param->p_http_auth->auth_basic.password.buf);
+        }
+        return http_server_resp_400();
+    };
+
+    esp_log_wrapper_clear();
+    const char* const p_uri_params
+        = "validate_type=check_remote_cfg"
+          "&url=https://myserver.com/gw_cfg.json"
+          "&auth_type=basic"
+          "&user=test-user"
+          "&use_saved_password=true"
+          "&use_ssl_client_cert=false"
+          "&use_ssl_server_cert=false";
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    EXPECT_TRUE(download_called);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_check_remote_cfg__uses_saved_bearer_token) // NOLINT
+{
+    static const char saved_token[] = "saved-bearer-token";
+    gw_cfg_t          gw_cfg        = { 0 };
+    gw_cfg_get_copy(&gw_cfg);
+    gw_cfg.ruuvi_cfg.remote.auth_type = GW_CFG_HTTP_AUTH_TYPE_BEARER;
+    (void)snprintf(
+        gw_cfg.ruuvi_cfg.remote.auth.auth_bearer.token.buf,
+        sizeof(gw_cfg.ruuvi_cfg.remote.auth.auth_bearer.token.buf),
+        "%s",
+        saved_token);
+    gw_cfg_update_ruuvi_cfg(&gw_cfg.ruuvi_cfg);
+
+    bool download_called                 = false;
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t,
+                                               void*,
+                                               bool) -> http_server_resp_t {
+        download_called = true;
+        EXPECT_STREQ("https://myserver.com/gw_cfg.json", p_param->base.p_url);
+        EXPECT_EQ(GW_CFG_HTTP_AUTH_TYPE_BEARER, p_param->auth_type);
+        EXPECT_NE(nullptr, p_param->p_http_auth);
+        if (nullptr != p_param->p_http_auth)
+        {
+            EXPECT_STREQ(saved_token, p_param->p_http_auth->auth_bearer.token.buf);
+        }
+        return http_server_resp_400();
+    };
+
+    esp_log_wrapper_clear();
+    const char* const p_uri_params
+        = "validate_type=check_remote_cfg"
+          "&url=https://myserver.com/gw_cfg.json"
+          "&auth_type=bearer"
+          "&use_saved_password=true"
+          "&use_ssl_client_cert=false"
+          "&use_ssl_server_cert=false";
+    http_server_resp_t resp = http_server_cb_on_get("validate_url", p_uri_params, true, nullptr);
+
+    EXPECT_TRUE(download_called);
+    http_server_resp_free(&resp);
+    esp_log_wrapper_clear();
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__latest_only) // NOLINT
@@ -6057,6 +7943,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
         "D http_server: Feed watchdog\n"
         "I http_server: Run firmware auto-updating from URL: https://fwupdate.ruuvi.com/v1.14.3\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__latest_and_beta) // NOLINT
@@ -6108,6 +7998,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
         "D http_server: Feed watchdog\n"
         "I http_server: Run firmware auto-updating from URL: https://fwupdate.ruuvi.com/v1.14.3\n",
         esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__latest_only_no_update_needed) // NOLINT
@@ -6146,6 +8040,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -6191,6 +8089,10 @@ TEST_F(
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest_and_beta) // NOLINT
@@ -6246,6 +8148,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
             "D http_server: Feed watchdog\n"
             "I http_server: Run firmware auto-updating from URL: https://github.com/ruuvi/ruuvi.gateway_esp.c/releases/download/v1.14.4\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest) // NOLINT
@@ -6292,6 +8198,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
             "D http_server: Feed watchdog\n"
             "I http_server: Run firmware auto-updating from URL: https://fwupdate.ruuvi.com/v1.14.3\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest_only_no_update_needed) // NOLINT
@@ -6330,6 +8240,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__latest_and_beta_no_update_needed) // NOLINT
@@ -6373,6 +8287,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_beta__lat
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__latest_and_beta) // NOLINT
@@ -6418,6 +8336,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__l
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__latest) // NOLINT
@@ -6456,6 +8378,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__l
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__latest_only_no_update_needed) // NOLINT
@@ -6494,6 +8420,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_manual__l
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(
@@ -6539,6 +8469,10 @@ TEST_F(
             "I http_server: Firmware update info (json): " + string(p_firmwareUpdateJson) + "\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__empty_version) // NOLINT
@@ -6573,6 +8507,10 @@ TEST_F(TestHttpServerCb, test_http_server_cb_on_user_req__update_cycle_regular__
             "E http_server: Firmware_update info 'latest/version' is empty\n"
             "I http_server: Firmware update: No update is required, the latest version is already installed\n",
             esp_log_wrapper_get_logs());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_reset_blocked_during_fw_update) // NOLINT
@@ -6586,6 +8524,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_reset_blocked_during_f
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /fw_update_reset, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_blocked_during_fw_update) // NOLINT
@@ -6599,6 +8541,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ruuvi_json_blocked_during_fw_upd
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /ruuvi.json, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_bluetooth_scanning_json_blocked_during_fw_update) // NOLINT
@@ -6615,6 +8561,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_bluetooth_scanning_json_blocked_
         string("FW update in progress, cannot handle POST request: /bluetooth_scanning.json, params=, "
                "flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_json_blocked_during_fw_update) // NOLINT
@@ -6628,6 +8578,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_json_blocked_during_fw
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /fw_update.json, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_json_blocked_during_fw_update) // NOLINT
@@ -6642,6 +8596,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_json_blocked_durin
         string(
             "FW update in progress, cannot handle POST request: /fw_update_url.json, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_blocked_during_fw_update) // NOLINT
@@ -6655,6 +8613,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_fw_update_url_blocked_during_fw_
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /fw_update_url, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_ssl_cert_blocked_during_fw_update) // NOLINT
@@ -6668,6 +8630,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_ssl_cert_blocked_during_fw_updat
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /ssl_cert, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_init_storage_blocked_during_fw_update) // NOLINT
@@ -6681,6 +8647,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_init_storage_blocked_during_fw_u
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /init_storage, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_post_any_blocked_during_fw_update) // NOLINT
@@ -6694,6 +8664,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_post_any_blocked_during_fw_update) //
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle POST request: /any_request, params=, flag_access_from_lan=0"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_blocked_during_fw_update) // NOLINT
@@ -6707,6 +8681,10 @@ TEST_F(TestHttpServerCb, http_server_cb_on_get_validate_url_blocked_during_fw_up
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle GET request: /validate_url"));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }
 
 TEST_F(TestHttpServerCb, http_server_cb_on_delete_blocked_during_fw_update) // NOLINT
@@ -6721,10 +8699,1118 @@ TEST_F(TestHttpServerCb, http_server_cb_on_delete_blocked_during_fw_update) // N
     ASSERT_EQ(nullptr, resp.p_content_type_param);
     ASSERT_EQ(0, resp.content_len);
     ASSERT_EQ(HTTP_CONTENT_ENCODING_NONE, resp.content_encoding);
-    ASSERT_EQ(nullptr, resp.select_location.memory.p_buf);
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(ESP_LOG_INFO, string("DELETE /unknown.json, params="));
     TEST_CHECK_LOG_RECORD_HTTP_SERVER(
         ESP_LOG_ERROR,
         string("FW update in progress, cannot handle DELETE request: /unknown.json, params="));
     ASSERT_TRUE(esp_log_wrapper_is_empty());
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+/*** http_download_json / cb_on_http_download_json_data tests
+ * *******************************************************************************************************/
+
+TEST_F(TestHttpServerCb, http_download_json__ok_single_chunk_with_known_content_length) // NOLINT
+{
+    const char* p_json_resp              = "{\"version\":\"1.0\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const size_t len = strlen(p_json_resp);
+        p_cb_on_data((const uint8_t*)p_json_resp, len, 0, len, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json_resp);
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string(p_json_resp), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=17");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__ok_single_chunk_with_unknown_content_length) // NOLINT
+{
+    const char* p_json_resp              = "{\"key\":\"val\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const size_t len = strlen(p_json_resp);
+        // content_length=0 means unknown
+        p_cb_on_data((const uint8_t*)p_json_resp, len, 0, 0, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json_resp);
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string(p_json_resp), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=13");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__ok_two_chunks_unknown_content_length) // NOLINT
+{
+    const char* p_chunk1                 = "{\"key\":";
+    const char* p_chunk2                 = "\"val\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const size_t len1 = strlen(p_chunk1);
+        const size_t len2 = strlen(p_chunk2);
+        // content_length=0 means unknown, will trigger realloc on second chunk
+        p_cb_on_data((const uint8_t*)p_chunk1, len1, 0, 0, HTTP_RESP_CODE_200, 0, p_user_data);
+        p_cb_on_data((const uint8_t*)p_chunk2, len2, len1, 0, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{\"key\":\"val\"}");
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"key\":\"val\"}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=7");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=6");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "Reallocate 14 bytes");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_redirect_301) // NOLINT
+{
+    const char* p_json_resp              = "{\"result\":\"ok\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // First a redirect chunk (should be skipped), then real data
+        const uint8_t redirect_data[] = "Moved";
+        p_cb_on_data(redirect_data, sizeof(redirect_data) - 1, 0, 0, HTTP_RESP_CODE_301, 0, p_user_data);
+        const size_t len = strlen(p_json_resp);
+        p_cb_on_data((const uint8_t*)p_json_resp, len, 0, len, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json_resp);
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string(p_json_resp), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "Got HTTP error 301: Redirect to another location");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=15");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_redirect_302) // NOLINT
+{
+    const char* p_json_resp              = "{\"result\":\"ok\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const uint8_t redirect_data[] = "Found";
+        p_cb_on_data(redirect_data, sizeof(redirect_data) - 1, 0, 0, HTTP_RESP_CODE_302, 0, p_user_data);
+        const size_t len = strlen(p_json_resp);
+        p_cb_on_data((const uint8_t*)p_json_resp, len, 0, len, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json_resp);
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string(p_json_resp), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "Got HTTP error 302: Redirect to another location");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=15");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_is_error_already_set) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        http_server_download_info_t* p_info = (http_server_download_info_t*)p_user_data;
+        p_info->is_error                    = true;
+        const uint8_t data[]                = "some data";
+        const bool    result = p_cb_on_data(data, sizeof(data) - 1, 0, 9, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_FALSE(result);
+        return http_server_resp_500();
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_500, info.http_resp_code);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=9");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Error occurred while downloading");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Invalid content location: 0");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed for URL: https://example.com/data.json, resp_code=500, content: <NULL>");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_malloc_fail_first_alloc) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        g_pTestClass->m_malloc_fail_on_cnt = g_pTestClass->m_malloc_cnt + 1;
+        const uint8_t data[]               = "{\"test\":1}";
+        const bool    result
+            = p_cb_on_data(data, sizeof(data) - 1, 0, sizeof(data) - 1, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_FALSE(result);
+        // Return 200 with no content
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+        };
+        return resp;
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=10");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Can't allocate 11 bytes for json file");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download returned NULL buffer");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_realloc_fail) // NOLINT
+{
+    const char* p_chunk1                 = "{\"key\":";
+    const char* p_chunk2                 = "\"val\"}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const size_t len1 = strlen(p_chunk1);
+        const size_t len2 = strlen(p_chunk2);
+        // First chunk with content_length=0 (unknown)
+        bool result = p_cb_on_data((const uint8_t*)p_chunk1, len1, 0, 0, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_TRUE(result);
+        // Make next malloc (realloc) fail
+        g_pTestClass->m_malloc_fail_on_cnt = g_pTestClass->m_malloc_cnt + 1;
+        result = p_cb_on_data((const uint8_t*)p_chunk2, len2, len1, 0, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_FALSE(result);
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+        };
+        return resp;
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=7");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=6");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "Reallocate 14 bytes");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Can't allocate 14 bytes for json file");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download returned NULL buffer");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_buffer_overflow) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const char* p_data = "0123456789";
+        // Allocate buffer for 5 byte content (content_length=5 -> buf_size=6)
+        bool result = p_cb_on_data((const uint8_t*)p_data, 5, 0, 5, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_TRUE(result);
+        // Now send more data at offset 5 with buf_size 5, offset+buf_size=10 >= json_buf_size(6)
+        result = p_cb_on_data((const uint8_t*)p_data, 5, 5, 5, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_FALSE(result);
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+        };
+        return resp;
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "Buffer overflow while downloading json file: json_buf_size=6, offset=5, len=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download returned NULL buffer");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_buffer_overflow_offset_exceeds_buf_size) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const char* p_data = "ABCDE";
+        // First alloc with content_length=5 (buf_size=6)
+        bool result = p_cb_on_data((const uint8_t*)p_data, 3, 0, 5, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_TRUE(result);
+        // offset=10 which is >= json_buf_size=6
+        result = p_cb_on_data((const uint8_t*)p_data, 2, 10, 5, HTTP_RESP_CODE_200, 0, p_user_data);
+        EXPECT_FALSE(result);
+        const http_server_resp_t resp = {
+            .http_resp_code       = HTTP_RESP_CODE_200,
+            .content_location     = HTTP_CONTENT_LOCATION_NO_CONTENT,
+            .flag_no_cache        = true,
+            .flag_add_header_date = true,
+            .content_type         = HTTP_CONTENT_TYPE_TEXT_HTML,
+            .p_content_type_param = NULL,
+            .content_len          = 0,
+            .content_encoding     = HTTP_CONTENT_ENCODING_NONE,
+        };
+        return resp;
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=3");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=2");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "Buffer overflow while downloading json file: json_buf_size=6, offset=10, len=2");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download returned NULL buffer");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_not_200_with_heap_content) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Don't call the callback, just return 502 with error content in heap
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{\"error\":\"bad gateway\"}");
+        return http_server_resp_json_in_heap(HTTP_RESP_CODE_502, str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_502, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"error\":\"bad gateway\"}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed for URL: https://example.com/data.json, resp_code=502, "
+        "content: {\"error\":\"bad gateway\"}");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_not_200_with_heap_content_and_callback_had_json) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Callback receives some data (allocating info.p_json_buf)
+        const char* p_data = "{\"partial\":true}";
+        p_cb_on_data((const uint8_t*)p_data, strlen(p_data), 0, strlen(p_data), HTTP_RESP_CODE_200, 0, p_user_data);
+        // But return 502 with error content in heap — should free the callback's json_buf
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{\"error\":\"bad gateway\"}");
+        return http_server_resp_json_in_heap(HTTP_RESP_CODE_502, str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_502, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"error\":\"bad gateway\"}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=16");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed for URL: https://example.com/data.json, resp_code=502, "
+        "content: {\"error\":\"bad gateway\"}");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_not_200_no_content_no_json_buf) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Return 500 with no content at all
+        return http_server_resp_500();
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_500, info.http_resp_code);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Invalid content location: 0");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed for URL: https://example.com/data.json, resp_code=500, content: <NULL>");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_not_200_no_content_with_json_buf_from_callback) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Callback receives data first
+        const char* p_data = "{\"data\":1}";
+        p_cb_on_data((const uint8_t*)p_data, strlen(p_data), 0, strlen(p_data), HTTP_RESP_CODE_200, 0, p_user_data);
+        // Return 500 with no content (NO_CONTENT location)
+        return http_server_resp_500();
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_500, info.http_resp_code);
+    // The json_buf from callback is still present (not freed in this branch)
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"data\":1}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=10");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "Invalid content location: 0");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed for URL: https://example.com/data.json, resp_code=500, content: {\"data\":1}");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_200_but_info_resp_code_not_200_with_json_buf) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Callback gets data with non-200 resp code (e.g. 404)
+        const char* p_data = "{\"error\":\"not found\"}";
+        p_cb_on_data((const uint8_t*)p_data, strlen(p_data), 0, strlen(p_data), HTTP_RESP_CODE_404, 0, p_user_data);
+        // But main resp is 200
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{}");
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_404, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"error\":\"not found\"}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=21");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_ERROR,
+        "http_download failed, HTTP resp code 404: {\"error\":\"not found\"}");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_200_but_info_resp_code_not_200_no_json_buf) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Simulate: callback sets non-200 resp code but no json_buf
+        http_server_download_info_t* p_info = (http_server_download_info_t*)p_user_data;
+        p_info->http_resp_code              = HTTP_RESP_CODE_503;
+        // Don't allocate any json_buf
+        // Return 200 resp
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{}");
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_503, info.http_resp_code);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download failed, HTTP resp code 503");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__resp_200_but_null_json_buf) // NOLINT
+{
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        // Don't call callback at all — no data received
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{}");
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_TRUE(info.is_error);
+    // is_error with http_resp_code still 200 -> changed to 400
+    ASSERT_EQ(HTTP_RESP_CODE_400, info.http_resp_code);
+    ASSERT_EQ(nullptr, info.p_json_buf);
+
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_ERROR, "http_download returned NULL buffer");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_json__callback_two_chunks_known_content_length) // NOLINT
+{
+    // Two chunks with known content_length — second chunk should NOT trigger realloc
+    const char*  p_chunk1                = "{\"k\":";
+    const char*  p_chunk2                = "\"v\"}";
+    const size_t total_len               = strlen(p_chunk1) + strlen(p_chunk2);
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        const size_t len1 = strlen(p_chunk1);
+        const size_t len2 = strlen(p_chunk2);
+        p_cb_on_data((const uint8_t*)p_chunk1, len1, 0, total_len, HTTP_RESP_CODE_200, 0, p_user_data);
+        p_cb_on_data((const uint8_t*)p_chunk2, len2, len1, total_len, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("{\"k\":\"v\"}");
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    const http_download_param_with_auth_t params = {
+        .base = {
+            .p_url                   = "https://example.com/data.json",
+            .timeout_seconds         = 10,
+            .flag_feed_task_watchdog = false,
+            .flag_free_memory        = false,
+            .p_server_cert           = NULL,
+            .p_client_cert           = NULL,
+            .p_client_key            = NULL,
+        },
+        .auth_type           = GW_CFG_HTTP_AUTH_TYPE_NONE,
+        .p_http_auth         = NULL,
+        .p_extra_header_item = NULL,
+    };
+    http_server_download_info_t info = http_download_json(&params);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string("{\"k\":\"v\"}"), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=5");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "cb_on_http_download_json_data: buf_size=4");
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+
+TEST_F(TestHttpServerCb, http_download_firmware_update_info__ok) // NOLINT
+{
+    const char* p_json_resp = "{\"latest\":{\"version\":\"v1.15.0\",\"url\":\"https://fwupdate.ruuvi.com/v1.15.0\"}}";
+    this->m_mock_http_download_with_auth = [&](const http_download_param_with_auth_t* p_param,
+                                               http_download_cb_on_data_t             p_cb_on_data,
+                                               void*                                  p_user_data,
+                                               bool flag_use_big_tls_buf) -> http_server_resp_t {
+        EXPECT_EQ(string("https://network.ruuvi.com/firmwareupdate"), string(p_param->base.p_url));
+        EXPECT_EQ(30, p_param->base.timeout_seconds);
+        EXPECT_TRUE(p_param->base.flag_feed_task_watchdog);
+        EXPECT_FALSE(flag_use_big_tls_buf);
+        const size_t len = strlen(p_json_resp);
+        p_cb_on_data((const uint8_t*)p_json_resp, len, 0, len, HTTP_RESP_CODE_200, 0, p_user_data);
+        const str_buf_t str_buf = str_buf_printf_with_alloc("%s", p_json_resp);
+        return http_server_resp_200_json_in_heap(str_buf.buf);
+    };
+
+    esp_log_wrapper_clear();
+    http_server_download_info_t info = http_download_firmware_update_info(
+        "https://network.ruuvi.com/firmwareupdate",
+        false);
+
+    ASSERT_FALSE(info.is_error);
+    ASSERT_EQ(HTTP_RESP_CODE_200, info.http_resp_code);
+    ASSERT_NE(nullptr, info.p_json_buf);
+    ASSERT_EQ(string(p_json_resp), string(info.p_json_buf));
+
+    os_free(info.p_json_buf);
+    os_malloc_trace_dump();
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(
+        ESP_LOG_INFO,
+        string("cb_on_http_download_json_data: buf_size=") + to_string(strlen(p_json_resp)));
+    TEST_CHECK_LOG_RECORD_HTTP_DOWNLOAD(ESP_LOG_INFO, "http_download_json: completed within 0 ticks");
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+/* ============================================================================
+ * Tests for http_server_resp_json_firmware_update
+ *
+ * Cover the time-seeding logic added for issue #1288: when the gateway's clock
+ * is not synchronised (NTP disabled, or NTP enabled but no successful sync),
+ * the X-Request-Timestamp value from the web UI (exposed via
+ * http_server_get_request_timestamp()) is applied via settimeofday() before
+ * the outbound HTTPS request to the firmware-update server.
+ * ============================================================================
+ */
+extern "C" http_server_resp_t
+http_server_resp_json_firmware_update(void);
+namespace
+{
+const char* const g_test_fw_update_json
+    = "{\"latest\":{\"version\":\"v1.15.0\",\"url\":\"https://fwupdate.ruuvi.com/v1.15.0\"}}";
+void
+set_ntp_use(const bool ntp_use)
+{
+    gw_cfg_t gw_cfg = {};
+    gw_cfg_default_get(&gw_cfg);
+    gw_cfg.ruuvi_cfg.ntp.ntp_use = ntp_use;
+    gw_cfg_update(&gw_cfg);
+}
+} // namespace
+TEST_F(TestHttpServerCb, json_firmware_update__ntp_enabled_and_time_synchronized__no_settimeofday) // NOLINT
+{
+    set_ntp_use(true);
+    this->m_time_is_synchronized = true;
+    this->m_request_timestamp    = 1735689600; // 2025-01-01 00:00:00 UTC
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_EQ(HTTP_CONTENT_TYPE_APPLICATION_JSON, resp.content_type);
+    ASSERT_NE(nullptr, resp.select_location.heap.p_buf);
+    ASSERT_EQ(string(g_test_fw_update_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    // X-Request-Timestamp must NOT be applied when the clock is already in sync.
+    ASSERT_EQ(0U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__ntp_disabled_no_request_timestamp__no_settimeofday) // NOLINT
+{
+    set_ntp_use(false);
+    this->m_time_is_synchronized = false;
+    this->m_request_timestamp    = 0; // header absent -> exposed as 0
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    ASSERT_EQ(HTTP_CONTENT_LOCATION_HEAP, resp.content_location);
+    ASSERT_EQ(string(g_test_fw_update_json), string(reinterpret_cast<const char*>(resp.select_location.heap.p_buf)));
+    // No header timestamp -> settimeofday must not be called.
+    ASSERT_EQ(0U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__ntp_disabled_with_request_timestamp__settimeofday_called) // NOLINT
+{
+    set_ntp_use(false);
+    this->m_time_is_synchronized = false;
+    this->m_request_timestamp    = 1735689600; // 2025-01-01 00:00:00 UTC
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    // Clock seeding must occur with the value from the X-Request-Timestamp header.
+    ASSERT_EQ(1U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(1735689600, this->m_settimeofday_tv.tv_sec);
+    ASSERT_EQ(0, this->m_settimeofday_tv.tv_usec);
+    ASSERT_EQ(
+        "I http_server: Set system time to 1735689600\n"
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__ntp_enabled_but_not_synchronized__settimeofday_called) // NOLINT
+{
+    set_ntp_use(true);
+    this->m_time_is_synchronized = false;      // NTP enabled but clock not yet in sync
+    this->m_request_timestamp    = 1748908800; // 2025-06-03 00:00:00 UTC
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    // The clock has not been synchronised yet, so the header value must be applied.
+    ASSERT_EQ(1U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(1748908800, this->m_settimeofday_tv.tv_sec);
+    ASSERT_EQ(
+        "I http_server: Set system time to 1748908800\n"
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__download_error_propagated_504) // NOLINT
+{
+    set_ntp_use(false);
+    this->m_time_is_synchronized = false;
+    this->m_request_timestamp    = 0;
+    // Override gw_cfg fw_update_url so the default mock returns http_server_resp_400() (is_error).
+    {
+        gw_cfg_t gw_cfg = {};
+        gw_cfg_default_get(&gw_cfg);
+        (void)snprintf(
+            gw_cfg.ruuvi_cfg.fw_update.fw_update_url,
+            sizeof(gw_cfg.ruuvi_cfg.fw_update.fw_update_url),
+            "%s",
+            "https://unknown.server/firmwareupdate");
+        gw_cfg_update(&gw_cfg);
+    }
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_504, resp.http_resp_code);
+    ASSERT_EQ(0U, this->m_settimeofday_call_cnt);
+    esp_log_wrapper_clear();
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
+}
+TEST_F(TestHttpServerCb, json_firmware_update__settimeofday_failure_logs_error) // NOLINT
+{
+    set_ntp_use(false);
+    this->m_time_is_synchronized = false;
+    this->m_request_timestamp    = 1735689600; // 2025-01-01 00:00:00 UTC
+    this->m_settimeofday_fail    = true;
+    this->m_firmware_update_resp = str_buf_printf_with_alloc("%s", g_test_fw_update_json);
+    esp_log_wrapper_clear();
+    http_server_resp_t resp = http_server_resp_json_firmware_update();
+    ASSERT_EQ(HTTP_RESP_CODE_200, resp.http_resp_code);
+    // settimeofday was attempted but failed -> success log must NOT be present,
+    // error log must be present.
+    ASSERT_EQ(1U, this->m_settimeofday_call_cnt);
+    ASSERT_EQ(1735689600, this->m_settimeofday_tv.tv_sec);
+    ASSERT_EQ(
+        "E http_server: Failed to set system time to 1735689600\n"
+        "I http_download: cb_on_http_download_json_data: buf_size=" + to_string(strlen(g_test_fw_update_json)) + "\n"
+        "I http_download: http_download_json: completed within 0 ticks\n"
+        "I http_server: Firmware update info (json): " + string(g_test_fw_update_json) + "\n",
+        esp_log_wrapper_get_logs());
+    http_server_resp_free(&resp);
+    os_malloc_trace_dump();
+    ESP_LOG_WRAPPER_TEST_CHECK_LOG_RECORD("MEM_TRACE", ESP_LOG_INFO, "Num blocks allocated: 0");
+    ASSERT_TRUE(esp_log_wrapper_is_empty());
+    ASSERT_EQ(0, this->m_alloc_free_call_count);
 }

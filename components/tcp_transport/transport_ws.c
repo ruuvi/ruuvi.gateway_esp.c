@@ -165,7 +165,7 @@ static char *get_http_header(const char *buffer, const char *key)
 static int ws_connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
     transport_ws_t *ws = esp_transport_get_context_data(t);
-    if (esp_transport_connect(ws->parent, host, port, timeout_ms) < 0) {
+    if (esp_transport_connect(ws->parent, host, port, timeout_ms) != ESP_TRANSPORT_SYNC_CONNECT_RESULT_CONNECTED) {
         ESP_LOGE(TAG, "Error connecting to host %s:%d", host, port);
         return -1;
     }

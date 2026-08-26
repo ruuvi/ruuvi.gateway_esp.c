@@ -1,0 +1,4 @@
+loadfile "ruuvigw_nrf_armgcc_ruuvigw_release_v2.0.0-patched_full.hex"
+r
+g
+exit

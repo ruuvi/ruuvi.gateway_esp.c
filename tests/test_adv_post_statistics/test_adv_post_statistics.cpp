@@ -135,6 +135,7 @@ extern "C" {
 
 volatile uint32_t g_uptime_counter;
 volatile uint32_t g_network_disconnect_cnt;
+volatile uint32_t g_wifi_cnt_mic_failure;
 
 void*
 os_malloc(const size_t size)
@@ -331,6 +332,7 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         this->m_nrf_status           = true;
         this->m_is_connected_to_wifi = false;
         g_network_disconnect_cnt     = 157;
+        g_wifi_cnt_mic_failure       = 23;
         this->m_reset_info_cnt       = 77;
         this->m_nrf_self_reboot_cnt  = 11;
         this->m_nrf_ext_hw_reset_cnt = 13;
@@ -355,6 +357,7 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         ASSERT_TRUE(p_stat_info->nrf_status);
         ASSERT_FALSE(p_stat_info->is_connected_to_wifi);
         ASSERT_EQ(157, p_stat_info->network_disconnect_cnt);
+        ASSERT_EQ(23, p_stat_info->wifi_mic_failure_cnt);
         ASSERT_EQ(string("POWER_ON"), string(p_stat_info->reset_reason.buf));
         ASSERT_EQ(77, p_stat_info->reset_cnt);
         ASSERT_EQ(11, p_stat_info->nrf_self_reboot_cnt);
@@ -374,6 +377,7 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         this->m_nrf_status           = false;
         this->m_is_connected_to_wifi = true;
         g_network_disconnect_cnt     = 257;
+        g_wifi_cnt_mic_failure       = 27;
         this->m_reset_info_cnt       = 85;
         this->m_nrf_self_reboot_cnt  = 12;
         this->m_nrf_ext_hw_reset_cnt = 14;
@@ -398,6 +402,7 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         ASSERT_FALSE(p_stat_info->nrf_status);
         ASSERT_TRUE(p_stat_info->is_connected_to_wifi);
         ASSERT_EQ(257, p_stat_info->network_disconnect_cnt);
+        ASSERT_EQ(27, p_stat_info->wifi_mic_failure_cnt);
         ASSERT_EQ(string("PANIC"), string(p_stat_info->reset_reason.buf));
         ASSERT_EQ(85, p_stat_info->reset_cnt);
         ASSERT_EQ(12, p_stat_info->nrf_self_reboot_cnt);
@@ -417,6 +422,7 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         this->m_nrf_status           = false;
         this->m_is_connected_to_wifi = true;
         g_network_disconnect_cnt     = 257;
+        g_wifi_cnt_mic_failure       = 27;
         this->m_reset_info_cnt       = 85;
         this->m_nrf_self_reboot_cnt  = 12;
         this->m_nrf_ext_hw_reset_cnt = 14;
@@ -440,6 +446,7 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         ASSERT_FALSE(p_stat_info->nrf_status);
         ASSERT_TRUE(p_stat_info->is_connected_to_wifi);
         ASSERT_EQ(257, p_stat_info->network_disconnect_cnt);
+        ASSERT_EQ(27, p_stat_info->wifi_mic_failure_cnt);
         ASSERT_EQ(string("PANIC"), string(p_stat_info->reset_reason.buf));
         ASSERT_EQ(85, p_stat_info->reset_cnt);
         ASSERT_EQ(12, p_stat_info->nrf_self_reboot_cnt);
@@ -458,6 +465,7 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         this->m_nrf_status           = false;
         this->m_is_connected_to_wifi = true;
         g_network_disconnect_cnt     = 257;
+        g_wifi_cnt_mic_failure       = 27;
         this->m_reset_info_cnt       = 85;
         this->m_nrf_self_reboot_cnt  = 12;
         this->m_nrf_ext_hw_reset_cnt = 14;
@@ -479,6 +487,7 @@ TEST_F(TestAdvPostStatistics, test_adv_post_statistics_info_generate) // NOLINT
         ASSERT_FALSE(p_stat_info->nrf_status);
         ASSERT_TRUE(p_stat_info->is_connected_to_wifi);
         ASSERT_EQ(257, p_stat_info->network_disconnect_cnt);
+        ASSERT_EQ(27, p_stat_info->wifi_mic_failure_cnt);
         ASSERT_EQ(string("PANIC"), string(p_stat_info->reset_reason.buf));
         ASSERT_EQ(85, p_stat_info->reset_cnt);
         ASSERT_EQ(12, p_stat_info->nrf_self_reboot_cnt);
@@ -503,6 +512,7 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send) // NOLINT
     this->m_nrf_status           = true;
     this->m_is_connected_to_wifi = false;
     g_network_disconnect_cnt     = 258;
+    g_wifi_cnt_mic_failure       = 28;
     this->m_reset_info_cnt       = 86;
     this->m_nrf_self_reboot_cnt  = 11;
     this->m_nrf_ext_hw_reset_cnt = 13;
@@ -558,6 +568,7 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send) // NOLINT
         ASSERT_TRUE(g_pTestClass->m_http_post_stat_arg_stat_info.nrf_status);
         ASSERT_FALSE(g_pTestClass->m_http_post_stat_arg_stat_info.is_connected_to_wifi);
         ASSERT_EQ(258, g_pTestClass->m_http_post_stat_arg_stat_info.network_disconnect_cnt);
+        ASSERT_EQ(28, g_pTestClass->m_http_post_stat_arg_stat_info.wifi_mic_failure_cnt);
         ASSERT_EQ(string("POWER_ON"), string(g_pTestClass->m_http_post_stat_arg_stat_info.reset_reason.buf));
         ASSERT_EQ(86, g_pTestClass->m_http_post_stat_arg_stat_info.reset_cnt);
         ASSERT_EQ(11, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_self_reboot_cnt);
@@ -637,6 +648,7 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send) // NOLINT
         ASSERT_TRUE(g_pTestClass->m_http_post_stat_arg_stat_info.nrf_status);
         ASSERT_FALSE(g_pTestClass->m_http_post_stat_arg_stat_info.is_connected_to_wifi);
         ASSERT_EQ(258, g_pTestClass->m_http_post_stat_arg_stat_info.network_disconnect_cnt);
+        ASSERT_EQ(28, g_pTestClass->m_http_post_stat_arg_stat_info.wifi_mic_failure_cnt);
         ASSERT_EQ(string("POWER_ON"), string(g_pTestClass->m_http_post_stat_arg_stat_info.reset_reason.buf));
         ASSERT_EQ(86, g_pTestClass->m_http_post_stat_arg_stat_info.reset_cnt);
         ASSERT_EQ(11, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_self_reboot_cnt);
@@ -745,6 +757,7 @@ TEST_F(TestAdvPostStatistics, adv_post_statistics_do_send) // NOLINT
         ASSERT_TRUE(g_pTestClass->m_http_post_stat_arg_stat_info.nrf_status);
         ASSERT_FALSE(g_pTestClass->m_http_post_stat_arg_stat_info.is_connected_to_wifi);
         ASSERT_EQ(258, g_pTestClass->m_http_post_stat_arg_stat_info.network_disconnect_cnt);
+        ASSERT_EQ(28, g_pTestClass->m_http_post_stat_arg_stat_info.wifi_mic_failure_cnt);
         ASSERT_EQ(string("POWER_ON"), string(g_pTestClass->m_http_post_stat_arg_stat_info.reset_reason.buf));
         ASSERT_EQ(86, g_pTestClass->m_http_post_stat_arg_stat_info.reset_cnt);
         ASSERT_EQ(11, g_pTestClass->m_http_post_stat_arg_stat_info.nrf_self_reboot_cnt);

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "http://ruuvi.com/schemas/ruuvi_mqtt_data_with_timestamps.schema.json",
   "title": "Time-stamped data from Bluetooth-sensors relayed via MQTT",
   "type": "object",
@@ -34,21 +34,22 @@
     },
     "gwts": {
       "title": "Timestamp (Unix-time) when the message from Bluetooth-sensor was relayed by Gateway",
-      "type": "string",
+      "type": "integer",
       "examples": [
-        "1653668027"
+        1653668027
       ]
     },
     "ts": {
       "title": "Timestamp (Unix-time) when the message from Bluetooth-sensor was received by Gateway",
-      "type": "string",
+      "type": "integer",
       "examples": [
-        "1653668027"
+        1653668027
       ]
     },
     "data": {
       "title": "Relayed message from Bluetooth-sensor in hex encoding",
       "type": "string",
+      "pattern": "^([0-9A-Fa-f]{2})+$",
       "examples": [
         "0201061BFF99040515AE4C6DC6D7000CFFF803F4ADB6AD697FF41F0C28CBD6"
       ]
@@ -66,8 +67,8 @@
       "gw_mac": "C8:25:2D:8E:9C:2C",
       "rssi": -26,
       "aoa": [],
-      "gwts": "1653668027",
-      "ts": "1653668027",
+      "gwts": 1653668027,
+      "ts": 1653668027,
       "data": "0201061BFF99040515AE4C6DC6D7000CFFF803F4ADB6AD697FF41F0C28CBD6",
       "coords": ""
     }

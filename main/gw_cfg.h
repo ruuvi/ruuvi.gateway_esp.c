@@ -15,6 +15,7 @@
 #include "fw_ver.h"
 #include "nrf52_fw_ver.h"
 #include "ruuvi_device_id.h"
+#include "http_server_auth_type.h"
 
 #if !defined(RUUVI_TESTS_GW_CFG)
 #define RUUVI_TESTS_GW_CFG (0)
@@ -246,6 +247,9 @@ typedef struct ruuvi_gw_cfg_http_t
     bool                      use_http;
     bool                      http_use_ssl_client_cert;
     bool                      http_use_ssl_server_cert;
+    bool                      http_use_extra_http_path;
+    bool                      http_use_extra_http_query;
+    bool                      http_use_extra_http_headers;
     ruuvi_gw_cfg_http_url_t   http_url;
     uint32_t                  http_period;
     gw_cfg_http_data_format_e data_format;
@@ -481,6 +485,9 @@ gw_cfg_get_ntp_use(void);
 
 ruuvi_gw_cfg_coordinates_t
 gw_cfg_get_coordinates(void);
+
+str_buf_t
+gw_cfg_get_coordinates_str_buf(void);
 
 const ruuvi_esp32_fw_ver_str_t*
 gw_cfg_get_esp32_fw_ver(void);

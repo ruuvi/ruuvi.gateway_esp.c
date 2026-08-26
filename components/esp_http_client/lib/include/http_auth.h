@@ -22,7 +22,7 @@
 typedef struct {
     char *method;       /*!< Request method, example: GET */
     char *algorithm;    /*!< Authentication algorithm */
-    char *uri;          /*!< URI of request example: /path/to/file.html */
+    const char *uri;    /*!< URI of request example: /path/to/file.html */
     char *realm;        /*!< Authentication realm */
     char *nonce;        /*!< Authentication nonce */
     char *qop;          /*!< Authentication qop */

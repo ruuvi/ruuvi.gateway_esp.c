@@ -379,6 +379,10 @@ static int ssl_write_session_ticket_ext(mbedtls_ssl_context *ssl,
     unsigned char *p = buf;
     size_t tlen = ssl->session_negotiate->ticket_len;
     if (tlen > sizeof(ssl->session_negotiate->ticket.buf)) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ticket length %zu bytes > buf size %zu bytes",
+                 __func__, tlen, sizeof(ssl->session_negotiate->ticket.buf));
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -1372,6 +1376,9 @@ static int ssl_parse_server_hello(mbedtls_ssl_context *ssl)
                               ("ciphersuite info for %04x not found", (unsigned int) i));
         mbedtls_ssl_send_alert_message(ssl, MBEDTLS_SSL_ALERT_LEVEL_FATAL,
                                        MBEDTLS_SSL_ALERT_MSG_INTERNAL_ERROR);
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ciphersuite info for %04x not found", __func__, (unsigned int) i);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -3628,6 +3635,9 @@ int mbedtls_ssl_handshake_client_step(mbedtls_ssl_context *ssl)
 
         default:
             MBEDTLS_SSL_DEBUG_MSG(1, ("invalid state %d", ssl->state));
+#ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "%s: invalid state %d", __func__, ssl->state);
+#endif
             return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 

@@ -106,6 +106,10 @@ url_n_decode_to_str_buf(const char* const p_src, const size_t len, str_buf_t* co
             {
                 return false;
             }
+            if (0 == ch_val)
+            {
+                return false;
+            }
             str_buf_printf(p_dst, "%c", (char)ch_val);
             p_cur += URL_ENCODE_NUM_CHARS_PER_BYTE;
         }
@@ -142,6 +146,7 @@ url_n_decode_with_alloc(const char* const p_src, const size_t len)
     }
     if (!url_n_decode_to_str_buf(p_src, len, &str_buf))
     {
+        str_buf_free_buf(&str_buf);
         return str_buf_init_null();
     }
     return str_buf;

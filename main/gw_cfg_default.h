@@ -19,9 +19,17 @@ extern "C" {
 
 #define RUUVI_GATEWAY_HTTP_HOST "network.ruuvi.com"
 
-#define RUUVI_GATEWAY_HTTP_DEFAULT_URL "https://" RUUVI_GATEWAY_HTTP_HOST "/record"
-#define RUUVI_GATEWAY_HTTP_STATUS_URL  "https://" RUUVI_GATEWAY_HTTP_HOST "/status"
-#define RUUVI_GATEWAY_FW_UPDATE_URL    "https://" RUUVI_GATEWAY_HTTP_HOST "/firmwareupdate"
+#define RUUVI_GATEWAY_HTTP_DEFAULT_SCHEMA "https://"
+#define RUUVI_GATEWAY_HTTP_DEFAULT_PATH   "/record"
+
+#define RUUVI_GATEWAY_HTTP_DEFAULT_URL \
+    RUUVI_GATEWAY_HTTP_DEFAULT_SCHEMA RUUVI_GATEWAY_HTTP_HOST RUUVI_GATEWAY_HTTP_DEFAULT_PATH
+
+#define RUUVI_GATEWAY_HTTP_DEFAULT_PERIOD (10U)
+
+#define RUUVI_GATEWAY_HTTP_STATUS_URL RUUVI_GATEWAY_HTTP_DEFAULT_SCHEMA RUUVI_GATEWAY_HTTP_HOST "/status"
+
+#define RUUVI_GATEWAY_FW_UPDATE_URL RUUVI_GATEWAY_HTTP_DEFAULT_SCHEMA RUUVI_GATEWAY_HTTP_HOST "/firmwareupdate"
 
 #define RUUVI_GATEWAY_AUTH_DEFAULT_USER "Admin"
 
@@ -55,6 +63,9 @@ gw_cfg_default_get(gw_cfg_t* const p_gw_cfg);
 
 const gw_cfg_device_info_t*
 gw_cfg_default_device_info(void);
+
+const ruuvi_gw_cfg_http_t*
+gw_cfg_default_get_http(void);
 
 const ruuvi_gw_cfg_mqtt_t*
 gw_cfg_default_get_mqtt(void);

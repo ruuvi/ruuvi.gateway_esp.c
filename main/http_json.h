@@ -12,7 +12,6 @@
 #include <time.h>
 #include "adv_table.h"
 #include "cjson_wrap.h"
-#include "fw_update.h"
 #include "nrf52fw.h"
 
 #ifdef __cplusplus
@@ -36,6 +35,7 @@ typedef struct http_json_statistics_info_t
     bool                                    nrf_status;
     bool                                    is_connected_to_wifi;
     uint32_t                                network_disconnect_cnt;
+    uint32_t                                wifi_mic_failure_cnt;
     uint32_t                                nrf_self_reboot_cnt;
     uint32_t                                nrf_ext_hw_reset_cnt;
     uint64_t                                nrf_lost_ack_cnt;
@@ -66,14 +66,14 @@ http_json_create_status_str(
 
 typedef struct http_json_create_stream_gen_advs_params_t
 {
-    const bool                              flag_raw_data;
-    const bool                              flag_decode;
-    const bool                              flag_use_timestamps;
-    const time_t                            cur_time;
-    const bool                              flag_use_nonce;
-    const uint32_t                          nonce;
-    const mac_address_str_t* const          p_mac_addr;
-    const ruuvi_gw_cfg_coordinates_t* const p_coordinates;
+    const bool                     flag_raw_data;
+    const bool                     flag_decode;
+    const bool                     flag_use_timestamps;
+    const time_t                   cur_time;
+    const bool                     flag_use_nonce;
+    const uint32_t                 nonce;
+    const mac_address_str_t* const p_mac_addr;
+    const str_buf_t                coordinates_str_buf;
 } http_json_create_stream_gen_advs_params_t;
 
 json_stream_gen_t*

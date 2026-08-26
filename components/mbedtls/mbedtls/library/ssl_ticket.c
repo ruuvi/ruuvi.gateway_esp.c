@@ -30,6 +30,11 @@
 
 #include <string.h>
 
+#ifdef ESP_PLATFORM
+#include "esp_log.h"
+static const char TAG[] = "ssl_ticket";
+#endif
+
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 /* Define a local translating function to save code size by not using too many
  * arguments in each translating place. */
@@ -234,10 +239,16 @@ int mbedtls_ssl_ticket_setup(mbedtls_ssl_ticket_context *ctx,
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
     if (mbedtls_ssl_cipher_to_psa(cipher, TICKET_AUTH_TAG_BYTES,
                                   &alg, &key_type, &key_bits) != PSA_SUCCESS) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: mbedtls_ssl_cipher_to_psa failed", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     if (PSA_ALG_IS_AEAD(alg) == 0) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: PSA_ALG_IS_AEAD(alg) == 0", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 #else
@@ -246,6 +257,10 @@ int mbedtls_ssl_ticket_setup(mbedtls_ssl_ticket_context *ctx,
     if (mbedtls_cipher_info_get_mode(cipher_info) != MBEDTLS_MODE_GCM &&
         mbedtls_cipher_info_get_mode(cipher_info) != MBEDTLS_MODE_CCM &&
         mbedtls_cipher_info_get_mode(cipher_info) != MBEDTLS_MODE_CHACHAPOLY) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: mbedtls_cipher_info_get_mode(cipher_info) = %u",
+                 __func__, (unsigned)mbedtls_cipher_info_get_mode(cipher_info));
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -253,6 +268,9 @@ int mbedtls_ssl_ticket_setup(mbedtls_ssl_ticket_context *ctx,
 #endif /* MBEDTLS_USE_PSA_CRYPTO */
 
     if (key_bits > 8 * MAX_KEY_BYTES) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: key_bits > 8 * MAX_KEY_BYTES: %zu > %u", __func__, key_bits, (unsigned)(8 * MAX_KEY_BYTES));
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -324,6 +342,9 @@ int mbedtls_ssl_ticket_write(void *p_ticket,
     *tlen = 0;
 
     if (ctx == NULL || ctx->f_rng == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ctx == NULL || ctx->f_rng == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -439,10 +460,16 @@ int mbedtls_ssl_ticket_parse(void *p_ticket,
 #endif
 
     if (ctx == NULL || ctx->f_rng == NULL) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: ctx == NULL || ctx->f_rng == NULL", __func__);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
     if (len < TICKET_MIN_LEN) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: len < TICKET_MIN_LEN: %zu < %u", __func__, len, (unsigned)TICKET_MIN_LEN);
+#endif
         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
     }
 
@@ -459,6 +486,10 @@ int mbedtls_ssl_ticket_parse(void *p_ticket,
     enc_len = (enc_len_p[0] << 8) | enc_len_p[1];
 
     if (len != TICKET_MIN_LEN + enc_len) {
+#ifdef ESP_PLATFORM
+        ESP_LOGE(TAG, "%s: len != TICKET_MIN_LEN + enc_len: %zu != %u + %zu",
+                 __func__, len, (unsigned)TICKET_MIN_LEN, enc_len);
+#endif
         ret = MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
         goto cleanup;
     }

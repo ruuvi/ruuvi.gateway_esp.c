@@ -19,20 +19,11 @@ be inside one of the components instead of in main project.
   - Run `./scripts/run-clang-format.sh` to format your code.
 
 3. Once the feature is ready for review, open a Pull Request. Code is automatically
-checked by Jenkins: does it compile, do unit tests pass, does it follow the clang-format
-definitions. If Jenkins rejects the pull request for any reason, check the Jenkins log
-and fix any issues found.
-  - If you are not on the list of allowlisted authors, Jenkins will ask admins to verify
-    that your work is safe to run (e.g. no rm -rf / in makefiles). 
-    - In that case one of the project admins will manually trigger the Jenkins build.
+checked by GitHub Actions: does it compile, do unit tests pass, does it follow the clang-format
+definitions.
 
-4. Once Jenkins build passes, request a review from @TheSomeMan. If this is your first time
-contriburting to this repository, please leave a note saying BSD-3 Licensing is ok for you.
-e.g. `I am the original author of this work, and I have the right to give the work to this 
-project and agree to BSD-3 License`. 
-
-5. Your work will be discussed for potential changes or fixes, and once the feature and
-implementation are approved it will be merged to the project. Thanks for the contribution!
+4. Your work will be discussed for potential changes or fixes, and once the feature and
+implementation are approved, it will be merged to the project. Thanks for the contribution!
 
 ## Code of Conduct 
 

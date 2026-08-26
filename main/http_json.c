@@ -9,19 +9,31 @@
 #include <string.h>
 #include "os_malloc.h"
 #include "runtime_stat.h"
+#include "ruuvi_endpoint_ca_uart.h"
 #include "ruuvi_endpoint_5.h"
 #include "ruuvi_endpoint_6.h"
 #include "ruuvi_endpoint_e0.h"
 #include "ruuvi_endpoint_e1.h"
 #include "ruuvi_endpoint_f0.h"
 #include "adv_decode.h"
-
 #if defined(RUUVI_TESTS)
 #define LOG_LOCAL_DISABLED 1
 #endif
 #define LOG_LOCAL_LEVEL LOG_LEVEL_INFO
 #include "log.h"
 static const char TAG[] = "http";
+
+static void*
+http_json_malloc(size_t size)
+{
+    return os_malloc(size);
+}
+
+static void
+http_json_free(void* ptr)
+{
+    os_free(ptr);
+}
 
 #define BYTE_MASK (0xFFU)
 
@@ -131,10 +143,7 @@ calc_num_sensors_seen(const adv_report_table_t* const p_reports)
 }
 
 static bool
-http_json_generate_status_attributes(
-    cJSON* const                             p_json_root,
-    const http_json_statistics_info_t* const p_stat_info,
-    const adv_report_table_t* const          p_reports)
+http_json_add_general_info(cJSON* const p_json_root, const http_json_statistics_info_t* const p_stat_info)
 {
     if (NULL == cJSON_AddStringToObject(p_json_root, "DEVICE_ADDR", p_stat_info->nrf52_mac_addr.str_buf))
     {
@@ -160,6 +169,12 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    return true;
+}
+
+static bool
+http_json_add_network_info(cJSON* const p_json_root, const http_json_statistics_info_t* const p_stat_info)
+{
     const char* const p_connection_type = p_stat_info->is_connected_to_wifi ? "WIFI" : "ETHERNET";
     if (NULL == cJSON_AddStringToObject(p_json_root, "CONNECTION", p_connection_type))
     {
@@ -169,6 +184,16 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    if (!cjson_wrap_add_uint32(p_json_root, "NUM_MIC_FAILURE", p_stat_info->wifi_mic_failure_cnt))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+http_json_add_reset_info(cJSON* const p_json_root, const http_json_statistics_info_t* const p_stat_info)
+{
     if (NULL == cJSON_AddStringToObject(p_json_root, "RESET_REASON", p_stat_info->reset_reason.buf))
     {
         return false;
@@ -193,6 +218,12 @@ http_json_generate_status_attributes(
     {
         return false;
     }
+    return true;
+}
+
+static bool
+http_json_add_memory_info(cJSON* const p_json_root, const http_json_statistics_info_t* const p_stat_info)
+{
     if (!cjson_wrap_add_uint32(p_json_root, "TOTAL_FREE_BYTES_INTERNAL", p_stat_info->total_free_bytes_internal))
     {
         return false;
@@ -206,6 +237,31 @@ http_json_generate_status_attributes(
         return false;
     }
     if (!cjson_wrap_add_uint32(p_json_root, "LARGEST_FREE_BLOCK_DEFAULT", p_stat_info->largest_free_block_default))
+    {
+        return false;
+    }
+    return true;
+}
+
+static bool
+http_json_generate_status_attributes(
+    cJSON* const                             p_json_root,
+    const http_json_statistics_info_t* const p_stat_info,
+    const adv_report_table_t* const          p_reports)
+{
+    if (!http_json_add_general_info(p_json_root, p_stat_info))
+    {
+        return false;
+    }
+    if (!http_json_add_network_info(p_json_root, p_stat_info))
+    {
+        return false;
+    }
+    if (!http_json_add_reset_info(p_json_root, p_stat_info))
+    {
+        return false;
+    }
+    if (!http_json_add_memory_info(p_json_root, p_stat_info))
     {
         return false;
     }
@@ -381,8 +437,8 @@ http_json_create_stream_gen_advs(
         .indentation_mark    = ' ',
         .indentation         = 2,
         .max_nesting_level   = 4,
-        .p_malloc            = &os_malloc,
-        .p_free              = &os_free_internal,
+        .p_malloc            = &http_json_malloc,
+        .p_free              = &http_json_free,
         .p_localeconv        = NULL,
     };
     http_json_stream_gen_advs_ctx_t* p_ctx = NULL;
@@ -399,7 +455,7 @@ http_json_create_stream_gen_advs(
     p_ctx->timestamp           = p_params->cur_time;
     p_ctx->nonce               = p_params->nonce;
     p_ctx->gw_mac              = *p_params->p_mac_addr;
-    p_ctx->coordinates         = *p_params->p_coordinates;
+    snprintf(p_ctx->coordinates.buf, sizeof(p_ctx->coordinates), "%s", p_params->coordinates_str_buf.buf);
     if (NULL == p_reports)
     {
         p_ctx->reports.num_of_advs = 0;
