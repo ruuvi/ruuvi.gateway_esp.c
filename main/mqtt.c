@@ -668,10 +668,7 @@ mqtt_app_start_internal(
     if ((MQTT_TRANSPORT_OVER_SSL == esp_mqtt_transport) || (MQTT_TRANSPORT_OVER_WSS == esp_mqtt_transport))
     {
         p_mqtt_data->p_tls_shared_buf_mqtts = tls_shared_buf_get_mqtts();
-        LOG_INFO(
-            "%s: MQTT over SSL or WSS: tls_shared_buf_get_mqtts: %p",
-            __func__,
-            p_mqtt_data->p_tls_shared_buf_mqtts);
+        LOG_INFO("MQTT transport '%s': TLS enabled with shared I/O buffers", p_mqtt_cfg->mqtt_transport.buf);
     }
     else
     {
