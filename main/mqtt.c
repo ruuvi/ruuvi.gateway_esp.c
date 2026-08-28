@@ -543,8 +543,9 @@ mqtt_create_client_config(mqtt_protected_data_t* p_mqtt_data, const ruuvi_gw_cfg
     const char* const p_lwt_message             = "{\"state\": \"offline\"}";
 
     LOG_INFO(
-        "Using server: %s, client id: '%s', topic prefix: '%s', port: %u",
+        "Using server: %s, transport: %s, client id: '%s', topic prefix: '%s', port: %u",
         p_mqtt_cfg->mqtt_server.buf,
+        p_mqtt_cfg->mqtt_transport.buf,
         p_mqtt_cfg->mqtt_client_id.buf,
         p_mqtt_cfg->mqtt_prefix.buf,
         p_mqtt_cfg->mqtt_port);
@@ -662,10 +663,12 @@ mqtt_app_start_internal(
         return false;
     }
 
-    if (gw_cfg_get_mqtt_use_mqtt_over_ssl_or_wss())
+    const esp_mqtt_transport_t esp_mqtt_transport = mqtt_transport_name_to_code(p_mqtt_cfg->mqtt_transport.buf);
+
+    if ((MQTT_TRANSPORT_OVER_SSL == esp_mqtt_transport) || (MQTT_TRANSPORT_OVER_WSS == esp_mqtt_transport))
     {
-        LOG_DBG("%s: tls_shared_buf_get_mqtts", __func__);
         p_mqtt_data->p_tls_shared_buf_mqtts = tls_shared_buf_get_mqtts();
+        LOG_INFO("MQTT transport '%s': TLS enabled with shared I/O buffers", p_mqtt_cfg->mqtt_transport.buf);
     }
     else
     {
