@@ -23,13 +23,19 @@ if(NOT JQ_EXECUTABLE)
     message(FATAL_ERROR "jq is required to generate ${GW_CFG_DEFAULT_OUT} but was not found in PATH")
 endif()
 
-message(STATUS "Running ${GW_CFG_DEFAULT_EXE} ${GW_CFG_DEFAULT_ARGS} | jq -> ${GW_CFG_DEFAULT_OUT}")
+set(_gw_cfg_default_args ${GW_CFG_DEFAULT_ARGS})
+if(GW_CFG_DEFAULT_ARGS)
+    string(REPLACE ";" " " _gw_cfg_default_args_string "${GW_CFG_DEFAULT_ARGS}")
+    separate_arguments(_gw_cfg_default_args NATIVE_COMMAND "${_gw_cfg_default_args_string}")
+endif()
+
+message(STATUS "Running ${GW_CFG_DEFAULT_EXE} ${_gw_cfg_default_args} | jq -> ${GW_CFG_DEFAULT_OUT}")
 
 # jq filter: pretty-print and blank out mqtt_prefix / mqtt_client_id.
 set(_jq_filter ".mqtt_prefix = \"\" | .mqtt_client_id = \"\"")
 
 execute_process(
-        COMMAND "${GW_CFG_DEFAULT_EXE}" ${GW_CFG_DEFAULT_ARGS}
+        COMMAND "${GW_CFG_DEFAULT_EXE}" ${_gw_cfg_default_args}
         COMMAND "${JQ_EXECUTABLE}" "${_jq_filter}"
         OUTPUT_FILE "${GW_CFG_DEFAULT_OUT}"
         RESULTS_VARIABLE _gw_cfg_default_results
