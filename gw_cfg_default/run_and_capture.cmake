@@ -7,6 +7,8 @@
 #
 # Optional variables:
 #   GW_CFG_DEFAULT_ARGS - arguments passed to the gw_cfg_default executable
+#   GW_CFG_DEFAULT_NORMALIZE_RUNTIME_FIELDS - whether to blank mqtt_prefix and
+#       mqtt_client_id; defaults to ON for the persistent snapshot
 
 if(NOT GW_CFG_DEFAULT_EXE)
     message(FATAL_ERROR "GW_CFG_DEFAULT_EXE is not set")
@@ -31,8 +33,14 @@ endif()
 
 message(STATUS "Running ${GW_CFG_DEFAULT_EXE} ${_gw_cfg_default_args} | jq -> ${GW_CFG_DEFAULT_OUT}")
 
-# jq filter: pretty-print and blank out mqtt_prefix / mqtt_client_id.
-set(_jq_filter ".mqtt_prefix = \"\" | .mqtt_client_id = \"\"")
+if(NOT DEFINED GW_CFG_DEFAULT_NORMALIZE_RUNTIME_FIELDS)
+    set(GW_CFG_DEFAULT_NORMALIZE_RUNTIME_FIELDS ON)
+endif()
+if(GW_CFG_DEFAULT_NORMALIZE_RUNTIME_FIELDS)
+    set(_jq_filter ".mqtt_prefix = \"\" | .mqtt_client_id = \"\"")
+else()
+    set(_jq_filter ".")
+endif()
 
 execute_process(
         COMMAND "${GW_CFG_DEFAULT_EXE}" ${_gw_cfg_default_args}

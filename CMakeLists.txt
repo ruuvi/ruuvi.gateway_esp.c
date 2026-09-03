@@ -97,6 +97,7 @@ ExternalProject_Add_Step(gw_cfg_default generate_default_ui_json
             -DGW_CFG_DEFAULT_EXE=${CMAKE_BINARY_DIR}/gw_cfg_default/gw_cfg_default
             -DGW_CFG_DEFAULT_OUT=${GW_CFG_DEFAULT_GEN_UI_JSON}
             -DGW_CFG_DEFAULT_ARGS=--generate_for_ui_client
+            -DGW_CFG_DEFAULT_NORMALIZE_RUNTIME_FIELDS=OFF
             -P ${CMAKE_SOURCE_DIR}/gw_cfg_default/run_and_capture.cmake
         DEPENDEES build
         BYPRODUCTS ${GW_CFG_DEFAULT_GEN_UI_JSON}

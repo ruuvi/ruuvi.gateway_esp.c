@@ -87,10 +87,10 @@ build automatically produces both `gw_cfg_default_gen.json` and
      runtime they are derived from the gateway's MAC address and therefore differ
      between the host-generated snapshot and the value shipped in
      `gw_cfg_default.json`.
-4. The UI snapshot uses the same pipeline with
-   `gw_cfg_default --generate_for_ui_client`. It contains the representation exposed
-   to authenticated UI/API clients, with secret values omitted and corresponding
-   public state flags included.
+4. The UI snapshot runs `gw_cfg_default --generate_for_ui_client | jq .`. It preserves
+   the generated `mqtt_prefix` and `mqtt_client_id` values, contains the representation
+   exposed to authenticated UI/API clients, and omits secret values while including
+   corresponding public state flags.
 
 ### Purpose of `gw_cfg_default_gen.json`
 
@@ -127,6 +127,7 @@ cmake -DGW_CFG_DEFAULT_EXE=$PWD/build/gw_cfg_default/gw_cfg_default \
 cmake -DGW_CFG_DEFAULT_EXE=$PWD/build/gw_cfg_default/gw_cfg_default \
       -DGW_CFG_DEFAULT_OUT=$PWD/gw_cfg_default/gw_cfg_default_gen_ui.json \
       -DGW_CFG_DEFAULT_ARGS=--generate_for_ui_client \
+      -DGW_CFG_DEFAULT_NORMALIZE_RUNTIME_FIELDS=OFF \
       -P gw_cfg_default/run_and_capture.cmake
 ```
 
@@ -139,6 +140,9 @@ it uses `gw_cfg_json_generate_for_ui_client()` instead of
 returned to authenticated UI/API clients: secret values such as passwords and API keys
 are omitted, while fields such as `lan_auth_api_key_use` and
 `lan_auth_api_key_rw_use` indicate whether the corresponding keys are configured.
+Unlike the persistent snapshot, the UI snapshot does not normalize `mqtt_prefix` or
+`mqtt_client_id` to empty strings, so their generated client-visible values are
+preserved.
 
 The top-level build performs this automatically on every build. After building the host
 executable, the equivalent direct shell command is:
