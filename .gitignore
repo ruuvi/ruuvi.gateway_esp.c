@@ -1,4 +1,8 @@
 *.orig
+*.swp
+
+.env
+.venv/
 
 build/
 build-sonar/
