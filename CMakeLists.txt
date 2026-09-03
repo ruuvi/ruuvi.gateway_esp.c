@@ -81,6 +81,7 @@ ExternalProject_Add(gw_cfg_default
 # into gw_cfg_default/gw_cfg_default_gen.json so that users can compare the
 # hardcoded defaults with gw_cfg_default.json.
 set(GW_CFG_DEFAULT_GEN_JSON ${CMAKE_SOURCE_DIR}/gw_cfg_default/gw_cfg_default_gen.json)
+set(GW_CFG_DEFAULT_GEN_UI_JSON ${CMAKE_SOURCE_DIR}/gw_cfg_default/gw_cfg_default_gen_ui.json)
 ExternalProject_Add_Step(gw_cfg_default generate_default_json
         COMMAND ${CMAKE_COMMAND}
             -DGW_CFG_DEFAULT_EXE=${CMAKE_BINARY_DIR}/gw_cfg_default/gw_cfg_default
@@ -90,6 +91,17 @@ ExternalProject_Add_Step(gw_cfg_default generate_default_json
         BYPRODUCTS ${GW_CFG_DEFAULT_GEN_JSON}
         ALWAYS 1
         COMMENT "Generating gw_cfg_default_gen.json from gw_cfg_default executable"
+)
+ExternalProject_Add_Step(gw_cfg_default generate_default_ui_json
+        COMMAND ${CMAKE_COMMAND}
+            -DGW_CFG_DEFAULT_EXE=${CMAKE_BINARY_DIR}/gw_cfg_default/gw_cfg_default
+            -DGW_CFG_DEFAULT_OUT=${GW_CFG_DEFAULT_GEN_UI_JSON}
+            -DGW_CFG_DEFAULT_ARGS=--generate_for_ui_client
+            -P ${CMAKE_SOURCE_DIR}/gw_cfg_default/run_and_capture.cmake
+        DEPENDEES build
+        BYPRODUCTS ${GW_CFG_DEFAULT_GEN_UI_JSON}
+        ALWAYS 1
+        COMMENT "Generating gw_cfg_default_gen_ui.json from gw_cfg_default executable"
 )
 
 set(GW_GWUI_PARTITION fatfs_gwui)

@@ -10,7 +10,7 @@ the `gw_cfg_def` NVS partition on the ESP32 and used by the firmware on first bo
 |---|---|
 | `gw_cfg_default.json` | Human-editable JSON with the default settings shipped on the device. **This is the source of truth for the `gw_cfg_def` partition.** |
 | `gw_cfg_def_partition.csv` | NVS partition layout descriptor — tells `nvs_partition_gen.py` to store `gw_cfg_default.json` under namespace `ruuvi_gateway`, key `gw_cfg_default`. |
-| `gw_cfg_default_gen.c` | Standalone host program that prints the **hardcoded** defaults compiled into the firmware (i.e. what `gw_cfg_default_get()` in `main/gw_cfg_default.c` produces) as JSON to `stdout`. |
+| `gw_cfg_default_gen.c` | Standalone host program that prints the **hardcoded** defaults compiled into the firmware (i.e. what `gw_cfg_default_get()` in `main/gw_cfg_default.c` produces) as JSON to `stdout`. By default it generates the persistent representation; pass `--generate_for_ui_client` to generate the public UI-client representation with secrets hidden. |
 | `CMakeLists.txt` | Builds `gw_cfg_default_gen.c` as a host executable against the same `main/` sources used by the firmware. |
 | `run_and_capture.cmake` | Helper CMake script (invoked via `cmake -P`) that runs the generator, pipes its output through `jq`, blanks out runtime-only fields (`mqtt_prefix`, `mqtt_client_id`), and writes the pretty-printed result to `gw_cfg_default_gen.json`. |
 | `gw_cfg_default_gen.json` | **Auto-generated** snapshot of the hardcoded defaults. Regenerated on every firmware build. Intended for review / diffing against `gw_cfg_default.json`. |
@@ -117,3 +117,22 @@ cmake -DGW_CFG_DEFAULT_EXE=$PWD/build/gw_cfg_default/gw_cfg_default \
       -P gw_cfg_default/run_and_capture.cmake
 ```
 
+### Generating defaults for a UI client
+
+The generator accepts an optional `--generate_for_ui_client` argument. In this mode it
+uses `gw_cfg_json_generate_for_ui_client()` instead of
+`gw_cfg_json_generate_for_saving()`. The resulting JSON matches the representation
+returned to authenticated UI/API clients: secret values such as passwords and API keys
+are omitted, while fields such as `lan_auth_api_key_use` and
+`lan_auth_api_key_rw_use` indicate whether the corresponding keys are configured.
+
+After building the host executable, generate and format this representation with:
+
+```shell
+build/gw_cfg_default/gw_cfg_default --generate_for_ui_client \
+    | jq . > gw_cfg_default/gw_cfg_default_gen_ui.json
+```
+
+Running the executable without arguments retains the existing persistent-configuration
+output. Any other argument combination prints usage information and exits with an
+error.

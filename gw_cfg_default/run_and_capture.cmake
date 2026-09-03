@@ -4,6 +4,9 @@
 # Required variables (passed via -D on the command line):
 #   GW_CFG_DEFAULT_EXE - absolute path to the built gw_cfg_default executable
 #   GW_CFG_DEFAULT_OUT - absolute path to the output JSON file
+#
+# Optional variables:
+#   GW_CFG_DEFAULT_ARGS - arguments passed to the gw_cfg_default executable
 
 if(NOT GW_CFG_DEFAULT_EXE)
     message(FATAL_ERROR "GW_CFG_DEFAULT_EXE is not set")
@@ -20,13 +23,13 @@ if(NOT JQ_EXECUTABLE)
     message(FATAL_ERROR "jq is required to generate ${GW_CFG_DEFAULT_OUT} but was not found in PATH")
 endif()
 
-message(STATUS "Running ${GW_CFG_DEFAULT_EXE} | jq -> ${GW_CFG_DEFAULT_OUT}")
+message(STATUS "Running ${GW_CFG_DEFAULT_EXE} ${GW_CFG_DEFAULT_ARGS} | jq -> ${GW_CFG_DEFAULT_OUT}")
 
 # jq filter: pretty-print and blank out mqtt_prefix / mqtt_client_id.
 set(_jq_filter ".mqtt_prefix = \"\" | .mqtt_client_id = \"\"")
 
 execute_process(
-        COMMAND "${GW_CFG_DEFAULT_EXE}"
+        COMMAND "${GW_CFG_DEFAULT_EXE}" ${GW_CFG_DEFAULT_ARGS}
         COMMAND "${JQ_EXECUTABLE}" "${_jq_filter}"
         OUTPUT_FILE "${GW_CFG_DEFAULT_OUT}"
         RESULTS_VARIABLE _gw_cfg_default_results
@@ -40,4 +43,3 @@ foreach(_res IN LISTS _gw_cfg_default_results)
                 "${_gw_cfg_default_stderr}")
     endif()
 endforeach()
-
