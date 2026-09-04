@@ -10,10 +10,11 @@ the `gw_cfg_def` NVS partition on the ESP32 and used by the firmware on first bo
 |---|---|
 | `gw_cfg_default.json` | Human-editable JSON with the default settings shipped on the device. **This is the source of truth for the `gw_cfg_def` partition.** |
 | `gw_cfg_def_partition.csv` | NVS partition layout descriptor — tells `nvs_partition_gen.py` to store `gw_cfg_default.json` under namespace `ruuvi_gateway`, key `gw_cfg_default`. |
-| `gw_cfg_default_gen.c` | Standalone host program that prints the **hardcoded** defaults compiled into the firmware (i.e. what `gw_cfg_default_get()` in `main/gw_cfg_default.c` produces) as JSON to `stdout`. |
+| `gw_cfg_default_gen.c` | Standalone host program that prints the **hardcoded** defaults compiled into the firmware (i.e. what `gw_cfg_default_get()` in `main/gw_cfg_default.c` produces) as JSON to `stdout`. By default it generates the persistent representation; pass `--generate_for_ui_client` to generate the public UI-client representation with secrets hidden. |
 | `CMakeLists.txt` | Builds `gw_cfg_default_gen.c` as a host executable against the same `main/` sources used by the firmware. |
-| `run_and_capture.cmake` | Helper CMake script (invoked via `cmake -P`) that runs the generator, pipes its output through `jq`, blanks out runtime-only fields (`mqtt_prefix`, `mqtt_client_id`), and writes the pretty-printed result to `gw_cfg_default_gen.json`. |
+| `run_and_capture.cmake` | Helper CMake script (invoked via `cmake -P`) that runs the generator with optional arguments, pipes its output through `jq`, optionally blanks out runtime-only fields (`mqtt_prefix`, `mqtt_client_id`) as controlled by `GW_CFG_DEFAULT_NORMALIZE_RUNTIME_FIELDS`, and writes the pretty-printed result to the requested output file. |
 | `gw_cfg_default_gen.json` | **Auto-generated** snapshot of the hardcoded defaults. Regenerated on every firmware build. Intended for review / diffing against `gw_cfg_default.json`. |
+| `gw_cfg_default_gen_ui.json` | **Auto-generated** UI/API-visible snapshot of the hardcoded defaults, with secrets hidden. Regenerated on every firmware build and used as the factory-default reference by the CRA self-assessment tests. |
 
 ## How `gw_cfg_default.json` becomes the `gw_cfg_def` partition
 
@@ -53,7 +54,7 @@ python ./scripts/nvs_partition_gen.py \
 3. Rebuild and flash — the new defaults will be applied on first boot or after a
    factory reset.
 
-## How `gw_cfg_default_gen.json` is generated
+## How the generated default snapshots are produced
 
 `main/gw_cfg_default.c` contains the **hardcoded** factory defaults compiled into the
 firmware. These hardcoded values are the ultimate fallback used when the `gw_cfg_def`
@@ -61,16 +62,23 @@ partition is missing or unreadable, and they **should** stay in sync with
 `gw_cfg_default.json` so that a user editing the JSON file sees exactly the values the
 firmware would use by default.
 
-To make any drift visible, the build automatically produces `gw_cfg_default_gen.json`:
+To make any drift visible and provide a public default-state reference, every firmware
+build automatically produces both `gw_cfg_default_gen.json` and
+`gw_cfg_default_gen_ui.json`:
 
 1. The top-level `CMakeLists.txt` declares the host-side subproject as an
    `ExternalProject` named `gw_cfg_default`. Its `CMakeLists.txt` compiles
    `gw_cfg_default_gen.c` together with `main/gw_cfg_default.c`,
    `main/gw_cfg_json_generate*.c` and the necessary stubs, producing a host
    executable that prints the hardcoded defaults as JSON.
-2. An `ExternalProject_Add_Step(... generate_default_json ...)` step runs after the
-   build and invokes `run_and_capture.cmake` via `cmake -P`.
-3. `run_and_capture.cmake` executes the pipeline:
+2. Two `ExternalProject_Add_Step()` steps run after the host build and invoke
+   `run_and_capture.cmake` via `cmake -P`. Both use `ALWAYS 1`, so both snapshots are
+   refreshed on every firmware build:
+   - `generate_default_json` runs the generator without arguments and writes
+     `gw_cfg_default_gen.json`;
+   - `generate_default_ui_json` passes `--generate_for_ui_client` and writes
+     `gw_cfg_default_gen_ui.json`.
+3. For the persistent snapshot, `run_and_capture.cmake` executes the pipeline:
    ```
    gw_cfg_default | jq '.mqtt_prefix = "" | .mqtt_client_id = ""'
    ```
@@ -79,9 +87,10 @@ To make any drift visible, the build automatically produces `gw_cfg_default_gen.
      runtime they are derived from the gateway's MAC address and therefore differ
      between the host-generated snapshot and the value shipped in
      `gw_cfg_default.json`.
-4. The result is written to `gw_cfg_default/gw_cfg_default_gen.json`.
-
-The step uses `ALWAYS 1`, so the snapshot is refreshed on every firmware build.
+4. The UI snapshot runs `gw_cfg_default --generate_for_ui_client | jq .`. It preserves
+   the generated `mqtt_prefix` and `mqtt_client_id` values, contains the representation
+   exposed to authenticated UI/API clients, and omits secret values while including
+   corresponding public state flags.
 
 ### Purpose of `gw_cfg_default_gen.json`
 
@@ -106,8 +115,8 @@ The step uses `ALWAYS 1`, so the snapshot is refreshed on every firmware build.
 
 ### Manual regeneration
 
-The snapshot is normally produced automatically as part of `idf.py build`. To
-regenerate it manually:
+Both snapshots are normally produced automatically as part of every `idf.py build`.
+To regenerate them manually:
 
 ```shell
 cmake -S gw_cfg_default -B build/gw_cfg_default
@@ -115,5 +124,34 @@ cmake --build build/gw_cfg_default
 cmake -DGW_CFG_DEFAULT_EXE=$PWD/build/gw_cfg_default/gw_cfg_default \
       -DGW_CFG_DEFAULT_OUT=$PWD/gw_cfg_default/gw_cfg_default_gen.json \
       -P gw_cfg_default/run_and_capture.cmake
+cmake -DGW_CFG_DEFAULT_EXE=$PWD/build/gw_cfg_default/gw_cfg_default \
+      -DGW_CFG_DEFAULT_OUT=$PWD/gw_cfg_default/gw_cfg_default_gen_ui.json \
+      -DGW_CFG_DEFAULT_ARGS=--generate_for_ui_client \
+      -DGW_CFG_DEFAULT_NORMALIZE_RUNTIME_FIELDS=OFF \
+      -P gw_cfg_default/run_and_capture.cmake
 ```
 
+### Generating defaults for a UI client
+
+The automatically generated `gw_cfg_default_gen_ui.json` snapshot is produced by
+passing the optional `--generate_for_ui_client` argument to the generator. In this mode
+it uses `gw_cfg_json_generate_for_ui_client()` instead of
+`gw_cfg_json_generate_for_saving()`. The resulting JSON matches the representation
+returned to authenticated UI/API clients: secret values such as passwords and API keys
+are omitted, while fields such as `lan_auth_api_key_use` and
+`lan_auth_api_key_rw_use` indicate whether the corresponding keys are configured.
+Unlike the persistent snapshot, the UI snapshot does not normalize `mqtt_prefix` or
+`mqtt_client_id` to empty strings, so their generated client-visible values are
+preserved.
+
+The top-level build performs this automatically on every build. After building the host
+executable, the equivalent direct shell command is:
+
+```shell
+build/gw_cfg_default/gw_cfg_default --generate_for_ui_client \
+    | jq . > gw_cfg_default/gw_cfg_default_gen_ui.json
+```
+
+Running the executable without arguments retains the existing persistent-configuration
+output. Any other argument combination prints usage information and exits with an
+error.
