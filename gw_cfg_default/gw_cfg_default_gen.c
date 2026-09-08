@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include "nvs.h"
 #include "lwip/ip4_addr.h"
 #include "wifi_manager_defs.h"
@@ -218,8 +219,15 @@ default_json_read_callback(gw_cfg_t* const p_gw_cfg_default)
 }
 
 int
-main(void)
+main(const int argc, char* const argv[])
 {
+    const bool flag_generate_for_ui_client = (2 == argc) && (0 == strcmp(argv[1], "--generate_for_ui_client"));
+    if ((1 != argc) && (!flag_generate_for_ui_client))
+    {
+        fprintf(stderr, "Usage: %s [--generate_for_ui_client]\n", argv[0]);
+        return 1;
+    }
+
     const gw_cfg_default_init_param_t init_param = { 0 };
     if (!gw_cfg_default_init(&init_param, &default_json_read_callback))
     {
@@ -231,7 +239,9 @@ main(void)
     gw_cfg_default_get(&gw_cfg);
     cjson_wrap_str_t json_str = cjson_wrap_str_null();
 
-    if (!gw_cfg_json_generate_for_saving(&gw_cfg, &json_str))
+    const bool flag_generated = flag_generate_for_ui_client ? gw_cfg_json_generate_for_ui_client(&gw_cfg, &json_str)
+                                                            : gw_cfg_json_generate_for_saving(&gw_cfg, &json_str);
+    if (!flag_generated)
     {
         fprintf(stderr, "Failed to generate JSON from default gateway configuration\n");
         cjson_wrap_free_json_str(&json_str);
