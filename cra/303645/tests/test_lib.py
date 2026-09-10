@@ -41,7 +41,14 @@ from lib.gateway import (
     InteractiveLoginChallenge,
     InteractiveLoginRequest,
 )
-from lib.http_api import API_INVENTORY, EXPECTED_API_INVENTORY, ApiRoute, HttpHeader, HttpMethod
+from lib.http_api import (
+    API_INVENTORY,
+    EXPECTED_API_INVENTORY,
+    ApiRoute,
+    GatewayApi as HttpGatewayApi,
+    HttpHeader,
+    HttpMethod,
+)
 from lib.models import DutConfig, ProgressReporter
 
 
@@ -241,6 +248,7 @@ class ModelsAndApiTestCase(unittest.TestCase):
         )
 
     def test_api_inventory_is_unique_and_matches_expected_routes(self) -> None:
+        self.assertIs(HttpGatewayApi, GatewayApi)
         self.assertEqual(26, len(API_INVENTORY))
         self.assertEqual(len(API_INVENTORY), len(set(API_INVENTORY)))
         self.assertEqual(EXPECTED_API_INVENTORY, set(API_INVENTORY))
@@ -281,6 +289,10 @@ class EvidenceLogTestCase(unittest.TestCase):
             )
             self.assertIn("DURATION SECONDS: 1.250", content)
             self.assertIn("OVERALL VERDICT: PASS", content)
+            ended_stamp: str = "2025-01-02T03:04:06.928901Z"
+            self.assertIn(f"[{ended_stamp}] UTC END: {ended_stamp}", content)
+            self.assertIn(f"[{ended_stamp}] DURATION SECONDS: 1.250", content)
+            self.assertIn(f"[{ended_stamp}] OVERALL VERDICT: PASS", content)
 
     def test_http_request_response_and_exception_are_recorded(self) -> None:
         directory: str

@@ -3,6 +3,29 @@
 from dataclasses import dataclass
 from typing import Set, Tuple
 
+
+class GatewayApi:
+    AUTH = "/auth"
+    AP = "/ap.json"
+    STATUS = "/status.json"
+    CONFIG = "/ruuvi.json"
+    FIRMWARE_UPDATE = "/firmware_update.json"
+    INFO = "/info.json"
+    METRICS = "/metrics"
+    HISTORY = "/history"
+    VALIDATE_URL = "/validate_url"
+    EXTRA_CFG = "/extra_cfg"
+    CONNECT = "/connect.json"
+    CONNECT_WPS = "/connect_wps"
+    BLUETOOTH_SCANNING = "/bluetooth_scanning.json"
+    FW_UPDATE = "/fw_update.json"
+    FW_UPDATE_URL = "/fw_update_url.json"
+    FW_UPDATE_RESET = "/fw_update_reset"
+    GW_CFG_DOWNLOAD = "/gw_cfg_download"
+    SSL_CERT = "/ssl_cert"
+    INIT_STORAGE = "/init_storage"
+
+
 class HttpMethod:
     GET = "GET"
     POST = "POST"
@@ -31,13 +54,12 @@ class HttpAuthScheme:
     DIGEST = "Digest"
     BEARER = "Bearer"
 
-from .gateway import GatewayApi
-
 
 @dataclass(frozen=True)
 class ApiRoute:
     method: str
     path: str
+
 
 API_INVENTORY: Tuple[ApiRoute, ...] = (
     ApiRoute(HttpMethod.GET, GatewayApi.AUTH),

@@ -12,35 +12,11 @@ from Crypto.PublicKey import ECC
 
 from .errors import GatewayAuthenticationModeError, GatewayConnectionError, GatewayProtocolError
 from .evidence import EvidenceLog
+from .http_api import GatewayApi, HttpAuthScheme, HttpHeader, HttpMethod
 from .models import DutConfig
 
 
 AUTH_PARAMETERS_RE = re.compile(r'([A-Za-z_][A-Za-z0-9_]*)="([^"]*)"')
-
-
-class GatewayApi:
-    AUTH = "/auth"
-    AP = "/ap.json"
-    STATUS = "/status.json"
-    CONFIG = "/ruuvi.json"
-    FIRMWARE_UPDATE = "/firmware_update.json"
-    INFO = "/info.json"
-    METRICS = "/metrics"
-    HISTORY = "/history"
-    VALIDATE_URL = "/validate_url"
-    EXTRA_CFG = "/extra_cfg"
-    CONNECT = "/connect.json"
-    CONNECT_WPS = "/connect_wps"
-    BLUETOOTH_SCANNING = "/bluetooth_scanning.json"
-    FW_UPDATE = "/fw_update.json"
-    FW_UPDATE_URL = "/fw_update_url.json"
-    FW_UPDATE_RESET = "/fw_update_reset"
-    GW_CFG_DOWNLOAD = "/gw_cfg_download"
-    SSL_CERT = "/ssl_cert"
-    INIT_STORAGE = "/init_storage"
-
-
-from .http_api import HttpAuthScheme, HttpHeader, HttpMethod
 
 
 class AuthMech:

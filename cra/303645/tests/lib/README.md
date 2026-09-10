@@ -17,8 +17,8 @@ The package is split by responsibility:
 | `config.py` | Strict `.env` and generated default-configuration loading and validation |
 | `errors.py` | Shared setup, connection, protocol, and authentication-mode exceptions |
 | `evidence.py` | Exclusive timestamped evidence logs, structured records, HTTP transcripts, exceptions, and final verdicts |
-| `gateway.py` | Gateway HTTP client, endpoint names, authentication modes, Basic and Digest authorization, and interactive ECDH authentication |
-| `http_api.py` | Canonical HTTP methods, statuses, headers, schemes, and the firmware API route inventory |
+| `gateway.py` | Gateway HTTP client, authentication modes, Basic and Digest authorization, and interactive ECDH authentication |
+| `http_api.py` | Gateway endpoint names, canonical HTTP methods, statuses, headers, schemes, and the firmware API route inventory |
 | `models.py` | DUT configuration, test results, and console progress reporting |
 
 `GatewayClient` is the main runtime boundary. It prepares requests, writes request and response
@@ -54,7 +54,8 @@ state transitions on top of this client.
 - `write()` and `write_line()` record structured or plain evidence and flush immediately.
 - `write_http_request()` and `write_http_response()` record complete HTTP exchanges.
 - `exception()` records an exception and traceback.
-- `finish()` records duration and overall verdict, then closes the log.
+- `finish()` uses one injected end timestamp for all terminal record prefixes and values, records
+  duration and overall verdict, flushes, and closes the log.
 - `AssertionEvidence`, `MechanismResultEvidence`, `RouteResultEvidence`, and
   `HashComparisonEvidence` are structured evidence records.
 
@@ -63,8 +64,8 @@ bodies. Store and share them with the same care as DUT credentials.
 
 ### Gateway HTTP and authentication
 
-- `GatewayApi`, `GatewayCfgDesc`, `GatewayCfgLanAuthType`, and `AuthMech` contain shared protocol
-  names.
+- `GatewayCfgDesc`, `GatewayCfgLanAuthType`, and `AuthMech` contain shared gateway protocol names.
+  `gateway.py` re-exports `GatewayApi` for backward compatibility.
 - `GatewayClient.request()` sends a request with fixed timeouts and redirects disabled by default.
   It accepts either `json_body` or `data`, but never both.
 - `response_json()` validates JSON decoding and, optionally, the top-level Python type.
@@ -78,7 +79,8 @@ bodies. Store and share them with the same care as DUT credentials.
 
 ### HTTP inventory and errors
 
-- `HttpMethod`, `HttpStatus`, `HttpHeader`, and `HttpAuthScheme` centralize HTTP vocabulary.
+- `GatewayApi`, `HttpMethod`, `HttpStatus`, `HttpHeader`, and `HttpAuthScheme` centralize endpoint
+  paths and HTTP vocabulary in `http_api.py`.
 - `ApiRoute`, `API_INVENTORY`, and `EXPECTED_API_INVENTORY` define the canonical 26-route firmware
   API matrix.
 - `InvalidSetup` is the common setup-error base class. `InvalidConfig`,

@@ -117,10 +117,12 @@ class EvidenceLog:
 
     def finish(self, verdict: str, now: Callable[[], datetime] = utc_now) -> None:
         ended_at = now()
-        self.write("UTC END", format_utc(ended_at))
-        self.write(
-            "DURATION SECONDS",
-            f"{(ended_at - self.started_at).total_seconds():.3f}",
+        ended_stamp = format_utc(ended_at)
+        self._stream.write(f"[{ended_stamp}] UTC END: {ended_stamp}\n")
+        self._stream.write(
+            f"[{ended_stamp}] DURATION SECONDS: "
+            f"{(ended_at - self.started_at).total_seconds():.3f}\n"
         )
-        self.write("OVERALL VERDICT", verdict)
+        self._stream.write(f"[{ended_stamp}] OVERALL VERDICT: {verdict}\n")
+        self._stream.flush()
         self._stream.close()
