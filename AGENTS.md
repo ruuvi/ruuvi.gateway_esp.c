@@ -29,6 +29,10 @@ The ESP32 runs in **unicore mode** (`CONFIG_FREERTOS_UNICORE=y`).
 - **`schemas/`** — JSON schemas for gateway config, HTTP/MQTT data formats, status.
   Validated via `check_schemas.sh`
 - **`tests/`** — Host-side unit tests (independent CMake project, see `tests/AGENTS.md`)
+- **`cra/303645/tests/`** — Python 3.8 CRA live-DUT functional-test automation, deterministic
+  host-side implementation tests, and shared Python infrastructure. See
+  `cra/303645/tests/README.md`, `cra/303645/tests/AGENTS.md`, and
+  `cra/303645/tests/lib/README.md`.
 
 ## Build Environment Setup
 
@@ -116,6 +120,14 @@ npm install
 npm test              # Mocha/Chai/Sinon unit tests
 npm run build-dev     # Webpack dev build
 npm run build-prod    # Webpack prod build (targeting Safari 12)
+
+# CRA Python tests (independent project; does not require a live DUT)
+cd cra/303645/tests
+python3.8 -m venv .venv
+.venv/bin/python -m pip install --requirement requirements.txt
+.venv/bin/python -m coverage run --branch --source=lib -m unittest test_lib.py
+.venv/bin/python -m coverage report --show-missing --fail-under=95
+.venv/bin/python -m unittest discover --verbose --start-directory . --pattern "test_test_*.py"
 ```
 
 ## Testing
@@ -131,6 +143,12 @@ The `tests/` directory is an **independent CMake project** that can be opened se
 See `tests/AGENTS.md` for details including test patterns, mock infrastructure, and a
 **step-by-step checklist for creating new test modules** (directory structure, CMakeLists.txt
 template, and the two required registrations in the top-level `tests/CMakeLists.txt`).
+
+CRA Python automation is a separate test project under `cra/303645/tests/`. Its live-DUT scripts
+are named `test_<id>.py`; deterministic implementation tests are named `test_test_<id>.py`; and
+direct shared-library tests live in `test_lib.py`. See `cra/303645/tests/AGENTS.md` for agent rules
+and `cra/303645/tests/README.md` for setup and execution. Do not run the live-DUT scripts as part of
+ordinary host-side validation.
 
 ## Code Style
 
@@ -156,7 +174,7 @@ template, and the two required registrations in the top-level `tests/CMakeLists.
 
 ## CI / GitHub Actions (`.github/workflows/`)
 
-Eight workflows run on push and/or PR:
+Ten workflows run on push, pull requests, schedules, and/or manual dispatch:
 
 1. **`google-tests.yml` (Google Tests)** — on ubuntu-22.04, sets up Python 3.8,
    installs ESP-IDF v4.2.5 (cached at `~/esp/esp-idf`), builds tests with Ninja in
@@ -166,20 +184,25 @@ Eight workflows run on push and/or PR:
    runs `scripts/clang_format_all.sh`, and fails if any file changes (`git diff --exit-code`).
 3. **`check-schemas.yml` (Check JSON Schemas)** — installs `check-jsonschema` pip package,
    runs `schemas/check_schemas.sh`.
-4. **`build-fw-dev.yml` (Build Firmware — dev)** — builds firmware in dev environment on push/PR,
+4. **`check-ca-bundle.yml` (Check CA Bundle)** — verifies the bundled Mozilla CA certificates and,
+   on scheduled runs, maintains a tracking issue when the bundle is stale.
+5. **`build-fw-dev.yml` (Build Firmware — dev)** — builds firmware in dev environment on push/PR,
    runs reproducible build (build → touch → build), uploads artifact with all binary images.
    Requires `bincopy` pip package and secure boot signing key.
-5. **`build-fw-prod.yml` (Build Firmware — prod)** — same as dev but runs only on push to
+6. **`build-fw-prod.yml` (Build Firmware — prod)** — same as dev but runs only on push to
    master/tags, uses prod environment.
-6. **`sonar-scan.yml` (SonarCloud Analysis)** — builds firmware with SonarSource build-wrapper,
+7. **`sonar-scan.yml` (SonarCloud Analysis)** — builds firmware with SonarSource build-wrapper,
    builds tests (coverage is already enabled per-target via `target_compile_options`
    in each `test_*/CMakeLists.txt`), generates `gcovr -r . --sonarqube` coverage report,
    uploads to SonarCloud (project key configured in `sonar-project.properties`).
-7. **`test-mbedtls.yml` (Test mbedTLS)** — runs mbedTLS test suites (`make test`) plus
+8. **`test-mbedtls.yml` (Test mbedTLS)** — runs mbedTLS test suites (`make test`) plus
    SSL sanitize/reduced-buffer/variable-buffer test scripts in `components/mbedtls/mbedtls/`.
-8. **`test-nvs_flash.yml` (Test nvs_flash)** — builds and runs NVS host tests
+9. **`test-nvs_flash.yml` (Test nvs_flash)** — builds and runs NVS host tests
    in `components/nvs_flash/test_nvs_host/` (`make -j`, then `./test_nvs -d yes exclude:[long]`).
    Requires `jsonschema` pip package.
+10. **`cra-python-tests.yml` (CRA Python tests)** — sets up Python 3.8, runs direct unit tests for
+   `cra/303645/tests/lib/` with branch coverage enforced at 95%, and discovers every
+   `cra/303645/tests/test_test_*.py` host-side implementation test. Live-DUT scripts are excluded.
 
 Key CI details for reproducing locally:
 - CI uses `ubuntu-22.04`, `gcc/g++`, `cmake`, `ninja-build`.
@@ -196,3 +219,4 @@ Key CI details for reproducing locally:
 | esp32-wifi-manager | `components/esp32-wifi-manager/` | Wi-Fi/HTTP server component (see `components/esp32-wifi-manager/AGENTS.md`) |
 | esp32-wifi-manager tests | `components/esp32-wifi-manager/tests/` | Independent CMake test project (see `components/esp32-wifi-manager/tests/AGENTS.md`) |
 | Unit tests | `tests/` | Main firmware unit tests, independent CMake project (see `tests/AGENTS.md`) |
+| CRA functional tests | `cra/303645/tests/` | Python live-DUT automation and offline implementation tests (see `cra/303645/tests/README.md` and `cra/303645/tests/AGENTS.md`) |
