@@ -334,6 +334,23 @@ touch CMakeLists.txt
 idf.py build
 ```
 
+## Testing
+
+The repository contains two independent host-side test projects:
+
+- [`tests/`](tests/) contains C/C++ firmware unit tests built with CMake, Google Test, and the POSIX
+  FreeRTOS simulator. See [`tests/AGENTS.md`](tests/AGENTS.md) for detailed contributor and agent
+  instructions.
+- [`cra/303645/tests/`](cra/303645/tests/) contains Python 3.8 CRA live-DUT functional-test
+  automation and deterministic offline tests of that automation. See its
+  [`README.md`](cra/303645/tests/README.md) for setup and commands and
+  [`AGENTS.md`](cra/303645/tests/AGENTS.md) for contributor and AI-agent rules. Shared Python
+  infrastructure is documented in [`lib/README.md`](cra/303645/tests/lib/README.md).
+
+The CRA GitHub Actions job runs the shared-library unit suite with a 95% branch-aware coverage gate
+and runs every `cra/303645/tests/test_test_*.py` module. Live-DUT scripts are run manually because
+they require a dedicated gateway and test network.
+
 # CH340 drivers installation
 
 The Ruuvi Gateway contains a USB-to-Serial converter **CH340**, so to communicate with it, you 

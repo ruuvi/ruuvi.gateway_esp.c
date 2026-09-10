@@ -1,0 +1,43 @@
+name: CRA Python tests
+
+on:
+  push:
+    paths:
+      - "cra/303645/tests/**"
+      - ".github/workflows/cra-python-tests.yml"
+  pull_request:
+    paths:
+      - "cra/303645/tests/**"
+      - ".github/workflows/cra-python-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: cra/303645/tests
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.8"
+          cache: pip
+          cache-dependency-path: cra/303645/tests/requirements.txt
+
+      - name: Create virtual environment and install test dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --requirement requirements.txt
+
+      - name: Run shared library unit tests with coverage
+        run: |
+          .venv/bin/python -m coverage run --branch --source=lib -m unittest --verbose test_lib.py
+          .venv/bin/python -m coverage report --show-missing --fail-under=95
+
+      - name: Run automated test implementation tests
+        run: .venv/bin/python -m unittest discover --verbose --start-directory . --pattern "test_test_*.py"
