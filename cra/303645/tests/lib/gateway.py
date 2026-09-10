@@ -327,10 +327,17 @@ class GatewayClient:
             raise GatewayProtocolError("GET /auth did not supply gateway ECDH public key")
         try:
             gateway_public_raw = base64.b64decode(gateway_public_b64, validate=True)
-            if len(gateway_public_raw) != 65:
-                raise ValueError("unexpected uncompressed P-256 key length")
-            gateway_public = ECC.import_key(gateway_public_raw, curve_name="secp256r1")
-            shared_secret = int((request.private_key.d * gateway_public.pointQ).x).to_bytes(
+            if len(gateway_public_raw) != 65 or gateway_public_raw[0] != 0x04:
+                raise ValueError("unexpected uncompressed P-256 key encoding")
+            x = int.from_bytes(gateway_public_raw[1:33], "big")
+            y = int.from_bytes(gateway_public_raw[33:65], "big")
+            gateway_public = ECC.construct(
+                curve="secp256r1",
+                point_x=x,
+                point_y=y,
+            )
+            shared_point = gateway_public.pointQ * int(request.private_key.d)
+            shared_secret = int(shared_point.x).to_bytes(
                 32,
                 "big",
             )

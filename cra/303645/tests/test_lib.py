@@ -527,16 +527,26 @@ class GatewayClientTestCase(unittest.TestCase):
             'x-ruuvi-interactive realm="gateway", challenge="abc", '
             'session_cookie="RUUVISESSION", session_id="cookie"'
         )
-        invalid_key_response: FakeResponse = FakeResponse(
-            {},
-            {
-                HttpHeader.WWW_AUTHENTICATE: header,
-                HttpHeader.RUUVI_ECDH_PUBLIC_KEY: base64.b64encode(b"short").decode("ascii"),
-            },
-            {"RUUVISESSION": "cookie"},
-        )
-        with self.assertRaisesRegex(GatewayProtocolError, "invalid gateway ECDH public key"):
-            self.client.parse_interactive_challenge_response(request, invalid_key_response)
+        invalid_key_raw: bytes
+        for invalid_key_raw in (b"short", b"\x02" + (b"\x00" * 64)):
+            invalid_key_response: FakeResponse = FakeResponse(
+                {},
+                {
+                    HttpHeader.WWW_AUTHENTICATE: header,
+                    HttpHeader.RUUVI_ECDH_PUBLIC_KEY: base64.b64encode(
+                        invalid_key_raw
+                    ).decode("ascii"),
+                },
+                {"RUUVISESSION": "cookie"},
+            )
+            with self.subTest(key=invalid_key_raw), self.assertRaisesRegex(
+                GatewayProtocolError,
+                "invalid gateway ECDH public key",
+            ):
+                self.client.parse_interactive_challenge_response(
+                    request,
+                    invalid_key_response,
+                )
 
     def test_prepare_and_send_login_uses_cookie_and_digest_response(self) -> None:
         response: requests.Response = requests.Response()
