@@ -2,10 +2,12 @@ name: CRA Python tests
 
 on:
   push:
+    branches: [ master ]
     paths:
       - "cra/303645/tests/**"
       - ".github/workflows/cra-python-tests.yml"
   pull_request:
+    branches: [ '*' ]
     paths:
       - "cra/303645/tests/**"
       - ".github/workflows/cra-python-tests.yml"
