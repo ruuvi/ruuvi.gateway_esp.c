@@ -4,6 +4,7 @@ import base64
 import hashlib
 import io
 import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -337,6 +338,31 @@ class GatewayClientTestCase(unittest.TestCase):
             random_bytes=lambda size: bytes(range(size)),
         )
 
+    def test_new_session_preserves_request_authentication_with_matching_netrc(self) -> None:
+        directory: str
+        with tempfile.TemporaryDirectory() as directory:
+            netrc_path: Path = Path(directory) / ".netrc"
+            netrc_path.write_text(
+                "machine gateway.local login netrc-user password netrc-password\n",
+                encoding="utf-8",
+            )
+            netrc_path.chmod(0o600)
+            authorization: Optional[str]
+            with mock.patch.dict(os.environ, {"NETRC": str(netrc_path)}):
+                for authorization in (None, "Bearer explicit-token"):
+                    with self.subTest(authorization=authorization), self.client.new_session() as session:
+                        headers: Dict[str, str] = (
+                            {} if authorization is None else {HttpHeader.AUTHORIZATION: authorization}
+                        )
+                        with mock.patch.object(session, "send", return_value=FakeResponse()) as send:
+                            self.client.request(
+                                session, HttpMethod.GET, GatewayApi.STATUS, headers=headers
+                            )
+                        send.assert_called_once()
+                        prepared: requests.PreparedRequest = send.call_args[0][0]
+                        self.assertEqual(authorization, prepared.headers.get(HttpHeader.AUTHORIZATION))
+                        self.assertIs(prepared, self.evidence.requests[-1])
+
     def test_request_prepares_logs_and_sends_expected_http_request(self) -> None:
         response: requests.Response = requests.Response()
         session: FakeSession = FakeSession(response=response)
@@ -463,7 +489,7 @@ class GatewayClientTestCase(unittest.TestCase):
 
     def test_prepare_challenge_encodes_uncompressed_p256_public_key(self) -> None:
         private_key: EccKey = ECC.construct(curve="P-256", d=1)
-        session: object = object()
+        session: FakeSession = FakeSession()
         client: GatewayClient = GatewayClient(
             CONFIG,
             self.evidence,
@@ -547,6 +573,29 @@ class GatewayClientTestCase(unittest.TestCase):
                     request,
                     invalid_key_response,
                 )
+
+    def test_parse_challenge_response_rejects_point_at_infinity(self) -> None:
+        request: InteractiveChallengeRequest = InteractiveChallengeRequest(
+            object(), ECC.construct(curve="P-256", d=1), "unused"
+        )
+        response: FakeResponse = FakeResponse(
+            {},
+            {
+                HttpHeader.WWW_AUTHENTICATE: (
+                    'x-ruuvi-interactive realm="gateway", challenge="abc", '
+                    'session_cookie="RUUVISESSION", session_id="cookie"'
+                ),
+                HttpHeader.RUUVI_ECDH_PUBLIC_KEY: base64.b64encode(
+                    b"\x04" + bytes(64)
+                ).decode("ascii"),
+            },
+            {"RUUVISESSION": "cookie"},
+        )
+        with self.assertRaisesRegex(GatewayProtocolError, "invalid gateway ECDH public key"):
+            self.client.parse_interactive_challenge_response(request, response)
+        labels: List[str] = [label for label, _ in self.evidence.entries]
+        self.assertNotIn("ECDH SHARED SECRET", labels)
+        self.assertNotIn("ECDH AES KEY", labels)
 
     def test_prepare_and_send_login_uses_cookie_and_digest_response(self) -> None:
         response: requests.Response = requests.Response()

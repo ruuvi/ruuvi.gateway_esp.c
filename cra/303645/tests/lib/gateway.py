@@ -128,7 +128,10 @@ class GatewayClient:
         self.user_agent = user_agent
 
     def new_session(self) -> Any:
-        return self.session_factory()
+        session = self.session_factory()
+        # Keep host .netrc credentials from changing the authentication under test.
+        session.trust_env = False
+        return session
 
     def request(
         self,
@@ -336,6 +339,8 @@ class GatewayClient:
                 point_x=x,
                 point_y=y,
             )
+            if gateway_public.pointQ.is_point_at_infinity():
+                raise ValueError("gateway ECDH public key is the point at infinity")
             shared_point = gateway_public.pointQ * int(request.private_key.d)
             shared_secret = int(shared_point.x).to_bytes(
                 32,

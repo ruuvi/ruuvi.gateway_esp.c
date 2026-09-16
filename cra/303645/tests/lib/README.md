@@ -66,6 +66,9 @@ bodies. Store and share them with the same care as DUT credentials.
 
 - `GatewayCfgDesc`, `GatewayCfgLanAuthType`, and `AuthMech` contain shared gateway protocol names.
   `gateway.py` re-exports `GatewayApi` for backward compatibility.
+- `GatewayClient.new_session()` disables Requests' environment settings (`trust_env=False`),
+  including automatic `.netrc` authentication and environment proxies, so host settings cannot
+  silently change the authentication under test.
 - `GatewayClient.request()` sends a request with fixed timeouts and redirects disabled by default.
   It accepts either `json_body` or `data`, but never both.
 - `response_json()` validates JSON decoding and, optionally, the top-level Python type.
@@ -75,7 +78,8 @@ bodies. Store and share them with the same care as DUT credentials.
   parameters.
 - `request_interactive_challenge()`, `submit_interactive_authentication()`, and
   `authenticate_interactive()` implement the gateway interactive authentication sequence and ECDH
-  key derivation.
+  key derivation. Gateway ECDH public keys at the point at infinity are rejected with
+  `GatewayProtocolError` before deriving shared key material.
 
 ### HTTP inventory and errors
 
