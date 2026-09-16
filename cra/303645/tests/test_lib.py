@@ -52,7 +52,6 @@ from lib.http_api import (
 )
 from lib.models import DutConfig, ProgressReporter
 
-
 NOW: datetime = datetime(2025, 1, 2, 3, 4, 5, 678901, tzinfo=timezone.utc)
 CONFIG: DutConfig = DutConfig(
     gw_id="00:11:22:33:44:55:66:77",
@@ -80,10 +79,10 @@ class RecordingEvidence(EvidenceLog):
 
 class FakeResponse(requests.Response):
     def __init__(
-        self,
-        payload: Any = None,
-        headers: Optional[Mapping[str, str]] = None,
-        cookies: Optional[Mapping[str, str]] = None,
+            self,
+            payload: Any = None,
+            headers: Optional[Mapping[str, str]] = None,
+            cookies: Optional[Mapping[str, str]] = None,
     ) -> None:
         super().__init__()
         self._payload: Any = payload
@@ -98,9 +97,9 @@ class FakeResponse(requests.Response):
 
 class FakeSession(requests.Session):
     def __init__(
-        self,
-        response: Any = None,
-        error: Optional[requests.RequestException] = None,
+            self,
+            response: Any = None,
+            error: Optional[requests.RequestException] = None,
     ) -> None:
         super().__init__()
         self.response: Any = response
@@ -171,13 +170,13 @@ class ConfigTestCase(unittest.TestCase):
     def test_validate_hostname_rejects_unsafe_or_invalid_values(self) -> None:
         hostname: str
         for hostname in (
-            "",
-            " gateway.local",
-            "gateway local",
-            "http://gateway.local",
-            "gateway.local/path",
-            "gateway.local:8080",
-            "-gateway.local",
+                "",
+                " gateway.local",
+                "gateway local",
+                "http://gateway.local",
+                "gateway.local/path",
+                "gateway.local:8080",
+                "-gateway.local",
         ):
             with self.subTest(hostname=hostname), self.assertRaises(InvalidConfig):
                 validate_hostname(hostname)
@@ -432,10 +431,10 @@ class GatewayClientTestCase(unittest.TestCase):
         parser: Callable[[Optional[str]], Dict[str, str]]
         header: Optional[str]
         for parser, header in (
-            (self.client.parse_interactive_challenge, None),
-            (self.client.parse_interactive_challenge, 'x-ruuvi-interactive realm="gateway"'),
-            (self.client.parse_digest_challenge, "Basic realm=\"gateway\""),
-            (self.client.parse_digest_challenge, 'Digest realm="gateway"'),
+                (self.client.parse_interactive_challenge, None),
+                (self.client.parse_interactive_challenge, 'x-ruuvi-interactive realm="gateway"'),
+                (self.client.parse_digest_challenge, "Basic realm=\"gateway\""),
+                (self.client.parse_digest_challenge, 'Digest realm="gateway"'),
         ):
             with self.subTest(parser=parser.__name__, header=header), self.assertRaises(GatewayProtocolError):
                 parser(header)
@@ -476,9 +475,9 @@ class GatewayClientTestCase(unittest.TestCase):
         changed_header: str
         cookies: Mapping[str, str]
         for changed_header, cookies in (
-            (header, {}),
-            (header.replace('session_cookie="RUUVISESSION"', 'session_cookie="OTHER"'), {"RUUVISESSION": "cookie"}),
-            (header.replace('session_id="cookie"', 'session_id="different"'), {"RUUVISESSION": "cookie"}),
+                (header, {}),
+                (header.replace('session_cookie="RUUVISESSION"', 'session_cookie="OTHER"'), {"RUUVISESSION": "cookie"}),
+                (header.replace('session_id="cookie"', 'session_id="different"'), {"RUUVISESSION": "cookie"}),
         ):
             with self.subTest(header=changed_header, cookies=cookies), self.assertRaises(GatewayProtocolError):
                 self.client.interactive_login_challenge_from_response(
@@ -508,9 +507,9 @@ class GatewayClientTestCase(unittest.TestCase):
         server_private: EccKey = ECC.construct(curve="P-256", d=2)
         server_public: EccKey = server_private.public_key()
         server_raw: bytes = (
-            b"\x04"
-            + int(server_public.pointQ.x).to_bytes(32, "big")
-            + int(server_public.pointQ.y).to_bytes(32, "big")
+                b"\x04"
+                + int(server_public.pointQ.x).to_bytes(32, "big")
+                + int(server_public.pointQ.y).to_bytes(32, "big")
         )
         header: str = (
             'x-ruuvi-interactive realm="gateway", challenge="abc", '
@@ -566,8 +565,8 @@ class GatewayClientTestCase(unittest.TestCase):
                 {"RUUVISESSION": "cookie"},
             )
             with self.subTest(key=invalid_key_raw), self.assertRaisesRegex(
-                GatewayProtocolError,
-                "invalid gateway ECDH public key",
+                    GatewayProtocolError,
+                    "invalid gateway ECDH public key",
             ):
                 self.client.parse_interactive_challenge_response(
                     request,
@@ -635,9 +634,9 @@ class GatewayClientTestCase(unittest.TestCase):
         )
         submit: mock.MagicMock
         with mock.patch.object(
-            self.client,
-            "request_interactive_challenge",
-            return_value=challenge,
+                self.client,
+                "request_interactive_challenge",
+                return_value=challenge,
         ), mock.patch.object(
             self.client,
             "submit_interactive_authentication",

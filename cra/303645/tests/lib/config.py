@@ -10,7 +10,6 @@ from .errors import InvalidSetup
 from .gateway import GatewayCfgDesc
 from .models import DutConfig
 
-
 OCTETS_8_RE = re.compile(r"^(?:[0-9A-Fa-f]{2}:){7}[0-9A-Fa-f]{2}$")
 OCTETS_6_RE = re.compile(r"^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
 HOSTNAME_RE = re.compile(
@@ -18,9 +17,9 @@ HOSTNAME_RE = re.compile(
     r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.?$"
 )
 DEFAULT_GATEWAY_UI_CONFIG_PATH = (
-    Path(__file__).resolve().parents[4]
-    / "gw_cfg_default"
-    / "gw_cfg_default_gen_ui.json"
+        Path(__file__).resolve().parents[4]
+        / "gw_cfg_default"
+        / "gw_cfg_default_gen_ui.json"
 )
 FACTORY_RESET_MESSAGE = (
     "USER ACTION REQUIRED: The gateway is not in the required factory-default state. "
@@ -33,12 +32,14 @@ AUTHENTICATION_DEFAULT_FIELDS = (
     GatewayCfgDesc.LAN_AUTH_API_KEY_USE,
     GatewayCfgDesc.LAN_AUTH_API_KEY_RW_USE,
 )
+
+
 class InvalidConfig(InvalidSetup):
     """The local DUT configuration is missing or malformed."""
 
 
 def load_ui_default_config(
-    config_path: Path = DEFAULT_GATEWAY_UI_CONFIG_PATH,
+        config_path: Path = DEFAULT_GATEWAY_UI_CONFIG_PATH,
 ) -> Dict[str, Any]:
     """Load generated defaults as exposed by authenticated GET /ruuvi.json."""
     try:
@@ -51,8 +52,8 @@ def load_ui_default_config(
 
 
 def default_config_values(
-    fields: Iterable[str],
-    config_path: Path = DEFAULT_GATEWAY_UI_CONFIG_PATH,
+        fields: Iterable[str],
+        config_path: Path = DEFAULT_GATEWAY_UI_CONFIG_PATH,
 ) -> Dict[str, Any]:
     defaults = load_ui_default_config(config_path)
     requested = tuple(fields)

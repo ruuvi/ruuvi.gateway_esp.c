@@ -53,10 +53,10 @@ class EvidenceLog:
 
     @classmethod
     def create(
-        cls,
-        log_dir: Path,
-        filename_prefix: str,
-        now: Callable[[], datetime] = utc_now,
+            cls,
+            log_dir: Path,
+            filename_prefix: str,
+            now: Callable[[], datetime] = utc_now,
     ) -> "EvidenceLog":
         log_dir.mkdir(parents=True, exist_ok=True)
         started_at = now()

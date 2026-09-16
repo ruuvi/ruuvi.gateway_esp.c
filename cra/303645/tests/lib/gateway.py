@@ -15,7 +15,6 @@ from .evidence import EvidenceLog
 from .http_api import GatewayApi, HttpAuthScheme, HttpHeader, HttpMethod
 from .models import DutConfig
 
-
 AUTH_PARAMETERS_RE = re.compile(r'([A-Za-z_][A-Za-z0-9_]*)="([^"]*)"')
 
 
@@ -110,14 +109,14 @@ class InteractiveAuthResult:
 
 class GatewayClient:
     def __init__(
-        self,
-        config: DutConfig,
-        evidence: EvidenceLog,
-        session_factory: Callable[[], Any] = requests.Session,
-        random_bytes: Callable[[int], bytes] = secrets.token_bytes,
-        ecc_generate: Callable[..., Any] = ECC.generate,
-        timeout: Tuple[int, int] = (5, 15),
-        user_agent: str = "ruuvi-cra-functional-test",
+            self,
+            config: DutConfig,
+            evidence: EvidenceLog,
+            session_factory: Callable[[], Any] = requests.Session,
+            random_bytes: Callable[[int], bytes] = secrets.token_bytes,
+            ecc_generate: Callable[..., Any] = ECC.generate,
+            timeout: Tuple[int, int] = (5, 15),
+            user_agent: str = "ruuvi-cra-functional-test",
     ) -> None:
         self.config = config
         self.evidence = evidence
@@ -134,15 +133,15 @@ class GatewayClient:
         return session
 
     def request(
-        self,
-        session: Any,
-        method: str,
-        path: str,
-        headers: Optional[Dict[str, str]] = None,
-        json_body: Any = None,
-        data: Any = None,
-        params: Optional[Dict[str, Any]] = None,
-        allow_redirects: bool = False,
+            self,
+            session: Any,
+            method: str,
+            path: str,
+            headers: Optional[Dict[str, str]] = None,
+            json_body: Any = None,
+            data: Any = None,
+            params: Optional[Dict[str, Any]] = None,
+            allow_redirects: bool = False,
     ) -> Any:
         if json_body is not None and data is not None:
             raise ValueError("json_body and data are mutually exclusive")
@@ -173,9 +172,9 @@ class GatewayClient:
 
     @staticmethod
     def response_json(
-        response: Any,
-        context: str,
-        expected_type: Optional[Type[Any]] = None,
+            response: Any,
+            context: str,
+            expected_type: Optional[Type[Any]] = None,
     ) -> Any:
         try:
             payload = response.json()
@@ -228,12 +227,12 @@ class GatewayClient:
         return hashlib.md5(f"{username}:{realm}:{password}".encode("utf-8")).hexdigest()
 
     def authorization_header_digest(
-        self,
-        username: str,
-        password: str,
-        method: str,
-        path: str,
-        challenge: Dict[str, str],
+            self,
+            username: str,
+            password: str,
+            method: str,
+            path: str,
+            challenge: Dict[str, str],
     ) -> str:
         nc = "00000001"
         cnonce = self.random_text(12)
@@ -252,10 +251,10 @@ class GatewayClient:
         )
 
     def interactive_login_challenge_from_response(
-        self,
-        session: Any,
-        response: Any,
-        context: str,
+            self,
+            session: Any,
+            response: Any,
+            context: str,
     ) -> InteractiveLoginChallenge:
         auth_header = response.headers.get(HttpHeader.WWW_AUTHENTICATE)
         challenge = self.parse_interactive_challenge(auth_header)
@@ -280,9 +279,9 @@ class GatewayClient:
         private_key = self.ecc_generate(curve="secp256r1")
         public_key = private_key.public_key()
         public_key_raw = (
-            b"\x04"
-            + int(public_key.pointQ.x).to_bytes(32, byteorder="big")
-            + int(public_key.pointQ.y).to_bytes(32, byteorder="big")
+                b"\x04"
+                + int(public_key.pointQ.x).to_bytes(32, byteorder="big")
+                + int(public_key.pointQ.y).to_bytes(32, byteorder="big")
         )
         public_key_b64 = base64.b64encode(public_key_raw).decode("ascii")
         self.evidence.write("ECDH CLIENT PUBLIC KEY", public_key_b64)
@@ -293,8 +292,8 @@ class GatewayClient:
         )
 
     def send_interactive_challenge_request(
-        self,
-        request: InteractiveChallengeRequest,
+            self,
+            request: InteractiveChallengeRequest,
     ) -> Any:
         return self.request(
             request.session,
@@ -304,17 +303,17 @@ class GatewayClient:
         )
 
     def parse_interactive_challenge_response(
-        self,
-        request: InteractiveChallengeRequest,
-        challenge_response: Any,
+            self,
+            request: InteractiveChallengeRequest,
+            challenge_response: Any,
     ) -> InteractiveAuthChallenge:
         auth_payload = self.response_json(challenge_response, "GET /auth", dict)
         auth_header = challenge_response.headers.get(HttpHeader.WWW_AUTHENTICATE)
         auth_type = auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE)
         if (
-            isinstance(auth_type, str)
-            and auth_type != GatewayCfgLanAuthType.DEFAULT
-            and (auth_header is None or not auth_header.lower().startswith("x-ruuvi-interactive"))
+                isinstance(auth_type, str)
+                and auth_type != GatewayCfgLanAuthType.DEFAULT
+                and (auth_header is None or not auth_header.lower().startswith("x-ruuvi-interactive"))
         ):
             raise GatewayAuthenticationModeError(auth_type)
         login_challenge = self.interactive_login_challenge_from_response(
@@ -369,10 +368,10 @@ class GatewayClient:
         return self.parse_interactive_challenge_response(request, response)
 
     def prepare_interactive_login_request(
-        self,
-        login_challenge: InteractiveLoginChallenge,
-        username: str,
-        password: str,
+            self,
+            login_challenge: InteractiveLoginChallenge,
+            username: str,
+            password: str,
     ) -> InteractiveLoginRequest:
         challenge = login_challenge.challenge
         ha1_input = f'{username}:{challenge["realm"]}:{password}'
@@ -411,10 +410,10 @@ class GatewayClient:
         )
 
     def submit_interactive_authentication(
-        self,
-        login_challenge: InteractiveLoginChallenge,
-        username: str,
-        password: str,
+            self,
+            login_challenge: InteractiveLoginChallenge,
+            username: str,
+            password: str,
     ) -> Any:
         request = self.prepare_interactive_login_request(
             login_challenge,
