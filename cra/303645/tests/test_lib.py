@@ -441,6 +441,39 @@ class GatewayClientTestCase(unittest.TestCase):
         with self.assertRaisesRegex(GatewayProtocolError, "nonce, opaque, qop"):
             self.client.parse_digest_challenge('Digest realm="gateway"')
 
+    def test_challenge_parsers_require_scheme_token_boundary(self) -> None:
+        parser: Callable[[Optional[str]], Dict[str, str]]
+        scheme: str
+        parameters: str
+        for parser, scheme, parameters in (
+                (
+                        self.client.parse_interactive_challenge,
+                        "x-ruuvi-interactive",
+                        'realm="gateway", challenge="abc", '
+                        'session_cookie="RUUVISESSION", session_id="cookie"',
+                ),
+                (
+                        self.client.parse_digest_challenge,
+                        "Digest",
+                        'realm="gateway", qop="auth", nonce="n", opaque="o"',
+                ),
+        ):
+            separator: str
+            for separator in (" ", "\t", "  ", " \t"):
+                with self.subTest(scheme=scheme, separator=separator):
+                    self.assertEqual(
+                        "gateway",
+                        parser(scheme.upper() + separator + parameters)["realm"],
+                    )
+            suffix: str
+            for suffix in ("-evil ", "ive ", "", ",", "\r", "\n", "\u00a0"):
+                with self.subTest(scheme=scheme, suffix=suffix):
+                    with self.assertRaisesRegex(GatewayProtocolError, "did not advertise"):
+                        parser(scheme + suffix + parameters)
+            with self.subTest(scheme=scheme, header="scheme only"):
+                with self.assertRaisesRegex(GatewayProtocolError, "did not advertise"):
+                    parser(scheme)
+
     def test_auth_header_helpers_are_deterministic(self) -> None:
         self.assertEqual("Basic dXNlcjpwQHNz", self.client.authorization_header_basic("user", "p@ss"))
         expected_ha1: str = hashlib.md5(b"user:realm:p@ss").hexdigest()

@@ -187,7 +187,11 @@ class GatewayClient:
     @staticmethod
     def parse_interactive_challenge(header: Optional[str]) -> Dict[str, str]:
         prefix = "x-ruuvi-interactive"
-        if header is None or not header.lower().startswith(prefix):
+        if (
+                header is None
+                or not header.lower().startswith(prefix)
+                or header[len(prefix):len(prefix) + 1] not in (" ", "\t")
+        ):
             raise GatewayProtocolError("GET /auth did not advertise x-ruuvi-interactive")
         parameters = dict(AUTH_PARAMETERS_RE.findall(header[len(prefix):].strip()))
         required = {"realm", "challenge", "session_cookie", "session_id"}
@@ -201,7 +205,11 @@ class GatewayClient:
     @staticmethod
     def parse_digest_challenge(header: Optional[str]) -> Dict[str, str]:
         prefix = HttpAuthScheme.DIGEST.lower()
-        if header is None or not header.lower().startswith(prefix):
+        if (
+                header is None
+                or not header.lower().startswith(prefix)
+                or header[len(prefix):len(prefix) + 1] not in (" ", "\t")
+        ):
             raise GatewayProtocolError("response did not advertise Digest authentication")
         parameters = dict(AUTH_PARAMETERS_RE.findall(header[len(prefix):].strip()))
         required = {"realm", "qop", "nonce", "opaque"}

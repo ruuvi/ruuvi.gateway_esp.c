@@ -75,7 +75,7 @@ bodies. Store and share them with the same care as DUT credentials.
 - `authorization_header_basic()` and `authorization_header_digest()` construct authorization
   headers. `calculate_digest_ha1()` exposes the shared HA1 calculation.
 - `parse_interactive_challenge()` and `parse_digest_challenge()` validate authentication challenge
-  parameters.
+  parameters and require a space or tab after the case-insensitive authentication scheme token.
 - `request_interactive_challenge()`, `submit_interactive_authentication()`, and
   `authenticate_interactive()` implement the gateway interactive authentication sequence and ECDH
   key derivation. Gateway ECDH public keys at the point at infinity are rejected with
