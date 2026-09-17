@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 from unittest import mock
 
 import requests
@@ -17,6 +17,7 @@ from Crypto.PublicKey import ECC
 from Crypto.PublicKey.ECC import EccKey, EccPoint
 from requests.cookies import RequestsCookieJar, cookiejar_from_dict
 
+from lib import evidence
 from lib.config import (
     InvalidConfig,
     default_config_values,
@@ -274,7 +275,7 @@ class EvidenceLogTestCase(unittest.TestCase):
         directory: str
         with tempfile.TemporaryDirectory() as directory:
             root: Path = Path(directory)
-            with mock.patch("lib.evidence.utc_now", return_value=NOW):
+            with mock.patch.object(evidence, "utc_now", return_value=NOW):
                 first: EvidenceLog = EvidenceLog.create(root, "evidence", lambda: NOW)
                 first.write("ASSERTION", AssertionEvidence("check", "PASS", {"b": 2, "a": 1}))
                 first.finish("PASS", lambda: NOW + timedelta(seconds=1.25))
@@ -297,7 +298,7 @@ class EvidenceLogTestCase(unittest.TestCase):
     def test_http_request_response_and_exception_are_recorded(self) -> None:
         directory: str
         with tempfile.TemporaryDirectory() as directory:
-            with mock.patch("lib.evidence.utc_now", return_value=NOW):
+            with mock.patch.object(evidence, "utc_now", return_value=NOW):
                 log: EvidenceLog = EvidenceLog.create(Path(directory), "http", lambda: NOW)
                 request: requests.PreparedRequest = requests.Request(
                     "POST",
@@ -353,7 +354,12 @@ class GatewayClientTestCase(unittest.TestCase):
                         headers: Dict[str, str] = (
                             {} if authorization is None else {HttpHeader.AUTHORIZATION: authorization}
                         )
-                        with mock.patch.object(session, "send", return_value=FakeResponse()) as send:
+                        send: mock.MagicMock = mock.MagicMock(return_value=FakeResponse())
+                        with mock.patch.object(
+                                session,
+                                requests.Session.send.__name__,
+                                new=send,
+                        ):
                             self.client.request(
                                 session, HttpMethod.GET, GatewayApi.STATUS, headers=headers
                             )
@@ -649,7 +655,10 @@ class GatewayClientTestCase(unittest.TestCase):
         self.client.send_interactive_login_request(request)
         prepared: requests.PreparedRequest = session.sent[0][0]
         self.assertEqual("RUUVISESSION=cookie", prepared.headers[HttpHeader.COOKIE])
-        self.assertEqual({"login": "user", "password": expected}, json.loads(prepared.body))
+        body: Optional[Union[bytes, str]] = prepared.body
+        if body is None:
+            self.fail("prepared interactive login request has no body")
+        self.assertEqual({"login": "user", "password": expected}, json.loads(body))
 
     def test_authenticate_interactive_returns_challenge_and_login_results(self) -> None:
         challenge_response: requests.Response = requests.Response()
@@ -665,7 +674,7 @@ class GatewayClientTestCase(unittest.TestCase):
             gateway_public_key_raw=b"public-key",
             aes_key=b"a" * 32,
         )
-        submit: mock.MagicMock
+        submit: mock.MagicMock = mock.MagicMock(return_value=login_response)
         with mock.patch.object(
                 self.client,
                 "request_interactive_challenge",
@@ -673,8 +682,8 @@ class GatewayClientTestCase(unittest.TestCase):
         ), mock.patch.object(
             self.client,
             "submit_interactive_authentication",
-            return_value=login_response,
-        ) as submit:
+            new=submit,
+        ):
             result: InteractiveAuthResult = self.client.authenticate_interactive(
                 "user", "password"
             )
