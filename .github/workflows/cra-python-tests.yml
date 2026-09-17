@@ -5,11 +5,13 @@ on:
     branches: [ master ]
     paths:
       - "cra/303645/tests/**"
+      - "gw_cfg_default/**"
       - ".github/workflows/cra-python-tests.yml"
   pull_request:
     branches: [ '*' ]
     paths:
       - "cra/303645/tests/**"
+      - "gw_cfg_default/**"
       - ".github/workflows/cra-python-tests.yml"
   workflow_dispatch:
 
