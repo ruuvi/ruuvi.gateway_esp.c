@@ -8,7 +8,7 @@ import unittest
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from unittest import mock
 from urllib.parse import urlsplit
 
@@ -106,7 +106,7 @@ class RecordedRequest:
 class FakeGateway:
     def __init__(self) -> None:
         self.calls: List[RecordedRequest] = []
-        self.override: Dict[FakeRequestKey, Any] = {}
+        self.override: Dict[FakeRequestKey, Union[FakeResponse, BaseException]] = {}
         self.auth_mode = GatewayCfgLanAuthType.DEFAULT
         self.auth_user = target.ADMIN_USERNAME
         self.ro_enabled = False
@@ -146,10 +146,11 @@ class FakeGateway:
             error = self.connection_error
             self.connection_error = None
             raise error
-        override = self.override.get(FakeRequestKey(scheme, method, path))
-        if isinstance(override, BaseException):
-            raise override
-        if override is not None:
+        request_key = FakeRequestKey(scheme, method, path)
+        if request_key in self.override:
+            override = self.override[request_key]
+            if isinstance(override, BaseException):
+                raise override
             return override
 
         if scheme == HttpAuthScheme.BEARER:
@@ -161,10 +162,18 @@ class FakeGateway:
                     {GatewayCfgDesc.LAN_AUTH_TYPE: self.auth_mode},
                 )
             session_id = f"session-{session.number}"
-            auth_header = (
-                'x-ruuvi-interactive realm="Ruuvi Gateway" challenge="challenge" '
-                f'session_cookie="RUUVISESSION" session_id="{session_id}"'
-            )
+            if self.auth_mode == GatewayCfgLanAuthType.BASIC:
+                auth_header = 'Basic realm="Ruuvi Gateway"'
+            elif self.auth_mode == GatewayCfgLanAuthType.DIGEST:
+                auth_header = (
+                    'Digest realm="Ruuvi Gateway", qop="auth", nonce="nonce", '
+                    'opaque="opaque"'
+                )
+            else:
+                auth_header = (
+                    'x-ruuvi-interactive realm="Ruuvi Gateway" challenge="challenge" '
+                    f'session_cookie="RUUVISESSION" session_id="{session_id}"'
+                )
             headers_out = {HttpHeader.RUUVI_ECDH_PUBLIC_KEY: self.server_public_b64}
             if self.challenge_headers:
                 headers_out[HttpHeader.WWW_AUTHENTICATE] = auth_header
@@ -220,11 +229,15 @@ class FakeSession:
         return request.prepare()
 
     def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
+        method = request.method
+        url = request.url
+        if method is None or url is None:
+            raise ValueError("prepared request must contain a method and URL")
         body = json.loads(request.body) if request.body else None
         return self.gateway.response_for(
             self,
-            request.method,
-            urlsplit(request.url).path,
+            method,
+            urlsplit(url).path,
             dict(request.headers),
             body,
             kwargs["allow_redirects"],
@@ -302,7 +315,23 @@ class FunctionalTestCase(unittest.TestCase):
                 )
                 runner._probe_interactive_group(HttpMethod.GET, scheme)
                 runner._probe_interactive_group("WRITE", scheme)
-        self.assertTrue(True)
+                expected_scheme = scheme if scheme is not None else "none"
+                expected_calls = [
+                    (expected_scheme, route.method, route.path)
+                    for route in target.API_INVENTORY
+                    if route.path != GatewayApi.AUTH
+                ]
+                if scheme is None:
+                    expected_calls.append(
+                        ("none", HttpMethod.DELETE, GatewayApi.AUTH)
+                    )
+                self.assertEqual(
+                    expected_calls,
+                    [
+                        (call.scheme, call.method, call.path)
+                        for call in gateway.calls
+                    ],
+                )
 
     def test_unexpected_success_aborts_immediately(self) -> None:
         self.gateway.override[
@@ -332,11 +361,26 @@ class FunctionalTestCase(unittest.TestCase):
             self.gateway.calls[-1].key,
         )
 
-    def test_non_default_mode_is_setup_error(self) -> None:
-        self.gateway.auth_mode = GatewayCfgLanAuthType.BASIC
-        result = self.make_runner().run()
-        self.assertEqual(2, result.exit_code)
-        self.assertEqual("ERROR", result.verdict)
+    def test_non_default_modes_are_setup_errors_requiring_factory_reset(self) -> None:
+        for auth_mode in (
+                GatewayCfgLanAuthType.BASIC,
+                GatewayCfgLanAuthType.DIGEST,
+        ):
+            with self.subTest(auth_mode=auth_mode):
+                gateway = FakeGateway()
+                gateway.auth_mode = auth_mode
+                runner = target.FunctionalTest_5_1_1_2_b(
+                    CONFIG,
+                    self.log,
+                    session_factory=lambda gateway=gateway: FakeSession(gateway),
+                )
+                result = runner.run()
+                self.assertEqual(2, result.exit_code)
+                self.assertEqual("ERROR", result.verdict)
+                self.assertEqual(
+                    target.FACTORY_RESET_MESSAGE,
+                    result.recovery_message,
+                )
 
     def test_enabled_api_key_flags_are_setup_errors(self) -> None:
         for attribute in ("ro_enabled", "rw_enabled"):

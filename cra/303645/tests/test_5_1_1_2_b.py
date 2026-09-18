@@ -20,7 +20,7 @@ from lib.config import (
     default_config_values,
     load_dut_config,
 )
-from lib.errors import InvalidSetup
+from lib.errors import GatewayAuthenticationModeError, InvalidSetup
 from lib.evidence import (
     AssertionEvidence,
     EvidenceLog,
@@ -131,7 +131,11 @@ class FunctionalTest_5_1_1_2_b:
             password: str,
             expect_success: bool,
     ) -> Any:
-        result = self.gateway.authenticate_interactive(username, password)
+        try:
+            result = self.gateway.authenticate_interactive(username, password)
+        except GatewayAuthenticationModeError:
+            self.factory_reset_required = True
+            raise
         response = result.challenge_response
         self._require_setup(
             response.status_code == HttpStatus.C_401_UNAUTHORIZED,
