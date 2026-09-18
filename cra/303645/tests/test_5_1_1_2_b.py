@@ -8,7 +8,7 @@ import secrets
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 import requests
 from Crypto.PublicKey import ECC
@@ -54,7 +54,9 @@ CONNECT_TIMEOUT_SECONDS = 5
 READ_TIMEOUT_SECONDS = 15
 HTTP_TIMEOUT = (CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS)
 USER_AGENT = "ruuvi-etsi-test-5.1-1-2-b"
-TOTAL_STEPS = 14
+TOTAL_STEPS = 15
+SAFE_WRITE = "SAFE_WRITE"
+DANGEROUS_WRITE = "DANGEROUS_WRITE"
 MECHANISMS = (
     AuthMech.LAN_WEBUI_USER_DEFINED,
     AuthMech.LAN_WEBUI_BASIC,
@@ -104,6 +106,21 @@ class FunctionalTest_5_1_1_2_b:
         self.outcomes = {mechanism: "NOT RUN" for mechanism in MECHANISMS}
         self.coverage: Set[ApiRoute] = set()
         self.factory_reset_required = False
+        self._probe_routes: Dict[str, List[ApiRoute]] = {
+            HttpMethod.GET: [],
+            SAFE_WRITE: [],
+            DANGEROUS_WRITE: [],
+        }
+        for route in API_INVENTORY:
+            if route.method == HttpMethod.GET:
+                phase = HttpMethod.GET
+            elif route.path == GatewayApi.AUTH:
+                # These probes use fresh sessions and cannot change persistent configuration.
+                phase = SAFE_WRITE
+            else:
+                # Empty payloads do not make state-changing handlers safe if auth is bypassed.
+                phase = DANGEROUS_WRITE
+            self._probe_routes[phase].append(route)
 
     def _record_assertion(self, description: str, passed: bool, actual: Any = "") -> None:
         self.evidence.write(
@@ -238,10 +255,6 @@ class FunctionalTest_5_1_1_2_b:
         }
         self.evidence.write("DUT VERSION AND IDENTITY", identity)
 
-    @staticmethod
-    def _non_auth_routes() -> Iterable[ApiRoute]:
-        return (route for route in API_INVENTORY if route.path != GatewayApi.AUTH)
-
     def _probe_interactive_group(self, method_group: str, scheme: Optional[str]) -> None:
         mechanism = (
             AuthMech.LAN_WEBUI_USER_DEFINED
@@ -253,10 +266,10 @@ class FunctionalTest_5_1_1_2_b:
             )
         )
         try:
-            for route in self._non_auth_routes():
+            for route in self._probe_routes[method_group]:
                 method = route.method
                 path = route.path
-                if (method == HttpMethod.GET) != (method_group == HttpMethod.GET):
+                if path == GatewayApi.AUTH and (scheme is not None or method != HttpMethod.DELETE):
                     continue
                 headers = {}
                 if scheme == HttpAuthScheme.BASIC:
@@ -296,6 +309,8 @@ class FunctionalTest_5_1_1_2_b:
                         HttpStatus.C_403_FORBIDDEN,
                     }
                 )
+                if path == GatewayApi.AUTH:
+                    expected = {HttpStatus.C_401_UNAUTHORIZED}
                 self._require_security(
                     response.status_code in expected,
                     f"{method} {path} rejects {scheme or 'missing'} credentials",
@@ -310,17 +325,6 @@ class FunctionalTest_5_1_1_2_b:
                         result="PASS",
                     ),
                 )
-            if method_group == "WRITE" and scheme is None:
-                delete_auth_response = self.gateway.request(
-                    self.gateway.new_session(),
-                    HttpMethod.DELETE,
-                    GatewayApi.AUTH,
-                )
-                self._require_security(
-                    delete_auth_response.status_code == HttpStatus.C_401_UNAUTHORIZED,
-                    "DELETE /auth without an authorized session is denied",
-                    delete_auth_response.status_code,
-                )
         except SecurityFailure:
             self.outcomes[mechanism] = "FAIL"
             self.evidence.write(
@@ -328,7 +332,7 @@ class FunctionalTest_5_1_1_2_b:
                 MechanismResultEvidence(mechanism=mechanism, result="FAIL"),
             )
             raise
-        if method_group == "WRITE":
+        if method_group == DANGEROUS_WRITE:
             self.outcomes[mechanism] = "PASS"
             self.evidence.write(
                 "PER-MECHANISM RESULT",
@@ -336,11 +340,9 @@ class FunctionalTest_5_1_1_2_b:
             )
 
     def _probe_bearer_group(self, method_group: str) -> None:
-        for route in API_INVENTORY:
+        for route in self._probe_routes[method_group]:
             method = route.method
             path = route.path
-            if (method == HttpMethod.GET) != (method_group == HttpMethod.GET):
-                continue
             mechanism = (
                 AuthMech.M2M_API_BEARER_RO
                 if method == HttpMethod.GET
@@ -387,6 +389,8 @@ class FunctionalTest_5_1_1_2_b:
                     result="PASS",
                 ),
             )
+            return
+        if method_group != DANGEROUS_WRITE:
             return
         self.outcomes[AuthMech.M2M_API_BEARER_RW] = "PASS"
         self.evidence.write(
@@ -466,14 +470,17 @@ class FunctionalTest_5_1_1_2_b:
             self._probe_interactive_group(HttpMethod.GET, HttpAuthScheme.DIGEST)
             self.progress("Testing disabled bearer authentication against read APIs")
             self._probe_bearer_group(HttpMethod.GET)
-            self.progress("Testing unauthenticated access to write APIs")
-            self._probe_interactive_group("WRITE", None)
-            self.progress("Testing Basic authentication against write APIs")
-            self._probe_interactive_group("WRITE", HttpAuthScheme.BASIC)
-            self.progress("Testing Digest authentication against write APIs")
-            self._probe_interactive_group("WRITE", HttpAuthScheme.DIGEST)
-            self.progress("Testing disabled bearer authentication against write APIs")
-            self._probe_bearer_group("WRITE")
+            self.progress("Testing unauthenticated and bearer access to session write APIs")
+            self._probe_interactive_group(SAFE_WRITE, None)
+            self._probe_bearer_group(SAFE_WRITE)
+            self.progress("Testing unauthenticated access to potentially mutating APIs")
+            self._probe_interactive_group(DANGEROUS_WRITE, None)
+            self.progress("Testing Basic authentication against potentially mutating APIs")
+            self._probe_interactive_group(DANGEROUS_WRITE, HttpAuthScheme.BASIC)
+            self.progress("Testing Digest authentication against potentially mutating APIs")
+            self._probe_interactive_group(DANGEROUS_WRITE, HttpAuthScheme.DIGEST)
+            self.progress("Testing disabled bearer authentication against potentially mutating APIs")
+            self._probe_bearer_group(DANGEROUS_WRITE)
 
             self.progress("Verifying the gateway configuration was not changed")
             final_session = self._assert_interactive_authentication(

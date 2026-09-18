@@ -8,7 +8,7 @@ import unittest
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from unittest import mock
 from urllib.parse import urlsplit
 
@@ -314,24 +314,116 @@ class FunctionalTestCase(unittest.TestCase):
                     random_bytes=lambda size: b"x" * size,
                 )
                 runner._probe_interactive_group(HttpMethod.GET, scheme)
-                runner._probe_interactive_group("WRITE", scheme)
+                runner._probe_interactive_group(target.SAFE_WRITE, scheme)
+                runner._probe_interactive_group(target.DANGEROUS_WRITE, scheme)
                 expected_scheme = scheme if scheme is not None else "none"
-                expected_calls = [
-                    (expected_scheme, route.method, route.path)
+                expected_calls: List[Tuple[str, str, str, Optional[Dict[str, Any]]]] = [
+                    (expected_scheme, route.method, route.path, None)
                     for route in target.API_INVENTORY
-                    if route.path != GatewayApi.AUTH
+                    if route.method == HttpMethod.GET and route.path != GatewayApi.AUTH
                 ]
                 if scheme is None:
                     expected_calls.append(
-                        ("none", HttpMethod.DELETE, GatewayApi.AUTH)
+                        ("none", HttpMethod.DELETE, GatewayApi.AUTH, None)
                     )
+                expected_calls.extend(
+                    (expected_scheme, route.method, route.path,
+                     {} if route.method == HttpMethod.POST else None)
+                    for route in target.API_INVENTORY
+                    if route.method != HttpMethod.GET and route.path != GatewayApi.AUTH
+                )
                 self.assertEqual(
                     expected_calls,
                     [
-                        (call.scheme, call.method, call.path)
+                        (call.scheme, call.method, call.path, call.body)
                         for call in gateway.calls
                     ],
                 )
+
+    def test_bearer_matrix_uses_safe_order_and_least_operative_bodies(self) -> None:
+        runner = self.make_runner()
+        runner._probe_bearer_group(HttpMethod.GET)
+        runner._probe_bearer_group(target.SAFE_WRITE)
+        self.assertEqual("NOT RUN", runner.outcomes[AuthMech.M2M_API_BEARER_RW])
+        runner._probe_bearer_group(target.DANGEROUS_WRITE)
+        reads = [route for route in target.API_INVENTORY if route.method == HttpMethod.GET]
+        session_writes = [
+            route for route in target.API_INVENTORY
+            if route.method != HttpMethod.GET and route.path == GatewayApi.AUTH
+        ]
+        mutating_routes = [
+            route for route in target.API_INVENTORY
+            if route.method != HttpMethod.GET and route.path != GatewayApi.AUTH
+        ]
+        self.assertEqual(
+            [
+                (HttpAuthScheme.BEARER, route.method, route.path,
+                 {} if route.method == HttpMethod.POST else None)
+                for route in reads + session_writes + mutating_routes
+            ],
+            [(call.scheme, call.method, call.path, call.body) for call in self.gateway.calls],
+        )
+
+    def test_all_safe_probes_finish_before_any_potentially_mutating_probe(self) -> None:
+        result = self.make_runner().run()
+        self.assertEqual("PASS", result.verdict)
+        first_mutating = next(
+            index for index, call in enumerate(self.gateway.calls)
+            if call.method != HttpMethod.GET and call.path != GatewayApi.AUTH
+        )
+        first_probe = next(
+            index for index, call in enumerate(self.gateway.calls)
+            if call.key == FakeRequestKey("none", HttpMethod.GET, GatewayApi.AP)
+        )
+        expected_safe: List[Tuple[str, str, str, Optional[Dict[str, Any]]]] = [
+            (scheme, route.method, route.path, None)
+            for scheme in ("none", HttpAuthScheme.BASIC, HttpAuthScheme.DIGEST, HttpAuthScheme.BEARER)
+            for route in target.API_INVENTORY
+            if route.method == HttpMethod.GET
+               and (route.path != GatewayApi.AUTH or scheme == HttpAuthScheme.BEARER)
+        ]
+        expected_safe.extend([
+            ("none", HttpMethod.DELETE, GatewayApi.AUTH, None),
+            (HttpAuthScheme.BEARER, HttpMethod.POST, GatewayApi.AUTH, {}),
+            (HttpAuthScheme.BEARER, HttpMethod.DELETE, GatewayApi.AUTH, None),
+        ])
+        self.assertEqual(
+            expected_safe,
+            [
+                (call.scheme, call.method, call.path, call.body)
+                for call in self.gateway.calls[first_probe:first_mutating]
+            ],
+        )
+
+    def test_session_write_failure_aborts_before_mutating_probes(self) -> None:
+        for scheme, method in (
+                ("none", HttpMethod.DELETE),
+                (HttpAuthScheme.BEARER, HttpMethod.POST),
+                (HttpAuthScheme.BEARER, HttpMethod.DELETE),
+        ):
+            with self.subTest(scheme=scheme, method=method):
+                self.gateway = FakeGateway()
+                failing_key = FakeRequestKey(scheme, method, GatewayApi.AUTH)
+                self.gateway.override[failing_key] = FakeResponse(HttpStatus.C_200_OK, {})
+                result = self.make_runner().run()
+                self.assertEqual("FAIL", result.verdict)
+                self.assertEqual(failing_key, self.gateway.calls[-1].key)
+                self.assertEqual([], [
+                    call for call in self.gateway.calls
+                    if call.method != HttpMethod.GET and call.path != GatewayApi.AUTH
+                ])
+
+    def test_mutating_probe_success_aborts_immediately(self) -> None:
+        for scheme in ("none", HttpAuthScheme.BASIC, HttpAuthScheme.DIGEST, HttpAuthScheme.BEARER):
+            for path in (GatewayApi.CONFIG, GatewayApi.FW_UPDATE_RESET, GatewayApi.INIT_STORAGE):
+                with self.subTest(scheme=scheme, path=path):
+                    self.gateway = FakeGateway()
+                    failing_key = FakeRequestKey(scheme, HttpMethod.POST, path)
+                    self.gateway.override[failing_key] = FakeResponse(HttpStatus.C_200_OK, {})
+                    result = self.make_runner().run()
+                    self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
+                    self.assertEqual(failing_key, self.gateway.calls[-1].key)
+                    self.assertEqual(1, self.gateway.config_reads)
 
     def test_unexpected_success_aborts_immediately(self) -> None:
         self.gateway.override[
