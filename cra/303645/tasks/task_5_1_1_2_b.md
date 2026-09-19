@@ -12,7 +12,7 @@ manufacture a baseline.
 
 ## Objective
 
-Create a Python functional test for **ETSI EN 303 645 / ETSI TS 103 701 test case 5.1-1-2, 
+Create a Python functional test for **ETSI EN 303 645 / ETSI TS 103 701 test case 5.1-1-2,
 Test Unit B: Requirement to Set User-Defined Passwords**.
 
 The test must run against a physical Ruuvi Gateway over its LAN HTTP interface and verify that all
