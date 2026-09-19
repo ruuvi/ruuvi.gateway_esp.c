@@ -255,7 +255,7 @@ task affecting these tests or their guidance, including documentation-only tasks
 repository root:
 
 ```bash
-ruff check cra/303645/tests
+cra/303645/tests/.venv/bin/ruff check cra/303645/tests
 ```
 
 From this directory the equivalent command is `ruff check .`. Use the repository's Ruff

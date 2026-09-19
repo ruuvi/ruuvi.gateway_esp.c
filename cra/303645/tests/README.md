@@ -47,15 +47,15 @@ on these tests or their guidance, including documentation-only tasks. Use the in
 executable with the repository configuration. From the repository root:
 
 ```bash
-ruff check cra/303645/tests
+cra/303645/tests/.venv/bin/ruff check cra/303645/tests
 ```
 
-From `cra/303645/tests`, use `ruff check .`. Check the whole subtree, fix all findings (including
-pre-existing ones), and rerun until clean. Report the initial count and final result. Review automatic
-fixes for correctness and Python 3.8 compatibility; do not blindly enable unsafe fixes or weaken
-rules to obtain a clean result. Linting is separate from formatting: do not run `ruff format` or
-reformat whole files during the current code-review fixes. Report any explicitly deferred lint
-backlog. Ruff does not replace the host-side tests or library coverage gate.
+From `cra/303645/tests`, use `.venv/bin/ruff check .`. Check the whole subtree, fix all findings
+(including pre-existing ones), and rerun until clean. Report the initial count and final result.
+Review automatic fixes for correctness and Python 3.8 compatibility; do not blindly enable unsafe
+fixes or weaken rules to obtain a clean result. Linting is separate from formatting: do not run
+`ruff format` or reformat whole files during the current code-review fixes. Report any explicitly
+deferred lint backlog. Ruff does not replace the host-side tests or library coverage gate.
 
 Modern type annotations use `from __future__ import annotations` to remain importable on Python
 3.8; runtime type expressions still need Python 3.8-compatible syntax and semantics. Intentional

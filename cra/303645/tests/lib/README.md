@@ -149,10 +149,10 @@ finally:
 
 ## Unit tests
 
-Always run `ruff check cra/303645/tests` from the repository root before changes and before
-handoff, even for library documentation changes. Fix all findings and require a clean final check;
-see [`../AGENTS.md`](../AGENTS.md) for the annotation and exception-handling conventions. Ruff
-does not replace the dedicated unit tests and coverage gate below.
+Always run `cra/303645/tests/.venv/bin/ruff check cra/303645/tests` from the repository root before
+changes and before handoff, even for library documentation changes. Fix all findings and require a
+clean final check; see [`../AGENTS.md`](../AGENTS.md) for the annotation and exception-handling
+conventions. Ruff does not replace the dedicated unit tests and coverage gate below.
 
 The dedicated library test module is [`../test_lib.py`](../test_lib.py). Locating it outside `lib/`
 is intentional and follows normal Python project structure: `lib/` contains reusable runtime code,
