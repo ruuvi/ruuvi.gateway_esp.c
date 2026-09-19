@@ -17,6 +17,8 @@ from unittest import mock
 import requests
 from Crypto.PublicKey import ECC
 from Crypto.PublicKey.ECC import EccKey, EccPoint
+from requests.cookies import RequestsCookieJar, cookiejar_from_dict
+
 from lib import evidence
 from lib.config import (
     FACTORY_RESET_MESSAGE,
@@ -55,7 +57,6 @@ from lib.http_api import (
     GatewayApi as HttpGatewayApi,
 )
 from lib.models import DutConfig, ProgressReporter
-from requests.cookies import RequestsCookieJar, cookiejar_from_dict
 
 NOW: datetime = datetime(2025, 1, 2, 3, 4, 5, 678901, tzinfo=timezone.utc)
 CONFIG: DutConfig = DutConfig(
