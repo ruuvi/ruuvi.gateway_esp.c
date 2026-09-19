@@ -1,5 +1,7 @@
 """Shared functional-test setup and gateway communication errors."""
 
+from __future__ import annotations
+
 
 class InvalidSetup(Exception):
     """The local setup or DUT protocol state prevents a valid test run."""
@@ -17,5 +19,5 @@ class GatewayAuthenticationModeError(GatewayProtocolError):
     """The gateway uses an authentication mode incompatible with the requested flow."""
 
     def __init__(self, auth_type: str) -> None:
-        self.auth_type = auth_type
+        self.auth_type: str = auth_type
         super().__init__(f"gateway authentication mode is {auth_type!r}")
