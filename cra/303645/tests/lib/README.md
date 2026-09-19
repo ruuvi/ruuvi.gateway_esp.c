@@ -1,8 +1,8 @@
 # CRA Functional-Test Library
 
 This package contains shared infrastructure for the Python functional tests in
-[`cra/303645/tests`](../). Its purpose is to keep configuration parsing, evidence logging, HTTP
-protocol handling, authentication, and common data models consistent across live-DUT tests.
+[`cra/303645/tests`](../README.md). Its purpose is to keep configuration parsing, evidence logging,
+HTTP protocol handling, authentication, and common data models consistent across live-DUT tests.
 
 The package supports Python 3.8. It is internal to this repository rather than a separately
 published Python package. It is governed by the subtree instructions in
@@ -38,6 +38,11 @@ state transitions on top of this client.
 - `default_config_values(fields, path=...)` selects required fields from those defaults and rejects
   missing fields.
 - `FACTORY_RESET_MESSAGE` and `AUTHENTICATION_DEFAULT_FIELDS` define shared functional-test policy.
+  The recovery message requires the red LED completion signal (200 ms on/200 ms off) after boot-time
+  erasure, warns about lost local settings, and treats about 11 seconds as typical elapsed time.
+  Releasing CONFIGURE after this signal triggers another restart, after which the configuration
+  hotspot opens.
+  Runners decide when reset advice is appropriate and include it in evidence and terminal output.
 
 ### Models
 
