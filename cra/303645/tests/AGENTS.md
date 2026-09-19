@@ -258,7 +258,7 @@ repository root:
 cra/303645/tests/.venv/bin/ruff check cra/303645/tests
 ```
 
-From this directory the equivalent command is `ruff check .`. Use the repository's Ruff
+From this directory the equivalent command is `.venv/bin/ruff check .`. Use the repository's Ruff
 configuration and fix reported lint problems; rerun until clean. Inspect each proposed fix and
 preserve Python 3.8 behavior, recovery, and evidence semantics. Do not silence valid findings by
 weakening rules or adding blanket exclusions. Explain any necessary narrow suppression.
