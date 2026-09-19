@@ -1,5 +1,7 @@
 """Deterministic unit tests for the shared CRA functional-test library."""
 
+from __future__ import annotations
+
 import base64
 import hashlib
 import io
@@ -9,16 +11,15 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Mapping
 from unittest import mock
 
 import requests
 from Crypto.PublicKey import ECC
 from Crypto.PublicKey.ECC import EccKey, EccPoint
-from requests.cookies import RequestsCookieJar, cookiejar_from_dict
-
 from lib import evidence
 from lib.config import (
+    FACTORY_RESET_MESSAGE,
     InvalidConfig,
     default_config_values,
     load_dut_config,
@@ -47,11 +48,14 @@ from lib.http_api import (
     API_INVENTORY,
     EXPECTED_API_INVENTORY,
     ApiRoute,
-    GatewayApi as HttpGatewayApi,
     HttpHeader,
     HttpMethod,
 )
+from lib.http_api import (
+    GatewayApi as HttpGatewayApi,
+)
 from lib.models import DutConfig, ProgressReporter
+from requests.cookies import RequestsCookieJar, cookiejar_from_dict
 
 NOW: datetime = datetime(2025, 1, 2, 3, 4, 5, 678901, tzinfo=timezone.utc)
 CONFIG: DutConfig = DutConfig(
@@ -64,9 +68,9 @@ CONFIG: DutConfig = DutConfig(
 class RecordingEvidence(EvidenceLog):
     def __init__(self) -> None:
         super().__init__(Path("<memory>"), io.StringIO(), NOW)
-        self.entries: List[Tuple[str, Any]] = []
-        self.requests: List[requests.PreparedRequest] = []
-        self.responses: List[requests.Response] = []
+        self.entries: list[tuple[str, Any]] = []
+        self.requests: list[requests.PreparedRequest] = []
+        self.responses: list[requests.Response] = []
 
     def write(self, label: str, value: Any = "") -> None:
         self.entries.append((label, value))
@@ -80,10 +84,10 @@ class RecordingEvidence(EvidenceLog):
 
 class FakeResponse(requests.Response):
     def __init__(
-            self,
-            payload: Any = None,
-            headers: Optional[Mapping[str, str]] = None,
-            cookies: Optional[Mapping[str, str]] = None,
+        self,
+        payload: Any = None,
+        headers: Mapping[str, str] | None = None,
+        cookies: Mapping[str, str] | None = None,
     ) -> None:
         super().__init__()
         self._payload: Any = payload
@@ -98,14 +102,14 @@ class FakeResponse(requests.Response):
 
 class FakeSession(requests.Session):
     def __init__(
-            self,
-            response: Any = None,
-            error: Optional[requests.RequestException] = None,
+        self,
+        response: Any = None,
+        error: requests.RequestException | None = None,
     ) -> None:
         super().__init__()
         self.response: Any = response
-        self.error: Optional[requests.RequestException] = error
-        self.sent: List[Tuple[requests.PreparedRequest, Dict[str, Any]]] = []
+        self.error: requests.RequestException | None = error
+        self.sent: list[tuple[requests.PreparedRequest, dict[str, Any]]] = []
 
     def prepare_request(self, request: requests.Request) -> requests.PreparedRequest:
         prepared: requests.PreparedRequest = request.prepare()
@@ -119,6 +123,19 @@ class FakeSession(requests.Session):
 
 
 class ConfigTestCase(unittest.TestCase):
+    def test_factory_reset_guidance_uses_completion_signal_not_a_time_threshold(self) -> None:
+        self.assertIn("200 ms and off for 200 ms", FACTORY_RESET_MESSAGE)
+        self.assertIn("normally about 11 seconds", FACTORY_RESET_MESSAGE)
+        self.assertIn("Release only after this completion signal", FACTORY_RESET_MESSAGE)
+        self.assertIn("Back up needed settings first", FACTORY_RESET_MESSAGE)
+        self.assertIn("do not assume erasure succeeded", FACTORY_RESET_MESSAGE)
+        self.assertNotIn("longer than", FACTORY_RESET_MESSAGE)
+        self.assertIn(
+            "Release only after this completion signal; the Gateway restarts again and opens its "
+            "configuration hotspot.",
+            FACTORY_RESET_MESSAGE,
+        )
+
     def test_load_ui_defaults_and_select_values(self) -> None:
         directory: str
         with tempfile.TemporaryDirectory() as directory:
@@ -128,7 +145,7 @@ class ConfigTestCase(unittest.TestCase):
             self.assertEqual({"alpha": 1}, default_config_values(["alpha"], path))
 
     def test_repository_ui_defaults_do_not_expose_authentication_secrets(self) -> None:
-        defaults: Dict[str, Any] = load_ui_default_config()
+        defaults: dict[str, Any] = load_ui_default_config()
         self.assertNotIn(GatewayCfgDesc.LAN_AUTH_API_KEY, defaults)
         self.assertNotIn(GatewayCfgDesc.LAN_AUTH_API_KEY_RW, defaults)
         self.assertIs(False, defaults[GatewayCfgDesc.LAN_AUTH_API_KEY_USE])
@@ -141,7 +158,7 @@ class ConfigTestCase(unittest.TestCase):
         directory: str
         with tempfile.TemporaryDirectory() as directory:
             root: Path = Path(directory)
-            cases: Tuple[Tuple[Path, str], ...] = (
+            cases: tuple[tuple[Path, str], ...] = (
                 (root / "missing.json", "cannot read default gateway configuration"),
                 (root / "malformed.json", "cannot read default gateway configuration"),
                 (root / "array.json", "must contain an object"),
@@ -171,13 +188,13 @@ class ConfigTestCase(unittest.TestCase):
     def test_validate_hostname_rejects_unsafe_or_invalid_values(self) -> None:
         hostname: str
         for hostname in (
-                "",
-                " gateway.local",
-                "gateway local",
-                "http://gateway.local",
-                "gateway.local/path",
-                "gateway.local:8080",
-                "-gateway.local",
+            "",
+            " gateway.local",
+            "gateway local",
+            "http://gateway.local",
+            "gateway.local/path",
+            "gateway.local:8080",
+            "-gateway.local",
         ):
             with self.subTest(hostname=hostname), self.assertRaises(InvalidConfig):
                 validate_hostname(hostname)
@@ -187,22 +204,15 @@ class ConfigTestCase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path: Path = Path(directory) / ".env"
             path.write_text(
-                "# local DUT\n"
-                "gw_id = 00:11:22:33:44:55:66:77\n"
-                "gw_mac=AA:BB:CC:DD:EE:FF\n"
-                "gw_hostname = 2001:db8::1\n",
+                "# local DUT\ngw_id = 00:11:22:33:44:55:66:77\ngw_mac=AA:BB:CC:DD:EE:FF\ngw_hostname = 2001:db8::1\n",
                 encoding="utf-8",
             )
             config: DutConfig = load_dut_config(path)
             self.assertEqual("http://[2001:db8::1]", config.base_url)
 
     def test_load_dut_config_rejects_each_invalid_env_shape(self) -> None:
-        valid: str = (
-            "gw_id=00:11:22:33:44:55:66:77\n"
-            "gw_mac=AA:BB:CC:DD:EE:FF\n"
-            "gw_hostname=gateway.local\n"
-        )
-        cases: Dict[str, str] = {
+        valid: str = "gw_id=00:11:22:33:44:55:66:77\ngw_mac=AA:BB:CC:DD:EE:FF\ngw_hostname=gateway.local\n"
+        cases: dict[str, str] = {
             "missing": valid.replace("gw_mac=AA:BB:CC:DD:EE:FF\n", ""),
             "unknown": valid + "extra=value\n",
             "duplicate": valid + "gw_hostname=other.local\n",
@@ -239,7 +249,7 @@ class ModelsAndApiTestCase(unittest.TestCase):
         )
 
     def test_progress_reporter_numbers_steps(self) -> None:
-        output: List[str] = []
+        output: list[str] = []
         reporter: ProgressReporter = ProgressReporter(output.append, total=2)
         reporter.step("prepare")
         reporter.step("verify")
@@ -257,9 +267,7 @@ class ModelsAndApiTestCase(unittest.TestCase):
         self.assertIn(ApiRoute(HttpMethod.DELETE, GatewayApi.AUTH), API_INVENTORY)
 
     def test_authentication_mode_error_preserves_type_and_message(self) -> None:
-        error: GatewayAuthenticationModeError = GatewayAuthenticationModeError(
-            GatewayCfgLanAuthType.BASIC
-        )
+        error: GatewayAuthenticationModeError = GatewayAuthenticationModeError(GatewayCfgLanAuthType.BASIC)
         self.assertIsInstance(error, GatewayProtocolError)
         self.assertIsInstance(error, InvalidSetup)
         self.assertEqual(GatewayCfgLanAuthType.BASIC, error.auth_type)
@@ -318,7 +326,7 @@ class EvidenceLogTestCase(unittest.TestCase):
                 try:
                     raise RuntimeError("failure detail")
                 except RuntimeError as error:
-                    log.exception(error)
+                    log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
                 log.finish("ERROR", lambda: NOW)
 
             content: str = log.path.read_text(encoding="utf-8")
@@ -347,22 +355,21 @@ class GatewayClientTestCase(unittest.TestCase):
                 encoding="utf-8",
             )
             netrc_path.chmod(0o600)
-            authorization: Optional[str]
+            authorization: str | None
             with mock.patch.dict(os.environ, {"NETRC": str(netrc_path)}):
                 for authorization in (None, "Bearer explicit-token"):
+                    session: requests.Session
                     with self.subTest(authorization=authorization), self.client.new_session() as session:
-                        headers: Dict[str, str] = (
+                        headers: dict[str, str] = (
                             {} if authorization is None else {HttpHeader.AUTHORIZATION: authorization}
                         )
                         send: mock.MagicMock = mock.MagicMock(return_value=FakeResponse())
                         with mock.patch.object(
-                                session,
-                                requests.Session.send.__name__,
-                                new=send,
+                            session,
+                            requests.Session.send.__name__,
+                            new=send,
                         ):
-                            self.client.request(
-                                session, HttpMethod.GET, GatewayApi.STATUS, headers=headers
-                            )
+                            self.client.request(session, HttpMethod.GET, GatewayApi.STATUS, headers=headers)
                         send.assert_called_once()
                         prepared: requests.PreparedRequest = send.call_args[0][0]
                         self.assertEqual(authorization, prepared.headers.get(HttpHeader.AUTHORIZATION))
@@ -371,7 +378,7 @@ class GatewayClientTestCase(unittest.TestCase):
     def test_request_prepares_logs_and_sends_expected_http_request(self) -> None:
         response: requests.Response = requests.Response()
         session: FakeSession = FakeSession(response=response)
-        result: Any = self.client.request(
+        result: requests.Response = self.client.request(
             session,
             HttpMethod.POST,
             GatewayApi.CONFIG,
@@ -381,7 +388,7 @@ class GatewayClientTestCase(unittest.TestCase):
             allow_redirects=True,
         )
         prepared: requests.PreparedRequest
-        options: Dict[str, Any]
+        options: dict[str, Any]
         prepared, options = session.sent[0]
         self.assertIs(response, result)
         self.assertEqual("ruuvi-cra-functional-test", prepared.headers[HttpHeader.USER_AGENT])
@@ -393,7 +400,7 @@ class GatewayClientTestCase(unittest.TestCase):
         self.assertEqual([response], self.evidence.responses)
 
     def test_request_logs_before_send_and_logs_response_after_send(self) -> None:
-        events: List[str] = []
+        events: list[str] = []
 
         class OrderedEvidence(RecordingEvidence):
             def write_http_request(self, request: requests.PreparedRequest) -> None:
@@ -407,9 +414,9 @@ class GatewayClientTestCase(unittest.TestCase):
                 events.append("send")
                 return super().send(request, **kwargs)
 
-        response: requests.Response = requests.Response()
+        logged_response: requests.Response = requests.Response()
         client: GatewayClient = GatewayClient(CONFIG, OrderedEvidence())
-        client.request(OrderedSession(response=response), HttpMethod.GET, GatewayApi.STATUS)
+        client.request(OrderedSession(response=logged_response), HttpMethod.GET, GatewayApi.STATUS)
         self.assertEqual(["request-log", "send", "response-log"], events)
 
     def test_request_rejects_two_bodies_and_translates_requests_errors(self) -> None:
@@ -428,19 +435,18 @@ class GatewayClientTestCase(unittest.TestCase):
 
     def test_challenge_parsers_are_case_insensitive_and_require_all_fields(self) -> None:
         interactive: str = (
-            'X-RUUVI-INTERACTIVE realm="gateway", challenge="abc", '
-            'session_cookie="RUUVISESSION", session_id="cookie"'
+            'X-RUUVI-INTERACTIVE realm="gateway", challenge="abc", session_cookie="RUUVISESSION", session_id="cookie"'
         )
         self.assertEqual("abc", self.client.parse_interactive_challenge(interactive)["challenge"])
         digest: str = 'DIGEST realm="gateway" qop="auth" nonce="n" opaque="o"'
         self.assertEqual("n", self.client.parse_digest_challenge(digest)["nonce"])
-        parser: Callable[[Optional[str]], Dict[str, str]]
-        header: Optional[str]
+        parser: Callable[[str | None], dict[str, str]]
+        header: str | None
         for parser, header in (
-                (self.client.parse_interactive_challenge, None),
-                (self.client.parse_interactive_challenge, 'x-ruuvi-interactive realm="gateway"'),
-                (self.client.parse_digest_challenge, "Basic realm=\"gateway\""),
-                (self.client.parse_digest_challenge, 'Digest realm="gateway"'),
+            (self.client.parse_interactive_challenge, None),
+            (self.client.parse_interactive_challenge, 'x-ruuvi-interactive realm="gateway"'),
+            (self.client.parse_digest_challenge, 'Basic realm="gateway"'),
+            (self.client.parse_digest_challenge, 'Digest realm="gateway"'),
         ):
             with self.subTest(parser=parser.__name__, header=header), self.assertRaises(GatewayProtocolError):
                 parser(header)
@@ -448,21 +454,20 @@ class GatewayClientTestCase(unittest.TestCase):
             self.client.parse_digest_challenge('Digest realm="gateway"')
 
     def test_challenge_parsers_require_scheme_token_boundary(self) -> None:
-        parser: Callable[[Optional[str]], Dict[str, str]]
+        parser: Callable[[str | None], dict[str, str]]
         scheme: str
         parameters: str
         for parser, scheme, parameters in (
-                (
-                        self.client.parse_interactive_challenge,
-                        "x-ruuvi-interactive",
-                        'realm="gateway", challenge="abc", '
-                        'session_cookie="RUUVISESSION", session_id="cookie"',
-                ),
-                (
-                        self.client.parse_digest_challenge,
-                        "Digest",
-                        'realm="gateway", qop="auth", nonce="n", opaque="o"',
-                ),
+            (
+                self.client.parse_interactive_challenge,
+                "x-ruuvi-interactive",
+                'realm="gateway", challenge="abc", session_cookie="RUUVISESSION", session_id="cookie"',
+            ),
+            (
+                self.client.parse_digest_challenge,
+                "Digest",
+                'realm="gateway", qop="auth", nonce="n", opaque="o"',
+            ),
         ):
             separator: str
             for separator in (" ", "\t", "  ", " \t"):
@@ -473,12 +478,14 @@ class GatewayClientTestCase(unittest.TestCase):
                     )
             suffix: str
             for suffix in ("-evil ", "ive ", "", ",", "\r", "\n", "\u00a0"):
-                with self.subTest(scheme=scheme, suffix=suffix):
-                    with self.assertRaisesRegex(GatewayProtocolError, "did not advertise"):
-                        parser(scheme + suffix + parameters)
-            with self.subTest(scheme=scheme, header="scheme only"):
-                with self.assertRaisesRegex(GatewayProtocolError, "did not advertise"):
-                    parser(scheme)
+                with self.subTest(scheme=scheme, suffix=suffix), self.assertRaisesRegex(
+                    GatewayProtocolError, "did not advertise"
+                ):
+                    parser(scheme + suffix + parameters)
+            with self.subTest(scheme=scheme, header="scheme only"), self.assertRaisesRegex(
+                GatewayProtocolError, "did not advertise"
+            ):
+                parser(scheme)
 
     def test_auth_header_helpers_are_deterministic(self) -> None:
         self.assertEqual("Basic dXNlcjpwQHNz", self.client.authorization_header_basic("user", "p@ss"))
@@ -497,26 +504,23 @@ class GatewayClientTestCase(unittest.TestCase):
 
     def test_login_challenge_checks_cookie_contract(self) -> None:
         header: str = (
-            'x-ruuvi-interactive realm="gateway", challenge="abc", '
-            'session_cookie="RUUVISESSION", session_id="cookie"'
+            'x-ruuvi-interactive realm="gateway", challenge="abc", session_cookie="RUUVISESSION", session_id="cookie"'
         )
         response: FakeResponse = FakeResponse(
             headers={HttpHeader.WWW_AUTHENTICATE: header},
             cookies={"RUUVISESSION": "cookie"},
         )
-        challenge: InteractiveLoginChallenge = (
-            self.client.interactive_login_challenge_from_response(
-                object(), response, "GET /auth"
-            )
+        challenge: InteractiveLoginChallenge = self.client.interactive_login_challenge_from_response(
+            object(), response, "GET /auth"
         )
         self.assertEqual("cookie", challenge.cookie)
 
         changed_header: str
         cookies: Mapping[str, str]
         for changed_header, cookies in (
-                (header, {}),
-                (header.replace('session_cookie="RUUVISESSION"', 'session_cookie="OTHER"'), {"RUUVISESSION": "cookie"}),
-                (header.replace('session_id="cookie"', 'session_id="different"'), {"RUUVISESSION": "cookie"}),
+            (header, {}),
+            (header.replace('session_cookie="RUUVISESSION"', 'session_cookie="OTHER"'), {"RUUVISESSION": "cookie"}),
+            (header.replace('session_id="cookie"', 'session_id="different"'), {"RUUVISESSION": "cookie"}),
         ):
             with self.subTest(header=changed_header, cookies=cookies), self.assertRaises(GatewayProtocolError):
                 self.client.interactive_login_challenge_from_response(
@@ -546,13 +550,10 @@ class GatewayClientTestCase(unittest.TestCase):
         server_private: EccKey = ECC.construct(curve="P-256", d=2)
         server_public: EccKey = server_private.public_key()
         server_raw: bytes = (
-                b"\x04"
-                + int(server_public.pointQ.x).to_bytes(32, "big")
-                + int(server_public.pointQ.y).to_bytes(32, "big")
+            b"\x04" + int(server_public.pointQ.x).to_bytes(32, "big") + int(server_public.pointQ.y).to_bytes(32, "big")
         )
         header: str = (
-            'x-ruuvi-interactive realm="gateway", challenge="abc", '
-            'session_cookie="RUUVISESSION", session_id="cookie"'
+            'x-ruuvi-interactive realm="gateway", challenge="abc", session_cookie="RUUVISESSION", session_id="cookie"'
         )
         response: FakeResponse = FakeResponse(
             {GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.DEFAULT},
@@ -562,12 +563,8 @@ class GatewayClientTestCase(unittest.TestCase):
             },
             {"RUUVISESSION": "cookie"},
         )
-        request: InteractiveChallengeRequest = InteractiveChallengeRequest(
-            object(), client_private, "unused"
-        )
-        result: InteractiveAuthChallenge = (
-            self.client.parse_interactive_challenge_response(request, response)
-        )
+        request: InteractiveChallengeRequest = InteractiveChallengeRequest(object(), client_private, "unused")
+        result: InteractiveAuthChallenge = self.client.parse_interactive_challenge_response(request, response)
         client_public_point: EccPoint = client_private.public_key().pointQ
         server_private_scalar: int = int(server_private.d)
         shared_point: EccPoint = client_public_point * server_private_scalar
@@ -578,18 +575,13 @@ class GatewayClientTestCase(unittest.TestCase):
 
     def test_parse_challenge_response_reports_auth_mode_and_invalid_key(self) -> None:
         private_key: EccKey = ECC.construct(curve="P-256", d=1)
-        request: InteractiveChallengeRequest = InteractiveChallengeRequest(
-            object(), private_key, "unused"
-        )
-        mode_response: FakeResponse = FakeResponse(
-            {GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.BASIC}
-        )
+        request: InteractiveChallengeRequest = InteractiveChallengeRequest(object(), private_key, "unused")
+        mode_response: FakeResponse = FakeResponse({GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.BASIC})
         with self.assertRaises(GatewayAuthenticationModeError):
             self.client.parse_interactive_challenge_response(request, mode_response)
 
         header: str = (
-            'x-ruuvi-interactive realm="gateway", challenge="abc", '
-            'session_cookie="RUUVISESSION", session_id="cookie"'
+            'x-ruuvi-interactive realm="gateway", challenge="abc", session_cookie="RUUVISESSION", session_id="cookie"'
         )
         invalid_key_raw: bytes
         for invalid_key_raw in (b"short", b"\x02" + (b"\x00" * 64)):
@@ -597,15 +589,13 @@ class GatewayClientTestCase(unittest.TestCase):
                 {},
                 {
                     HttpHeader.WWW_AUTHENTICATE: header,
-                    HttpHeader.RUUVI_ECDH_PUBLIC_KEY: base64.b64encode(
-                        invalid_key_raw
-                    ).decode("ascii"),
+                    HttpHeader.RUUVI_ECDH_PUBLIC_KEY: base64.b64encode(invalid_key_raw).decode("ascii"),
                 },
                 {"RUUVISESSION": "cookie"},
             )
             with self.subTest(key=invalid_key_raw), self.assertRaisesRegex(
-                    GatewayProtocolError,
-                    "invalid gateway ECDH public key",
+                GatewayProtocolError,
+                "invalid gateway ECDH public key",
             ):
                 self.client.parse_interactive_challenge_response(
                     request,
@@ -623,15 +613,13 @@ class GatewayClientTestCase(unittest.TestCase):
                     'x-ruuvi-interactive realm="gateway", challenge="abc", '
                     'session_cookie="RUUVISESSION", session_id="cookie"'
                 ),
-                HttpHeader.RUUVI_ECDH_PUBLIC_KEY: base64.b64encode(
-                    b"\x04" + bytes(64)
-                ).decode("ascii"),
+                HttpHeader.RUUVI_ECDH_PUBLIC_KEY: base64.b64encode(b"\x04" + bytes(64)).decode("ascii"),
             },
             {"RUUVISESSION": "cookie"},
         )
         with self.assertRaisesRegex(GatewayProtocolError, "invalid gateway ECDH public key"):
             self.client.parse_interactive_challenge_response(request, response)
-        labels: List[str] = [label for label, _ in self.evidence.entries]
+        labels: list[str] = [label for label, _ in self.evidence.entries]
         self.assertNotIn("ECDH SHARED SECRET", labels)
         self.assertNotIn("ECDH AES KEY", labels)
 
@@ -644,18 +632,14 @@ class GatewayClientTestCase(unittest.TestCase):
             auth_header="header",
             cookie="cookie",
         )
-        request: InteractiveLoginRequest = self.client.prepare_interactive_login_request(
-            challenge, "user", "password"
-        )
+        request: InteractiveLoginRequest = self.client.prepare_interactive_login_request(challenge, "user", "password")
         ha1: str = hashlib.md5(b"user:gateway:password").hexdigest()
-        expected: str = hashlib.sha256(
-            f"challenge:{ha1}".encode("utf-8")
-        ).hexdigest()
+        expected: str = hashlib.sha256(f"challenge:{ha1}".encode()).hexdigest()
         self.assertEqual(expected, request.password_response)
         self.client.send_interactive_login_request(request)
         prepared: requests.PreparedRequest = session.sent[0][0]
         self.assertEqual("RUUVISESSION=cookie", prepared.headers[HttpHeader.COOKIE])
-        body: Optional[Union[bytes, str]] = prepared.body
+        body: bytes | str | None = prepared.body
         if body is None:
             self.fail("prepared interactive login request has no body")
         self.assertEqual({"login": "user", "password": expected}, json.loads(body))
@@ -676,17 +660,15 @@ class GatewayClientTestCase(unittest.TestCase):
         )
         submit: mock.MagicMock = mock.MagicMock(return_value=login_response)
         with mock.patch.object(
-                self.client,
-                "request_interactive_challenge",
-                return_value=challenge,
+            self.client,
+            "request_interactive_challenge",
+            return_value=challenge,
         ), mock.patch.object(
             self.client,
             "submit_interactive_authentication",
             new=submit,
         ):
-            result: InteractiveAuthResult = self.client.authenticate_interactive(
-                "user", "password"
-            )
+            result: InteractiveAuthResult = self.client.authenticate_interactive("user", "password")
 
         submit.assert_called_once_with(challenge, "user", "password")
         self.assertIs(challenge.session, result.session)

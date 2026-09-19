@@ -5,14 +5,14 @@ on:
     branches: [ master ]
     paths:
       - "cra/303645/tests/**"
-      - "gw_cfg_default/**"
       - ".github/workflows/cra-python-tests.yml"
+      - "gw_cfg_default/**"
   pull_request:
     branches: [ '*' ]
     paths:
       - "cra/303645/tests/**"
-      - "gw_cfg_default/**"
       - ".github/workflows/cra-python-tests.yml"
+      - "gw_cfg_default/**"
   workflow_dispatch:
 
 jobs:
@@ -42,6 +42,9 @@ jobs:
         run: |
           .venv/bin/python -m coverage run --branch --source=lib -m unittest --verbose test_lib.py
           .venv/bin/python -m coverage report --show-missing --fail-under=95
+
+      - name: Run Rull check
+        run: ruff check .
 
       - name: Run automated test implementation tests
         run: .venv/bin/python -m unittest discover --verbose --start-directory . --pattern "test_test_*.py"
