@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
 """Live ETSI 5.1-2A-2 Unit B password-rejection test for a Ruuvi Gateway."""
+
+from __future__ import annotations
 
 import hashlib
 import json
@@ -8,10 +9,9 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable
 
 import requests
-
 from lib.config import (
     AUTHENTICATION_DEFAULT_FIELDS,
     FACTORY_RESET_MESSAGE,
@@ -35,6 +35,7 @@ from lib.gateway import (
     GatewayCfgDesc,
     GatewayCfgLanAuthType,
     GatewayClient,
+    InteractiveAuthResult,
 )
 from lib.http_api import (
     API_INVENTORY,
@@ -46,12 +47,12 @@ from lib.http_api import (
 )
 from lib.models import DutConfig, ProgressReporter, RunResult
 
-TEST_ID = "ETSI EN 303 645 / ETSI TS 103 701 test case 5.1-2A-2, Test Unit B"
-ADMIN_USERNAME = "Admin"
-HTTP_TIMEOUT = (5, 15)
-USER_AGENT = "ruuvi-etsi-test-5.1-2a-2-b"
-TOTAL_STEPS = 9
-MECHANISMS = (
+TEST_ID: str = "ETSI EN 303 645 / ETSI TS 103 701 test case 5.1-2A-2, Test Unit B"
+ADMIN_USERNAME: str = "Admin"
+HTTP_TIMEOUT: tuple[int, int] = (5, 15)
+USER_AGENT: str = "ruuvi-etsi-test-5.1-2a-2-b"
+TOTAL_STEPS: int = 9
+MECHANISMS: tuple[str, ...] = (
     AuthMech.M2M_API_BEARER_RO,
     AuthMech.M2M_API_BEARER_RW,
     "temporary-state setup",
@@ -70,8 +71,8 @@ class NegativeProbe:
     path: str
     expected_status: int
     mechanism: str
-    authorization: Optional[str]
-    body: Optional[Dict[str, Any]]
+    authorization: str | None
+    body: dict[str, Any] | None
 
 
 @dataclass(frozen=True)
@@ -82,14 +83,14 @@ class PositiveProbe:
     expected_status: int
     mechanism: str
     key: str
-    body: Optional[Dict[str, Any]]
+    body: dict[str, Any] | None
 
 
 @dataclass(frozen=True)
 class RestorationAttempt:
     method: str
-    status: Optional[int]
-    error: Optional[str]
+    status: int | None
+    error: str | None
 
 
 def normalize_mac(value: str) -> str:
@@ -97,14 +98,12 @@ def normalize_mac(value: str) -> str:
 
 
 def canonical_json_hash(value: Any) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode(
-        "utf-8"
-    )
+    encoded: bytes = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
 def api_route(method: str, path: str) -> ApiRoute:
-    route = ApiRoute(method, path)
+    route: ApiRoute = ApiRoute(method, path)
     if route not in API_INVENTORY:
         raise InvalidSetup(f"required route is absent from API_INVENTORY: {method} {path}")
     return route
@@ -112,16 +111,16 @@ def api_route(method: str, path: str) -> ApiRoute:
 
 class FunctionalTest_5_1_2a_2_b:
     def __init__(
-            self,
-            config: DutConfig,
-            evidence: EvidenceLog,
-            session_factory: Callable[[], Any] = requests.Session,
-            random_bytes: Callable[[int], bytes] = secrets.token_bytes,
-            progress: Optional[Callable[[str], None]] = None,
+        self,
+        config: DutConfig,
+        evidence: EvidenceLog,
+        session_factory: Callable[[], Any] = requests.Session,
+        random_bytes: Callable[[int], bytes] = secrets.token_bytes,
+        progress: Callable[[str], None] | None = None,
     ) -> None:
-        self.config = config
-        self.evidence = evidence
-        self.gateway = GatewayClient(
+        self.config: DutConfig = config
+        self.evidence: EvidenceLog = evidence
+        self.gateway: GatewayClient = GatewayClient(
             config,
             evidence,
             session_factory=session_factory,
@@ -129,16 +128,16 @@ class FunctionalTest_5_1_2a_2_b:
             timeout=HTTP_TIMEOUT,
             user_agent=USER_AGENT,
         )
-        self.progress = progress if progress is not None else lambda description: None
-        self.outcomes = {mechanism: "NOT RUN" for mechanism in MECHANISMS}
-        self.coverage: Set[ApiRoute] = set()
-        self.admin_session: Optional[Any] = None
-        self.baseline_hash: Optional[str] = None
-        self.prepared_hash: Optional[str] = None
-        self.ro_key: Optional[str] = None
-        self.rw_key: Optional[str] = None
-        self.mutation_possible = False
-        self.factory_reset_required = False
+        self.progress: Callable[[str], None] = progress if progress is not None else lambda description: None
+        self.outcomes: dict[str, str] = {mechanism: "NOT RUN" for mechanism in MECHANISMS}
+        self.coverage: set[ApiRoute] = set()
+        self.admin_session: Any | None = None
+        self.baseline_hash: str | None = None
+        self.prepared_hash: str | None = None
+        self.ro_key: str | None = None
+        self.rw_key: str | None = None
+        self.mutation_possible: bool = False
+        self.factory_reset_required: bool = False
 
     def _record_assertion(self, description: str, passed: bool, actual: Any = "") -> None:
         self.evidence.write(
@@ -161,20 +160,16 @@ class FunctionalTest_5_1_2a_2_b:
             raise SecurityFailure(f"{description} (actual: {actual!r})")
 
     def _authenticate_admin(self) -> Any:
-        result = self.gateway.authenticate_interactive(ADMIN_USERNAME, self.config.gw_id)
+        result: InteractiveAuthResult = self.gateway.authenticate_interactive(ADMIN_USERNAME, self.config.gw_id)
         self._require_setup(
             result.challenge_response.status_code == HttpStatus.C_401_UNAUTHORIZED,
             "GET /auth returns the interactive challenge",
             result.challenge_response.status_code,
         )
-        if (
-                result.auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE)
-                != GatewayCfgLanAuthType.DEFAULT
-        ):
+        if result.auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE) != GatewayCfgLanAuthType.DEFAULT:
             self.factory_reset_required = True
         self._require_setup(
-            result.auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE)
-            == GatewayCfgLanAuthType.DEFAULT,
+            result.auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DEFAULT,
             f"interactive authentication reports {GatewayCfgLanAuthType.DEFAULT}",
             result.auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE),
         )
@@ -185,8 +180,8 @@ class FunctionalTest_5_1_2a_2_b:
         )
         return result
 
-    def _read_config(self, session: Any, context: str) -> Dict[str, Any]:
-        response = self.gateway.request(session, HttpMethod.GET, GatewayApi.CONFIG)
+    def _read_config(self, session: Any, context: str) -> dict[str, Any]:
+        response: requests.Response = self.gateway.request(session, HttpMethod.GET, GatewayApi.CONFIG)
         self._require_setup(
             response.status_code == HttpStatus.C_200_OK,
             f"{context} succeeds",
@@ -194,16 +189,18 @@ class FunctionalTest_5_1_2a_2_b:
         )
         return self.gateway.response_json(response, context, dict)
 
-    def _validate_baseline(self, payload: Dict[str, Any]) -> None:
-        expected = default_config_values(AUTHENTICATION_DEFAULT_FIELDS)
+    def _validate_baseline(self, payload: dict[str, Any]) -> None:
+        expected: dict[str, Any] = default_config_values(AUTHENTICATION_DEFAULT_FIELDS)
+        value: Any
+        field: str
         for field, value in expected.items():
-            actual = payload.get(field)
-            is_default = type(actual) is type(value) and actual == value
+            actual: Any = payload.get(field)
+            is_default: bool = type(actual) is type(value) and actual == value
             if not is_default:
                 self.factory_reset_required = True
             self._require_setup(is_default, f"{field} has its factory-default value", actual)
         if GatewayCfgDesc.GW_MAC in payload:
-            actual_mac = payload[GatewayCfgDesc.GW_MAC]
+            actual_mac: Any = payload[GatewayCfgDesc.GW_MAC]
             self._require_setup(isinstance(actual_mac, str), "gw_mac is a string")
             self._require_setup(
                 OCTETS_6_RE.fullmatch(actual_mac) is not None,
@@ -215,7 +212,7 @@ class FunctionalTest_5_1_2a_2_b:
                 "DUT gw_mac matches .env",
                 actual_mac,
             )
-        identity = {
+        identity: dict[str, Any] = {
             key: payload[key]
             for key in (
                 GatewayCfgDesc.GW_MAC,
@@ -236,13 +233,13 @@ class FunctionalTest_5_1_2a_2_b:
         )
         self.evidence.write("TEMPORARY RO KEY", self.ro_key)
         self.evidence.write("TEMPORARY RW KEY", self.rw_key)
-        body = {
+        body: dict[str, str | None] = {
             GatewayCfgDesc.LAN_AUTH_API_KEY: self.ro_key,
             GatewayCfgDesc.LAN_AUTH_API_KEY_RW: self.rw_key,
         }
         self.evidence.write("CONFIGURATION TRANSITION", body)
         self.mutation_possible = True
-        response = self.gateway.request(
+        response: requests.Response = self.gateway.request(
             self.admin_session,
             HttpMethod.POST,
             GatewayApi.CONFIG,
@@ -259,12 +256,14 @@ class FunctionalTest_5_1_2a_2_b:
         )
 
     def _verify_prepared(self) -> None:
-        prepared = self._read_config(self.admin_session, "prepared GET /ruuvi.json")
-        expected = {
+        prepared: dict[str, Any] = self._read_config(self.admin_session, "prepared GET /ruuvi.json")
+        expected: dict[str, str | bool] = {
             GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.DEFAULT,
             GatewayCfgDesc.LAN_AUTH_API_KEY_USE: True,
             GatewayCfgDesc.LAN_AUTH_API_KEY_RW_USE: True,
         }
+        value: str | bool
+        field: str
         for field, value in expected.items():
             self._require_setup(
                 prepared.get(field) is value if isinstance(value, bool) else prepared.get(field) == value,
@@ -275,15 +274,15 @@ class FunctionalTest_5_1_2a_2_b:
         self.evidence.write("PREPARED CONFIGURATION SHA256", self.prepared_hash)
         self.outcomes["temporary-state setup"] = "PASS"
 
-    def _negative_matrix(self, realm: str) -> List[NegativeProbe]:
-        basic = self.gateway.authorization_header_basic(ADMIN_USERNAME, self.config.gw_id)
+    def _negative_matrix(self, realm: str) -> list[NegativeProbe]:
+        basic: str = self.gateway.authorization_header_basic(ADMIN_USERNAME, self.config.gw_id)
 
-        def digest(method: str, path: str) -> str:
+        def digest(request_method: str, request_path: str) -> str:
             return self.gateway.authorization_header_digest(
                 ADMIN_USERNAME,
                 self.config.gw_id,
-                method,
-                path,
+                request_method,
+                request_path,
                 {
                     "realm": realm,
                     "nonce": self.gateway.random_text(18),
@@ -292,8 +291,8 @@ class FunctionalTest_5_1_2a_2_b:
                 },
             )
 
-        probes: List[NegativeProbe] = []
-        routes = (
+        probes: list[NegativeProbe] = []
+        routes: tuple[tuple[str, str, int, str], ...] = (
             (HttpMethod.GET, GatewayApi.HISTORY, HttpStatus.C_302_FOUND, AuthMech.M2M_API_BEARER_RO),
             (HttpMethod.GET, GatewayApi.CONFIG, HttpStatus.C_302_FOUND, AuthMech.M2M_API_BEARER_RO),
             (
@@ -303,9 +302,14 @@ class FunctionalTest_5_1_2a_2_b:
                 AuthMech.M2M_API_BEARER_RW,
             ),
         )
+        scheme: str
         for scheme in (HttpAuthScheme.BASIC, HttpAuthScheme.DIGEST):
+            mechanism: str
+            expected: int
+            path: str
+            method: str
             for method, path, expected, mechanism in routes:
-                authorization = basic if scheme == HttpAuthScheme.BASIC else digest(method, path)
+                authorization: str = basic if scheme == HttpAuthScheme.BASIC else digest(method, path)
                 probes.append(
                     NegativeProbe(
                         scheme,
@@ -317,7 +321,8 @@ class FunctionalTest_5_1_2a_2_b:
                         {} if method == HttpMethod.POST else None,
                     )
                 )
-        password_bearer = f"{HttpAuthScheme.BEARER} {self.config.gw_id}"
+        password_bearer: str = f"{HttpAuthScheme.BEARER} {self.config.gw_id}"
+        _: int
         for method, path, _, mechanism in routes:
             probes.append(
                 NegativeProbe(
@@ -330,7 +335,7 @@ class FunctionalTest_5_1_2a_2_b:
                     {} if method == HttpMethod.POST else None,
                 )
             )
-        password_hash = self.gateway.calculate_digest_ha1(
+        password_hash: str = self.gateway.calculate_digest_ha1(
             ADMIN_USERNAME,
             realm,
             self.config.gw_id,
@@ -358,16 +363,13 @@ class FunctionalTest_5_1_2a_2_b:
             self.config.gw_id not in {self.ro_key, self.rw_key},
             "password-as-token probe differs from both configured keys",
         )
+        probe: NegativeProbe
         for probe in self._negative_matrix(realm):
-            response = self.gateway.request(
+            response: requests.Response = self.gateway.request(
                 self.gateway.new_session(),
                 probe.method,
                 probe.path,
-                headers=(
-                    {HttpHeader.AUTHORIZATION: probe.authorization}
-                    if probe.authorization is not None
-                    else None
-                ),
+                headers=({HttpHeader.AUTHORIZATION: probe.authorization} if probe.authorization is not None else None),
                 json_body=probe.body,
             )
             self.coverage.add(api_route(probe.method, probe.path))
@@ -394,15 +396,15 @@ class FunctionalTest_5_1_2a_2_b:
                     result=f"PASS ({response.status_code})",
                 ),
             )
-        current = self._read_config(self.admin_session, "post-negative GET /ruuvi.json")
-        current_hash = canonical_json_hash(current)
+        current: dict[str, Any] = self._read_config(self.admin_session, "post-negative GET /ruuvi.json")
+        current_hash: str = canonical_json_hash(current)
         self._require_security(
             current_hash == self.prepared_hash,
             "negative POST probes did not change configuration",
             HashComparisonEvidence(baseline=self.prepared_hash or "", final=current_hash),
         )
 
-    def _positive_matrix(self) -> List[PositiveProbe]:
+    def _positive_matrix(self) -> list[PositiveProbe]:
         if self.ro_key is None or self.rw_key is None:
             raise InvalidSetup("temporary bearer keys were not generated")
         return [
@@ -463,14 +465,13 @@ class FunctionalTest_5_1_2a_2_b:
         ]
 
     def _run_positive_matrix(self) -> None:
+        probe: PositiveProbe
         for probe in self._positive_matrix():
-            response = self.gateway.request(
+            response: requests.Response = self.gateway.request(
                 self.gateway.new_session(),
                 probe.method,
                 probe.path,
-                headers={
-                    HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {probe.key}"
-                },
+                headers={HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {probe.key}"},
                 json_body=probe.body,
             )
             self.coverage.add(api_route(probe.method, probe.path))
@@ -492,8 +493,8 @@ class FunctionalTest_5_1_2a_2_b:
                     result=f"PASS ({response.status_code})",
                 ),
             )
-        current = self._read_config(self.admin_session, "post-positive GET /ruuvi.json")
-        current_hash = canonical_json_hash(current)
+        current: dict[str, Any] = self._read_config(self.admin_session, "post-positive GET /ruuvi.json")
+        current_hash: str = canonical_json_hash(current)
         self._require_security(
             current_hash == self.prepared_hash,
             "successful RW empty-object POST did not change configuration",
@@ -505,42 +506,41 @@ class FunctionalTest_5_1_2a_2_b:
     def _restore(self) -> bool:
         if not self.mutation_possible:
             return True
-        body = {
+        body: dict[str, str] = {
             GatewayCfgDesc.LAN_AUTH_API_KEY: "",
             GatewayCfgDesc.LAN_AUTH_API_KEY_RW: "",
         }
         self.evidence.write("CONFIGURATION RESTORATION", body)
-        attempts: List[RestorationAttempt] = []
+        attempts: list[RestorationAttempt] = []
 
-        def attempt(name: str, session: Any, key: Optional[str] = None) -> bool:
-            headers = (
-                {HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {key}"}
-                if key is not None
-                else None
+        def attempt(attempt_name: str, session: Any, bearer_key: str | None = None) -> bool:
+            headers: dict[str, str] | None = (
+                {HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {bearer_key}"} if bearer_key is not None else None
             )
             try:
-                response = self.gateway.request(
+                post_response: requests.Response = self.gateway.request(
                     session,
                     HttpMethod.POST,
                     GatewayApi.CONFIG,
                     headers=headers,
                     json_body=body,
                 )
-                attempts.append(RestorationAttempt(name, response.status_code, None))
-                return response.status_code == HttpStatus.C_200_OK
-            except Exception as error:
-                attempts.append(RestorationAttempt(name, None, f"{type(error).__name__}: {error}"))
-                self.evidence.exception(error)
+                attempts.append(RestorationAttempt(attempt_name, post_response.status_code, None))
+                return post_response.status_code == HttpStatus.C_200_OK
+            except Exception as post_error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
+                post_error: Exception
+                attempts.append(RestorationAttempt(attempt_name, None, f"{type(post_error).__name__}: {post_error}"))
+                self.evidence.exception(post_error)
                 return False
 
-        restored = False
+        restored: bool = False
         if self.admin_session is not None:
             restored = attempt("authorized Admin session", self.admin_session)
         if not restored and self.rw_key is not None:
             restored = attempt("temporary RW bearer", self.gateway.new_session(), self.rw_key)
         if not restored:
             try:
-                login = self.gateway.authenticate_interactive(ADMIN_USERNAME, self.config.gw_id)
+                login: InteractiveAuthResult = self.gateway.authenticate_interactive(ADMIN_USERNAME, self.config.gw_id)
                 if login.login_response.status_code == HttpStatus.C_200_OK:
                     restored = attempt("re-authenticated Admin session", login.session)
                 else:
@@ -551,7 +551,8 @@ class FunctionalTest_5_1_2a_2_b:
                             None,
                         )
                     )
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
+                error: Exception
                 attempts.append(
                     RestorationAttempt(
                         "re-authenticated Admin session",
@@ -567,7 +568,7 @@ class FunctionalTest_5_1_2a_2_b:
 
         try:
             login = self._authenticate_admin()
-            restored_config = self._read_config(login.session, "restored GET /ruuvi.json")
+            restored_config: dict[str, Any] = self._read_config(login.session, "restored GET /ruuvi.json")
             self._require_setup(
                 restored_config.get(GatewayCfgDesc.LAN_AUTH_API_KEY_USE) is False,
                 "restored RO key is disabled",
@@ -578,13 +579,13 @@ class FunctionalTest_5_1_2a_2_b:
                 "restored RW key is disabled",
                 restored_config.get(GatewayCfgDesc.LAN_AUTH_API_KEY_RW_USE),
             )
-            restored_hash = canonical_json_hash(restored_config)
+            restored_hash: str = canonical_json_hash(restored_config)
             self._require_setup(
                 restored_hash == self.baseline_hash,
                 "restored configuration equals the baseline",
                 HashComparisonEvidence(baseline=self.baseline_hash or "", final=restored_hash),
             )
-            rejected = (
+            rejected: tuple[tuple[str, str | None, str, str], ...] = (
                 (
                     "RO",
                     self.ro_key,
@@ -598,14 +599,16 @@ class FunctionalTest_5_1_2a_2_b:
                     GatewayApi.CONFIG,
                 ),
             )
+            path: str
+            method: str
+            key: str | None
+            name: str
             for name, key, method, path in rejected:
-                response = self.gateway.request(
+                response: requests.Response = self.gateway.request(
                     self.gateway.new_session(),
                     method,
                     path,
-                    headers={
-                        HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {key or ''}"
-                    },
+                    headers={HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {key or ''}"},
                     json_body={} if method == HttpMethod.POST else None,
                 )
                 self._require_setup(
@@ -613,7 +616,7 @@ class FunctionalTest_5_1_2a_2_b:
                     f"temporary {name} key no longer authorizes",
                     response.status_code,
                 )
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
             self.evidence.exception(error)
             self.outcomes["final restoration and non-mutation"] = "ERROR"
             return False
@@ -629,15 +632,15 @@ class FunctionalTest_5_1_2a_2_b:
             "Interactive Web-UI access control, unconfigured-secret boundaries, rate limiting, "
             "and Unit A interface discovery are out of scope.",
         )
-        verdict = "ERROR"
-        exit_code = 2
-        failure: Optional[BaseException] = None
+        verdict: str = "ERROR"
+        exit_code: int = 2
+        failure: BaseException | None = None
         try:
             self.progress("Authenticating with the default administrative credentials")
-            login = self._authenticate_admin()
+            login: InteractiveAuthResult = self._authenticate_admin()
             self.admin_session = login.session
             self.progress("Reading and validating the baseline gateway configuration")
-            baseline = self._read_config(self.admin_session, "baseline GET /ruuvi.json")
+            baseline: dict[str, Any] = self._read_config(self.admin_session, "baseline GET /ruuvi.json")
             self._validate_baseline(baseline)
             self.baseline_hash = canonical_json_hash(baseline)
             self.evidence.write("BASELINE CONFIGURATION SHA256", self.baseline_hash)
@@ -654,18 +657,19 @@ class FunctionalTest_5_1_2a_2_b:
             self.progress("Testing positive RO and RW bearer scope")
             self._run_positive_matrix()
         except SecurityFailure as error:
+            error: Exception
             failure = error
             self.evidence.exception(error)
             verdict = "FAIL"
             exit_code = 1
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
             failure = error
             self.evidence.exception(error)
             verdict = "ERROR"
             exit_code = 2
         finally:
             self.progress("Restoring the original API-key configuration")
-            restoration_ok = self._restore()
+            restoration_ok: bool = self._restore()
             self.progress("Verifying restoration and aggregating the verdict")
             if not restoration_ok:
                 self.factory_reset_required = True
@@ -674,42 +678,44 @@ class FunctionalTest_5_1_2a_2_b:
             elif failure is None:
                 verdict = "PASS"
                 exit_code = 0
+        outcome: str
+        mechanism: str
         for mechanism, outcome in self.outcomes.items():
             self.evidence.write(
                 "FINAL RESULT",
                 MechanismResultEvidence(mechanism=mechanism, result=outcome),
             )
         self.evidence.write("OVERALL RESULT", verdict)
-        recovery_message = FACTORY_RESET_MESSAGE if self.factory_reset_required else None
+        recovery_message: str | None = FACTORY_RESET_MESSAGE if self.factory_reset_required else None
         return RunResult(exit_code, verdict, dict(self.outcomes), set(self.coverage), recovery_message)
 
 
 def execute_test_5_1_2a_2_b(
-        work_dir: Optional[Path] = None,
-        session_factory: Callable[[], Any] = requests.Session,
-        now: Callable[[], datetime] = utc_now,
-        random_bytes: Callable[[int], bytes] = secrets.token_bytes,
-        output: Optional[Callable[[str], None]] = None,
+    work_dir: Path | None = None,
+    session_factory: Callable[[], Any] = requests.Session,
+    now: Callable[[], datetime] = utc_now,
+    random_bytes: Callable[[int], bytes] = secrets.token_bytes,
+    output: Callable[[str], None] | None = None,
 ) -> RunResult:
     if work_dir is None:
         work_dir = Path.cwd()
     if output is None:
         output = print
-    log = EvidenceLog.create(work_dir / "logs", "test_5_1_2a_2_b", now)
+    log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_1_2a_2_b", now)
     output(f"Open log file: {log.path}")
 
     def output_progress(message: str) -> None:
         output(message)
         log.write_line(message)
 
-    progress = ProgressReporter(output_progress, TOTAL_STEPS)
-    result = RunResult(2, "ERROR", {mechanism: "NOT RUN" for mechanism in MECHANISMS}, set())
+    progress: ProgressReporter = ProgressReporter(output_progress, TOTAL_STEPS)
+    result: RunResult = RunResult(2, "ERROR", {mechanism: "NOT RUN" for mechanism in MECHANISMS}, set())
     log.write("TEST CASE AND UNIT", TEST_ID)
     log.write("UTC START", format_utc(log.started_at))
     try:
         try:
             progress.step("Loading and validating .env")
-            config = load_dut_config(work_dir / ".env")
+            config: DutConfig = load_dut_config(work_dir / ".env")
             log.write("DUT CONFIGURATION", config)
             result = FunctionalTest_5_1_2a_2_b(
                 config,
@@ -719,7 +725,8 @@ def execute_test_5_1_2a_2_b(
                 progress=progress.step,
             ).run()
         except Exception as error:
-            log.exception(error)
+            error: Exception
+            log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
             log.write("OVERALL RESULT", "ERROR")
     finally:
         if result.recovery_message is not None:
