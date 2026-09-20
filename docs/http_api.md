@@ -249,15 +249,26 @@ responses are `Content-Type: application/json` unless stated otherwise.
 
 ### GET /ruuvi.json
 
-- **Purpose:** return the full gateway configuration and **enter configuration mode**.
+- **Purpose:** return the UI-facing gateway configuration with password hiding
+  enabled and **enter configuration mode** (not a full raw configuration export).
 - **Query params:** none.
 - **Auth:** enforced on LAN (RO bearer accepted).
 - **Success:** `200` JSON gateway config; conforms to
   [`ruuvi_gw_cfg.schema.json`](../schemas/ruuvi_gw_cfg.schema.json).
+- **Credential visibility:** LAN-authentication secrets `lan_auth_pass`,
+  `lan_auth_api_key` (RO), and `lan_auth_api_key_rw` (RW) are omitted, not returned
+  as empty strings or masked values. `lan_auth_type` and `lan_auth_user` remain
+  visible. API-key presence is reported by `lan_auth_api_key_use` and
+  `lan_auth_api_key_rw_use`: each is `true` when its corresponding stored key is
+  non-empty, otherwise `false`. Clients must use these booleans to detect
+  configured keys; absent credential fields do not mean credentials are unset.
 - **Errors:** `503` if config JSON generation fails.
 - **Side effects:** activates cfg-mode and (re)starts the cfg-mode deactivation timer.
 - **Source:** [`http_server_resp_json_ruuvi()` L47](../main/http_server_cb_on_get.c#L47)
-  via [`http_server_resp_json()` L227](../main/http_server_cb_on_get.c#L227).
+  via [`http_server_resp_json()` L227](../main/http_server_cb_on_get.c#L227);
+  [`gw_cfg_ruuvi_json_generate()`](../main/gw_cfg_ruuvi_json.c#L13) selects the
+  [UI-client generator](../main/gw_cfg_json_generate.c#L865), whose
+  [LAN-auth serialization](../main/gw_cfg_json_generate.c#L521) omits the secrets.
 
 ### GET /firmware_update.json
 
