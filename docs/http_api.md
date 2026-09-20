@@ -321,12 +321,19 @@ responses are `Content-Type: application/json` unless stated otherwise.
     `mqtt_disable_retained_messages=` and the scheme prefix
     (`mqtt://`,`mqtts://`,`mqttws://`,`mqttwss://`).
 - **Auth:** enforced on LAN (RO bearer accepted).
-- **Success:** `200` (or the proxied remote status). Response body/content-type depend
-  on the check performed and are generated via `http_server_cb_gen_resp()` /
-  `http_check_*`.
-- **Errors:** `400` (missing/invalid params), `500` (internal/invalid
-  `validate_type`), `409` if a firmware update is already in progress
+- **HTTP transport status:** completed checks return `200` with an
+  `application/json` body, including when the check reports failure. Direct error
+  paths return `400` for missing/invalid parameters (including check-specific
+  credential/MQTT parameter validation), `500` for allocation/internal failures or
+  an invalid `validate_type`, and `409` if a firmware update is already in progress
   ([cb_on_get L568-582](../main/http_server_cb_on_get.c#L568)).
+- **Application status:** the JSON body is `{"status": <code>, "message": <string>}`;
+  `status` carries the check result, such as `200`, `400` for an incorrect URL,
+  `401` for rejected MQTT credentials, or a remote server's error code. These are
+  not the outer HTTP status. Successful firmware-update URL validation instead
+  returns `{"status": 200, "json": <release metadata>}`. Both response helpers send
+  HTTP `200`, or HTTP `500` if response construction fails
+  ([`http_server_cb_gen_resp()` / `_json()`](../main/http_server_cb.c#L644)).
 - **Side effects:** clears saved TLS session tickets; suspends/resumes data relaying
   around the check.
 - **Source:** [cb_on_get L568](../main/http_server_cb_on_get.c#L568),
@@ -422,9 +429,15 @@ global guards run first in
 
 - **Purpose:** start a firmware update from a validated set of binaries.
 - **Body:** JSON parsed by `json_fw_update_parse_http_body()`.
-- **Success:** `200` (`"OK"`).
-- **Errors:** `400` (parse / bad URL), `503` (failed to start), plus the download-check
-  status from `http_server_check_fw_update_binary_files()`.
+- **HTTP transport status:** `200` for the handler's application results, or `500`
+  if response construction fails. The shared POST guards can return `409`/`403`
+  before this handler runs.
+- **Application status:** JSON `{"status": 200, "message": "OK"}` on success;
+  failures use the same JSON shape with `status: 400` (parse / bad URL),
+  `status: 503` (failed to start), or the download-check status from
+  `http_server_check_fw_update_binary_files()`, plus an explanatory `message`.
+  These codes are JSON fields, not HTTP response codes
+  ([`http_server_cb_gen_resp()`](../main/http_server_cb.c#L644)).
 - **Side effects:** suspends relaying; sets update reason (LAN vs hotspot); starts update.
 - **Source:** [`http_server_cb_on_post_fw_update()` L129](../main/http_server_cb_on_post.c#L129).
 
@@ -432,8 +445,12 @@ global guards run first in
 
 - **Purpose:** set the persistent firmware-update URL.
 - **Body:** JSON parsed by `json_fw_update_url_parse_http_body_get_url()`.
-- **Success:** `200` (`"OK"`).
-- **Errors:** `400` (parse failure).
+- **HTTP transport status:** `200` for the handler's application results, or `500`
+  if response construction fails; the shared POST guards can return `409`/`403`.
+- **Application status:** JSON `{"status": 200, "message": "OK"}` on success, or
+  `{"status": 400, "message": "Failed to parse HTTP body"}` on parse failure;
+  both are sent with HTTP `200`
+  ([`http_server_cb_gen_resp()`](../main/http_server_cb.c#L644)).
 - **Source:** [`http_server_cb_on_post_fw_update_url()` L167](../main/http_server_cb_on_post.c#L167).
 
 ### POST /fw_update_reset
@@ -448,10 +465,14 @@ global guards run first in
 
 - **Purpose:** download and apply gateway config from the configured remote server.
 - **Body:** none required.
-- **Success:** `200` with a message string (notes if a reboot is needed for network
-  cfg changes).
-- **Errors:** propagates `http_server_gw_cfg_download_and_update()` status with an error
-  message.
+- **HTTP transport status:** `200` for the handler's application results, or `500`
+  if response construction fails; the shared POST guards can return `409`/`403`.
+- **Application status:** JSON `{"status": <code>, "message": <string>}`, where
+  `status` is the result of `http_server_gw_cfg_download_and_update()`. Success is
+  `status: 200`, with an empty message or a notice that network configuration changes
+  require a reboot. Failures carry the operation's error code and message in JSON,
+  while the outer HTTP status remains `200`
+  ([`http_server_cb_gen_resp()`](../main/http_server_cb.c#L644)).
 - **Source:** [`http_server_cb_on_post_gw_cfg_download()` L200](../main/http_server_cb_on_post.c#L200).
 
 ### POST /ssl_cert  and  POST /extra_cfg
