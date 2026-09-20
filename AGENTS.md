@@ -157,6 +157,14 @@ final clean run; report the initial count and final result. Follow `cra/303645/t
 Python 3.8 validation and narrowly justified lint exceptions. Linting does not authorize code
 reformatting.
 
+Ruff automatically discovers `cra/303645/tests/pyproject.toml` for the test subtree.
+For explicit selection from the repository root, use
+`(cd cra/303645/tests && .venv/bin/ruff check --config pyproject.toml .)`.
+The subshell keeps relative settings based at the test project; passing `--config` from
+the repository root instead changes their base directory. See
+[`cra/303645/tests/README.md` — Required linting](cra/303645/tests/README.md#required-linting)
+for both invocation forms and a command to verify the selected configuration.
+
 ## Code Style
 
 - **BARR-C:2018** style enforced via `.clang-format` (clang-format v14)

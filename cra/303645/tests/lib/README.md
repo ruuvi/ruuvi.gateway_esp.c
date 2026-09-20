@@ -154,6 +154,12 @@ changes and before handoff, even for library documentation changes. Fix all find
 clean final check; see [`../AGENTS.md`](../AGENTS.md) for the annotation and exception-handling
 conventions. Ruff does not replace the dedicated unit tests and coverage gate below.
 
+The root command automatically discovers `cra/303645/tests/pyproject.toml`. To select
+it explicitly from the repository root while preserving relative settings, use
+`(cd cra/303645/tests && .venv/bin/ruff check --config pyproject.toml .)`.
+See [Required linting](../README.md#required-linting) for working-directory semantics
+and configuration-discovery verification.
+
 The dedicated library test module is [`../test_lib.py`](../test_lib.py). Locating it outside `lib/`
 is intentional and follows normal Python project structure: `lib/` contains reusable runtime code,
 while its tests live in the enclosing test project. This also prevents test helpers from becoming
