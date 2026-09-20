@@ -525,10 +525,9 @@ is in progress ([cb.c L117](../main/http_server_cb.c#L117)).
 
 ## Static web assets and fallback
 
-Any GET path that is **not** matched above and **has a file extension** is treated as a
-static file request served from the GWUI FATFS partition
-([`http_server_resp_file()` L433](../main/http_server_cb_on_get.c#L433), dispatch at
-[cb_on_get L587](../main/http_server_cb_on_get.c#L587)):
+Any GET path that is **not** matched above is treated as a static file request served from the GWUI
+FATFS partition ([`http_server_resp_file()` L433](../main/http_server_cb_on_get.c#L433), dispatch
+at [cb_on_get L587](../main/http_server_cb_on_get.c#L587)):
 
 - Empty path -> `ruuvi.html`; wifi-manager also maps empty path to `index.html` earlier.
 - `.js`, `.html`, `.css` are served gzip-encoded (`<file>.gz`) when available.
