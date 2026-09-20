@@ -23,8 +23,14 @@ DEFAULT_GATEWAY_UI_CONFIG_PATH: Path = (
 )
 FACTORY_RESET_MESSAGE: str = (
     "USER ACTION REQUIRED: The gateway is not in the required factory-default state. "
-    "Perform a factory reset by pressing and holding the CONFIGURE button for longer "
-    "than 11 seconds (until the Red LED blinks every 200 ms), then run the test again."
+    "Factory reset erases saved local configuration, credentials, tokens, and uploaded "
+    "certificates/private keys and interrupts connectivity. Back up needed settings first. "
+    "It does not delete cloud accounts or already-forwarded data. Hold CONFIGURE through the "
+    "LED turning off and the Gateway restarting until the red LED repeatedly turns on for "
+    "200 ms and off for 200 ms (normally about 11 seconds after the initial press). "
+    "Release only after this completion signal; the Gateway restarts again and opens its "
+    "configuration hotspot. If the signal never appears, do not assume erasure succeeded. "
+    "Restore LAN connectivity and verify the DUT identity before running the test again."
 )
 AUTHENTICATION_DEFAULT_FIELDS: tuple[str, ...] = (
     GatewayCfgDesc.LAN_AUTH_TYPE,

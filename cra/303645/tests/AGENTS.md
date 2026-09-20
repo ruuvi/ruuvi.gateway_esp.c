@@ -141,6 +141,23 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
   (length, duplicates, canonical set, and completed coverage) and final non-mutation verification.
   `RunResult.outcomes` and final evidence must record FAIL, not NOT RUN, for a rejected assertion.
   Setup, transport, and malformed-protocol exceptions remain overall ERROR.
+- Track the active mechanism explicitly; never infer it from the first NOT RUN entry. A shared
+  credential-write failure may affect both keys, but an RO/RW probe or its non-mutation assertion
+  belongs to that specific mechanism. Preserve a completed mechanism's PASS when a later mechanism
+  fails, and never leave PASS after one of its later controls fails. Prepared-state setup includes
+  provisioning, configuration read-back, and required login controls; any exception in these phases
+  must mark the setup outcome ERROR and still attempt restoration.
+- Save candidate recovery credentials before sending a change that might apply, retaining prior
+  candidates until the transition is verified. A timeout or failed follow-up login must not lose
+  the credential needed to recover a partially applied change.
+- Use the shared reset message and verify changes against the boot-time erase handler and LED
+  pattern as well as the restart timer. The five-second timer requests restart; completion is the
+  red LED repeating 200 ms on/200 ms off. About eleven seconds is observed elapsed time, not a
+  firmware threshold. Never replace this completion condition with a fixed hold duration.
+  Release after completion triggers another restart, then the configuration hotspot opens:
+  `handle_reset_button_is_pressed_during_boot()` waits for release before calling
+  `gateway_restart_immediate_no_cleanup()`. Keep this second restart distinct from the initial
+  timer-triggered restart in recovery messages, documentation, and the message regression test.
 - When factory-default state is a task precondition, compare the required fields and their types
   with `default_config_values()` from the checked-in `gw_cfg_default/gw_cfg_default_gen_ui.json`.
   Do not manufacture the baseline by changing the DUT or hard-code a second set of default values.
@@ -185,6 +202,10 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
   challenge-derived password response for `Admin`/`config.gw_id`, before authorizing its session.
   Username-only acceptance cannot verify the valid-login precondition. Cover incorrect passwords
   and corrupt responses, as well as a successful complete run.
+  Validate the cookie and outstanding challenge for that session too; consume successful challenges
+  so missing, stale, replayed, or cross-session login requests cannot authorize. A client-level fake
+  may isolate orchestration, but include a full run through the real client and a fake HTTP boundary
+  for authentication-sensitive runners. Do not make failed configuration writes alter fake credentials.
 - Assert the ordered requests actually recorded by the fake HTTP boundary, including scheme,
   method, path, and relevant body/session/redirect details. Do not rely solely on the absence of
   exceptions, `assertTrue(True)`, an aggregate PASS, or the runner's own coverage set to prove that
@@ -203,6 +224,10 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
   A per-scheme sequence test cannot detect an early dangerous request in another scheme. Cover
   failures in the last safer phases and assert that no mutating probes follow the failure; preserve
   immediate abort on unexpected success during the dangerous phase as well.
+  Include positive bearer reads before negative writes when the prepared state supports both. Keep
+  provisioning and mandatory recovery explicitly identifiable in the recorded sequence; restoration
+  and revoked-key checks must still run after a probe abort. For 5.1-2A-2-B, require all password and
+  RO/RW bearer GETs before password POSTs, then RO denial and the RW no-op POST plus hash check.
 - Make fake responses consistent with the state being modeled. A Basic or Digest auth mode must
   advertise the corresponding challenge, not always `x-ruuvi-interactive`; otherwise tests can
   bypass the real shared-library error path. Test both modes and assert ERROR, the reset message,
@@ -230,10 +255,10 @@ task affecting these tests or their guidance, including documentation-only tasks
 repository root:
 
 ```bash
-ruff check cra/303645/tests
+cra/303645/tests/.venv/bin/ruff check cra/303645/tests
 ```
 
-From this directory the equivalent command is `ruff check .`. Use the repository's Ruff
+From this directory the equivalent command is `.venv/bin/ruff check .`. Use the repository's Ruff
 configuration and fix reported lint problems; rerun until clean. Inspect each proposed fix and
 preserve Python 3.8 behavior, recovery, and evidence semantics. Do not silence valid findings by
 weakening rules or adding blanket exclusions. Explain any necessary narrow suppression.
