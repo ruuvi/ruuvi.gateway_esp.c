@@ -1,8 +1,8 @@
 # CRA Functional-Test Library
 
 This package contains shared infrastructure for the Python functional tests in
-[`cra/303645/tests`](../). Its purpose is to keep configuration parsing, evidence logging, HTTP
-protocol handling, authentication, and common data models consistent across live-DUT tests.
+[`cra/303645/tests`](../README.md). Its purpose is to keep configuration parsing, evidence logging,
+HTTP protocol handling, authentication, and common data models consistent across live-DUT tests.
 
 The package supports Python 3.8. It is internal to this repository rather than a separately
 published Python package. It is governed by the subtree instructions in
@@ -38,6 +38,11 @@ state transitions on top of this client.
 - `default_config_values(fields, path=...)` selects required fields from those defaults and rejects
   missing fields.
 - `FACTORY_RESET_MESSAGE` and `AUTHENTICATION_DEFAULT_FIELDS` define shared functional-test policy.
+  The recovery message requires the red LED completion signal (200 ms on/200 ms off) after boot-time
+  erasure, warns about lost local settings, and treats about 11 seconds as typical elapsed time.
+  Releasing CONFIGURE after this signal triggers another restart, after which the configuration
+  hotspot opens.
+  Runners decide when reset advice is appropriate and include it in evidence and terminal output.
 
 ### Models
 
@@ -69,6 +74,11 @@ bodies. Store and share them with the same care as DUT credentials.
 - `GatewayClient.new_session()` disables Requests' environment settings (`trust_env=False`),
   including automatic `.netrc` authentication and environment proxies, so host settings cannot
   silently change the authentication under test.
+- The session factory is `Callable[[], requests.Session]`; `new_session()` and the
+  authentication models carry concrete `requests.Session` objects. Request, challenge,
+  and login responses are `requests.Response` objects. Host-side transport fixtures
+  subclass these Requests types and override sending so they never contact a DUT.
+  Dynamic JSON bodies and decoded payloads remain typed as `Any` at the protocol boundary.
 - `GatewayClient.request()` sends a request with fixed timeouts and redirects disabled by default.
   It accepts either `json_body` or `data`, but never both.
 - `response_json()` validates JSON decoding and, optionally, the top-level Python type.
@@ -85,6 +95,8 @@ bodies. Store and share them with the same care as DUT credentials.
 
 - `GatewayApi`, `HttpMethod`, `HttpStatus`, `HttpHeader`, and `HttpAuthScheme` centralize endpoint
   paths and HTTP vocabulary in `http_api.py`.
+  `HttpStatus.C_404_NOT_FOUND` represents unavailable routes; runners decide where it is expected
+  (for example, hotspot-only `/info.json` on LAN), without broadening bearer denial expectations.
 - `ApiRoute`, `API_INVENTORY`, and `EXPECTED_API_INVENTORY` define the canonical 26-route firmware
   API matrix.
 - `InvalidSetup` is the common setup-error base class. `InvalidConfig`,
@@ -141,6 +153,17 @@ finally:
 ```
 
 ## Unit tests
+
+Always run `cra/303645/tests/.venv/bin/ruff check cra/303645/tests` from the repository root before
+changes and before handoff, even for library documentation changes. Fix all findings and require a
+clean final check; see [`../AGENTS.md`](../AGENTS.md) for the annotation and exception-handling
+conventions. Ruff does not replace the dedicated unit tests and coverage gate below.
+
+The root command automatically discovers `cra/303645/tests/pyproject.toml`. To select
+it explicitly from the repository root while preserving relative settings, use
+`(cd cra/303645/tests && .venv/bin/ruff check --config pyproject.toml .)`.
+See [Required linting](../README.md#required-linting) for working-directory semantics
+and configuration-discovery verification.
 
 The dedicated library test module is [`../test_lib.py`](../test_lib.py). Locating it outside `lib/`
 is intentional and follows normal Python project structure: `lib/` contains reusable runtime code,

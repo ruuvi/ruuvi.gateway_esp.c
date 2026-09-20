@@ -1,5 +1,7 @@
 """Exclusive evidence logging shared by live-DUT functional tests."""
 
+from __future__ import annotations
+
 import json
 import traceback
 from dataclasses import asdict, dataclass, is_dataclass
@@ -47,34 +49,35 @@ def format_utc(value: datetime) -> str:
 
 class EvidenceLog:
     def __init__(self, path: Path, stream: TextIO, started_at: datetime) -> None:
-        self.path = path
-        self._stream = stream
-        self.started_at = started_at
+        self.path: Path = path
+        self._stream: TextIO = stream
+        self.started_at: datetime = started_at
 
     @classmethod
     def create(
-            cls,
-            log_dir: Path,
-            filename_prefix: str,
-            now: Callable[[], datetime] = utc_now,
-    ) -> "EvidenceLog":
+        cls,
+        log_dir: Path,
+        filename_prefix: str,
+        now: Callable[[], datetime] = utc_now,
+    ) -> EvidenceLog:
         log_dir.mkdir(parents=True, exist_ok=True)
-        started_at = now()
-        stamp = started_at.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+        started_at: datetime = now()
+        stamp: str = started_at.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+        collision: int
         for collision in range(1000):
-            suffix = "" if collision == 0 else f"_{collision}"
-            path = log_dir / f"{filename_prefix}_{stamp}{suffix}.log"
+            suffix: str = "" if collision == 0 else f"_{collision}"
+            path: Path = log_dir / f"{filename_prefix}_{stamp}{suffix}.log"
             try:
-                stream = path.open("x", encoding="utf-8")
+                stream: TextIO = path.open("x", encoding="utf-8")
                 return cls(path, stream, started_at)
             except FileExistsError:
                 continue
         raise FileExistsError("could not create a unique evidence log")
 
     def write(self, label: str, value: Any = "") -> None:
-        if is_dataclass(value) or isinstance(value, (dict, list, tuple)):
-            structured_value = asdict(value) if is_dataclass(value) else value
-            rendered = json.dumps(
+        structured_value: Any = asdict(value) if is_dataclass(value) else value
+        if isinstance(structured_value, (dict, list, tuple)):
+            rendered: str = json.dumps(
                 structured_value,
                 ensure_ascii=True,
                 sort_keys=True,
@@ -90,11 +93,13 @@ class EvidenceLog:
         self._stream.flush()
 
     def write_http_request(self, request: requests.PreparedRequest) -> None:
-        body = request.body
+        body: Any = request.body
         if isinstance(body, bytes):
             body = body.decode("utf-8", errors="backslashreplace")
         self.write("HTTP REQUEST BEGIN")
         self._stream.write(f"{request.method} {request.url}\n")
+        value: str
+        name: str
         for name, value in request.headers.items():
             self._stream.write(f"{name}: {value}\n")
         self._stream.write(f"\n{'' if body is None else body}\n")
@@ -103,9 +108,11 @@ class EvidenceLog:
     def write_http_response(self, response: requests.Response) -> None:
         self.write("HTTP RESPONSE BEGIN")
         self._stream.write(f"HTTP STATUS {response.status_code}\n")
+        value: str
+        name: str
         for name, value in response.headers.items():
             self._stream.write(f"{name}: {value}\n")
-        cookies = response.cookies.get_dict() if hasattr(response.cookies, "get_dict") else {}
+        cookies: dict[str, str] = response.cookies.get_dict() if hasattr(response.cookies, "get_dict") else {}
         self._stream.write(f"Cookies: {json.dumps(cookies, sort_keys=True)}\n\n")
         self._stream.write(f"{response.text}\n")
         self.write("HTTP RESPONSE END")
@@ -116,13 +123,10 @@ class EvidenceLog:
         self._stream.flush()
 
     def finish(self, verdict: str, now: Callable[[], datetime] = utc_now) -> None:
-        ended_at = now()
-        ended_stamp = format_utc(ended_at)
+        ended_at: datetime = now()
+        ended_stamp: str = format_utc(ended_at)
         self._stream.write(f"[{ended_stamp}] UTC END: {ended_stamp}\n")
-        self._stream.write(
-            f"[{ended_stamp}] DURATION SECONDS: "
-            f"{(ended_at - self.started_at).total_seconds():.3f}\n"
-        )
+        self._stream.write(f"[{ended_stamp}] DURATION SECONDS: {(ended_at - self.started_at).total_seconds():.3f}\n")
         self._stream.write(f"[{ended_stamp}] OVERALL VERDICT: {verdict}\n")
         self._stream.flush()
         self._stream.close()
