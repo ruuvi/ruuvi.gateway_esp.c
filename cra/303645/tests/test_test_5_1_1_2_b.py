@@ -10,7 +10,7 @@ import unittest
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from unittest import mock
 from urllib.parse import urlsplit
 
@@ -321,6 +321,15 @@ class FunctionalTestCase(unittest.TestCase):
             content,
         )
 
+    def assert_final_verification_requests(self, calls: list[RecordedRequest]) -> None:
+        self.assertEqual(
+            [("GET", "/auth"), ("POST", "/auth"), ("GET", "/ruuvi.json"), ("GET", "/status.json")],
+            [(call.method, call.path) for call in calls],
+        )
+        self.assertTrue(all(call.scheme == "none" for call in calls))
+        self.assertEqual("Admin", calls[1].body["login"])
+        self.assertTrue(all(call.body is None for call in (calls[0], calls[2], calls[3])))
+
     def test_rejected_default_login_requires_reset_and_aborts(self) -> None:
         status: int
         for status in (HttpStatus.C_401_UNAUTHORIZED, HttpStatus.C_403_FORBIDDEN):
@@ -458,8 +467,9 @@ class FunctionalTestCase(unittest.TestCase):
                 with mock.patch.dict(vars(target), API_INVENTORY=invalid):
                     result: RunResult = self.make_runner().run()
                 self.assert_failed_mechanism(result, "complete HTTP API inventory coverage")
-                self.assertEqual(3, len(self.gateway.calls))
-                self.assertEqual("NOT RUN", result.outcomes["final non-mutation verification"])
+                self.assertEqual(7, len(self.gateway.calls))
+                self.assert_final_verification_requests(self.gateway.calls[3:])
+                self.assertEqual("PASS", result.outcomes["final non-mutation verification"])
 
     def test_missing_bearer_coverage_is_reported_as_failed_coverage(self) -> None:
         runner: target.FunctionalTest_5_1_1_2_b = self.make_runner()
@@ -501,7 +511,8 @@ class FunctionalTestCase(unittest.TestCase):
                 self.gateway.override[key] = FakeResponse(HttpStatus.C_404_NOT_FOUND)
                 result: RunResult = self.make_runner().run()
                 self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
-                self.assertEqual(key, self.gateway.calls[-1].key)
+                self.assertEqual(key, self.gateway.calls[-5].key)
+                self.assert_final_verification_requests(self.gateway.calls[-4:])
 
     def test_each_negative_scheme_accepts_only_expected_route_statuses(self) -> None:
         scheme: None | str
@@ -604,7 +615,9 @@ class FunctionalTestCase(unittest.TestCase):
                 self.gateway.override[failing_key] = FakeResponse(HttpStatus.C_200_OK, {})
                 result: RunResult = self.make_runner().run()
                 self.assertEqual("FAIL", result.verdict)
-                self.assertEqual(failing_key, self.gateway.calls[-1].key)
+                self.assertEqual(failing_key, self.gateway.calls[-5].key)
+                self.assert_final_verification_requests(self.gateway.calls[-4:])
+                self.assertEqual("PASS", result.outcomes["final non-mutation verification"])
                 self.assertEqual(
                     [],
                     [
@@ -625,8 +638,10 @@ class FunctionalTestCase(unittest.TestCase):
                     self.gateway.override[failing_key] = FakeResponse(HttpStatus.C_200_OK, {})
                     result: RunResult = self.make_runner().run()
                     self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
-                    self.assertEqual(failing_key, self.gateway.calls[-1].key)
-                    self.assertEqual(1, self.gateway.config_reads)
+                    self.assertEqual(failing_key, self.gateway.calls[-5].key)
+                    self.assert_final_verification_requests(self.gateway.calls[-4:])
+                    self.assertEqual(2, self.gateway.config_reads)
+                    self.assertEqual("PASS", result.outcomes["final non-mutation verification"])
 
     def test_unexpected_success_aborts_immediately(self) -> None:
         self.gateway.override[FakeRequestKey(HttpAuthScheme.BASIC, HttpMethod.GET, GatewayApi.AP)] = FakeResponse(
@@ -641,7 +656,76 @@ class FunctionalTestCase(unittest.TestCase):
             for index, call in enumerate(self.gateway.calls)
             if call.key == FakeRequestKey(HttpAuthScheme.BASIC, HttpMethod.GET, GatewayApi.AP)
         )
-        self.assertEqual(failing_index, len(self.gateway.calls) - 1)
+        self.assert_final_verification_requests(self.gateway.calls[failing_index + 1 :])
+        self.assertEqual("PASS", result.outcomes["final non-mutation verification"])
+
+    def test_mutation_after_failed_probe_is_reported_without_more_probes(self) -> None:
+        failing_key: FakeRequestKey = FakeRequestKey(HttpAuthScheme.BASIC, HttpMethod.POST, GatewayApi.CONFIG)
+        self.gateway.override[failing_key] = FakeResponse(HttpStatus.C_200_OK, {})
+        self.gateway.final_mutation = True
+        result: RunResult = self.make_runner().run()
+        self.assert_failed_mechanism(result, AuthMech.LAN_WEBUI_BASIC)
+        self.assert_failed_mechanism(result, "final non-mutation verification")
+        self.assertEqual(failing_key, self.gateway.calls[-5].key)
+        self.assert_final_verification_requests(self.gateway.calls[-4:])
+        self.assertEqual(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, result.recovery_message)
+        self.assertIn("full canonical configuration hash is unchanged", self.log.path.read_text(encoding="utf-8"))
+
+    def test_final_error_retains_probe_failure_and_attempts_both_final_reads(self) -> None:
+        failing_key: FakeRequestKey = FakeRequestKey(HttpAuthScheme.BASIC, HttpMethod.POST, GatewayApi.CONFIG)
+        self.gateway.override[failing_key] = FakeResponse(HttpStatus.C_200_OK, {})
+        self.gateway.final_override[GatewayApi.CONFIG] = requests.Timeout("final config timeout")
+        self.gateway.final_override[GatewayApi.STATUS] = FakeResponse(HttpStatus.C_403_FORBIDDEN)
+        result: RunResult = self.make_runner().run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[AuthMech.LAN_WEBUI_BASIC])
+        self.assertEqual("ERROR", result.outcomes["final non-mutation verification"])
+        self.assertEqual(failing_key, self.gateway.calls[-5].key)
+        self.assert_final_verification_requests(self.gateway.calls[-4:])
+        self.assertEqual(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, result.recovery_message)
+        content: str = self.log.path.read_text(encoding="utf-8")
+        self.assertIn("final config timeout", content)
+        self.assertIn("gateway still answers authenticated GET /status.json", content)
+        self.assertIn(json.dumps({"mechanism": AuthMech.LAN_WEBUI_BASIC, "result": "FAIL"}), content)
+
+    def test_probe_transport_error_still_runs_final_verification(self) -> None:
+        failing_key: FakeRequestKey = FakeRequestKey(HttpAuthScheme.BASIC, HttpMethod.POST, GatewayApi.CONFIG)
+        self.gateway.override[failing_key] = requests.Timeout("probe may have reached the DUT")
+        self.gateway.final_mutation = True
+        result: RunResult = self.make_runner().run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes["final non-mutation verification"])
+        self.assertEqual(failing_key, self.gateway.calls[-5].key)
+        self.assert_final_verification_requests(self.gateway.calls[-4:])
+        self.assertEqual(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, result.recovery_message)
+
+    def test_failed_final_login_preserves_probe_failure_and_reports_unverified_state(self) -> None:
+        failing_key: FakeRequestKey = FakeRequestKey(HttpAuthScheme.BASIC, HttpMethod.POST, GatewayApi.CONFIG)
+        self.gateway.override[failing_key] = FakeResponse(HttpStatus.C_200_OK, {})
+        original: Callable[[FakeSession, str, str, dict[str, str], Any, bool], FakeResponse] = self.gateway.response_for
+
+        def fail_final_login(
+            session: FakeSession, method: str, path: str, headers: dict[str, str], body: Any, allow_redirects: bool
+        ) -> FakeResponse:
+            response: FakeResponse = original(session, method, path, headers, body, allow_redirects)
+            if self.gateway.calls[-1].key == failing_key:
+                self.gateway.override[FakeRequestKey("none", HttpMethod.POST, GatewayApi.AUTH)] = FakeResponse(
+                    HttpStatus.C_401_UNAUTHORIZED
+                )
+            return response
+
+        self.gateway.response_for = fail_final_login
+        result: RunResult = self.make_runner().run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[AuthMech.LAN_WEBUI_BASIC])
+        self.assertEqual("ERROR", result.outcomes["final non-mutation verification"])
+        self.assertEqual(failing_key, self.gateway.calls[-3].key)
+        self.assertEqual(
+            [("GET", "/auth"), ("POST", "/auth")],
+            [(call.method, call.path) for call in self.gateway.calls[-2:]],
+        )
+        self.assertEqual(1, self.gateway.config_reads)
+        self.assertIn(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, result.recovery_message or "")
 
     def test_wrong_bearer_status_fails_and_aborts(self) -> None:
         self.gateway.override[FakeRequestKey(HttpAuthScheme.BEARER, HttpMethod.GET, GatewayApi.STATUS)] = FakeResponse(
@@ -651,8 +735,9 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual(1, result.exit_code)
         self.assertEqual(
             FakeRequestKey(HttpAuthScheme.BEARER, HttpMethod.GET, GatewayApi.STATUS),
-            self.gateway.calls[-1].key,
+            self.gateway.calls[-5].key,
         )
+        self.assert_final_verification_requests(self.gateway.calls[-4:])
 
     def test_non_default_modes_are_setup_errors_requiring_factory_reset(self) -> None:
         auth_mode: str
@@ -768,7 +853,8 @@ class FunctionalTestCase(unittest.TestCase):
                 self.gateway.final_override[path] = FakeResponse(HttpStatus.C_403_FORBIDDEN)
                 result: RunResult = self.make_runner().run()
                 self.assert_failed_mechanism(result, "final non-mutation verification")
-                self.assertEqual(path, self.gateway.calls[-1].path)
+                self.assert_final_verification_requests(self.gateway.calls[-4:])
+                self.assertEqual(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, result.recovery_message)
 
     def test_final_transport_and_protocol_errors_remain_errors(self) -> None:
         error: BaseException
@@ -782,8 +868,9 @@ class FunctionalTestCase(unittest.TestCase):
                 self.gateway.final_override[GatewayApi.CONFIG] = error
                 result: RunResult = self.make_runner().run()
                 self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
-                self.assertEqual("NOT RUN", result.outcomes["final non-mutation verification"])
-                self.assertIsNone(result.recovery_message)
+                self.assertEqual("ERROR", result.outcomes["final non-mutation verification"])
+                self.assertEqual(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, result.recovery_message)
+                self.assert_final_verification_requests(self.gateway.calls[-4:])
 
 
 class ConfigurationAndLoggingTestCase(unittest.TestCase):
@@ -828,6 +915,29 @@ class ConfigurationAndLoggingTestCase(unittest.TestCase):
             content: str = next(logs.iterdir()).read_text(encoding="utf-8")
             self.assertIn("InvalidConfig", content)
             self.assertIn("OVERALL VERDICT: ERROR", content)
+
+    def test_execute_reports_probe_failure_and_failed_final_verification(self) -> None:
+        directory: str
+        with tempfile.TemporaryDirectory() as directory:
+            root: Path = Path(directory)
+            self.write_env(root, env_text())
+            gateway: FakeGateway = FakeGateway()
+            gateway.override[FakeRequestKey(HttpAuthScheme.BASIC, HttpMethod.POST, GatewayApi.CONFIG)] = FakeResponse(
+                HttpStatus.C_200_OK, {}
+            )
+            gateway.final_mutation = True
+            messages: list[str] = []
+            result: RunResult = target.execute_test_5_1_1_2_b(
+                root, session_factory=lambda: FakeSession(gateway), now=lambda: FIXED_NOW, output=messages.append
+            )
+            self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
+            self.assertEqual(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, messages[-1])
+            content: str = next((root / "logs").iterdir()).read_text(encoding="utf-8")
+            self.assertIn("USER ACTION REQUIRED", content)
+            self.assertIn(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, content)
+            self.assertIn(json.dumps({"mechanism": AuthMech.LAN_WEBUI_BASIC, "result": "FAIL"}), content)
+            self.assertIn(json.dumps({"mechanism": "final non-mutation verification", "result": "FAIL"}), content)
+            self.assertIn("OVERALL VERDICT: FAIL", content)
 
     def test_execute_uses_current_directory_by_default(self) -> None:
         directory: str

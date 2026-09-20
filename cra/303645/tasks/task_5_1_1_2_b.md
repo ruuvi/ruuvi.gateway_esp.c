@@ -180,9 +180,10 @@ regression could allow a nominally rejected request to reach a destructive handl
 - issue dangerous POST/DELETE routes last;
 - enforce that ordering across all schemes: finish all interactive and bearer reads and fresh-session
   `/auth` probes before any non-`/auth` POST/DELETE, then authenticate for final verification;
-- stop immediately after any unexpected authorization success;
+- stop further probes immediately after any unexpected authorization success;
 - use empty or deliberately invalid bodies/parameters where authentication is evaluated first;
-- after the matrix, authenticate normally and verify the baseline configuration is unchanged;
+- after the matrix or an aborted probe, authenticate normally and verify the baseline configuration
+  is unchanged, provided the initial baseline was successfully validated;
 - never run this test against a production gateway.
 
 Do not reset or reconfigure the DUT to manufacture the required baseline. A failed precondition is
@@ -251,7 +252,8 @@ Use fresh sessions without the authorized baseline cookie:
 5. `GET /auth` must not advertise Basic or Digest. Exercise `POST /auth` through the failed random
    interactive login above. Exercise `DELETE /auth` without an authorized session and require `401`.
 
-Any `2xx` from a negative probe is FAIL and must stop the test immediately.
+Any `2xx` from a negative probe is FAIL and must stop additional probes immediately, but not the
+mandatory final verification phase.
 
 ### 4. Test disabled RO and RW bearer authentication across all APIs
 
@@ -283,6 +285,19 @@ Authenticate again with `Admin`/`gw_id`, fetch `/ruuvi.json`, and compare it wit
 - the gateway must still answer `/status.json`.
 
 Any persistent difference caused by the test is FAIL and must be listed in the evidence log.
+
+Run this phase even after a security assertion or transport/protocol exception aborts probing.
+Skip it only when initial baseline validation never completed. If final login succeeds, attempt
+both configuration comparison and the status read independently, so a failed configuration check
+does not hide status evidence. Keep the original probe failure in its mechanism outcome and log;
+a successful final check cannot turn it into PASS. An incomplete final check is explicitly ERROR
+and makes the overall result ERROR, while retaining any earlier mechanism FAIL. A detected change
+is final-verification FAIL and cannot downgrade an earlier infrastructure ERROR to FAIL.
+
+If the final state changed or cannot be verified, emit a recovery warning in evidence and console
+output. Do not attempt an automatic reset or replay the UI-facing `/ruuvi.json` as a backup: it
+omits secrets and cannot undo every possible firmware/storage side effect. The operator must inspect
+the DUT and evidence and recover the saved lab configuration if needed before further testing.
 
 ### 6. Produce the verdict
 

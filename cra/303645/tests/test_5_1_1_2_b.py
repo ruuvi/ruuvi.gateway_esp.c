@@ -59,6 +59,11 @@ USER_AGENT: str = "ruuvi-etsi-test-5.1-1-2-b"
 TOTAL_STEPS: int = 15
 SAFE_WRITE: str = "SAFE_WRITE"
 DANGEROUS_WRITE: str = "DANGEROUS_WRITE"
+FINAL_VERIFICATION_RECOVERY_MESSAGE: str = (
+    "Final non-mutation verification failed or could not be completed. "
+    "Inspect the evidence log and the physical DUT; recover the saved lab configuration "
+    "if needed before running further tests. No automatic configuration restore was attempted."
+)
 MECHANISMS: tuple[str, ...] = (
     AuthMech.LAN_WEBUI_USER_DEFINED,
     AuthMech.LAN_WEBUI_BASIC,
@@ -419,6 +424,81 @@ class FunctionalTest_5_1_1_2_b:
         )
         self.outcomes["complete HTTP API inventory coverage"] = "PASS"
 
+    def _verify_final_config(
+        self, final_session: requests.Session, baseline_fields: dict[str, Any], baseline_hash: str
+    ) -> None:
+        final_response: requests.Response = self.gateway.request(
+            final_session,
+            HttpMethod.GET,
+            GatewayApi.CONFIG,
+        )
+        self._require_security(
+            final_response.status_code == HttpStatus.C_200_OK,
+            "final authenticated GET /ruuvi.json succeeds",
+            final_response.status_code,
+            mechanism="final non-mutation verification",
+        )
+        final_config: dict[str, Any] = self.gateway.response_json(
+            final_response,
+            "final GET /ruuvi.json",
+            dict,
+        )
+        final_fields: dict[str, Any] = {key: final_config.get(key) for key in AUTHENTICATION_DEFAULT_FIELDS}
+        self._require_security(
+            final_fields == baseline_fields,
+            "authentication baseline fields are unchanged",
+            final_fields,
+            mechanism="final non-mutation verification",
+        )
+        final_hash: str = canonical_json_hash(final_config)
+        self._require_security(
+            final_hash == baseline_hash,
+            "full canonical configuration hash is unchanged",
+            HashComparisonEvidence(baseline=baseline_hash, final=final_hash),
+            mechanism="final non-mutation verification",
+        )
+
+    def _verify_final_status(self, final_session: requests.Session) -> None:
+        status_response: requests.Response = self.gateway.request(
+            final_session,
+            HttpMethod.GET,
+            GatewayApi.STATUS,
+        )
+        self._require_security(
+            status_response.status_code == HttpStatus.C_200_OK,
+            "gateway still answers authenticated GET /status.json",
+            status_response.status_code,
+            mechanism="final non-mutation verification",
+        )
+
+    def _verify_non_mutation(self, baseline_fields: dict[str, Any], baseline_hash: str) -> str:
+        try:
+            final_session: requests.Session = self._assert_interactive_authentication(
+                ADMIN_USERNAME, self.config.gw_id, True
+            )
+        except Exception as error:  # noqa: BLE001 - Report inability to verify the DUT after probing.
+            error: Exception
+            self.evidence.exception(error)
+            return "ERROR"
+
+        result: str = "PASS"
+        checks: tuple[Callable[[], None], ...] = (
+            lambda: self._verify_final_config(final_session, baseline_fields, baseline_hash),
+            lambda: self._verify_final_status(final_session),
+        )
+        check: Callable[[], None]
+        for check in checks:
+            try:
+                check()
+            except SecurityFailure as error:
+                self.evidence.exception(error)
+                if result != "ERROR":
+                    result = "FAIL"
+            except Exception as error:  # noqa: BLE001 - Continue independent final checks and retain both errors.
+                self.evidence.exception(error)
+                result = "ERROR"
+        return result
+
     def run(self) -> RunResult:
         self.evidence.write("TEST CASE AND UNIT", TEST_ID)
         self.evidence.write("UTC START", format_utc(self.evidence.started_at))
@@ -426,8 +506,10 @@ class FunctionalTest_5_1_1_2_b:
             "DUT CONFIGURATION",
             self.config,
         )
-        verdict: str
+        verdict: str = "ERROR"
         exit_code: int
+        baseline_fields: dict[str, Any] = {}
+        baseline_hash: str | None = None
         try:
             self.progress("Authenticating with the default administrative credentials")
             baseline_session: requests.Session = self._assert_interactive_authentication(
@@ -452,8 +534,8 @@ class FunctionalTest_5_1_1_2_b:
                 dict,
             )
             self._validate_baseline(baseline)
-            baseline_fields: dict[str, Any] = {key: baseline[key] for key in AUTHENTICATION_DEFAULT_FIELDS}
-            baseline_hash: str = canonical_json_hash(baseline)
+            baseline_fields = {key: baseline[key] for key in AUTHENTICATION_DEFAULT_FIELDS}
+            baseline_hash = canonical_json_hash(baseline)
             self.evidence.write("VOLATILE CONFIGURATION FIELDS EXCLUDED", [])
             self.evidence.write("BASELINE AUTH FIELDS", baseline_fields)
             self.evidence.write("BASELINE CONFIGURATION SHA256", baseline_hash)
@@ -492,54 +574,6 @@ class FunctionalTest_5_1_1_2_b:
             self.progress("Testing disabled bearer authentication against potentially mutating APIs")
             self._probe_bearer_group(DANGEROUS_WRITE)
 
-            self.progress("Verifying the gateway configuration was not changed")
-            final_session: requests.Session = self._assert_interactive_authentication(
-                ADMIN_USERNAME,
-                self.config.gw_id,
-                True,
-            )
-            final_response: requests.Response = self.gateway.request(
-                final_session,
-                HttpMethod.GET,
-                GatewayApi.CONFIG,
-            )
-            self._require_security(
-                final_response.status_code == HttpStatus.C_200_OK,
-                "final authenticated GET /ruuvi.json succeeds",
-                final_response.status_code,
-                mechanism="final non-mutation verification",
-            )
-            final_config: dict[str, Any] = self.gateway.response_json(
-                final_response,
-                "final GET /ruuvi.json",
-                dict,
-            )
-            final_fields: dict[str, Any] = {key: final_config.get(key) for key in AUTHENTICATION_DEFAULT_FIELDS}
-            self._require_security(
-                final_fields == baseline_fields,
-                "authentication baseline fields are unchanged",
-                final_fields,
-                mechanism="final non-mutation verification",
-            )
-            final_hash: str = canonical_json_hash(final_config)
-            self._require_security(
-                final_hash == baseline_hash,
-                "full canonical configuration hash is unchanged",
-                HashComparisonEvidence(baseline=baseline_hash, final=final_hash),
-                mechanism="final non-mutation verification",
-            )
-            status_response: requests.Response = self.gateway.request(
-                final_session,
-                HttpMethod.GET,
-                GatewayApi.STATUS,
-            )
-            self._require_security(
-                status_response.status_code == HttpStatus.C_200_OK,
-                "gateway still answers authenticated GET /status.json",
-                status_response.status_code,
-                mechanism="final non-mutation verification",
-            )
-            self.outcomes["final non-mutation verification"] = "PASS"
             verdict = "PASS"
             exit_code = 0
         except SecurityFailure as error:
@@ -555,6 +589,18 @@ class FunctionalTest_5_1_1_2_b:
             self.evidence.exception(error)
             verdict = "ERROR"
             exit_code = 2
+        finally:
+            # Abort additional probes, not the read-only checks of a validated baseline.
+            if baseline_hash is not None:
+                self.progress("Verifying the gateway configuration was not changed")
+                final_result: str = self._verify_non_mutation(baseline_fields, baseline_hash)
+                self.outcomes["final non-mutation verification"] = final_result
+                if final_result == "ERROR":
+                    verdict = "ERROR"
+                    exit_code = 2
+                elif final_result == "FAIL" and verdict != "ERROR":
+                    verdict = "FAIL"
+                    exit_code = 1
         outcome: str
         mechanism: str
         for mechanism, outcome in self.outcomes.items():
@@ -564,6 +610,12 @@ class FunctionalTest_5_1_1_2_b:
             )
         self.evidence.write("OVERALL RESULT", verdict)
         recovery_message: str | None = FACTORY_RESET_MESSAGE if self.factory_reset_required else None
+        if baseline_hash is not None and self.outcomes["final non-mutation verification"] != "PASS":
+            recovery_message = (
+                f"{recovery_message}\n{FINAL_VERIFICATION_RECOVERY_MESSAGE}"
+                if recovery_message is not None
+                else FINAL_VERIFICATION_RECOVERY_MESSAGE
+            )
         return RunResult(
             exit_code,
             verdict,

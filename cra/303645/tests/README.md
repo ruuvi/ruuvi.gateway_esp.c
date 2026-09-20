@@ -171,6 +171,13 @@ For 5.1-1-2-B, failed inventory checks and final non-mutation assertions also ma
 mechanism FAIL in `RunResult.outcomes` and the evidence log. Transport/setup/protocol exceptions
 remain ERROR; an incomplete check must not be reported as a security failure.
 
+Once its baseline is validated, 5.1-1-2-B always attempts final authentication and non-mutation
+verification, including after a probe abort. No further negative probes run after failure. With a
+valid final session, configuration and status reads are checked independently; final verification
+reports PASS, FAIL, or ERROR without erasing an earlier mechanism FAIL. An incomplete final check
+makes the overall verdict ERROR. A changed or unverifiable state produces an operator recovery
+warning in the console and evidence log; the runner does not automatically reset or rewrite the DUT.
+
 The LAN matrix retains all 26 routes. Missing/Basic/Digest credential probes allow 404 specifically
 for hotspot-only `GET /info.json`, as described in the [HTTP API reference](../../../docs/http_api.md).
 Other protected GET routes retain their denial statuses, and all disabled-bearer probes require 401.
