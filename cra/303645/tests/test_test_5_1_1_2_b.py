@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import sys
 import tempfile
 import unittest
 from dataclasses import dataclass
@@ -18,10 +17,6 @@ from urllib.parse import urlsplit
 import requests
 from Crypto.PublicKey import ECC
 
-from lib.http_api import ApiRoute
-from lib.models import RunResult
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 import test_5_1_1_2_b as target
 from lib.gateway import (
     AuthMech,
@@ -29,13 +24,16 @@ from lib.gateway import (
     GatewayCfgDesc,
     GatewayCfgLanAuthType,
     GatewayClient,
+    InteractiveAuthChallenge,
 )
 from lib.http_api import (
+    ApiRoute,
     HttpAuthScheme,
     HttpHeader,
     HttpMethod,
     HttpStatus,
 )
+from lib.models import RunResult
 
 FIXED_NOW: datetime = datetime(2026, 8, 30, 9, 36, 1, 123456, tzinfo=timezone.utc)
 CONFIG: target.DutConfig = target.DutConfig(
@@ -172,8 +170,11 @@ class FakeGateway:
             elif self.auth_mode == GatewayCfgLanAuthType.DIGEST:
                 auth_header = 'Digest realm="Ruuvi Gateway", qop="auth", nonce="nonce", opaque="opaque"'
             else:
+                session.challenge_number += 1
+                session.challenge = f"challenge-{session.number}-{session.challenge_number}"
+                session.cookie = session_id
                 auth_header = (
-                    'x-ruuvi-interactive realm="Ruuvi Gateway" challenge="challenge" '
+                    f'x-ruuvi-interactive realm="Ruuvi Gateway" challenge="{session.challenge}" '
                     f'session_cookie="RUUVISESSION" session_id="{session_id}"'
                 )
             headers_out: dict[str, str] = {HttpHeader.RUUVI_ECDH_PUBLIC_KEY: self.server_public_b64}
@@ -189,10 +190,15 @@ class FakeGateway:
             default_ha1: str = hashlib.md5(f"Admin:Ruuvi Gateway:{CONFIG.gw_id}".encode()).hexdigest()
             expected_body: dict[str, str] = {
                 "login": "Admin",
-                "password": hashlib.sha256(f"challenge:{default_ha1}".encode()).hexdigest(),
+                "password": hashlib.sha256(f"{session.challenge}:{default_ha1}".encode()).hexdigest(),
             }
-            if body == expected_body:
+            if (
+                session.challenge
+                and body == expected_body
+                and headers.get(HttpHeader.COOKIE) == f"RUUVISESSION={session.cookie}"
+            ):
                 session.authorized = True
+                session.challenge = ""
                 return FakeResponse(HttpStatus.C_200_OK, {"authenticated": True})
             return FakeResponse(
                 HttpStatus.C_401_UNAUTHORIZED,
@@ -236,10 +242,14 @@ class FakeSession:
     def __init__(self, gateway: FakeGateway) -> None:
         self.gateway: FakeGateway = gateway
         self.authorized: bool = False
+        self.challenge_number: int = 0
+        self.challenge: str = ""
+        self.cookie: str = ""
         self.number: int = FakeSession.next_number
         FakeSession.next_number += 1
 
-    def prepare_request(self, request: requests.Request) -> requests.PreparedRequest:
+    @staticmethod
+    def prepare_request(request: requests.Request) -> requests.PreparedRequest:
         return request.prepare()
 
     def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
@@ -290,12 +300,8 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual("PASS", result.verdict)
         self.assertEqual(target.EXPECTED_API_INVENTORY, result.coverage)
         self.assertTrue(all(value == "PASS" for value in result.outcomes.values()))
-        negative_calls: list[RecordedRequest] = [
-            call
-            for call in self.gateway.calls
-            if not (call.path in {GatewayApi.CONFIG, GatewayApi.STATUS} and call.scheme == "none")
-        ]
-        self.assertTrue(all(call.allow_redirects is False for call in negative_calls))
+        self.assertTrue(self.gateway.calls)
+        self.assertTrue(all(call.allow_redirects is False for call in self.gateway.calls))
         first_write: int = next(
             index
             for index, call in enumerate(self.gateway.calls)
@@ -356,6 +362,93 @@ class FunctionalTestCase(unittest.TestCase):
             result: RunResult = runner.run()
         self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
         self.assertEqual(0, self.gateway.config_reads)
+
+    def test_login_cookie_and_body_corruption_stop_the_runner(self) -> None:
+        fault: str
+        for fault in ("missing-cookie", "wrong-cookie", "extra-body-field"):
+            with self.subTest(fault=fault):
+                self.gateway = FakeGateway()
+
+                class CorruptLoginSession(FakeSession):
+                    def send(
+                        self,
+                        request: requests.PreparedRequest,
+                        *,
+                        injected_fault: str = fault,
+                        **kwargs: Any,
+                    ) -> FakeResponse:
+                        if request.method == HttpMethod.POST and urlsplit(request.url).path == GatewayApi.AUTH:
+                            if injected_fault == "missing-cookie":
+                                request.headers.pop(HttpHeader.COOKIE, None)
+                            elif injected_fault == "wrong-cookie":
+                                request.headers[HttpHeader.COOKIE] = "RUUVISESSION=another-session"
+                            else:
+                                body: dict[str, str] = json.loads(request.body)
+                                body["extra"] = "unexpected"
+                                request.body = json.dumps(body)
+                        return super().send(request, **kwargs)
+
+                runner: target.FunctionalTest_5_1_1_2_b = target.FunctionalTest_5_1_1_2_b(
+                    CONFIG,
+                    self.log,
+                    session_factory=lambda session_type=CorruptLoginSession: session_type(self.gateway),
+                )
+                result: RunResult = runner.run()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual(target.FACTORY_RESET_MESSAGE, result.recovery_message)
+                self.assertEqual([GatewayApi.AUTH, GatewayApi.AUTH], [call.path for call in self.gateway.calls])
+                self.assertEqual(0, self.gateway.config_reads)
+
+    def test_fake_login_requires_current_one_time_session_challenge(self) -> None:
+        client: target.GatewayClient = self.make_runner().gateway
+        first: InteractiveAuthChallenge = client.request_interactive_challenge()
+        second: InteractiveAuthChallenge = client.request_interactive_challenge()
+        ha1: str = hashlib.md5(f"Admin:Ruuvi Gateway:{CONFIG.gw_id}".encode()).hexdigest()
+
+        def login_body(challenge: str) -> dict[str, str]:
+            return {
+                "login": "Admin",
+                "password": hashlib.sha256(f"{challenge}:{ha1}".encode()).hexdigest(),
+            }
+
+        def submit(session: FakeSession, submitted_body: dict[str, str], submitted_cookie: str | None) -> int:
+            response: requests.Response = client.request(
+                session,
+                HttpMethod.POST,
+                GatewayApi.AUTH,
+                headers={HttpHeader.COOKIE: submitted_cookie} if submitted_cookie is not None else {},
+                json_body=submitted_body,
+            )
+            return response.status_code
+
+        body: dict[str, str] = login_body(first.challenge["challenge"])
+        cookie: str = f"RUUVISESSION={first.cookie}"
+        fresh: FakeSession = FakeSession(self.gateway)
+        self.assertEqual(401, submit(fresh, body, cookie))
+        self.assertFalse(fresh.authorized)
+        self.assertEqual(401, submit(first.session, body, None))
+        self.assertEqual(401, submit(first.session, body, f"RUUVISESSION={second.cookie}"))
+        self.assertFalse(first.session.authorized)
+        self.assertEqual(401, submit(second.session, body, f"RUUVISESSION={second.cookie}"))
+        self.assertFalse(second.session.authorized)
+
+        # Refresh the same session: the previously issued response must become stale.
+        refreshed: requests.Response = client.request(first.session, HttpMethod.GET, GatewayApi.AUTH)
+        self.assertEqual(401, refreshed.status_code)
+        self.assertEqual(401, submit(first.session, body, cookie))
+        self.assertFalse(first.session.authorized)
+        current_body: dict[str, str] = login_body(first.session.challenge)
+        self.assertEqual(200, submit(first.session, current_body, cookie))
+        self.assertTrue(first.session.authorized)
+        self.assertEqual("", first.session.challenge)
+        self.assertEqual(401, submit(first.session, current_body, cookie))
+
+        self.assertEqual(
+            200,
+            submit(second.session, login_body(second.challenge["challenge"]), f"RUUVISESSION={second.cookie}"),
+        )
+        self.assertTrue(second.session.authorized)
+        self.assertEqual("", second.session.challenge)
 
     def test_inventory_rejections_are_reported_as_failed_coverage(self) -> None:
         inventory: tuple[ApiRoute, ...] = target.API_INVENTORY
@@ -700,7 +793,8 @@ class FunctionalTestCase(unittest.TestCase):
 
 
 class ConfigurationAndLoggingTestCase(unittest.TestCase):
-    def write_env(self, root: Path, text: str) -> Path:
+    @staticmethod
+    def write_env(root: Path, text: str) -> Path:
         path: Path = root / ".env"
         path.write_text(text, encoding="utf-8")
         return path
