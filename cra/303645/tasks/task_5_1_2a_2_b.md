@@ -11,6 +11,38 @@ hidden passwords or keys. Any missing, wrongly typed, or non-default value is se
 shared CONFIGURE-button factory-reset instruction and stop without changing the DUT to manufacture a
 baseline.
 
+## Review regression requirements
+
+Follow the [CRA test rules](../tests/AGENTS.md), especially functional-test rules and host-side
+implementation tests. These requirements qualify the factory-default precondition above:
+
+- Catch Basic/Digest `GatewayAuthenticationModeError` and mark failed default login as setup ERROR
+  with the shared recovery message in evidence and terminal output. Once configuration is available,
+  validate its MAC before default fields; wrong, malformed, or absent identity must not trigger reset
+  advice for a non-default baseline. Do not manufacture defaults by changing the DUT.
+  A successful interactive login must reach the authenticated configuration read even if `/auth`
+  reports a non-default mode. Reject that mode as setup ERROR only after checking identity;
+  recommend reset only for a matching MAC, never when the read fails or identity is unavailable.
+- Complete safer probes across all schemes before potentially mutating probes within the same
+  prepared state; include positive reads where applicable. Abort on unexpected negative success,
+  while preserving mandatory restoration. Assert exact ordered method/path/scheme/body/session
+  records at the fake HTTP boundary, including the distinction between probes and recovery.
+- Independently validate complete login bodies, session cookies, and outstanding challenges in the
+  fake server. Model Basic/Digest challenges faithfully and include a full run through the real
+  client. Cover wrong passwords, corrupt responses, late safer-phase failures, and dangerous-phase
+  aborts wherever this task exercises authentication.
+- Attribute each rejected security assertion and final hash check to its actual mechanism. Preserve
+  completed mechanisms when a later one fails; never leave a failed mechanism PASS or NOT RUN.
+  Provisioning, read-back, and required login controls must all classify setup exceptions as ERROR.
+  Retain new and previous recovery credentials across partially applied changes.
+- Use `FACTORY_RESET_MESSAGE`; the reset completion condition is red LED 200 ms on/200 ms off
+  after boot-time erasure. Approximately eleven seconds is observed elapsed time, not a threshold.
+  Verify recovery advice against both restart and erasure paths.
+- Check referenced documents and predecessor scripts exist before changing links. Shared-library
+  tests belong only in `test_lib.py`; case tests cover integration. Run Python 3.8 host discovery,
+  required library coverage for shared changes, whole-subtree Ruff before/after, and the mandatory
+  IDE inspection. Offline tests are not compliance evidence.
+
 ## Objective
 
 Create a Python functional test for **ETSI EN 303 645 / ETSI TS 103 701 test case
@@ -32,13 +64,18 @@ do not replace the physical-gateway run or constitute compliance evidence.
      hyphens replaced by underscores: `test_5_1_2a_2_b.py`.
 2. Create `cra/303645/tests/test_test_5_1_2a_2_b.py` with deterministic host-side implementation
    tests. These mock-based tests are **not** ETSI compliance evidence.
-3. Reuse the shared modules in [`cra/303645/tests/lib`](../tests/lib/). Extend `lib/` only where a
+3. Reuse the shared modules in [`cra/303645/tests/lib`](../tests/lib/README.md). Extend `lib/` only where a
    generally reusable, backward-compatible helper is required; do not duplicate an existing helper.
 4. Update `cra/303645/tests/requirements.txt` only if a new dependency is unavoidable. Prefer the
    standard library and the existing `requests` / `pycryptodome` dependencies.
 
-Do not modify firmware behavior, the self-assessment source documents, the other task files, the
-shared assessment documents, or any existing test or script.
+Do not modify firmware behavior, the self-assessment source documents, the other task files, or the
+shared assessment documents. Changes to existing `tests/lib/*.py`, `tests/test_lib.py`, affected
+callers, and test guidance are permitted only for the shared helpers and narrowly scoped
+compatibility, explicit-typing, lint, or review-regression fixes needed by this automation.
+Preserve existing authentication, evidence, and recovery contracts unless a reviewed bug requires
+a documented correction. Cover shared behavior in `test_lib.py` and run all host-side automation
+tests to verify caller compatibility; unrelated existing-test rewrites remain out of scope.
 
 ## Normative source and interpretation
 
@@ -255,6 +292,11 @@ so `Admin`/`gw_id` remains a valid recovery credential throughout and the DUT ca
 
 ### 3. Prove password schemes cannot gain M2M access (negative matrix)
 
+The negative and positive tables are executed as four phases in one prepared state: all negative
+GETs across Basic, Digest, and password-as-bearer; all positive RO/RW GETs; all negative POSTs;
+then positive-table POSTs (RO denial followed by RW no-op). Neither table's per-scheme layout is
+execution order. Provisioning precedes these phases and mandatory restoration follows any abort.
+
 Run every applicable negative probe in the matrix above against `/history`, `GET /ruuvi.json`, and
 `POST /ruuvi.json`. Use `{}` as the POST body except for the password-JSON-body probe. Use fresh
 sessions with no authorized cookie. For the `Bearer <gw_id>` probe, assert the token differs from both
@@ -264,6 +306,9 @@ FAIL on any authorization success. Aggregate `/history` and `GET /ruuvi.json` re
 `AuthMech-M2M-API-Bearer-RW`. Confirm the POST negative probes returned before changing the
 configuration (the subsequent authenticated `/ruuvi.json` hash must still equal the
 post-provisioning state).
+Attribute a failed post-negative hash comparison to `AuthMech-M2M-API-Bearer-RW` in both the
+returned outcomes and final evidence. Prepared read-back failures instead mark temporary-state
+setup ERROR and still require restoration.
 
 ### 4. Prove positive RO/RW bearer scope
 
@@ -273,6 +318,9 @@ Run the positive matrix: `Bearer <RO>` → `200` on `/history` and `GET /ruuvi.j
 denied, is FAIL for the corresponding mechanism. Fetch `/ruuvi.json` through the authorized `Admin`
 session after the successful RW POST and require its canonical hash to equal the post-provisioning
 state.
+Finalize RO only after its reads and POST denial have passed. Preserve that RO PASS if the later RW
+POST or its non-mutation check fails; mark RW FAIL for either assertion. Do not mark RW PASS before
+the hash check completes.
 
 ### 5. Restore and verify non-mutation (mandatory `finally`)
 
@@ -284,8 +332,10 @@ Restoration is mandatory once the API keys may have been applied. In a `finally`
    silently suppress cleanup errors.
 2. Verify restoration: authenticate `Admin`/`gw_id`, fetch `/ruuvi.json`, require
    `lan_auth_api_key_use is False`, `lan_auth_api_key_rw_use is False`, the canonical hash equal to the
-   step-1 baseline, and both temporary keys now rejected (`Bearer <RO>` → `302` and `Bearer <RW>` →
+   step-1 baseline, and both temporary keys now rejected (`Bearer <RO>` → `401` and `Bearer <RW>` →
    `401` on their previously-authorized routes, confirming the keys no longer authorize).
+   A revoked explicit bearer token returns `401`, including on GET `/history`; `302` is the
+   default interactive redirect for requests without a recognized bearer header, not revoked keys.
 
 The test cannot PASS unless restoration is verified. If the security assertions passed but restoration
 failed, return ERROR with a concise operator warning pointing at the evidence log and manual recovery.
@@ -311,8 +361,8 @@ Never convert an exception into a PASS-shaped default; there must be no silent e
 
 ## Host-side implementation tests
 
-Follow `test_test_5_1_1_2_b.py`: `unittest`, fake sessions/responses, temporary directories, and
-injected dependencies; no live gateway. Fake-server expected Authorization values, hashes, cookies,
+Use `unittest`, fake sessions/responses, temporary directories, and injected dependencies in
+`test_test_5_1_2a_2_b.py`; no live gateway. Fake-server expected Authorization values, hashes, cookies,
 and wire responses must be independent fixed fixtures or independently calculated reference vectors;
 the fake must never call the `GatewayClient` code under test to manufacture its expectations. Cover
 at least:
@@ -326,15 +376,23 @@ at least:
   valid bearer;
 - restoration attempted after PASS, FAIL, and raised exceptions, with each fallback exercised;
 - restoration failure prevents PASS (returns ERROR);
-- `.env` parsing/validation, evidence-log naming/collision handling, and terminal progress format;
+- setup/evidence integration and terminal progress format (direct parsing/collision tests belong in
+  `test_lib.py`);
 - timeout, connection failure, and malformed JSON → ERROR;
 - PASS/FAIL/ERROR exit-code aggregation.
 
-Run both implementation-test modules to detect regressions:
+Run this task's self-contained implementation-test module:
 
 ```text
 cd cra/303645/tests
-.venv/bin/python -m unittest test_test_5_1_1_2_b.py test_test_5_1_2a_2_b.py
+.venv/bin/python -m unittest --verbose test_test_5_1_2a_2_b.py
+```
+
+Also run all implementation tests available in the checkout to detect regressions, without
+requiring a specific predecessor module:
+
+```text
+.venv/bin/python -m unittest discover --verbose --start-directory . --pattern "test_test_*.py"
 ```
 
 ## Acceptance criteria
@@ -364,7 +422,8 @@ cd cra/303645/tests
 - `main/gw_cfg_json_generate.c`, lines 519-580 (`lan_auth_api_key_use` flags 551-566).
 - `main/http_server_cb_on_post.c`, `http_server_cb_on_post_ruuvi` lines 44-96.
 - `main/ruuvi_gateway_main.c`, `ruuvi_cb_on_change_cfg` lines 424-442.
-- `cra/303645/tests/test_5_1_1_2_b.py` and `cra/303645/tests/test_test_5_1_1_2_b.py`.
+- `cra/303645/tests/test_5_1_2a_2_b.py` and `cra/303645/tests/test_test_5_1_2a_2_b.py`
+  (this task's runner and implementation tests).
 - `cra/303645/tests/lib/config.py`, `evidence.py`, `gateway.py`, `models.py`, `http_api.py`.
 
 ## Runner naming
