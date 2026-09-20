@@ -150,6 +150,13 @@ direct shared-library tests live in `test_lib.py`. See `cra/303645/tests/AGENTS.
 and `cra/303645/tests/README.md` for setup and execution. Do not run the live-DUT scripts as part of
 ordinary host-side validation.
 
+For every task affecting CRA Python automation or its guidance, always run
+`cra/303645/tests/.venv/bin/ruff check cra/303645/tests` from the repository root before making
+changes and again before handoff, including documentation-only tasks. Fix the findings and require a
+final clean run; report the initial count and final result. Follow `cra/303645/tests/AGENTS.md` for
+Python 3.8 validation and narrowly justified lint exceptions. Linting does not authorize code
+reformatting.
+
 ## Code Style
 
 - **BARR-C:2018** style enforced via `.clang-format` (clang-format v14)

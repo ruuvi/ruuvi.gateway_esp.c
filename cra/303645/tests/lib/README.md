@@ -1,8 +1,8 @@
 # CRA Functional-Test Library
 
 This package contains shared infrastructure for the Python functional tests in
-[`cra/303645/tests`](../). Its purpose is to keep configuration parsing, evidence logging, HTTP
-protocol handling, authentication, and common data models consistent across live-DUT tests.
+[`cra/303645/tests`](../README.md). Its purpose is to keep configuration parsing, evidence logging,
+HTTP protocol handling, authentication, and common data models consistent across live-DUT tests.
 
 The package supports Python 3.8. It is internal to this repository rather than a separately
 published Python package. It is governed by the subtree instructions in
@@ -38,6 +38,11 @@ state transitions on top of this client.
 - `default_config_values(fields, path=...)` selects required fields from those defaults and rejects
   missing fields.
 - `FACTORY_RESET_MESSAGE` and `AUTHENTICATION_DEFAULT_FIELDS` define shared functional-test policy.
+  The recovery message requires the red LED completion signal (200 ms on/200 ms off) after boot-time
+  erasure, warns about lost local settings, and treats about 11 seconds as typical elapsed time.
+  Releasing CONFIGURE after this signal triggers another restart, after which the configuration
+  hotspot opens.
+  Runners decide when reset advice is appropriate and include it in evidence and terminal output.
 
 ### Models
 
@@ -144,10 +149,10 @@ finally:
 
 ## Unit tests
 
-Always run `ruff check cra/303645/tests` from the repository root before changes and before
-handoff, even for library documentation changes. Fix all findings and require a clean final check;
-see [`../AGENTS.md`](../AGENTS.md) for the annotation and exception-handling conventions. Ruff
-does not replace the dedicated unit tests and coverage gate below.
+Always run `cra/303645/tests/.venv/bin/ruff check cra/303645/tests` from the repository root before
+changes and before handoff, even for library documentation changes. Fix all findings and require a
+clean final check; see [`../AGENTS.md`](../AGENTS.md) for the annotation and exception-handling
+conventions. Ruff does not replace the dedicated unit tests and coverage gate below.
 
 The dedicated library test module is [`../test_lib.py`](../test_lib.py). Locating it outside `lib/`
 is intentional and follows normal Python project structure: `lib/` contains reusable runtime code,

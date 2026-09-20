@@ -19,6 +19,7 @@ from Crypto.PublicKey import ECC
 from Crypto.PublicKey.ECC import EccKey, EccPoint
 from lib import evidence
 from lib.config import (
+    FACTORY_RESET_MESSAGE,
     InvalidConfig,
     default_config_values,
     load_dut_config,
@@ -122,6 +123,19 @@ class FakeSession(requests.Session):
 
 
 class ConfigTestCase(unittest.TestCase):
+    def test_factory_reset_guidance_uses_completion_signal_not_a_time_threshold(self) -> None:
+        self.assertIn("200 ms and off for 200 ms", FACTORY_RESET_MESSAGE)
+        self.assertIn("normally about 11 seconds", FACTORY_RESET_MESSAGE)
+        self.assertIn("Release only after this completion signal", FACTORY_RESET_MESSAGE)
+        self.assertIn("Back up needed settings first", FACTORY_RESET_MESSAGE)
+        self.assertIn("do not assume erasure succeeded", FACTORY_RESET_MESSAGE)
+        self.assertNotIn("longer than", FACTORY_RESET_MESSAGE)
+        self.assertIn(
+            "Release only after this completion signal; the Gateway restarts again and opens its "
+            "configuration hotspot.",
+            FACTORY_RESET_MESSAGE,
+        )
+
     def test_load_ui_defaults_and_select_values(self) -> None:
         directory: str
         with tempfile.TemporaryDirectory() as directory:

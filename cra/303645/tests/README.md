@@ -47,15 +47,15 @@ on these tests or their guidance, including documentation-only tasks. Use the in
 executable with the repository configuration. From the repository root:
 
 ```bash
-ruff check cra/303645/tests
+cra/303645/tests/.venv/bin/ruff check cra/303645/tests
 ```
 
-From `cra/303645/tests`, use `ruff check .`. Check the whole subtree, fix all findings (including
-pre-existing ones), and rerun until clean. Report the initial count and final result. Review automatic
-fixes for correctness and Python 3.8 compatibility; do not blindly enable unsafe fixes or weaken
-rules to obtain a clean result. Linting is separate from formatting: do not run `ruff format` or
-reformat whole files during the current code-review fixes. Report any explicitly deferred lint
-backlog. Ruff does not replace the host-side tests or library coverage gate.
+From `cra/303645/tests`, use `.venv/bin/ruff check .`. Check the whole subtree, fix all findings
+(including pre-existing ones), and rerun until clean. Report the initial count and final result.
+Review automatic fixes for correctness and Python 3.8 compatibility; do not blindly enable unsafe
+fixes or weaken rules to obtain a clean result. Linting is separate from formatting: do not run
+`ruff format` or reformat whole files during the current code-review fixes. Report any explicitly
+deferred lint backlog. Ruff does not replace the host-side tests or library coverage gate.
 
 Modern type annotations use `from __future__ import annotations` to remain importable on Python
 3.8; runtime type expressions still need Python 3.8-compatible syntax and semantics. Intentional
@@ -85,6 +85,13 @@ In 5.1-1-2-B, a rejected default `Admin`/`gw_id` login is ERROR with the shared 
 After configuration is available, its MAC is checked before default-field checks: a wrong or
 malformed MAC is ERROR without reset advice, and a non-default baseline without a MAC does not
 prescribe resetting an unverified device. Verify `.env` and the physical DUT identity first.
+
+The same recovery policy applies to 5.1-2A-2-B, 5.1-4-2-A, and 5.1-5-2-B, including Basic/Digest
+challenges that raise before interactive login returns. Recovery instructions appear in both the
+evidence and final console message. The reset completion signal is red LED 200 ms on/200 ms off
+after the initial restart and erasure; about eleven seconds is typical elapsed time, not a fixed
+threshold. Release CONFIGURE only after this completion signal. Release triggers another restart,
+after which the configuration hotspot opens.
 
 ## Running tests
 
@@ -139,6 +146,19 @@ for hotspot-only `GET /info.json`, as described in the [HTTP API reference](../.
 Other protected GET routes retain their denial statuses, and all disabled-bearer probes require 401.
 The fake gateway models this distinction and validates the complete default-login challenge response
 before authorizing a session.
+
+In 5.1-2A-2-B the recorded sequence is provisioning/read-back, all negative GETs, all positive
+RO/RW GETs, negative POSTs with a configuration hash check, then RO POST denial and RW no-op POST
+with another hash check. Every negative authorization success aborts probing; mandatory restoration
+and revoked-key verification still follow. An RO PASS survives a later RW failure. Hash failures
+belong to RW, and failed provisioning/read-back/login controls mark temporary-state setup ERROR.
+
+Regression tests must check exact prepared request sequences and bodies across schemes, independently
+calculated password responses, session cookies and outstanding challenges, and both Basic/Digest
+setup exceptions. Check individual outcomes and final evidence for late failures as well as overall
+exit codes. In 5.1-4-2-A, a full run also uses the real client and fake HTTP transport; its smaller
+client-level fixture is used only for orchestration fault injection. Preserve recovery credentials
+before potentially applied changes and exercise partial mutation and failed restoration.
 
 ## Library coverage
 
