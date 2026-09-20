@@ -74,6 +74,11 @@ bodies. Store and share them with the same care as DUT credentials.
 - `GatewayClient.new_session()` disables Requests' environment settings (`trust_env=False`),
   including automatic `.netrc` authentication and environment proxies, so host settings cannot
   silently change the authentication under test.
+- The session factory is `Callable[[], requests.Session]`; `new_session()` and the
+  authentication models carry concrete `requests.Session` objects. Request, challenge,
+  and login responses are `requests.Response` objects. Host-side transport fixtures
+  subclass these Requests types and override sending so they never contact a DUT.
+  Dynamic JSON bodies and decoded payloads remain typed as `Any` at the protocol boundary.
 - `GatewayClient.request()` sends a request with fixed timeouts and redirects disabled by default.
   It accepts either `json_body` or `data`, but never both.
 - `response_json()` validates JSON decoding and, optionally, the top-level Python type.
