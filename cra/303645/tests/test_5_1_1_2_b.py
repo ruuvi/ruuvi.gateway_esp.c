@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 import requests
 from Crypto.PublicKey import ECC
+
 from lib.config import (
     AUTHENTICATION_DEFAULT_FIELDS,
     FACTORY_RESET_MESSAGE,

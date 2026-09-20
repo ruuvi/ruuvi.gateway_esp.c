@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 
 import requests
 from Crypto.PublicKey import ECC
+
 from lib.http_api import ApiRoute
 from lib.models import RunResult
 

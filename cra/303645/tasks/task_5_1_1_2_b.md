@@ -10,6 +10,35 @@ handle hidden passwords or keys. Any missing, wrongly typed, or non-default valu
 print the shared CONFIGURE-button factory-reset instruction and stop without changing the DUT to
 manufacture a baseline.
 
+## Review regression requirements
+
+Follow the [CRA test rules](../tests/AGENTS.md), especially functional-test rules and host-side
+implementation tests. These requirements qualify the factory-default precondition above:
+
+- Catch Basic/Digest `GatewayAuthenticationModeError` and mark failed default login as setup ERROR
+  with the shared recovery message in evidence and terminal output. Once configuration is available,
+  validate its MAC before default fields; wrong, malformed, or absent identity must not trigger reset
+  advice for a non-default baseline. Do not manufacture defaults by changing the DUT.
+- Complete safer probes across all schemes before potentially mutating probes within the same
+  prepared state; include positive reads where applicable. Abort on unexpected negative success,
+  while preserving mandatory restoration. Assert exact ordered method/path/scheme/body/session
+  records at the fake HTTP boundary, including the distinction between probes and recovery.
+- Independently validate complete login bodies, session cookies, and outstanding challenges in the
+  fake server. Model Basic/Digest challenges faithfully and include a full run through the real
+  client. Cover wrong passwords, corrupt responses, late safer-phase failures, and dangerous-phase
+  aborts wherever this task exercises authentication.
+- Attribute each rejected security assertion and final hash check to its actual mechanism. Preserve
+  completed mechanisms when a later one fails; never leave a failed mechanism PASS or NOT RUN.
+  Provisioning, read-back, and required login controls must all classify setup exceptions as ERROR.
+  Retain new and previous recovery credentials across partially applied changes.
+- Use `FACTORY_RESET_MESSAGE`; the reset completion condition is red LED 200 ms on/200 ms off
+  after boot-time erasure. Approximately eleven seconds is observed elapsed time, not a threshold.
+  Verify recovery advice against both restart and erasure paths.
+- Check referenced documents and predecessor scripts exist before changing links. Shared-library
+  tests belong only in `test_lib.py`; case tests cover integration. Run Python 3.8 host discovery,
+  required library coverage for shared changes, whole-subtree Ruff before/after, and the mandatory
+  IDE inspection. Offline tests are not compliance evidence.
+
 ## Objective
 
 Create a Python functional test for **ETSI EN 303 645 / ETSI TS 103 701 test case 5.1-1-2,
@@ -39,7 +68,7 @@ Do not modify firmware behavior or the self-assessment source documents.
 ## Required shared test infrastructure
 
 The test script must contain only case-specific procedure, assertions, safety ordering, and verdict
-aggregation. Use the shared modules under [`tests/lib/`](../tests/lib/) for infrastructure:
+aggregation. Use the shared modules under [`tests/lib/`](../tests/lib/README.md) for infrastructure:
 
 - [`gateway.py`](../tests/lib/gateway.py): `GatewayClient`, `GatewayApi`, `AuthMech`,
   `GatewayCfgDesc`, and `GatewayCfgLanAuthType`;
@@ -149,6 +178,8 @@ regression could allow a nominally rejected request to reach a destructive handl
 
 - use a disposable lab configuration and preserve any required backup before running;
 - issue dangerous POST/DELETE routes last;
+- enforce that ordering across all schemes: finish all interactive and bearer reads and fresh-session
+  `/auth` probes before any non-`/auth` POST/DELETE, then authenticate for final verification;
 - stop immediately after any unexpected authorization success;
 - use empty or deliberately invalid bodies/parameters where authentication is evaluated first;
 - after the matrix, authenticate normally and verify the baseline configuration is unchanged;
@@ -215,6 +246,7 @@ Use fresh sessions without the authorized baseline cookie:
    - protected GET APIs: `302`, `401`, or `403`, but never `2xx`; in default mode the firmware
      normally returns `302`, including for `/ap.json` and `/status.json` (those two only omit the
      previous-URL cookie);
+     allow 404 only for hotspot-only `GET /info.json` on LAN with missing/Basic/Digest credentials;
    - all protected POST and DELETE APIs: `401` or `403`, but never `2xx`.
 5. `GET /auth` must not advertise Basic or Digest. Exercise `POST /auth` through the failed random
    interactive login above. Exercise `DELETE /auth` without an authorized session and require `401`.
@@ -281,8 +313,7 @@ Exit codes:
 
 Mock the HTTP boundary without contacting a gateway and cover at least:
 
-- `.env` parsing, validation, and no shell evaluation;
-- log creation and collision prevention;
+- setup and evidence integration (direct `.env` and log collision tests belong in `test_lib.py`);
 - the exact 26-entry API inventory;
 - complete PASS response sequences;
 - per-route expected statuses for unauthenticated, Basic, Digest, and bearer probes;
