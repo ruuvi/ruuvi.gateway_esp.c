@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import requests
+
 from lib.config import (
     AUTHENTICATION_DEFAULT_FIELDS,
     FACTORY_RESET_MESSAGE,
@@ -19,7 +20,7 @@ from lib.config import (
     default_config_values,
     load_dut_config,
 )
-from lib.errors import InvalidSetup
+from lib.errors import GatewayAuthenticationModeError, InvalidSetup
 from lib.evidence import (
     AssertionEvidence,
     EvidenceLog,
@@ -51,7 +52,7 @@ TEST_ID: str = "ETSI EN 303 645 / ETSI TS 103 701 test case 5.1-2A-2, Test Unit 
 ADMIN_USERNAME: str = "Admin"
 HTTP_TIMEOUT: tuple[int, int] = (5, 15)
 USER_AGENT: str = "ruuvi-etsi-test-5.1-2a-2-b"
-TOTAL_STEPS: int = 9
+TOTAL_STEPS: int = 11
 MECHANISMS: tuple[str, ...] = (
     AuthMech.M2M_API_BEARER_RO,
     AuthMech.M2M_API_BEARER_RW,
@@ -154,13 +155,21 @@ class FunctionalTest_5_1_2a_2_b:
         if not condition:
             raise InvalidSetup(f"{description} (actual: {actual!r})")
 
-    def _require_security(self, condition: bool, description: str, actual: Any = "") -> None:
+    def _require_security(
+        self, condition: bool, description: str, actual: Any = "", mechanism: str | None = None
+    ) -> None:
         self._record_assertion(description, condition, actual)
         if not condition:
+            if mechanism is not None:
+                self.outcomes[mechanism] = "FAIL"
             raise SecurityFailure(f"{description} (actual: {actual!r})")
 
     def _authenticate_admin(self) -> Any:
-        result: InteractiveAuthResult = self.gateway.authenticate_interactive(ADMIN_USERNAME, self.config.gw_id)
+        try:
+            result: InteractiveAuthResult = self.gateway.authenticate_interactive(ADMIN_USERNAME, self.config.gw_id)
+        except GatewayAuthenticationModeError:
+            self.factory_reset_required = True
+            raise
         self._require_setup(
             result.challenge_response.status_code == HttpStatus.C_401_UNAUTHORIZED,
             "GET /auth returns the interactive challenge",
@@ -173,6 +182,8 @@ class FunctionalTest_5_1_2a_2_b:
             f"interactive authentication reports {GatewayCfgLanAuthType.DEFAULT}",
             result.auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE),
         )
+        if result.login_response.status_code != HttpStatus.C_200_OK:
+            self.factory_reset_required = True
         self._require_setup(
             result.login_response.status_code == HttpStatus.C_200_OK,
             "default administrative credentials authenticate",
@@ -190,15 +201,6 @@ class FunctionalTest_5_1_2a_2_b:
         return self.gateway.response_json(response, context, dict)
 
     def _validate_baseline(self, payload: dict[str, Any]) -> None:
-        expected: dict[str, Any] = default_config_values(AUTHENTICATION_DEFAULT_FIELDS)
-        value: Any
-        field: str
-        for field, value in expected.items():
-            actual: Any = payload.get(field)
-            is_default: bool = type(actual) is type(value) and actual == value
-            if not is_default:
-                self.factory_reset_required = True
-            self._require_setup(is_default, f"{field} has its factory-default value", actual)
         if GatewayCfgDesc.GW_MAC in payload:
             actual_mac: Any = payload[GatewayCfgDesc.GW_MAC]
             self._require_setup(isinstance(actual_mac, str), "gw_mac is a string")
@@ -212,6 +214,15 @@ class FunctionalTest_5_1_2a_2_b:
                 "DUT gw_mac matches .env",
                 actual_mac,
             )
+        expected: dict[str, Any] = default_config_values(AUTHENTICATION_DEFAULT_FIELDS)
+        value: Any
+        field: str
+        for field, value in expected.items():
+            actual: Any = payload.get(field)
+            is_default: bool = type(actual) is type(value) and actual == value
+            if not is_default:
+                self.factory_reset_required = GatewayCfgDesc.GW_MAC in payload
+            self._require_setup(is_default, f"{field} has its factory-default value", actual)
         identity: dict[str, Any] = {
             key: payload[key]
             for key in (
@@ -358,13 +369,15 @@ class FunctionalTest_5_1_2a_2_b:
         )
         return probes
 
-    def _run_negative_matrix(self, realm: str) -> None:
+    def _run_negative_matrix(self, realm: str, method: str) -> None:
         self._require_security(
             self.config.gw_id not in {self.ro_key, self.rw_key},
             "password-as-token probe differs from both configured keys",
         )
         probe: NegativeProbe
         for probe in self._negative_matrix(realm):
+            if probe.method != method:
+                continue
             response: requests.Response = self.gateway.request(
                 self.gateway.new_session(),
                 probe.method,
@@ -396,12 +409,15 @@ class FunctionalTest_5_1_2a_2_b:
                     result=f"PASS ({response.status_code})",
                 ),
             )
+        if method == HttpMethod.GET:
+            return
         current: dict[str, Any] = self._read_config(self.admin_session, "post-negative GET /ruuvi.json")
         current_hash: str = canonical_json_hash(current)
         self._require_security(
             current_hash == self.prepared_hash,
             "negative POST probes did not change configuration",
             HashComparisonEvidence(baseline=self.prepared_hash or "", final=current_hash),
+            mechanism=AuthMech.M2M_API_BEARER_RW,
         )
 
     def _positive_matrix(self) -> list[PositiveProbe]:
@@ -464,9 +480,11 @@ class FunctionalTest_5_1_2a_2_b:
             ),
         ]
 
-    def _run_positive_matrix(self) -> None:
+    def _run_positive_matrix(self, method: str) -> None:
         probe: PositiveProbe
         for probe in self._positive_matrix():
+            if probe.method != method:
+                continue
             response: requests.Response = self.gateway.request(
                 self.gateway.new_session(),
                 probe.method,
@@ -493,14 +511,18 @@ class FunctionalTest_5_1_2a_2_b:
                     result=f"PASS ({response.status_code})",
                 ),
             )
+            if method == HttpMethod.POST and probe.mechanism == AuthMech.M2M_API_BEARER_RO:
+                self.outcomes[AuthMech.M2M_API_BEARER_RO] = "PASS"
+        if method == HttpMethod.GET:
+            return
         current: dict[str, Any] = self._read_config(self.admin_session, "post-positive GET /ruuvi.json")
         current_hash: str = canonical_json_hash(current)
         self._require_security(
             current_hash == self.prepared_hash,
             "successful RW empty-object POST did not change configuration",
             HashComparisonEvidence(baseline=self.prepared_hash or "", final=current_hash),
+            mechanism=AuthMech.M2M_API_BEARER_RW,
         )
-        self.outcomes[AuthMech.M2M_API_BEARER_RO] = "PASS"
         self.outcomes[AuthMech.M2M_API_BEARER_RW] = "PASS"
 
     def _restore(self) -> bool:
@@ -647,15 +669,19 @@ class FunctionalTest_5_1_2a_2_b:
             self.progress("Provisioning temporary RO and RW bearer keys")
             try:
                 self._provision()
+                self.progress("Verifying the prepared temporary state")
+                self._verify_prepared()
             except Exception:
                 self.outcomes["temporary-state setup"] = "ERROR"
                 raise
-            self.progress("Verifying the prepared temporary state")
-            self._verify_prepared()
-            self.progress("Testing rejection of password schemes by M2M routes")
-            self._run_negative_matrix(login.challenge["realm"])
-            self.progress("Testing positive RO and RW bearer scope")
-            self._run_positive_matrix()
+            self.progress("Testing rejection of password schemes by M2M read routes")
+            self._run_negative_matrix(login.challenge["realm"], HttpMethod.GET)
+            self.progress("Testing positive RO and RW bearer read scope")
+            self._run_positive_matrix(HttpMethod.GET)
+            self.progress("Testing rejection of password schemes by M2M write routes")
+            self._run_negative_matrix(login.challenge["realm"], HttpMethod.POST)
+            self.progress("Testing positive RO and RW bearer write scope")
+            self._run_positive_matrix(HttpMethod.POST)
         except SecurityFailure as error:
             error: Exception
             failure = error
