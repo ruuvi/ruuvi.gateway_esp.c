@@ -68,14 +68,14 @@ class AuthCalculationEvidence:
 
 @dataclass
 class InteractiveChallengeRequest:
-    session: Any
+    session: requests.Session
     private_key: ECC.EccKey
     public_key_b64: str
 
 
 @dataclass
 class InteractiveLoginChallenge:
-    session: Any
+    session: requests.Session
     challenge: dict[str, str]
     auth_header: str
     cookie: str
@@ -83,7 +83,7 @@ class InteractiveLoginChallenge:
 
 @dataclass
 class InteractiveAuthChallenge(InteractiveLoginChallenge):
-    challenge_response: Any
+    challenge_response: requests.Response
     auth_payload: dict[str, Any]
     gateway_public_key_raw: bytes
     aes_key: bytes
@@ -98,15 +98,15 @@ class InteractiveLoginRequest:
 
 @dataclass
 class InteractiveAuthResult:
-    session: Any
-    challenge_response: Any
+    session: requests.Session
+    challenge_response: requests.Response
     auth_payload: dict[str, Any]
     challenge: dict[str, str]
     auth_header: str
     cookie: str
     gateway_public_key_raw: bytes
     aes_key: bytes
-    login_response: Any
+    login_response: requests.Response
 
 
 class GatewayClient:
@@ -114,7 +114,7 @@ class GatewayClient:
         self,
         config: DutConfig,
         evidence: EvidenceLog,
-        session_factory: Callable[[], Any] = requests.Session,
+        session_factory: Callable[[], requests.Session] = requests.Session,
         random_bytes: Callable[[int], bytes] = secrets.token_bytes,
         ecc_generate: Callable[..., ECC.EccKey] = ECC.generate,
         timeout: tuple[int, int] = (5, 15),
@@ -122,13 +122,13 @@ class GatewayClient:
     ) -> None:
         self.config: DutConfig = config
         self.evidence: EvidenceLog = evidence
-        self.session_factory: Callable[[], Any] = session_factory
+        self.session_factory: Callable[[], requests.Session] = session_factory
         self.random_bytes: Callable[[int], bytes] = random_bytes
         self.ecc_generate: Callable[..., ECC.EccKey] = ecc_generate
         self.timeout: tuple[int, int] = timeout
         self.user_agent: str = user_agent
 
-    def new_session(self) -> Any:
+    def new_session(self) -> requests.Session:
         session: requests.Session = self.session_factory()
         # Keep host .netrc credentials from changing the authentication under test.
         session.trust_env = False
@@ -136,7 +136,7 @@ class GatewayClient:
 
     def request(
         self,
-        session: Any,
+        session: requests.Session,
         method: str,
         path: str,
         headers: dict[str, str] | None = None,
@@ -144,7 +144,7 @@ class GatewayClient:
         data: Any = None,
         params: dict[str, Any] | None = None,
         allow_redirects: bool = False,
-    ) -> Any:
+    ) -> requests.Response:
         if json_body is not None and data is not None:
             raise ValueError("json_body and data are mutually exclusive")
         request_headers: dict[str, str] = {HttpHeader.USER_AGENT: self.user_agent}
@@ -175,7 +175,7 @@ class GatewayClient:
 
     @staticmethod
     def response_json(
-        response: Any,
+        response: requests.Response,
         context: str,
         expected_type: type[Any] | None = None,
     ) -> Any:
@@ -256,8 +256,8 @@ class GatewayClient:
 
     def interactive_login_challenge_from_response(
         self,
-        session: Any,
-        response: Any,
+        session: requests.Session,
+        response: requests.Response,
         context: str,
     ) -> InteractiveLoginChallenge:
         auth_header: str | None = response.headers.get(HttpHeader.WWW_AUTHENTICATE)
@@ -298,7 +298,7 @@ class GatewayClient:
     def send_interactive_challenge_request(
         self,
         request: InteractiveChallengeRequest,
-    ) -> Any:
+    ) -> requests.Response:
         return self.request(
             request.session,
             HttpMethod.GET,
@@ -309,7 +309,7 @@ class GatewayClient:
     def parse_interactive_challenge_response(
         self,
         request: InteractiveChallengeRequest,
-        challenge_response: Any,
+        challenge_response: requests.Response,
     ) -> InteractiveAuthChallenge:
         auth_payload: dict[str, Any] = self.response_json(challenge_response, "GET /auth", dict)
         auth_header: str | None = challenge_response.headers.get(HttpHeader.WWW_AUTHENTICATE)
@@ -396,7 +396,7 @@ class GatewayClient:
             password_response=password_response,
         )
 
-    def send_interactive_login_request(self, request: InteractiveLoginRequest) -> Any:
+    def send_interactive_login_request(self, request: InteractiveLoginRequest) -> requests.Response:
         return self.request(
             request.login_challenge.session,
             HttpMethod.POST,
@@ -413,7 +413,7 @@ class GatewayClient:
         login_challenge: InteractiveLoginChallenge,
         username: str,
         password: str,
-    ) -> Any:
+    ) -> requests.Response:
         request: InteractiveLoginRequest = self.prepare_interactive_login_request(
             login_challenge,
             username,

@@ -104,11 +104,11 @@ class FakeResponse(requests.Response):
 class FakeSession(requests.Session):
     def __init__(
         self,
-        response: Any = None,
+        response: requests.Response | None = None,
         error: requests.RequestException | None = None,
     ) -> None:
         super().__init__()
-        self.response: Any = response
+        self.response: requests.Response | None = response
         self.error: requests.RequestException | None = error
         self.sent: list[tuple[requests.PreparedRequest, dict[str, Any]]] = []
 
@@ -116,10 +116,12 @@ class FakeSession(requests.Session):
         prepared: requests.PreparedRequest = request.prepare()
         return prepared
 
-    def send(self, request: requests.PreparedRequest, **kwargs: Any) -> Any:
+    def send(self, request: requests.PreparedRequest, **kwargs: Any) -> requests.Response:
         self.sent.append((request, kwargs))
         if self.error is not None:
             raise self.error
+        if self.response is None:
+            raise AssertionError("fake transport requires a response or an error")
         return self.response
 
 
@@ -411,7 +413,7 @@ class GatewayClientTestCase(unittest.TestCase):
                 events.append("response-log")
 
         class OrderedSession(FakeSession):
-            def send(self, request: requests.PreparedRequest, **kwargs: Any) -> Any:
+            def send(self, request: requests.PreparedRequest, **kwargs: Any) -> requests.Response:
                 events.append("send")
                 return super().send(request, **kwargs)
 
@@ -512,7 +514,7 @@ class GatewayClientTestCase(unittest.TestCase):
             cookies={"RUUVISESSION": "cookie"},
         )
         challenge: InteractiveLoginChallenge = self.client.interactive_login_challenge_from_response(
-            object(), response, "GET /auth"
+            FakeSession(), response, "GET /auth"
         )
         self.assertEqual("cookie", challenge.cookie)
 
@@ -525,7 +527,7 @@ class GatewayClientTestCase(unittest.TestCase):
         ):
             with self.subTest(header=changed_header, cookies=cookies), self.assertRaises(GatewayProtocolError):
                 self.client.interactive_login_challenge_from_response(
-                    object(),
+                    FakeSession(),
                     FakeResponse(headers={HttpHeader.WWW_AUTHENTICATE: changed_header}, cookies=cookies),
                     "GET /auth",
                 )
@@ -564,7 +566,7 @@ class GatewayClientTestCase(unittest.TestCase):
             },
             {"RUUVISESSION": "cookie"},
         )
-        request: InteractiveChallengeRequest = InteractiveChallengeRequest(object(), client_private, "unused")
+        request: InteractiveChallengeRequest = InteractiveChallengeRequest(FakeSession(), client_private, "unused")
         result: InteractiveAuthChallenge = self.client.parse_interactive_challenge_response(request, response)
         client_public_point: EccPoint = client_private.public_key().pointQ
         server_private_scalar: int = int(server_private.d)
@@ -576,7 +578,7 @@ class GatewayClientTestCase(unittest.TestCase):
 
     def test_parse_challenge_response_reports_auth_mode_and_invalid_key(self) -> None:
         private_key: EccKey = ECC.construct(curve="P-256", d=1)
-        request: InteractiveChallengeRequest = InteractiveChallengeRequest(object(), private_key, "unused")
+        request: InteractiveChallengeRequest = InteractiveChallengeRequest(FakeSession(), private_key, "unused")
         mode_response: FakeResponse = FakeResponse({GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.BASIC})
         with self.assertRaises(GatewayAuthenticationModeError):
             self.client.parse_interactive_challenge_response(request, mode_response)
@@ -605,7 +607,7 @@ class GatewayClientTestCase(unittest.TestCase):
 
     def test_parse_challenge_response_rejects_point_at_infinity(self) -> None:
         request: InteractiveChallengeRequest = InteractiveChallengeRequest(
-            object(), ECC.construct(curve="P-256", d=1), "unused"
+            FakeSession(), ECC.construct(curve="P-256", d=1), "unused"
         )
         response: FakeResponse = FakeResponse(
             {},

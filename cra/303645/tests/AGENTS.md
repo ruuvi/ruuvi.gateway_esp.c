@@ -258,8 +258,19 @@ repository root:
 cra/303645/tests/.venv/bin/ruff check cra/303645/tests
 ```
 
-From this directory the equivalent command is `.venv/bin/ruff check .`. Use the repository's Ruff
-configuration and fix reported lint problems; rerun until clean. Inspect each proposed fix and
+This command automatically discovers `cra/303645/tests/pyproject.toml` for this subtree.
+For explicit configuration selection from the repository root, use:
+
+```bash
+(cd cra/303645/tests && .venv/bin/ruff check --config pyproject.toml .)
+```
+
+From this directory, use `.venv/bin/ruff check --config pyproject.toml .`; the shorter
+`.venv/bin/ruff check .` also discovers the same file. With `--config`, relative settings
+resolve against the working directory, so keep it at `cra/303645/tests` rather than
+passing the nested config path from the repository root. See
+[`README.md` — Required linting](README.md#required-linting) for discovery verification.
+Use this configuration and fix reported lint problems; rerun until clean. Inspect each proposed fix and
 preserve Python 3.8 behavior, recovery, and evidence semantics. Do not silence valid findings by
 weakening rules or adding blanket exclusions. Explain any necessary narrow suppression.
 Do not defer findings merely because they predate the current change. Report the initial finding

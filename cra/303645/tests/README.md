@@ -50,7 +50,37 @@ executable with the repository configuration. From the repository root:
 cra/303645/tests/.venv/bin/ruff check cra/303645/tests
 ```
 
-From `cra/303645/tests`, use `.venv/bin/ruff check .`. Check the whole subtree, fix all findings
+The configuration is [`pyproject.toml`](pyproject.toml), at
+`cra/303645/tests/pyproject.toml` relative to the repository root. Ruff discovers the
+nearest configuration for each analyzed file, so the command above already selects
+this nested configuration; it does not require a root-level `pyproject.toml`.
+CI runs from `cra/303645/tests` and uses the same discovery behavior.
+
+To select the configuration explicitly while preserving the test project's path base,
+run this from the repository root:
+
+```bash
+(cd cra/303645/tests && .venv/bin/ruff check --config pyproject.toml .)
+```
+
+From `cra/303645/tests` itself, use `.venv/bin/ruff check --config pyproject.toml .`.
+Without `--config`, `.venv/bin/ruff check .` also discovers the same file.
+With an explicit configuration file, Ruff resolves relative settings against the
+working directory, rather than the configuration's directory. Therefore simply adding
+`--config cra/303645/tests/pyproject.toml` to a repository-root invocation is not
+equivalent for relative settings (for example, `src` and `exclude`); use the subshell
+command above. See [Ruff's configuration discovery rules](https://docs.astral.sh/ruff/configuration/#config-file-discovery).
+
+To confirm discovery, run from the repository root:
+
+```bash
+cra/303645/tests/.venv/bin/ruff check --show-settings cra/303645/tests/test_lib.py
+```
+
+The `Settings path` must point to `cra/303645/tests/pyproject.toml` in this checkout.
+`--show-settings` is diagnostic; it does not replace the full lint run.
+
+Check the whole subtree, fix all findings
 (including pre-existing ones), and rerun until clean. Report the initial count and final result.
 Review automatic fixes for correctness and Python 3.8 compatibility; do not blindly enable unsafe
 fixes or weaken rules to obtain a clean result. Linting is separate from formatting: do not run
