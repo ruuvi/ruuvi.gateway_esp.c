@@ -342,23 +342,59 @@ responses are `Content-Type: application/json` unless stated otherwise.
   broker/remote-config/firmware-update-url/file. Dispatched by `validate_type`.
 - **Query params (parsed in
   [`validate_url()` L1095](../main/validate_url.c#L1095)):**
-  - `validate_type=` one of `check_post_advs`, `check_post_stat`, `check_mqtt`,
+  - `validate_type=` selects the check; supply one of the full names
+    `check_post_advs`, `check_post_stat`, `check_mqtt`,
     `check_remote_cfg`, `check_fw_update_url`, `check_file`
     ([L124](../main/validate_url.c#L124)).
-  - `url=` (required), `user=`, `auth_type=` (`none|basic|bearer|token|api_key`),
-    `use_saved_password=`, `use_ssl_client_cert=`, `use_ssl_server_cert=`,
-    `use_extra_http_path=`, `use_extra_http_query=`, `use_extra_http_headers=`.
-  - Encrypted password triplet: `encrypted_password=`, `encrypted_password_iv=`,
-    `encrypted_password_hash=` ([L83](../main/validate_url.c#L83)).
-  - MQTT-specific: `mqtt_topic_prefix=`, `mqtt_client_id=`,
-    `mqtt_disable_retained_messages=` and the scheme prefix
-    (`mqtt://`,`mqtts://`,`mqttws://`,`mqttwss://`).
-- **Auth:** enforced on LAN (RO bearer accepted).
-- **HTTP transport status:** completed checks return `200` with an
+  - `url=` and `auth_type=` are required for **every** check. `auth_type` must be
+    `none`, `basic`, `bearer`, `token`, or `api_key`; use `auth_type=none` even when
+    the target needs no credentials. Missing/unknown `auth_type` returns HTTP `400`
+    ([L1025](../main/validate_url.c#L1025)).
+  - `user=` and the encrypted secret triplet (`encrypted_password=`,
+    `encrypted_password_iv=`, `encrypted_password_hash=`) supply target credentials
+    when needed, not caller authentication ([L83](../main/validate_url.c#L83)).
+    The triplet carries the password, bearer/token value, or API key, according to
+    `auth_type`; it is not universally required for unauthenticated checks.
+  - Boolean options: `use_saved_password=`, `use_ssl_client_cert=`,
+    `use_ssl_server_cert=`, `use_extra_http_path=`, `use_extra_http_query=`,
+    `use_extra_http_headers=`. Send `true` or `false`; omitted options default to
+    `false`. Their effect depends on the selected check.
+- **Check-specific requirements:**
+  - `check_post_advs`, `check_post_stat`, `check_mqtt`, and `check_remote_cfg`
+    support `use_saved_password=true` to use that configuration's saved secret
+    instead of the encrypted triplet. This does not supply `user=` automatically.
+  - `check_mqtt` requires `mqtt_topic_prefix=` and `mqtt_client_id=` to be present
+    (empty values are permitted). `url` must have the form `scheme://host:port`,
+    with scheme `mqtt`, `mqtts`, `mqttws`, or `mqttwss`, an explicit decimal port
+    in `1..65535`, and no trailing path. With `auth_type` other than `none`, both
+    `user` and a supplied/saved password must be available. Missing required
+    fields, oversized fields, or a malformed MQTT URL return HTTP `400`.
+    `mqtt_disable_retained_messages=true|false` is optional (default `false`)
+    ([L313-531](../main/validate_url.c#L313)).
+  - `check_remote_cfg` requires `user` and a supplied/saved password for Basic,
+    or a supplied/saved secret for bearer/token/API-key auth. Missing or oversized
+    credential fields return HTTP `400`; unlike `check_file`, empty strings pass
+    this local credential check ([L534-681](../main/validate_url.c#L534)).
+  - `check_file` does **not** use `use_saved_password`: Basic requires a nonempty
+    `user` and decrypted password; bearer/token/API-key auth requires a nonempty
+    decrypted secret. Missing/empty credentials return HTTP `400`
+    ([L843-978](../main/validate_url.c#L843)).
+  - `check_fw_update_url` does not use the supplied target credentials, but the
+    common parser still requires `auth_type`; use `none`
+    ([L811-840](../main/validate_url.c#L811)).
+- **Caller auth:** enforced on LAN (RO bearer or an authorized interactive
+  session accepted). The query's `auth_type` controls authentication to the
+  **external target**, not access to this endpoint. Shared LAN auth runs before
+  parameter validation: in `RUUVI`/`DEFAULT` mode without an authorized cookie,
+  a request without a recognized bearer header gets HTTP `302`, while an explicit
+  invalid bearer gets HTTP `401`. Neither is a JSON check result; see
+  [Authentication model](#authentication-model).
+- **HTTP transport status after caller authorization:** completed checks return `200` with an
   `application/json` body, including when the check reports failure. Direct error
   paths return `400` for missing/invalid parameters (including check-specific
   credential/MQTT parameter validation), `500` for allocation/internal failures or
-  an invalid `validate_type`, and `409` if a firmware update is already in progress
+  a missing/unrecognized `validate_type` (after the common `auth_type` and `url`
+  checks pass), and `409` if a firmware update is already in progress
   ([cb_on_get L568-582](../main/http_server_cb_on_get.c#L568)).
 - **Application status:** the JSON body is `{"status": <code>, "message": <string>}`;
   `status` carries the check result, such as `200`, `400` for an incorrect URL,
