@@ -88,7 +88,7 @@ class FunctionalTest_5_1_1_2_b:
         self,
         config: DutConfig,
         evidence: EvidenceLog,
-        session_factory: Callable[[], Any] = requests.Session,
+        session_factory: Callable[[], requests.Session] = requests.Session,
         random_bytes: Callable[[int], bytes] = secrets.token_bytes,
         ecc_generate: Callable[..., ECC.EccKey] = ECC.generate,
         progress: Callable[[str], None] | None = None,
@@ -158,7 +158,7 @@ class FunctionalTest_5_1_1_2_b:
         username: str,
         password: str,
         expect_success: bool,
-    ) -> Any:
+    ) -> requests.Session:
         try:
             result: InteractiveAuthResult = self.gateway.authenticate_interactive(username, password)
         except GatewayAuthenticationModeError:
@@ -575,7 +575,7 @@ class FunctionalTest_5_1_1_2_b:
 
 def execute_test_5_1_1_2_b(
     work_dir: Path | None = None,
-    session_factory: Callable[[], Any] = requests.Session,
+    session_factory: Callable[[], requests.Session] = requests.Session,
     now: Callable[[], datetime] = utc_now,
     output: Callable[[str], None] | None = None,
 ) -> RunResult:
