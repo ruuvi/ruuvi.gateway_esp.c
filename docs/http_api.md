@@ -103,12 +103,14 @@ Additional origin rules:
 - **Parse failure** -> `400`
   ([L133](../components/esp32-wifi-manager/src/http_server_netconn_serve_handle_req.c#L133)).
 - **Auth redirect (`302`)** — for `RUUVI`/`DEFAULT` auth types, an unauthenticated LAN
-  GET of a `.json`/extensionless resource is redirected `302` so the UI can send the
-  user through `/auth`. The response normally includes a previous-URL `Set-Cookie`;
+  GET covered by the [GET path authentication rule](#authentication-model) is
+  redirected `302` when the auth check returns `401` without a recognized bearer
+  scheme. `/auth` has its own handler. The response normally includes a previous-URL `Set-Cookie`;
   `/ap.json` and `/status.json` are still redirected but omit that cookie
   ([L153-167](../components/esp32-wifi-manager/src/http_server_handle_req.c#L153)).
-- **Static fallback** — unknown GET paths with a file extension are served from the
-  GWUI FATFS partition; see [Static web assets and fallback](#static-web-assets-and-fallback).
+- **Static fallback** — unmatched GET paths other than those ending in `.json` reach
+  the GWUI FATFS file handler after any applicable authentication check. This includes
+  paths with no dot; see [Static web assets and fallback](#static-web-assets-and-fallback).
 
 ## Authentication model
 
@@ -121,12 +123,20 @@ which returns "allow" immediately when `flag_access_from_lan == false`
 
 **Which GET resources require auth:** in
 [`http_server_handle_req_get()` L135-173](../components/esp32-wifi-manager/src/http_server_handle_req.c#L135),
-only paths that are **extensionless** or end in **`.json`** are auth-checked. Static
-assets with any other extension (`.html`, `.js`, `.css`, `.png`, `.svg`, `.ttf`, ...)
-are served **without** authentication. Because an empty path maps to `index.html`, the
-web-UI root and its assets are unauthenticated; the `.json` data endpoints and
-extensionless action endpoints (`metrics`, `history`, `validate_url`, `extra_cfg`) are
-authenticated.
+the server uses `strrchr(p_file_name, '.')` on the **entire path**, excluding the
+query string. The shared auth check runs when there is **no dot anywhere in the
+path**, or when the substring from the last dot to the end is exactly **`.json`**
+(case-sensitive). It does not extract an extension from only the final path segment.
+For example, `/assets/readme` is auth-checked, but `/assets.v1/readme` and
+`/data.JSON` skip this check. These example paths are not additional API routes;
+subsequent dispatch still determines whether a file exists or returns `404`.
+
+Two earlier special cases apply: the empty path becomes `index.html`, and `/auth`
+uses its dedicated authentication handler. Thus the web-UI root and usual static
+assets (`.html`, `.js`, `.css`, `.png`, `.svg`, `.ttf`) skip the shared auth check,
+while the `.json` data endpoints and dot-free action paths (`metrics`, `history`,
+`validate_url`, `extra_cfg`) are auth-checked. Static fallback alone does not imply
+unauthenticated access: a dot-free fallback path still passes through this check.
 
 ### Bearer API-key (RO vs RW)
 
@@ -142,7 +152,7 @@ against two configured keys:
 
 | Context | RW required for bearer? | Source |
 |---|---|---|
-| GET, most `.json`/extensionless | No (RO key accepted) | [handle_req_get L129-133](../components/esp32-wifi-manager/src/http_server_handle_req.c#L129) |
+| GET covered by the path auth rule, except `/ap.json` | No (RO key accepted) | [handle_req_get L129-136](../components/esp32-wifi-manager/src/http_server_handle_req.c#L129) |
 | GET `/ap.json` | **Yes** (RW only) | [L130-133](../components/esp32-wifi-manager/src/http_server_handle_req.c#L130) |
 | All POST | **Yes** (RW only) | [handle_req_post L537](../components/esp32-wifi-manager/src/http_server_handle_req.c#L537) |
 | All DELETE | **Yes** (RW only) | [handle_req_delete L219](../components/esp32-wifi-manager/src/http_server_handle_req.c#L219) |
@@ -187,12 +197,12 @@ This is a transport wrapper applied to the routes below; it does not add new pat
 
 ## Per-method authorization summary
 
-| Method | Auth from hotspot | Auth from LAN | Bearer scope | Notes |
-|---|---|---|---|---|
-| GET (static assets, non-`.json`) | none | **none** | n/a | served unauthenticated from FATFS |
-| GET (`.json` / extensionless) | allow | enforced | RO or RW | `ap.json` requires RW bearer |
-| POST | allow | enforced | **RW only** | body may be ECDH-encrypted |
-| DELETE | allow | enforced | **RW only** | |
+| Method                                                | Auth from hotspot | Auth from LAN | Bearer scope | Notes                                                      |
+|-------------------------------------------------------|-------------------|---------------|--------------|------------------------------------------------------------|
+| GET (path contains a dot and does not end in `.json`) | none              | **none**      | n/a          | skips shared auth check; static file lookup follows        |
+| GET (no dot anywhere in path, or ends in `.json`)     | allow             | enforced      | RO or RW     | `/auth` uses its own handler; `ap.json` requires RW bearer |
+| POST                                                  | allow             | enforced      | **RW only**  | body may be ECDH-encrypted                                 |
+| DELETE                                                | allow             | enforced      | **RW only**  |                                                            |
 
 Common status codes (enum:
 [`wifi_manager_defs.h` L256+](../components/esp32-wifi-manager/src/include/wifi_manager_defs.h#L256)):
@@ -546,8 +556,12 @@ is in progress ([cb.c L117](../main/http_server_cb.c#L117)).
 
 ## Static web assets and fallback
 
-Any GET path that is **not** matched above is treated as a static file request served from the GWUI
-FATFS partition ([`http_server_resp_file()` L433](../main/http_server_cb_on_get.c#L433), dispatch
+After the earlier authentication and route checks, any remaining GET path is treated
+as a static file request served from the GWUI FATFS partition. Paths ending in
+case-sensitive `.json` have already been dispatched to the JSON handler, which
+returns `404` for unknown JSON routes; they do not reach static fallback. All other
+unmatched paths can reach it, including paths with no dot
+([`http_server_resp_file()` L433](../main/http_server_cb_on_get.c#L433), dispatch
 at [cb_on_get L587](../main/http_server_cb_on_get.c#L587)):
 
 - Empty path -> `ruuvi.html`; wifi-manager also maps empty path to `index.html` earlier.
@@ -563,8 +577,9 @@ at [cb_on_get L587](../main/http_server_cb_on_get.c#L587)):
 This is a single wildcard/static-file handler, **not** a set of distinct API routes:
 the served filenames are whatever exists on the GWUI partition (built from
 [`../ruuvi.gwui.html/`](../ruuvi.gwui.html/)). It is documented once here rather than
-enumerated. These static assets are **not** authenticated (see
-[Authentication model](#authentication-model)).
+enumerated. The usual dotted asset paths skip authentication, but dot-free paths
+require the earlier LAN auth check even when they ultimately reach this file handler
+(see [Authentication model](#authentication-model)).
 
 ---
 
@@ -604,13 +619,15 @@ fallbacks):
 
 Wildcard / fallback handlers (not distinct API routes):
 
-- **Static file fallback** — `GET /<name.ext>` served from the GWUI FATFS partition
+- **Static file fallback** — unmatched GET paths other than `.json` paths, including
+  dot-free paths, are looked up in the GWUI FATFS partition after applicable auth
   ([cb_on_get L587](../main/http_server_cb_on_get.c#L587)).
 - **Captive-portal redirect** — `302` for hotspot requests whose `Host:` is not the AP
   IP ([serve_handle_req L169](../components/esp32-wifi-manager/src/http_server_netconn_serve_handle_req.c#L169)).
-- **Auth-cookie redirect** — `302` for unauthenticated LAN GET of
-  `.json`/extensionless resources under `RUUVI`/`DEFAULT`; a previous-URL cookie is
-  included except for `/ap.json` and `/status.json`
+- **Auth-cookie redirect** — `302` under `RUUVI`/`DEFAULT` when the shared GET auth
+  check returns `401` without a recognized bearer scheme. The check covers paths
+  with no dot anywhere or ending in case-sensitive `.json`; `/auth` is handled
+  separately. A previous-URL cookie is included except for `/ap.json` and `/status.json`
   ([handle_req_get L153](../components/esp32-wifi-manager/src/http_server_handle_req.c#L153)).
 - **Unknown route** — `GET *.json` / `POST *` / `DELETE *` unmatched -> `404`.
 
