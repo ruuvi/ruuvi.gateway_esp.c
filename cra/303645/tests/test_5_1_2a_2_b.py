@@ -115,7 +115,7 @@ class FunctionalTest_5_1_2a_2_b:
         self,
         config: DutConfig,
         evidence: EvidenceLog,
-        session_factory: Callable[[], Any] = requests.Session,
+        session_factory: Callable[[], requests.Session] = requests.Session,
         random_bytes: Callable[[int], bytes] = secrets.token_bytes,
         progress: Callable[[str], None] | None = None,
     ) -> None:
@@ -132,7 +132,7 @@ class FunctionalTest_5_1_2a_2_b:
         self.progress: Callable[[str], None] = progress if progress is not None else lambda description: None
         self.outcomes: dict[str, str] = {mechanism: "NOT RUN" for mechanism in MECHANISMS}
         self.coverage: set[ApiRoute] = set()
-        self.admin_session: Any | None = None
+        self.admin_session: requests.Session | None = None
         self.baseline_hash: str | None = None
         self.prepared_hash: str | None = None
         self.ro_key: str | None = None
@@ -164,7 +164,7 @@ class FunctionalTest_5_1_2a_2_b:
                 self.outcomes[mechanism] = "FAIL"
             raise SecurityFailure(f"{description} (actual: {actual!r})")
 
-    def _authenticate_admin(self) -> Any:
+    def _authenticate_admin(self) -> InteractiveAuthResult:
         try:
             result: InteractiveAuthResult = self.gateway.authenticate_interactive(ADMIN_USERNAME, self.config.gw_id)
         except GatewayAuthenticationModeError:
@@ -191,7 +191,9 @@ class FunctionalTest_5_1_2a_2_b:
         )
         return result
 
-    def _read_config(self, session: Any, context: str) -> dict[str, Any]:
+    def _read_config(self, session: requests.Session | None, context: str) -> dict[str, Any]:
+        if session is None:
+            raise InvalidSetup("administrative session is not initialized")
         response: requests.Response = self.gateway.request(session, HttpMethod.GET, GatewayApi.CONFIG)
         self._require_setup(
             response.status_code == HttpStatus.C_200_OK,
@@ -235,6 +237,8 @@ class FunctionalTest_5_1_2a_2_b:
         self.evidence.write("DUT VERSION AND IDENTITY", identity)
 
     def _provision(self) -> None:
+        if self.admin_session is None:
+            raise InvalidSetup("administrative session is not initialized")
         self.ro_key = self.gateway.random_text(32)
         self.rw_key = self.gateway.random_text(32)
         self._require_setup(self.ro_key != self.rw_key, "temporary RO and RW keys are distinct")
@@ -535,7 +539,7 @@ class FunctionalTest_5_1_2a_2_b:
         self.evidence.write("CONFIGURATION RESTORATION", body)
         attempts: list[RestorationAttempt] = []
 
-        def attempt(attempt_name: str, session: Any, bearer_key: str | None = None) -> bool:
+        def attempt(attempt_name: str, session: requests.Session, bearer_key: str | None = None) -> bool:
             headers: dict[str, str] | None = (
                 {HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {bearer_key}"} if bearer_key is not None else None
             )
@@ -718,7 +722,7 @@ class FunctionalTest_5_1_2a_2_b:
 
 def execute_test_5_1_2a_2_b(
     work_dir: Path | None = None,
-    session_factory: Callable[[], Any] = requests.Session,
+    session_factory: Callable[[], requests.Session] = requests.Session,
     now: Callable[[], datetime] = utc_now,
     random_bytes: Callable[[int], bytes] = secrets.token_bytes,
     output: Callable[[str], None] | None = None,

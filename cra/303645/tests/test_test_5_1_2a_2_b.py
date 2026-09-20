@@ -59,18 +59,7 @@ def env_text() -> str:
     )
 
 
-class FakeCookies:
-    def __init__(self, values: dict[str, str] | None = None) -> None:
-        self.values: dict[str, str] = values or {}
-
-    def get(self, key: str) -> str | None:
-        return self.values.get(key)
-
-    def get_dict(self) -> dict[str, str]:
-        return dict(self.values)
-
-
-class FakeResponse:
+class FakeResponse(requests.Response):
     def __init__(
         self,
         status: int,
@@ -79,14 +68,17 @@ class FakeResponse:
         cookies: dict[str, str] | None = None,
         malformed_json: bool = False,
     ) -> None:
+        super().__init__()
         self.status_code: int = status
-        self.headers: dict[str, str] = headers or {}
-        self.cookies: FakeCookies = FakeCookies(cookies)
+        self.headers.update(headers or {})
+        self.cookies.update(cookies or {})
         self._payload: Any = payload
         self._malformed_json: bool = malformed_json
-        self.text: str = "{broken" if malformed_json else json.dumps(payload) if payload is not None else ""
+        text: str = "{broken" if malformed_json else json.dumps(payload) if payload is not None else ""
+        self._content: bytes = text.encode("utf-8")
+        self.encoding: str = "utf-8"
 
-    def json(self) -> Any:
+    def json(self, **kwargs: Any) -> Any:
         if self._malformed_json:
             raise ValueError("malformed")
         return self._payload
@@ -256,10 +248,11 @@ class FakeGateway:
         )
 
 
-class FakeSession:
+class FakeSession(requests.Session):
     next_number: int = 1
 
     def __init__(self, gateway: FakeGateway) -> None:
+        super().__init__()
         self.gateway: FakeGateway = gateway
         self.authorized: bool = False
         self.challenge_number: int = 0
@@ -268,8 +261,7 @@ class FakeSession:
         self.number: int = FakeSession.next_number
         FakeSession.next_number += 1
 
-    @staticmethod
-    def prepare_request(request: requests.Request) -> requests.PreparedRequest:
+    def prepare_request(self, request: requests.Request) -> requests.PreparedRequest:
         return request.prepare()
 
     def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
@@ -463,6 +455,7 @@ class FunctionalTestCase(unittest.TestCase):
         runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
         login: target.InteractiveAuthResult = runner.gateway.authenticate_interactive("Admin", "wrong-password")
         self.assertEqual(401, login.login_response.status_code)
+        assert isinstance(login.session, FakeSession)
         self.assertFalse(login.session.authorized)
 
     def test_post_negative_hash_failure_is_rw_fail_in_final_evidence(self) -> None:
@@ -519,6 +512,8 @@ class FunctionalTestCase(unittest.TestCase):
         client: target.GatewayClient = self.runner().gateway
         first: InteractiveAuthChallenge = client.request_interactive_challenge()
         second: InteractiveAuthChallenge = client.request_interactive_challenge()
+        assert isinstance(first.session, FakeSession)
+        assert isinstance(second.session, FakeSession)
         ha1: str = hashlib.md5(f"Admin:Ruuvi Gateway:{CONFIG.gw_id}".encode()).hexdigest()
 
         def login_body(challenge: str) -> dict[str, str]:
@@ -527,7 +522,7 @@ class FunctionalTestCase(unittest.TestCase):
                 "password": hashlib.sha256(f"{challenge}:{ha1}".encode()).hexdigest(),
             }
 
-        def submit(session: FakeSession, submitted_body: dict[str, str], submitted_cookie: str | None) -> int:
+        def submit(session: requests.Session, submitted_body: dict[str, str], submitted_cookie: str | None) -> int:
             response: requests.Response = client.request(
                 session,
                 HttpMethod.POST,
