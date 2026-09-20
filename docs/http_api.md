@@ -78,8 +78,9 @@ flag_access_from_lan = (local_ip != AP_ip)
 ```
 
 - **`flag_access_from_lan == false`** — the request arrived on the SoftAP interface
-  (the configuration hotspot). Authentication is effectively bypassed: auth checks
-  return "allow" (see [Authentication model](#authentication-model)).
+  (the configuration hotspot). Shared auth checks return "allow" (see
+  [Authentication model](#authentication-model)); endpoint-specific checks such as
+  the [DELETE /auth](#delete-auth) logout-session requirement still apply.
 - **`flag_access_from_lan == true`** — the request arrived over the STA/Ethernet LAN
   interface. Full authentication is enforced.
 
@@ -114,7 +115,7 @@ Additional origin rules:
 
 ## Authentication model
 
-Auth is only enforced for LAN requests. The configured `auth_type` selects the scheme
+The shared authorization check is enforced only for LAN requests. The configured `auth_type` selects the scheme
 (`ALLOW`, `BASIC`, `DIGEST`, `RUUVI`, `DEFAULT`, `DENY`; `BEARER` is API-key only). The
 central check is
 [`http_server_handle_req_check_auth()`](../components/esp32-wifi-manager/src/http_server_handle_req_get_auth.c#L330),
@@ -150,12 +151,19 @@ against two configured keys:
 
 `flag_check_rw_access_with_bearer_token` is set per method/route:
 
-| Context | RW required for bearer? | Source |
-|---|---|---|
-| GET covered by the path auth rule, except `/ap.json` | No (RO key accepted) | [handle_req_get L129-136](../components/esp32-wifi-manager/src/http_server_handle_req.c#L129) |
-| GET `/ap.json` | **Yes** (RW only) | [L130-133](../components/esp32-wifi-manager/src/http_server_handle_req.c#L130) |
-| All POST | **Yes** (RW only) | [handle_req_post L537](../components/esp32-wifi-manager/src/http_server_handle_req.c#L537) |
-| All DELETE | **Yes** (RW only) | [handle_req_delete L219](../components/esp32-wifi-manager/src/http_server_handle_req.c#L219) |
+| Context                                                          | RW required for bearer? | Source                                                                                        |
+|------------------------------------------------------------------|-------------------------|-----------------------------------------------------------------------------------------------|
+| GET covered by the path auth rule, except `/auth` and `/ap.json` | No (RO key accepted)    | [handle_req_get L129-136](../components/esp32-wifi-manager/src/http_server_handle_req.c#L129) |
+| GET `/ap.json`                                                   | **Yes** (RW only)       | [L130-133](../components/esp32-wifi-manager/src/http_server_handle_req.c#L130)                |
+| POST except `/auth`                                              | **Yes** (RW only)       | [handle_req_post L537](../components/esp32-wifi-manager/src/http_server_handle_req.c#L537)    |
+| DELETE except `/auth`                                            | **Yes** (RW only)       | [handle_req_delete L219](../components/esp32-wifi-manager/src/http_server_handle_req.c#L219)  |
+
+`/auth` has method-specific behavior: [GET](#get-auth) and [POST](#post-auth)
+do not use bearer authorization. [DELETE](#delete-auth) first runs the shared
+LAN check (RW required if a bearer header is supplied), then requires a valid
+interactive session cookie in `RUUVI`/`DEFAULT` mode. An RW key alone cannot log out
+a session; the logout handler can still return `401` or `503` after the shared
+check succeeds.
 
 A recognized bearer key returns an auth JSON with `200` (allowed) or `401`
 (prohibited: e.g. RO key on a RW route) via
@@ -197,12 +205,15 @@ This is a transport wrapper applied to the routes below; it does not add new pat
 
 ## Per-method authorization summary
 
-| Method                                                | Auth from hotspot | Auth from LAN | Bearer scope | Notes                                                      |
-|-------------------------------------------------------|-------------------|---------------|--------------|------------------------------------------------------------|
-| GET (path contains a dot and does not end in `.json`) | none              | **none**      | n/a          | skips shared auth check; static file lookup follows        |
-| GET (no dot anywhere in path, or ends in `.json`)     | allow             | enforced      | RO or RW     | `/auth` uses its own handler; `ap.json` requires RW bearer |
-| POST                                                  | allow             | enforced      | **RW only**  | body may be ECDH-encrypted                                 |
-| DELETE                                                | allow             | enforced      | **RW only**  |                                                            |
+| Method                                                            | Auth from hotspot       | Auth from LAN                     | Bearer scope                 | Notes                                                            |
+|-------------------------------------------------------------------|-------------------------|-----------------------------------|------------------------------|------------------------------------------------------------------|
+| GET (path contains a dot and does not end in `.json`)             | none                    | **none**                          | n/a                          | skips shared auth check; static file lookup follows              |
+| GET (no dot anywhere in path, or ends in `.json`), except `/auth` | allow                   | enforced                          | RO or RW                     | `ap.json` requires RW bearer                                     |
+| POST except `/auth`                                               | allow                   | enforced                          | **RW only**                  | body may be ECDH-encrypted                                       |
+| DELETE except `/auth`                                             | allow                   | enforced                          | **RW only**                  |                                                                  |
+| GET `/auth`                                                       | allow                   | configured scheme                 | ignored                      | reports scheme/session auth state                                |
+| POST `/auth`                                                      | allow                   | interactive login                 | ignored                      | LAN requires `RUUVI`/`DEFAULT`, cookie, and challenge response   |
+| DELETE `/auth`                                                    | logout session required | shared check, then logout session | RW for shared LAN check only | `RUUVI`/`DEFAULT` and authorized cookie required on both origins |
 
 Common status codes (enum:
 [`wifi_manager_defs.h` L256+](../components/esp32-wifi-manager/src/include/wifi_manager_defs.h#L256)):
@@ -221,6 +232,7 @@ responses are `Content-Type: application/json` unless stated otherwise.
 - **Query params:** none.
 - **Auth:** scheme-dependent. Returns auth JSON with `200` when authorized, else `401`
   (`BASIC`/`DIGEST`/`RUUVI`/`DEFAULT`) or `403` (`DENY`).
+  Bearer API keys are not checked by this handler.
 - **Source:** [handle_req_get L115](../components/esp32-wifi-manager/src/http_server_handle_req.c#L115)
   -> [`http_server_handle_req_get_auth()`](../components/esp32-wifi-manager/src/http_server_handle_req_get_auth.c#L347).
 
@@ -330,23 +342,59 @@ responses are `Content-Type: application/json` unless stated otherwise.
   broker/remote-config/firmware-update-url/file. Dispatched by `validate_type`.
 - **Query params (parsed in
   [`validate_url()` L1095](../main/validate_url.c#L1095)):**
-  - `validate_type=` one of `check_post_advs`, `check_post_stat`, `check_mqtt`,
+  - `validate_type=` selects the check; supply one of the full names
+    `check_post_advs`, `check_post_stat`, `check_mqtt`,
     `check_remote_cfg`, `check_fw_update_url`, `check_file`
     ([L124](../main/validate_url.c#L124)).
-  - `url=` (required), `user=`, `auth_type=` (`none|basic|bearer|token|api_key`),
-    `use_saved_password=`, `use_ssl_client_cert=`, `use_ssl_server_cert=`,
-    `use_extra_http_path=`, `use_extra_http_query=`, `use_extra_http_headers=`.
-  - Encrypted password triplet: `encrypted_password=`, `encrypted_password_iv=`,
-    `encrypted_password_hash=` ([L83](../main/validate_url.c#L83)).
-  - MQTT-specific: `mqtt_topic_prefix=`, `mqtt_client_id=`,
-    `mqtt_disable_retained_messages=` and the scheme prefix
-    (`mqtt://`,`mqtts://`,`mqttws://`,`mqttwss://`).
-- **Auth:** enforced on LAN (RO bearer accepted).
-- **HTTP transport status:** completed checks return `200` with an
+  - `url=` and `auth_type=` are required for **every** check. `auth_type` must be
+    `none`, `basic`, `bearer`, `token`, or `api_key`; use `auth_type=none` even when
+    the target needs no credentials. Missing/unknown `auth_type` returns HTTP `400`
+    ([L1025](../main/validate_url.c#L1025)).
+  - `user=` and the encrypted secret triplet (`encrypted_password=`,
+    `encrypted_password_iv=`, `encrypted_password_hash=`) supply target credentials
+    when needed, not caller authentication ([L83](../main/validate_url.c#L83)).
+    The triplet carries the password, bearer/token value, or API key, according to
+    `auth_type`; it is not universally required for unauthenticated checks.
+  - Boolean options: `use_saved_password=`, `use_ssl_client_cert=`,
+    `use_ssl_server_cert=`, `use_extra_http_path=`, `use_extra_http_query=`,
+    `use_extra_http_headers=`. Send `true` or `false`; omitted options default to
+    `false`. Their effect depends on the selected check.
+- **Check-specific requirements:**
+  - `check_post_advs`, `check_post_stat`, `check_mqtt`, and `check_remote_cfg`
+    support `use_saved_password=true` to use that configuration's saved secret
+    instead of the encrypted triplet. This does not supply `user=` automatically.
+  - `check_mqtt` requires `mqtt_topic_prefix=` and `mqtt_client_id=` to be present
+    (empty values are permitted). `url` must have the form `scheme://host:port`,
+    with scheme `mqtt`, `mqtts`, `mqttws`, or `mqttwss`, an explicit decimal port
+    in `1..65535`, and no trailing path. With `auth_type` other than `none`, both
+    `user` and a supplied/saved password must be available. Missing required
+    fields, oversized fields, or a malformed MQTT URL return HTTP `400`.
+    `mqtt_disable_retained_messages=true|false` is optional (default `false`)
+    ([L313-531](../main/validate_url.c#L313)).
+  - `check_remote_cfg` requires `user` and a supplied/saved password for Basic,
+    or a supplied/saved secret for bearer/token/API-key auth. Missing or oversized
+    credential fields return HTTP `400`; unlike `check_file`, empty strings pass
+    this local credential check ([L534-681](../main/validate_url.c#L534)).
+  - `check_file` does **not** use `use_saved_password`: Basic requires a nonempty
+    `user` and decrypted password; bearer/token/API-key auth requires a nonempty
+    decrypted secret. Missing/empty credentials return HTTP `400`
+    ([L843-978](../main/validate_url.c#L843)).
+  - `check_fw_update_url` does not use the supplied target credentials, but the
+    common parser still requires `auth_type`; use `none`
+    ([L811-840](../main/validate_url.c#L811)).
+- **Caller auth:** enforced on LAN (RO bearer or an authorized interactive
+  session accepted). The query's `auth_type` controls authentication to the
+  **external target**, not access to this endpoint. Shared LAN auth runs before
+  parameter validation: in `RUUVI`/`DEFAULT` mode without an authorized cookie,
+  a request without a recognized bearer header gets HTTP `302`, while an explicit
+  invalid bearer gets HTTP `401`. Neither is a JSON check result; see
+  [Authentication model](#authentication-model).
+- **HTTP transport status after caller authorization:** completed checks return `200` with an
   `application/json` body, including when the check reports failure. Direct error
   paths return `400` for missing/invalid parameters (including check-specific
   credential/MQTT parameter validation), `500` for allocation/internal failures or
-  an invalid `validate_type`, and `409` if a firmware update is already in progress
+  a missing/unrecognized `validate_type` (after the common `auth_type` and `url`
+  checks pass), and `409` if a firmware update is already in progress
   ([cb_on_get L568-582](../main/http_server_cb_on_get.c#L568)).
 - **Application status:** the JSON body is `{"status": <code>, "message": <string>}`;
   `status` carries the check result, such as `200`, `400` for an incorrect URL,
@@ -378,9 +426,10 @@ responses are `Content-Type: application/json` unless stated otherwise.
 
 ## POST endpoints
 
-All POST routes require LAN auth with **RW bearer** for API-key auth; hotspot access is
-allowed. Bodies may be ECDH-encrypted (see [ECDH](#ecdh-session-encryption)). Two
-global guards run first in
+POST routes **except `/auth`** require LAN auth with **RW bearer** for API-key auth;
+hotspot access is allowed. `/auth` uses the interactive login flow below, not the
+shared bearer check. Bodies may be ECDH-encrypted (see [ECDH](#ecdh-session-encryption)).
+For routes dispatched to the application callback, two guards run first in
 [`http_server_cb_on_post()` L310](../main/http_server_cb_on_post.c#L310):
 
 - If a firmware update is in progress -> **`409`**
@@ -394,8 +443,11 @@ global guards run first in
   authorized session.
 - **Body:** JSON `{"login": <string>, "password": <sha256-challenge-response-hex>}`
   ([`json_ruuvi_auth_parse()` L50](../components/esp32-wifi-manager/src/http_server_handle_req_post_auth.c#L50)).
-  Requires the session cookie from a prior `GET /auth`.
-- **Auth:** only valid for `RUUVI`/`DEFAULT`; other auth types -> `503`.
+  On LAN, requires the session cookie from a prior `GET /auth`.
+- **Auth:** on LAN, only valid for `RUUVI`/`DEFAULT`; other auth types -> `503`.
+  The route is dispatched before the shared authorization check, so a bearer key
+  cannot substitute for the cookie and challenge-response login. From the hotspot,
+  the handler returns `200` auth JSON without checking the mode, cookie, or body.
 - **Success:** `200` auth JSON; sets/clears prev-url cookie; may add `Ruuvi-prev-url:`.
 - **Errors:** `401` (missing session cookie / bad session / wrong user or password,
   each with a fresh session id), `500` (allocation), `503` (wrong auth type).
@@ -526,14 +578,22 @@ global guards run first in
 
 ## DELETE endpoints
 
-All DELETE routes require LAN auth with **RW bearer** for API-key auth; hotspot access
-is allowed. The application-level DELETE handler also returns `409` if a firmware update
+DELETE routes **except `/auth`** require LAN auth with **RW bearer** for API-key auth;
+hotspot access is allowed. `/auth` has additional logout-session requirements below,
+even from the hotspot. The application-level DELETE handler also returns `409` if a firmware update
 is in progress ([cb.c L117](../main/http_server_cb.c#L117)).
 
 ### DELETE /auth
 
 - **Purpose:** log out the current interactive session (`RUUVI`/`DEFAULT`).
-- **Auth:** valid only for `RUUVI`/`DEFAULT`; else `503`. Missing/invalid session -> `401`.
+- **Auth:** first passes the shared LAN check, requiring RW scope when a bearer
+  header is supplied; rejected bearer tokens (including RO keys) return `401`
+  before logout dispatch. Without a bearer header, the configured scheme applies.
+  Once that check succeeds (or is bypassed for hotspot access), the logout handler
+  requires `RUUVI`/`DEFAULT`; otherwise it returns `503`. It also requires an
+  authorized session cookie bound to the remote IP; missing/invalid session -> `401`.
+  Thus an RW bearer key alone is insufficient, and non-`RUUVI`/`DEFAULT` requests
+  can be rejected by the shared check before reaching the handler's `503`.
 - **Success:** `200 {}` (clears the authorized session).
 - **Source:** [handle_req_delete L236](../components/esp32-wifi-manager/src/http_server_handle_req.c#L236)
   -> [`http_server_handle_req_delete_auth()` L11](../components/esp32-wifi-manager/src/http_server_handle_req_delete_auth.c#L11).
@@ -599,34 +659,34 @@ require the earlier LAN auth check even when they ultimately reach this file han
 Real API routes (excludes static-file fallback, captive-portal redirect, and parse
 fallbacks):
 
-| Method | Path | Auth (LAN) | Bearer | Source |
-|---|---|---|---|---|
-| GET | `/auth` | scheme | RO | [handle_req_get L115](../components/esp32-wifi-manager/src/http_server_handle_req.c#L115) |
-| GET | `/ap.json` | yes | **RW** | [L175](../components/esp32-wifi-manager/src/http_server_handle_req.c#L175) |
-| GET | `/status.json` | yes | RO | [L187](../components/esp32-wifi-manager/src/http_server_handle_req.c#L187) |
-| GET | `/ruuvi.json` | yes | RO | [cb L47](../main/http_server_cb_on_get.c#L47) |
-| GET | `/firmware_update.json` | yes | RO | [cb L69](../main/http_server_cb_on_get.c#L69) |
-| GET | `/info.json` (hotspot-only) | yes | RO | [cb L211](../main/http_server_cb_on_get.c#L211) |
-| GET | `/metrics` | yes | RO | [cb L247](../main/http_server_cb_on_get.c#L247) |
-| GET | `/history` | yes | RO | [cb L322](../main/http_server_cb_on_get.c#L322) |
-| GET | `/validate_url` | yes | RO | [cb L568](../main/http_server_cb_on_get.c#L568) |
-| GET | `/extra_cfg` | yes | RO | [cb L500](../main/http_server_cb_on_get.c#L500) |
-| POST | `/auth` | scheme | **RW** | [post_auth L248](../components/esp32-wifi-manager/src/http_server_handle_req_post_auth.c#L248) |
-| POST | `/connect.json` (hotspot-only) | yes | **RW** | [L554](../components/esp32-wifi-manager/src/http_server_handle_req.c#L554) |
-| POST | `/connect_wps` (hotspot-only) | yes | **RW** | [L563](../components/esp32-wifi-manager/src/http_server_handle_req.c#L563) |
-| POST | `/ruuvi.json` | yes | **RW** | [cb L44](../main/http_server_cb_on_post.c#L44) |
-| POST | `/bluetooth_scanning.json` | yes | **RW** | [cb L98](../main/http_server_cb_on_post.c#L98) |
-| POST | `/fw_update.json` | yes | **RW** | [cb L129](../main/http_server_cb_on_post.c#L129) |
-| POST | `/fw_update_url.json` | yes | **RW** | [cb L167](../main/http_server_cb_on_post.c#L167) |
-| POST | `/fw_update_reset` | yes | **RW** | [cb L184](../main/http_server_cb_on_post.c#L184) |
-| POST | `/gw_cfg_download` | yes | **RW** | [cb L200](../main/http_server_cb_on_post.c#L200) |
-| POST | `/ssl_cert` | yes | **RW** | [cb L358](../main/http_server_cb_on_post.c#L358) |
-| POST | `/extra_cfg` | yes | **RW** | [cb L362](../main/http_server_cb_on_post.c#L362) |
-| POST | `/init_storage` | yes | **RW** | [cb L366](../main/http_server_cb_on_post.c#L366) |
-| DELETE | `/auth` | scheme | **RW** | [delete_auth L11](../components/esp32-wifi-manager/src/http_server_handle_req_delete_auth.c#L11) |
-| DELETE | `/connect.json` (hotspot-only) | yes | **RW** | [L240](../components/esp32-wifi-manager/src/http_server_handle_req.c#L240) |
-| DELETE | `/ssl_cert` | yes | **RW** | [cb L125](../main/http_server_cb.c#L125) |
-| DELETE | `/extra_cfg` | yes | **RW** | [cb L129](../main/http_server_cb.c#L129) |
+| Method | Path                           | Auth (LAN)                    | Bearer                     | Source                                                                                         |
+|--------|--------------------------------|-------------------------------|----------------------------|------------------------------------------------------------------------------------------------|
+| GET    | `/auth`                        | scheme                        | ignored                    | [handle_req_get L115](../components/esp32-wifi-manager/src/http_server_handle_req.c#L115)      |
+| GET    | `/ap.json`                     | yes                           | **RW**                     | [L175](../components/esp32-wifi-manager/src/http_server_handle_req.c#L175)                     |
+| GET    | `/status.json`                 | yes                           | RO                         | [L187](../components/esp32-wifi-manager/src/http_server_handle_req.c#L187)                     |
+| GET    | `/ruuvi.json`                  | yes                           | RO                         | [cb L47](../main/http_server_cb_on_get.c#L47)                                                  |
+| GET    | `/firmware_update.json`        | yes                           | RO                         | [cb L69](../main/http_server_cb_on_get.c#L69)                                                  |
+| GET    | `/info.json` (hotspot-only)    | yes                           | RO                         | [cb L211](../main/http_server_cb_on_get.c#L211)                                                |
+| GET    | `/metrics`                     | yes                           | RO                         | [cb L247](../main/http_server_cb_on_get.c#L247)                                                |
+| GET    | `/history`                     | yes                           | RO                         | [cb L322](../main/http_server_cb_on_get.c#L322)                                                |
+| GET    | `/validate_url`                | yes                           | RO                         | [cb L568](../main/http_server_cb_on_get.c#L568)                                                |
+| GET    | `/extra_cfg`                   | yes                           | RO                         | [cb L500](../main/http_server_cb_on_get.c#L500)                                                |
+| POST   | `/auth`                        | interactive login             | ignored                    | [post_auth L248](../components/esp32-wifi-manager/src/http_server_handle_req_post_auth.c#L248) |
+| POST   | `/connect.json` (hotspot-only) | yes                           | **RW**                     | [L554](../components/esp32-wifi-manager/src/http_server_handle_req.c#L554)                     |
+| POST   | `/connect_wps` (hotspot-only)  | yes                           | **RW**                     | [L563](../components/esp32-wifi-manager/src/http_server_handle_req.c#L563)                     |
+| POST   | `/ruuvi.json`                  | yes                           | **RW**                     | [cb L44](../main/http_server_cb_on_post.c#L44)                                                 |
+| POST   | `/bluetooth_scanning.json`     | yes                           | **RW**                     | [cb L98](../main/http_server_cb_on_post.c#L98)                                                 |
+| POST   | `/fw_update.json`              | yes                           | **RW**                     | [cb L129](../main/http_server_cb_on_post.c#L129)                                               |
+| POST   | `/fw_update_url.json`          | yes                           | **RW**                     | [cb L167](../main/http_server_cb_on_post.c#L167)                                               |
+| POST   | `/fw_update_reset`             | yes                           | **RW**                     | [cb L184](../main/http_server_cb_on_post.c#L184)                                               |
+| POST   | `/gw_cfg_download`             | yes                           | **RW**                     | [cb L200](../main/http_server_cb_on_post.c#L200)                                               |
+| POST   | `/ssl_cert`                    | yes                           | **RW**                     | [cb L358](../main/http_server_cb_on_post.c#L358)                                               |
+| POST   | `/extra_cfg`                   | yes                           | **RW**                     | [cb L362](../main/http_server_cb_on_post.c#L362)                                               |
+| POST   | `/init_storage`                | yes                           | **RW**                     | [cb L366](../main/http_server_cb_on_post.c#L366)                                               |
+| DELETE | `/auth`                        | shared check + logout session | RW check + cookie required | [logout details](#delete-auth)                                                                 |
+| DELETE | `/connect.json` (hotspot-only) | yes                           | **RW**                     | [L240](../components/esp32-wifi-manager/src/http_server_handle_req.c#L240)                     |
+| DELETE | `/ssl_cert`                    | yes                           | **RW**                     | [cb L125](../main/http_server_cb.c#L125)                                                       |
+| DELETE | `/extra_cfg`                   | yes                           | **RW**                     | [cb L129](../main/http_server_cb.c#L129)                                                       |
 
 Wildcard / fallback handlers (not distinct API routes):
 
