@@ -48,11 +48,12 @@ implementation tests. These requirements qualify the factory-default preconditio
 Create a Python functional test for **ETSI EN 303 645 / ETSI TS 103 701 test case
 5.1-2A-2, Test Unit B: Password Rejection for M2M**.
 
-The test must run against a physical Ruuvi Gateway over its LAN HTTP interface and prove that the
-machine-to-machine (M2M) REST endpoints — which are protected by high-entropy bearer keys — **reject
-every password-based authentication scheme** and **accept only the configured bearer keys**. It must
-positively demonstrate that a configured read-only (RO) key and read/write (RW) key each authorize
-exactly the scope they are meant to, and nothing more.
+The test must run against a physical Ruuvi Gateway over its LAN HTTP interface. With
+`lan_auth_type == "lan_auth_default"`, it must prove that **fresh M2M sessions without an authorized
+interactive cookie reject the password-based probes in the matrix below** and accept configured
+bearer keys only within their RO/RW scope. These routes are shared with the Web-UI: an authorized
+interactive session can also access them and is used for setup, verification, and restoration.
+This is not a claim that the routes are bearer-only under every configured authentication mode.
 
 This is a live DUT test. Mock-based tests of the Python implementation are useful for development but
 do not replace the physical-gateway run or constitute compliance evidence.
@@ -95,46 +96,54 @@ Relevant IXIT declarations are in [`ixit_1-AuthMech.md`](../ixit_1-AuthMech.md):
   `Authorization: Bearer`, fast string comparison against the stored key, high-entropy token defense).
 - `AuthMech-M2M-API-Bearer-RW`: lines 369-409 (declared token `lan_auth_api_key_rw`, independently
   configurable and isolated from the RO key).
-- Interactive password schemes that must **not** unlock M2M access: `AuthMech-LAN-WebUI-Default`
+- Sources of password schemes injected into cookie-free probes in default mode: `AuthMech-LAN-WebUI-Default`
   (57-115), `AuthMech-LAN-WebUI-User-Defined` (119-160), `AuthMech-LAN-WebUI-Basic` (164-201),
   `AuthMech-LAN-WebUI-Digest` (205-240).
 
 ### Scope boundary (do not conflate adjacent units)
 
 - **In scope:** the two token-protected M2M mechanisms (`AuthMech-M2M-API-Bearer-RO` and
-  `AuthMech-M2M-API-Bearer-RW`) and the proof that password schemes cannot reach them.
+  `AuthMech-M2M-API-Bearer-RW`) and the proof that the specified password probes cannot replace
+  bearer authorization in cookie-free sessions under the default authentication mode.
 - **Out of scope, state explicitly in the report:**
   - the interactive Web-UI mechanisms themselves as *access-control* targets — Unit B treats them
-    only as the *password schemes* being injected against M2M endpoints, never as endpoints to be
-    positively authenticated;
+    only as the *password schemes* being injected against M2M endpoints. Interactive login is used
+    for setup, verification, and restoration, not as a positive M2M probe;
   - unconfigured-secret boundary testing (that is test case 5.1-1-2, Unit B);
   - brute-force / rate-limiting behavior (test case 5.1-5-2);
   - the exhaustive port/interface discovery of 5.1-2A-2 **Unit A**.
 
 ### Source-vs-implementation conflict (document, do not invent)
 
-The source claims a flat `401 Unauthorized` for injected password schemes on `/history`. The firmware
-does **not** always return `401` for GET routes: when a request carries **no recognized bearer token**
-and the active `auth_type` is `RUUVI`/`DEFAULT`, an unauthenticated GET of a `.json`/extensionless
-resource is answered with a **`302` auth redirect**, not `401`
-(`components/esp32-wifi-manager/src/http_server_handle_req.c`, GET handler lines 150-172). A `401` is
-returned for GET only when an `Authorization: Bearer` header is present but the token is not a valid
-key (`HTTP_SERVER_AUTH_API_KEY_PROHIBITED`). POST routes always return `401` for password schemes.
+The source claims a flat `401 Unauthorized` for injected password schemes on `/history`; the source
+table above records that claim, not the expected status for every probe. In this task's default-mode,
+cookie-free sessions, Basic/Digest headers are **not recognized as bearer authorization**. GET
+`/history` and GET `/ruuvi.json` therefore return a **`302` auth redirect**, not `401`
+(`components/esp32-wifi-manager/src/http_server_handle_req.c`, GET handler lines 150-172).
+An explicit `Authorization: Bearer <token>` with an invalid, password-derived, or revoked token
+instead returns `401` (`HTTP_SERVER_AUTH_API_KEY_PROHIBITED`); it does not fall back to a redirect.
+POST `/ruuvi.json` returns `401` for all the negative probes below. These expectations do not apply
+to `/auth`, authorized interactive sessions, or other configured authentication modes.
 
 Therefore the **observable compliance criterion** is:
 
-> No password-based scheme (`Basic`, `Digest`, or an interactive Ruuvi password presented as a token
-> or in the request body) ever yields a `2xx` response or returns protected M2M data from an M2M
-> endpoint. Only a correct configured bearer key yields `200` from a route within its scope.
+> In the default-mode, cookie-free probe sessions, none of the specified password probes (`Basic`,
+> `Digest`, or an interactive Ruuvi password presented as a token or in the request body) yields a
+> `2xx` response or protected data from the tested routes. Of these probes, only a correct configured
+> bearer key yields `200` from a route within its scope.
 
 Record the exact status code observed for every probe, assert against the firmware-derived matrix
 below, and never assert the idealized `401` where the firmware demonstrably returns `302`.
 
 ## Firmware-derived route and status matrix
 
-Authoritative reference: [`docs/http_api.md`](../../../docs/http_api.md), sections *Authentication
-model* (113-169), *Bearer keys (RO vs RW)* (131-152), *Per-method authorization summary* (188-199),
-and the endpoint entries for `/history` (289-299) and `/ruuvi.json` (240-244, 399-412).
+Authoritative reference: [`docs/http_api.md`](../../../docs/http_api.md), specifically
+[Authentication model](../../../docs/http_api.md#authentication-model),
+[Bearer API-key (RO vs RW)](../../../docs/http_api.md#bearer-api-key-ro-vs-rw),
+[Per-method authorization summary](../../../docs/http_api.md#per-method-authorization-summary),
+[GET /history](../../../docs/http_api.md#get-history),
+[GET /ruuvi.json](../../../docs/http_api.md#get-ruuvijson), and
+[POST /ruuvi.json](../../../docs/http_api.md#post-ruuvijson).
 
 Decisive implementation:
 
@@ -150,11 +159,15 @@ Decisive implementation:
   - GET redirect for unauthenticated `RUUVI`/`DEFAULT` (`flag_access_by_bearer_token == false`) at
     lines 150-172.
   - POST handler `http_server_handle_req_post()` lines 507-552 runs `check_auth` with
-    `flag_check_rw_access_with_bearer_token = true` **before** any body dispatch, so a failed auth
-    returns before the endpoint processes the body.
+    `flag_check_rw_access_with_bearer_token = true` **before** body dispatch for non-`/auth`
+    routes, including `/ruuvi.json`, so a failed auth returns before the endpoint processes the body.
 
-With temporary RO and RW keys configured while `lan_auth_type` stays `lan_auth_default`, the required
-matrix is:
+With temporary RO and RW keys configured while `lan_auth_type` stays `lan_auth_default`, use fresh
+sessions with no authorized interactive cookie and disable redirect following for every matrix
+probe. All status codes below are **HTTP transport statuses**, not JSON `status` fields. In particular,
+[`GET /validate_url`](../../../docs/http_api.md#get-validate_url) has separate caller authorization
+and external-target validation results (often HTTP `200` with a non-`200` JSON `status`); it is not a
+route in this matrix. The required matrix is:
 
 **Negative — password schemes must never gain M2M access:**
 
@@ -169,8 +182,9 @@ For every negative probe the mandatory assertion is `status_code not in {200..29
 assert the exact code from the matrix and classify a `2xx` as an immediate FAIL. The password JSON
 body for the POST probe must contain keys such as `{"lan_auth_type":"lan_auth_ruuvi",
 "lan_auth_user":"Admin","lan_auth_pass":"<md5>","password":"<gw_id>"}` **with no valid bearer header**,
-so the request is rejected by `check_auth` before the body is parsed and cannot change the
-configuration.
+so the expected rejection occurs in `check_auth` before body parsing. Verify non-mutation with the
+subsequent authenticated configuration comparison; an unexpected success must still trigger the
+mandatory restoration phase.
 
 **Positive — configured bearer keys authorize exactly their scope:**
 
@@ -367,8 +381,9 @@ and wire responses must be independent fixed fixtures or independently calculate
 the fake must never call the `GatewayClient` code under test to manufacture its expectations. Cover
 at least:
 
-- the exact negative and positive route/status matrices, including the `302`-not-`401` GET behavior
-  and the `401` POST behavior;
+- the exact negative and positive route/status matrices in cookie-free default-mode sessions:
+  Basic/Digest GET probes return `302`, invalid/password-derived bearer GET probes return `401`,
+  and all negative POST `/ruuvi.json` probes return `401`;
 - a full PASS path with fake responses;
 - unexpected `2xx` from any negative probe → FAIL with immediate abort;
 - a wrong positive status (e.g. RO key `200` on `POST /ruuvi.json`, or RW key not `200`) → FAIL;
@@ -400,8 +415,8 @@ requiring a specific predecessor module:
 - The live script runs with no arguments and loads `.env` from the current directory.
 - Every run creates the required timestamped evidence log.
 - It authenticates with `Admin`/`gw_id`, provisions temporary RO/RW keys, and restores/verifies them.
-- Password schemes (`Basic`, `Digest`, interactive Ruuvi password as token and as body params) never
-  obtain a `2xx` from any M2M endpoint.
+- The specified password probes (`Basic`, `Digest`, interactive Ruuvi password as token and as body
+  params) never obtain a `2xx` from the matrix routes in cookie-free default-mode sessions.
 - The configured RO and RW keys authorize exactly their firmware-defined scope.
 - A compliant DUT yields PASS; any unauthorized success yields FAIL; setup/infra failures yield ERROR.
 - The final authenticated comparison shows the DUT configuration is unchanged.
@@ -412,8 +427,8 @@ requiring a specific predecessor module:
 - [`Self_Assessment_Test_Group_5_1-2A.md`](../Self_Assessment_Test_Group_5_1-2A.md), lines 42-58.
 - [`ixit_1-AuthMech.md`](../ixit_1-AuthMech.md), lines 321-365 and 369-409 (M2M keys); 57-240
   (password schemes).
-- [`docs/http_api.md`](../../../docs/http_api.md), sections 113-169, 131-152, 188-199, and endpoints
-  `/history` (289-299) and `/ruuvi.json` (240-244, 399-412).
+- [`docs/http_api.md`](../../../docs/http_api.md): use the section and endpoint links in
+  [Firmware-derived route and status matrix](#firmware-derived-route-and-status-matrix) above.
 - `components/esp32-wifi-manager/src/http_server_handle_req_get_auth.c`, lines 49-81, 257, and 270-336.
 - `components/esp32-wifi-manager/src/http_server_handle_req.c`, GET handler lines 83-210 (redirect
   150-172), POST handler 507-552.
