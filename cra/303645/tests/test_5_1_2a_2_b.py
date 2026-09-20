@@ -175,13 +175,6 @@ class FunctionalTest_5_1_2a_2_b:
             "GET /auth returns the interactive challenge",
             result.challenge_response.status_code,
         )
-        if result.auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE) != GatewayCfgLanAuthType.DEFAULT:
-            self.factory_reset_required = True
-        self._require_setup(
-            result.auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DEFAULT,
-            f"interactive authentication reports {GatewayCfgLanAuthType.DEFAULT}",
-            result.auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE),
-        )
         if result.login_response.status_code != HttpStatus.C_200_OK:
             self.factory_reset_required = True
         self._require_setup(
@@ -202,7 +195,7 @@ class FunctionalTest_5_1_2a_2_b:
         )
         return self.gateway.response_json(response, context, dict)
 
-    def _validate_baseline(self, payload: dict[str, Any]) -> None:
+    def _validate_baseline(self, payload: dict[str, Any], auth_payload: dict[str, Any]) -> None:
         if GatewayCfgDesc.GW_MAC in payload:
             actual_mac: Any = payload[GatewayCfgDesc.GW_MAC]
             self._require_setup(isinstance(actual_mac, str), "gw_mac is a string")
@@ -216,6 +209,16 @@ class FunctionalTest_5_1_2a_2_b:
                 "DUT gw_mac matches .env",
                 actual_mac,
             )
+        # A successful login permits an authenticated identity check before any
+        # non-default auth state can trigger destructive recovery advice.
+        auth_type: Any = auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE)
+        if auth_type != GatewayCfgLanAuthType.DEFAULT:
+            self.factory_reset_required = GatewayCfgDesc.GW_MAC in payload
+        self._require_setup(
+            auth_type == GatewayCfgLanAuthType.DEFAULT,
+            f"interactive authentication reports {GatewayCfgLanAuthType.DEFAULT}",
+            auth_type,
+        )
         expected: dict[str, Any] = default_config_values(AUTHENTICATION_DEFAULT_FIELDS)
         value: Any
         field: str
@@ -595,6 +598,7 @@ class FunctionalTest_5_1_2a_2_b:
         try:
             login = self._authenticate_admin()
             restored_config: dict[str, Any] = self._read_config(login.session, "restored GET /ruuvi.json")
+            self._validate_baseline(restored_config, login.auth_payload)
             self._require_setup(
                 restored_config.get(GatewayCfgDesc.LAN_AUTH_API_KEY_USE) is False,
                 "restored RO key is disabled",
@@ -667,7 +671,7 @@ class FunctionalTest_5_1_2a_2_b:
             self.admin_session = login.session
             self.progress("Reading and validating the baseline gateway configuration")
             baseline: dict[str, Any] = self._read_config(self.admin_session, "baseline GET /ruuvi.json")
-            self._validate_baseline(baseline)
+            self._validate_baseline(baseline, login.auth_payload)
             self.baseline_hash = canonical_json_hash(baseline)
             self.evidence.write("BASELINE CONFIGURATION SHA256", self.baseline_hash)
             self.progress("Provisioning temporary RO and RW bearer keys")

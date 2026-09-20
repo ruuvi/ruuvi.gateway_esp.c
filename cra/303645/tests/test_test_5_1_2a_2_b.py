@@ -595,6 +595,56 @@ class FunctionalTestCase(unittest.TestCase):
                 )
                 self.assertFalse(any(call.path != "/auth" and call.method == "POST" for call in self.gateway.calls))
 
+    def test_successful_non_default_login_checks_identity_before_reset_advice(self) -> None:
+        mac: Any
+        config_mode: str
+        for config_mode in (GatewayCfgLanAuthType.DEFAULT, GatewayCfgLanAuthType.RUUVI):
+            for mac in (None, 123, "invalid", "11:22:33:44:55:66", CONFIG.gw_mac):
+                with self.subTest(config_mode=config_mode, mac=mac):
+                    self.gateway = FakeGateway()
+                    self.gateway.auth_mode = GatewayCfgLanAuthType.RUUVI
+                    payload: dict[str, Any] = self.gateway.config()
+                    payload[GatewayCfgDesc.LAN_AUTH_TYPE] = config_mode
+                    if mac is None:
+                        del payload[GatewayCfgDesc.GW_MAC]
+                    else:
+                        payload[GatewayCfgDesc.GW_MAC] = mac
+                    self.gateway.config_overrides[1] = payload
+                    result: RunResult = self.runner().run()
+                    self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                    self.assertEqual(
+                        target.FACTORY_RESET_MESSAGE if mac == CONFIG.gw_mac else None,
+                        result.recovery_message,
+                    )
+                    self.assertEqual(
+                        [("GET", "/auth"), ("POST", "/auth"), ("GET", "/ruuvi.json")],
+                        [(call.method, call.path) for call in self.gateway.calls],
+                    )
+                    self.assertEqual(self.gateway.calls[1].session_number, self.gateway.calls[2].session_number)
+                    self.assertEqual("NOT RUN", result.outcomes["temporary-state setup"])
+                    self.assertEqual("", self.gateway.ro_key)
+                    self.assertEqual("", self.gateway.rw_key)
+
+    def test_non_default_login_with_unreadable_identity_does_not_recommend_reset(self) -> None:
+        fault: FakeResponse | requests.RequestException
+        faults: tuple[FakeResponse | requests.RequestException, ...] = (
+            FakeResponse(503, {}),
+            FakeResponse(200, malformed_json=True),
+            requests.Timeout("baseline read timed out"),
+        )
+        for fault in faults:
+            with self.subTest(fault=fault):
+                self.gateway = FakeGateway()
+                self.gateway.auth_mode = GatewayCfgLanAuthType.RUUVI
+                self.gateway.override[("", "GET", "/ruuvi.json")] = fault
+                result: RunResult = self.runner().run()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertIsNone(result.recovery_message)
+                self.assertEqual(
+                    [("GET", "/auth"), ("POST", "/auth"), ("GET", "/ruuvi.json")],
+                    [(call.method, call.path) for call in self.gateway.calls],
+                )
+
     def test_wrong_positive_status_is_fail_for_each_bearer_mechanism(self) -> None:
         cases: tuple[tuple[str, str, str, int], ...] = (
             (RO_KEY, HttpMethod.POST, GatewayApi.CONFIG, HttpStatus.C_200_OK),
