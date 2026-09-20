@@ -291,7 +291,12 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual(0, result.exit_code)
         self.assertEqual("PASS", result.verdict)
         self.assertEqual(target.EXPECTED_API_INVENTORY, result.coverage)
+        self.assertEqual(set(target.MECHANISMS), set(result.outcomes))
         self.assertTrue(all(value == "PASS" for value in result.outcomes.values()))
+        content: str = self.log.path.read_text(encoding="utf-8")
+        user_defined_pass: str = json.dumps({"mechanism": AuthMech.LAN_WEBUI_USER_DEFINED, "result": "PASS"})
+        self.assertIn("PER-MECHANISM RESULT: " + user_defined_pass, content)
+        self.assertIn("FINAL RESULT: " + user_defined_pass, content)
         self.assertTrue(self.gateway.calls)
         self.assertTrue(all(call.allow_redirects is False for call in self.gateway.calls))
         first_write: int = next(
@@ -311,6 +316,45 @@ class FunctionalTestCase(unittest.TestCase):
         )
         self.assertLess(last_interactive_get, first_write)
         self.assertLess(last_bearer_get, first_write)
+
+    def test_overall_pass_requires_every_mechanism_result_to_pass(self) -> None:
+        mechanism: str
+        outcome: str | None
+        for mechanism in target.MECHANISMS[:-1]:
+            for outcome in (None, "NOT RUN", "FAIL", "ERROR"):
+                with self.subTest(mechanism=mechanism, outcome=outcome):
+                    self.gateway = FakeGateway()
+                    runner: target.FunctionalTest_5_1_1_2_b = self.make_runner()
+                    original: Callable[[str], None] = runner._probe_bearer_group
+
+                    def lose_outcome(
+                        phase: str,
+                        *,
+                        original_probe: Callable[[str], None] = original,
+                        current_runner: target.FunctionalTest_5_1_1_2_b = runner,
+                        tested_mechanism: str = mechanism,
+                        injected_outcome: str | None = outcome,
+                    ) -> None:
+                        original_probe(phase)
+                        if phase == target.DANGEROUS_WRITE:
+                            if injected_outcome is None:
+                                current_runner.outcomes.pop(tested_mechanism)
+                            else:
+                                current_runner.outcomes[tested_mechanism] = injected_outcome
+
+                    runner._probe_bearer_group = lose_outcome
+                    result: RunResult = runner.run()
+                    self.assertEqual(
+                        (1, "FAIL") if outcome == "FAIL" else (2, "ERROR"),
+                        (result.exit_code, result.verdict),
+                    )
+                    self.assertEqual(outcome, result.outcomes.get(mechanism))
+                    self.assertEqual("PASS", result.outcomes["final non-mutation verification"])
+                    self.assert_final_verification_requests(self.gateway.calls[-4:])
+        self.assertIn(
+            '"description": "all required mechanism results are PASS", "result": "FAIL"',
+            self.log.path.read_text(encoding="utf-8"),
+        )
 
     def assert_failed_mechanism(self, result: target.RunResult, mechanism: str) -> None:
         self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))

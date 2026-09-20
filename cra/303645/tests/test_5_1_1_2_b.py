@@ -601,6 +601,17 @@ class FunctionalTest_5_1_1_2_b:
                 elif final_result == "FAIL" and verdict != "ERROR":
                     verdict = "FAIL"
                     exit_code = 1
+        if verdict == "PASS":
+            nonpassing: dict[str, str] = {
+                mechanism: self.outcomes.get(mechanism, "NOT RUN")
+                for mechanism in MECHANISMS
+                if self.outcomes.get(mechanism) != "PASS"
+            }
+            self._record_assertion("all required mechanism results are PASS", not nonpassing, nonpassing)
+            if nonpassing:
+                # Missing/incomplete results are ERROR, not evidence of a security failure.
+                verdict = "FAIL" if all(value == "FAIL" for value in nonpassing.values()) else "ERROR"
+                exit_code = 1 if verdict == "FAIL" else 2
         outcome: str
         mechanism: str
         for mechanism, outcome in self.outcomes.items():

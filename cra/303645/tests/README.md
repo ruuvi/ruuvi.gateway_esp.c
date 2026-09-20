@@ -170,6 +170,9 @@ The common process result convention is:
 For 5.1-1-2-B, failed inventory checks and final non-mutation assertions also mark their specific
 mechanism FAIL in `RunResult.outcomes` and the evidence log. Transport/setup/protocol exceptions
 remain ERROR; an incomplete check must not be reported as a security failure.
+Overall PASS additionally requires a PASS for every required mechanism, inventory coverage, and
+final verification. The user-defined mechanism is finalized only after its random-login denial,
+unauthenticated reads, session writes, and potentially mutating probes all pass.
 
 Once its baseline is validated, 5.1-1-2-B always attempts final authentication and non-mutation
 verification, including after a probe abort. No further negative probes run after failure. With a
