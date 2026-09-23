@@ -12,14 +12,16 @@ published Python package. It is governed by the subtree instructions in
 
 The package is split by responsibility:
 
-| Module | Responsibility |
-|---|---|
-| `config.py` | Strict `.env` and generated default-configuration loading and validation |
-| `errors.py` | Shared setup, connection, protocol, and authentication-mode exceptions |
-| `evidence.py` | Exclusive timestamped evidence logs, structured records, HTTP transcripts, exceptions, and final verdicts |
-| `gateway.py` | Gateway HTTP client, authentication modes, Basic and Digest authorization, and interactive ECDH authentication |
-| `http_api.py` | Gateway endpoint names, canonical HTTP methods, statuses, headers, schemes, and the firmware API route inventory |
-| `models.py` | DUT configuration, test results, and console progress reporting |
+| Module           | Responsibility                                                                                                   |
+|------------------|------------------------------------------------------------------------------------------------------------------|
+| `config.py`      | Strict `.env` and generated default-configuration loading and validation                                         |
+| `errors.py`      | Shared setup, connection, protocol, and authentication-mode exceptions                                           |
+| `evidence.py`    | Exclusive timestamped evidence logs, structured records, HTTP transcripts, exceptions, and final verdicts        |
+| `gateway.py`     | Gateway HTTP client, authentication modes, Basic and Digest authorization, and interactive ECDH authentication   |
+| `http_api.py`    | Gateway endpoint names, canonical HTTP methods, statuses, headers, schemes, and the firmware API route inventory |
+| `models.py`      | DUT configuration, test results, and console progress reporting                                                  |
+| `webresource.py` | Unauthenticated public HTTPS fetching, bounded redirects, transport errors, and immutable observations           |
+| `serial_dut.py`  | CH340 discovery, serial-tool preflight, and bounded reset/console capture with injectable hardware and clocks    |
 
 `GatewayClient` is the main runtime boundary. It prepares requests, writes request and response
 evidence, translates `requests` transport failures into library exceptions, and implements the
@@ -51,6 +53,9 @@ state transitions on top of this client.
 - `RunResult` carries the process exit code, verdict, per-check outcomes, route coverage, and an
   optional recovery message.
 - `ProgressReporter` emits numbered progress messages through an injected output callback.
+  It counts phases, not result explanations. Runners should use a separate output callback for
+  concise PASS/FAIL/ERROR reasons and mirror those lines with `EvidenceLog.write_line()`; neither
+  `RunResult` nor `EvidenceLog.exception()` automatically prints a diagnostic to the terminal.
 
 ### Evidence
 
@@ -90,6 +95,116 @@ bodies. Store and share them with the same care as DUT credentials.
   `authenticate_interactive()` implement the gateway interactive authentication sequence and ECDH
   key derivation. Gateway ECDH public keys at the point at infinity are rejected with
   `GatewayProtocolError` before deriving shared key material.
+
+For runtime device identification, authenticated `GatewayApi.CONFIG` (`GET /ruuvi.json`) exposes
+`GatewayCfgDesc.FW_VER`, `NRF52_FW_VER`, and `GW_MAC`. The runner can reuse its default-baseline
+response instead of issuing another request. `/status.json` is network status, not the outbound
+HTTP statistics report: its schema must not be inferred from `ruuvi_gw_status.schema.json`.
+The proposed `espidf_ver` field is not implemented; application-IDF parsing remains a runner
+responsibility using the captured UART text.
+
+`GatewayApi.METRICS` (`GET /metrics`) returns Prometheus text rather than JSON. Use
+`GatewayClient.request()` with the existing authenticated session so requests/responses retain
+normal evidence, timeout, and redirect handling; do not use the unauthenticated public-resource
+helper in `webresource.py`. The `ruuvigw_info` sample exposes `mac`, `esp_fw`, and `nrf_fw` labels.
+Metric parsing, MAC validation, and three-source version comparison are case-specific runner
+responsibilities, not additions to the generic HTTP or public-resource transport.
+
+### Public web resources
+
+`fetch_public_resource(url, evidence, *, allowed_hosts, connect_timeout, read_timeout,
+max_redirects, user_agent, session_factory=requests.Session)` uses a fresh caller-supplied session
+and closes it after the fetch. It disables environment authentication/proxies, clears initial
+credentials/cookies/parameters, and always sends `verify=True` with finite positive timeouts.
+It uses `EvidenceLog` to record requests before transmission and responses before interpretation.
+No DUT configuration is loaded. Case-specific URLs, host sets, and acceptable statuses stay in runners.
+
+The immutable `PublicResourceResult` records the last response's status, URL, scheme, host,
+headers, cookies, content type, byte length, TLS verification, any authentication challenge, and
+the complete tuple of immutable `RedirectHop(status, from_url, to_url)` records. It contains no
+compliance verdict. Redirects 301/302/303/307/308 are resolved explicitly; a missing/malformed
+Location is a protocol error. Relative destinations are resolved against the current URL.
+
+An off-host or non-HTTPS redirect is recorded but not followed: `stopped_at_redirect=True`,
+`final_url` still identifies the last response actually received, and the attempted destination
+appears in the final redirect hop. Callers must inspect both the response and redirect observations.
+`WebResourceConnectionError`, `WebResourceProtocolError`, and `WebResourceRedirectError` derive
+from `WebResourceError` / `InvalidSetup`. Their optional `observation` retains the last complete
+response and known redirects when later transport/protocol/loop/overflow failures prevent completion.
+This lets runners preserve earlier failed checks while reporting an overall ERROR. Transient HTTP
+status classification and all accessibility assertions remain the runner's responsibility.
+
+### Serial discovery and capture
+
+`SerialPort(device, vid, pid)` and `SerialVersions(esptool, pyserial, esptool_source=...)` are
+immutable records. The optional source field preserves two-argument construction.
+`preflight_serial(importer=..., find_executable=..., run_command=...)` first tries importing
+esptool in the running Python environment. If that module is absent, it searches `PATH` for
+`esptool`, then `esptool.py`, and runs the resolved executable with only `version`, a 10-second
+timeout, captured output, and no shell. This supports ESP-IDF's standalone script even when its
+directory is not on Python's import path. It records the last output line as the version and the
+executable path as its source; imported packages are labeled `Python module: esptool`.
+Missing dependencies inside an installed esptool are not hidden by this fallback. Failed, timed-out,
+or empty-output version commands remain setup errors. Pyserial must still import in the running
+Python environment because discovery and capture use its API directly. Module imports, executable
+lookup, and subprocess execution are injectable. Preflight never enumerates or resets hardware.
+Imports are deferred until use, so importing the helper never touches a DUT.
+`discover_serial_port(enumerate_fn=...)` selects exactly one bridge with `CH340_VID = 0x1A86`;
+zero or multiple matches raise `InvalidSetup` listing the matches and all enumerated ports.
+The default enumerator uses `serial.tools.list_ports.comports()`.
+
+`SerialTransport` injects enumeration, serial opening, preflight, monotonic time, subprocess execution,
+and the Python executable. The legacy `sleep` argument is retained but no longer used.
+Its `preflight()` caches the tool selection and `discover()` exposes port discovery.
+`capture(port, evidence, duration=30.0, *, stop_when=None)` first invokes the preflight-selected tool with
+`--port <discovered-port> --before default_reset --after hard_reset read_mac`.
+An imported package runs as `[sys.executable, "-m", "esptool", ...]`; a PATH tool runs by its resolved
+path, including ESP-IDF's `esptool.py`. The subprocess has a 20-second timeout and no shell.
+Evidence records the command before execution and `SerialCommandResult` (return code, stdout,
+stderr) afterward, including partial output on timeout. Execution failure prevents UART capture.
+This command enters the downloader to read the MAC, then hard-resets into the application; it
+does not flash, erase, or write partitions. Only after the tool exits successfully does capture
+open UART at `UART_BAUD = 115200` and read immediately, without an extra reset, sleep, or input flush.
+The optional `stop_when: Callable[[str], bool]` receives all decoded text accumulated after each
+read; returning true stops capture immediately. With no callback, existing duration-based behavior
+is unchanged. The case 5.5-2-2-A runner uses an eight-second maximum with early exit once complete
+ESP-IDF, ESP32 app, and installed-nRF52 version lines arrive. No fixed wait follows completion.
+The prepared bench must support esptool reset wiring. The window must be finite and positive; each read timeout is at
+most 250 ms and is capped to the remaining window. The raw captured text is recorded even after
+a partial read failure, and the port closes on success or failure. Exceptions propagate to the
+runner for ERROR classification. Banner interpretation and all compliance assertions stay in runners.
+
+The capture duration bounds UART reads, not the entire reset-and-capture operation. A successful
+esptool process is only an acquisition prerequisite: callers still need to validate the captured
+application startup line. An earlier direct DTR/RTS implementation left the tested bench in ROM
+download mode; the subsequent esptool-based sequence captured the application line successfully.
+Increasing the read window does not resolve a chip waiting for a download command. Keep this
+reset/port-handoff behavior covered by offline tests; do not restore a hand-written reset sequence
+based solely on mock success.
+
+`SerialCommandResult(return_code, stdout, stderr)` is immutable. On launch/timeout errors the
+return code can be `None`; partial byte output is decoded with `backslashreplace`. The esptool
+command may report uploading a RAM stub, which is not a partition flash operation. Its `read_mac`
+output describes the ESP32 MAC; it must not replace the HTTP `gw_mac` identity gate, whose value
+comes from the nRF52 address in `gw_cfg_json_add_items_device_info()`.
+
+In 5.5-2-2-A, only `cpu_start: ESP-IDF:` supplies the application framework version. An older
+bootloader banner is ignored; missing application output (including ROM download mode alone) is
+ERROR, whereas an observed version mismatch is FAIL. These parsing and verdict rules belong to
+`test_5_5_2_2_a.py`, not `SerialTransport`. See the
+[runner documentation](../README.md#live-run-findings-and-troubleshooting) for the live bench result.
+ESP32 firmware is independently extracted from `cpu_start: App version:` and nRF52 firmware from
+`### Firmware on nRF52:` independent of logger-tag spelling; the stored `Firmware on FatFS`
+version is excluded. Both must
+match `/ruuvi.json` and `/metrics`. The nRF52 line was absent from the earlier two-second bench
+capture, so it does not validate the new three-source check. Direct early-stop, cumulative-buffer,
+deadline, callback-error, and port-cleanup tests belong in `test_lib.py`; version parsing and
+consistency regressions belong in the paired runner tests.
+
+`open_serial(port, baud, timeout)` initializes inactive DTR/RTS before opening.
+Both default port enumeration and serial opening accept an optional injected module importer.
+`PortInfo` and `SerialConnection` describe the narrow injectable port and serial interfaces.
+Direct helper tests are in `test_lib.py`; no live hardware is needed for library validation.
 
 ### HTTP inventory and errors
 

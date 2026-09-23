@@ -7,6 +7,7 @@ import hashlib
 import io
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -17,9 +18,8 @@ from unittest import mock
 import requests
 from Crypto.PublicKey import ECC
 from Crypto.PublicKey.ECC import EccKey, EccPoint
-from requests.cookies import RequestsCookieJar, cookiejar_from_dict
 
-from lib import evidence
+from lib import evidence, serial_dut
 from lib.config import (
     FACTORY_RESET_MESSAGE,
     InvalidConfig,
@@ -33,6 +33,9 @@ from lib.errors import (
     GatewayConnectionError,
     GatewayProtocolError,
     InvalidSetup,
+    WebResourceConnectionError,
+    WebResourceProtocolError,
+    WebResourceRedirectError,
 )
 from lib.evidence import AssertionEvidence, EvidenceLog, format_utc
 from lib.gateway import (
@@ -57,6 +60,8 @@ from lib.http_api import (
     GatewayApi as HttpGatewayApi,
 )
 from lib.models import DutConfig, ProgressReporter
+from lib.webresource import PublicResourceResult, fetch_public_resource
+from test_support.fake_gateway import FakeResponse
 
 NOW: datetime = datetime(2025, 1, 2, 3, 4, 5, 678901, tzinfo=timezone.utc)
 CONFIG: DutConfig = DutConfig(
@@ -83,24 +88,6 @@ class RecordingEvidence(EvidenceLog):
         self.responses.append(response)
 
 
-class FakeResponse(requests.Response):
-    def __init__(
-        self,
-        payload: Any = None,
-        headers: Mapping[str, str] | None = None,
-        cookies: Mapping[str, str] | None = None,
-    ) -> None:
-        super().__init__()
-        self._payload: Any = payload
-        self.headers.update(headers or {})
-        self.cookies: RequestsCookieJar = cookiejar_from_dict(dict(cookies or {}))
-
-    def json(self, **kwargs: Any) -> Any:
-        if isinstance(self._payload, BaseException):
-            raise self._payload
-        return self._payload
-
-
 class FakeSession(requests.Session):
     def __init__(
         self,
@@ -123,6 +110,203 @@ class FakeSession(requests.Session):
         if self.response is None:
             raise AssertionError("fake transport requires a response or an error")
         return self.response
+
+
+class WebResourceTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.stream: io.StringIO = io.StringIO()
+        self.log: EvidenceLog = EvidenceLog(Path("<memory>"), self.stream, NOW)
+        self.session: requests.Session = requests.Session()
+        self.send: mock.Mock = mock.Mock()
+        self.url: str = "https://public.example/policy"
+        self.hosts: frozenset[str] = frozenset({"public.example", "www.public.example"})
+
+    def fetch(self, max_redirects: int = 5) -> PublicResourceResult:
+        with mock.patch.object(self.session, "send", self.send):
+            return fetch_public_resource(
+                self.url, self.log, allowed_hosts=self.hosts, connect_timeout=5, read_timeout=20,
+                max_redirects=max_redirects, user_agent="offline-test", session_factory=lambda: self.session,
+            )
+
+    def test_fresh_request_and_complete_response_evidence(self) -> None:
+        response: FakeResponse = FakeResponse(
+            payload="public document", headers={"Content-Type": "text/html; charset=utf-8"},
+            cookies={"visitor": "anonymous"},
+        )
+
+        def send(request: requests.PreparedRequest, **kwargs: Any) -> requests.Response:
+            before_send: str = self.stream.getvalue()
+            self.assertIn(f"GET {self.url}", before_send)
+            self.assertIn("HTTP REQUEST END", before_send)
+            self.assertNotIn("HTTP RESPONSE BEGIN", before_send)
+            self.assertEqual({"User-Agent": "offline-test"}, dict(request.headers))
+            self.assertIsNone(request.body)
+            self.assertEqual((5, 20), kwargs["timeout"])
+            self.assertIs(True, kwargs["verify"])
+            self.assertIs(False, kwargs["allow_redirects"])
+            self.assertEqual({}, kwargs["proxies"])
+            return response
+
+        self.session.auth = ("stale", "secret")
+        self.session.headers["Authorization"] = "Bearer secret"
+        self.session.cookies.set("session", "secret")
+        self.session.params = {"token": "secret"}
+        self.session.proxies["https"] = "https://proxy.example"
+        self.send.side_effect = send
+        with mock.patch.object(self.session, "close", wraps=self.session.close) as close:
+            close: mock.Mock
+            result: PublicResourceResult = self.fetch()
+        close.assert_called_once_with()
+        self.assertFalse(self.session.trust_env)
+        self.assertEqual(self.url, result.final_url)
+        self.assertEqual("https", result.final_scheme)
+        self.assertEqual("public.example", result.final_host)
+        self.assertEqual(len(response.content), result.body_length)
+        self.assertEqual((("visitor", "anonymous"),), result.cookies)
+        self.assertEqual(tuple(response.headers.items()), result.headers)
+        self.assertEqual((), result.redirects)
+        self.assertTrue(result.tls_verified)
+        transcript: str = self.stream.getvalue()
+        self.assertIn("HTTP STATUS 200", transcript)
+        self.assertIn('Cookies: {"visitor": "anonymous"}', transcript)
+        self.assertIn(response.text, transcript)
+        self.assertIn('"authentication_seen": false', transcript)
+        self.assertIn("TLS VERIFICATION ENABLED: True", transcript)
+        self.assertNotIn("secret", transcript)
+
+    def test_environment_credentials_and_proxies_are_ignored(self) -> None:
+        self.send.return_value = FakeResponse(payload="page")
+        with mock.patch("requests.sessions.get_netrc_auth", side_effect=AssertionError("netrc used")), \
+                mock.patch.dict(os.environ, {"HTTPS_PROXY": "http://proxy.invalid", "REQUESTS_CA_BUNDLE": "/bad"}):
+            self.fetch()
+        self.assertNotIn("Authorization", self.send.call_args.args[0].headers)
+        self.assertEqual({}, self.send.call_args.kwargs["proxies"])
+        self.assertIs(True, self.send.call_args.kwargs["verify"])
+
+    def test_all_redirect_statuses_and_exact_budget(self) -> None:
+        statuses: tuple[int, ...] = (301, 302, 303, 307, 308)
+        responses: list[FakeResponse] = [
+            FakeResponse(status, headers={"Location": f"/hop/{index}"})
+            for index, status in enumerate(statuses)
+        ]
+        responses.append(FakeResponse(payload="page", headers={"Content-Type": "text/html"}))
+        self.send.side_effect = responses
+        result: PublicResourceResult = self.fetch()
+        self.assertEqual("https://public.example/hop/4", result.final_url)
+        self.assertFalse(result.stopped_at_redirect)
+        self.assertEqual(6, self.send.call_count)
+        indexes: range = range(5)
+        expected_urls: list[str] = [self.url] + [f"https://public.example/hop/{index}" for index in indexes]
+        calls: list[mock._Call] = self.send.call_args_list
+        actual_urls: list[str] = [call.args[0].url for call in calls]
+        actual_statuses: list[int] = [hop.status for hop in result.redirects]
+        self.assertEqual(list(statuses), actual_statuses)
+        self.assertEqual(expected_urls, actual_urls)
+        self.assertEqual(5, self.stream.getvalue().count("REDIRECT HOP:"))
+
+    def test_protocol_relative_redirect_retains_authentication_challenge(self) -> None:
+        self.send.side_effect = [
+            FakeResponse(302, headers={"Location": "//www.public.example/page#section", "www-authenticate": ""}),
+            FakeResponse(payload="page"),
+        ]
+        result: PublicResourceResult = self.fetch()
+        self.assertTrue(result.authentication_seen)
+        self.assertEqual("https://www.public.example/page", result.final_url)
+        self.assertEqual(self.url, result.redirects[0].from_url)
+        self.assertEqual(result.final_url, result.redirects[0].to_url)
+
+    def test_forbidden_redirect_is_observed_without_following(self) -> None:
+        targets: tuple[str, ...] = ("http://public.example/plain", "https://login.example/sso", "ftp://public.example/file")
+        target: str
+        for target in targets:
+            with self.subTest(target=target):
+                self.send.reset_mock()
+                self.send.return_value = FakeResponse(302, headers={"Location": target})
+                result: PublicResourceResult = self.fetch()
+                self.assertTrue(result.stopped_at_redirect)
+                self.assertEqual(self.url, result.final_url)
+                self.assertEqual(target, result.redirects[0].to_url)
+                self.send.assert_called_once()
+
+    def test_loop_and_overflow_retain_observations(self) -> None:
+        destinations: tuple[str, ...] = (self.url, "/another")
+        destination: str
+        for destination in destinations:
+            with self.subTest(destination=destination):
+                self.send.return_value = FakeResponse(302, headers={"Location": destination})
+                caught: unittest.case._AssertRaisesContext
+                with self.assertRaises(WebResourceRedirectError) as caught:
+                    self.fetch(max_redirects=0 if destination == "/another" else 5)
+                self.assertIsNotNone(caught.exception.observation)
+                self.assertEqual(1, len(caught.exception.observation.redirects))
+                self.assertIn("REDIRECT HOP:", self.stream.getvalue())
+
+    def test_redirect_protocol_errors_log_response_first(self) -> None:
+        locations: tuple[str, ...] = ("", "   ", "https://[broken", "https://user:pass@public.example/", "https://public.example:bad/")
+        location: str
+        for location in locations:
+            with self.subTest(location=location):
+                self.send.return_value = FakeResponse(302, headers={"Location": location})
+                with self.assertRaises(WebResourceProtocolError):
+                    self.fetch()
+                self.assertIn("HTTP STATUS 302", self.stream.getvalue())
+
+    def test_invalid_initial_urls_and_limits_never_send(self) -> None:
+        urls: tuple[str, ...] = (
+            "http://public.example/", "https://other.example/", "https:///no-host",
+            "https://user@public.example/", "https://public.example:0/", "https://public.example/a b",
+        )
+        url: str
+        for url in urls:
+            with self.subTest(url=url):
+                self.url = url
+                with self.assertRaises(InvalidSetup):
+                    self.fetch()
+        self.url = "https://public.example/"
+        factory: mock.Mock = mock.Mock(side_effect=AssertionError("invalid configuration reached transport"))
+        connect: float
+        read: float
+        limit: int
+        cases: tuple[tuple[float, float, int], ...] = ((0, 20, 5), (5, 0, 5), (float("inf"), 20, 5), (5, float("nan"), 5), (5, 20, -1))
+        for connect, read, limit in cases:
+            with self.subTest(connect=connect, read=read, limit=limit), self.assertRaises(InvalidSetup):
+                fetch_public_resource(self.url, self.log, allowed_hosts=self.hosts, connect_timeout=connect,
+                                      read_timeout=read, max_redirects=limit, user_agent="test", session_factory=factory)
+        self.send.assert_not_called()
+        factory.assert_not_called()
+
+    def test_transport_failures_are_typed_and_close_session(self) -> None:
+        errors: tuple[requests.RequestException, ...] = (
+            requests.ConnectionError("DNS lookup failed"), requests.ConnectionError("connection refused"),
+            requests.exceptions.SSLError("certificate verification failed"), requests.ConnectTimeout("connect"),
+            requests.ReadTimeout("read"), requests.exceptions.ChunkedEncodingError("incomplete body"),
+        )
+        error: requests.RequestException
+        for error in errors:
+            with self.subTest(error=type(error).__name__):
+                self.send.side_effect = error
+                caught: unittest.case._AssertRaisesContext
+                close: mock.Mock
+                with mock.patch.object(self.session, "close") as close, \
+                        self.assertRaises(WebResourceConnectionError) as caught:
+                    self.fetch()
+                close.assert_called_once_with()
+                self.assertIs(error, caught.exception.__cause__)
+                self.assertIsNone(caught.exception.observation)
+                self.assertIn("HTTP REQUEST END", self.stream.getvalue())
+
+    def test_transport_failure_preserves_prior_challenge_and_redirect(self) -> None:
+        self.send.side_effect = [
+            FakeResponse(302, headers={"Location": "/next", "WWW-Authenticate": "Basic realm=private"}),
+            requests.ReadTimeout("read"),
+        ]
+        caught: unittest.case._AssertRaisesContext
+        with self.assertRaises(WebResourceConnectionError) as caught:
+            self.fetch()
+        result: PublicResourceResult = caught.exception.observation
+        self.assertTrue(result.authentication_seen)
+        self.assertEqual("https://public.example/next", result.redirects[0].to_url)
+        self.assertEqual(2, self.send.call_count)
 
 
 class ConfigTestCase(unittest.TestCase):
@@ -430,11 +614,11 @@ class GatewayClientTestCase(unittest.TestCase):
             self.client.request(session, "GET", "/path")
 
     def test_response_json_validates_decoding_and_expected_type(self) -> None:
-        self.assertEqual({"ok": True}, self.client.response_json(FakeResponse({"ok": True}), "test", dict))
+        self.assertEqual({"ok": True}, self.client.response_json(FakeResponse(payload={"ok": True}), "test", dict))
         with self.assertRaisesRegex(GatewayProtocolError, "malformed JSON"):
-            self.client.response_json(FakeResponse(ValueError("bad")), "test")
+            self.client.response_json(FakeResponse(json_error=ValueError("bad")), "test")
         with self.assertRaisesRegex(GatewayProtocolError, "must be dict"):
-            self.client.response_json(FakeResponse([]), "test", dict)
+            self.client.response_json(FakeResponse(payload=[]), "test", dict)
 
     def test_challenge_parsers_are_case_insensitive_and_require_all_fields(self) -> None:
         interactive: str = (
@@ -559,6 +743,7 @@ class GatewayClientTestCase(unittest.TestCase):
             'x-ruuvi-interactive realm="gateway", challenge="abc", session_cookie="RUUVISESSION", session_id="cookie"'
         )
         response: FakeResponse = FakeResponse(
+            200,
             {GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.DEFAULT},
             {
                 HttpHeader.WWW_AUTHENTICATE: header,
@@ -579,7 +764,7 @@ class GatewayClientTestCase(unittest.TestCase):
     def test_parse_challenge_response_reports_auth_mode_and_invalid_key(self) -> None:
         private_key: EccKey = ECC.construct(curve="P-256", d=1)
         request: InteractiveChallengeRequest = InteractiveChallengeRequest(FakeSession(), private_key, "unused")
-        mode_response: FakeResponse = FakeResponse({GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.BASIC})
+        mode_response: FakeResponse = FakeResponse(payload={GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.BASIC})
         with self.assertRaises(GatewayAuthenticationModeError):
             self.client.parse_interactive_challenge_response(request, mode_response)
 
@@ -589,6 +774,7 @@ class GatewayClientTestCase(unittest.TestCase):
         invalid_key_raw: bytes
         for invalid_key_raw in (b"short", b"\x02" + (b"\x00" * 64)):
             invalid_key_response: FakeResponse = FakeResponse(
+                200,
                 {},
                 {
                     HttpHeader.WWW_AUTHENTICATE: header,
@@ -610,6 +796,7 @@ class GatewayClientTestCase(unittest.TestCase):
             FakeSession(), ECC.construct(curve="P-256", d=1), "unused"
         )
         response: FakeResponse = FakeResponse(
+            200,
             {},
             {
                 HttpHeader.WWW_AUTHENTICATE: (
@@ -678,6 +865,308 @@ class GatewayClientTestCase(unittest.TestCase):
         self.assertIs(challenge_response, result.challenge_response)
         self.assertIs(login_response, result.login_response)
         self.assertEqual(b"a" * 32, result.aes_key)
+
+
+class SerialDutTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.evidence: RecordingEvidence = RecordingEvidence()
+        self.port: serial_dut.SerialPort = serial_dut.SerialPort("/dev/ttyUSB0", 0x1A86, 0x7523)
+
+    def test_discovery_selects_only_one_matching_vid(self) -> None:
+        other: serial_dut.SerialPort = serial_dut.SerialPort("/dev/ttyACM0", 0x1234, 0x9999)
+        missing_usb: serial_dut.SerialPort = serial_dut.SerialPort("/dev/ttyS0", None, None)
+        transport: serial_dut.SerialTransport = serial_dut.SerialTransport(
+            enumerate_fn=lambda: (missing_usb, self.port, other),
+        )
+        self.assertEqual(self.port, transport.discover())
+        enumeration: mock.Mock = mock.Mock(return_value=(other,))
+        with self.assertRaisesRegex(InvalidSetup, "found 0 matches.*ttyACM0"):
+            serial_dut.discover_serial_port(enumeration)
+        enumeration.return_value = (self.port, serial_dut.SerialPort("/dev/ttyUSB1", 0x1A86, 1))
+        with self.assertRaisesRegex(InvalidSetup, "found 2 matches.*ttyUSB0.*ttyUSB1"):
+            serial_dut.discover_serial_port(enumeration)
+        enumeration.side_effect = OSError("USB enumeration failed")
+        with self.assertRaisesRegex(OSError, "USB enumeration failed"):
+            serial_dut.discover_serial_port(enumeration)
+
+    def test_preflight_versions_missing_modules_and_default_enumerator(self) -> None:
+        importer: mock.Mock = mock.Mock(side_effect=[
+            mock.Mock(__version__="4.8.1"), mock.Mock(__version__="3.5"),
+        ])
+        versions: serial_dut.SerialVersions = serial_dut.preflight_serial(importer)
+        self.assertEqual(serial_dut.SerialVersions("4.8.1", "3.5"), versions)
+        self.assertEqual([mock.call("esptool"), mock.call("serial")], importer.call_args_list)
+        importer.side_effect = ImportError("esptool unavailable")
+        with self.assertRaisesRegex(ImportError, "unavailable"):
+            serial_dut.preflight_serial(importer)
+        transport: serial_dut.SerialTransport = serial_dut.SerialTransport(preflight_fn=lambda: versions)
+        self.assertEqual(versions, transport.preflight())
+        module: mock.Mock = mock.Mock()
+        module.comports.return_value = (self.port,)
+        importer = mock.Mock(return_value=module)
+        self.assertEqual((self.port,), serial_dut.enumerate_ports(importer))
+        importer.assert_called_once_with("serial.tools.list_ports")
+        module.comports.assert_called_once_with()
+
+    def test_preflight_prefers_imported_esptool_without_a_subprocess(self) -> None:
+        importer: mock.Mock = mock.Mock(side_effect=[
+            mock.Mock(__version__="4.8.1"), mock.Mock(__version__="3.5"),
+        ])
+        finder: mock.Mock = mock.Mock()
+        command: mock.Mock = mock.Mock()
+        result: serial_dut.SerialVersions = serial_dut.preflight_serial(importer, finder, command)
+        self.assertEqual(serial_dut.SerialVersions("4.8.1", "3.5"), result)
+        finder.assert_not_called()
+        command.assert_not_called()
+
+    def test_preflight_accepts_both_path_entry_points_and_records_source(self) -> None:
+        executable: str
+        for executable in ("esptool", "esptool.py"):
+            with self.subTest(executable=executable):
+                path: str = f"/opt/esp idf/{executable}"
+                importer: mock.Mock = mock.Mock(side_effect=[
+                    ModuleNotFoundError("No module named 'esptool'", name="esptool"),
+                    mock.Mock(__version__="3.5"),
+                ])
+                finder: mock.Mock = mock.Mock(side_effect=[path] if executable == "esptool" else [None, path])
+                command: mock.Mock = mock.Mock(return_value=subprocess.CompletedProcess(
+                    [path, "version"], 0, stdout="esptool.py v3.1-dev\n3.1-dev\n", stderr="",
+                ))
+                result: serial_dut.SerialVersions = serial_dut.preflight_serial(importer, finder, command)
+                self.assertEqual(serial_dut.SerialVersions("3.1-dev", "3.5", path), result)
+                self.assertEqual([mock.call("esptool"), mock.call("serial")], importer.call_args_list)
+                expected_search: list[mock._Call] = [mock.call("esptool")]
+                if executable == "esptool.py":
+                    expected_search.append(mock.call("esptool.py"))
+                self.assertEqual(expected_search, finder.call_args_list)
+                command.assert_called_once_with(
+                    [path, "version"], capture_output=True, text=True, timeout=10.0, check=True,
+                )
+
+    def test_preflight_reports_missing_module_and_path_executable(self) -> None:
+        importer: mock.Mock = mock.Mock(side_effect=ModuleNotFoundError("esptool missing", name="esptool"))
+        finder: mock.Mock = mock.Mock(return_value=None)
+        command: mock.Mock = mock.Mock()
+        with self.assertRaisesRegex(InvalidSetup, "neither esptool nor esptool.py is on PATH"):
+            serial_dut.preflight_serial(importer, finder, command)
+        command.assert_not_called()
+
+    def test_preflight_does_not_mask_missing_internal_or_pyserial_dependencies(self) -> None:
+        importer: mock.Mock = mock.Mock(side_effect=ModuleNotFoundError("reedsolo missing", name="reedsolo"))
+        finder: mock.Mock = mock.Mock()
+        command: mock.Mock = mock.Mock()
+        with self.assertRaisesRegex(ModuleNotFoundError, "reedsolo missing"):
+            serial_dut.preflight_serial(importer, finder, command)
+        finder.assert_not_called()
+        command.assert_not_called()
+        importer.side_effect = [mock.Mock(__version__="4.8.1"), ModuleNotFoundError("serial missing", name="serial")]
+        with self.assertRaisesRegex(ModuleNotFoundError, "serial missing"):
+            serial_dut.preflight_serial(importer, finder, command)
+        finder.assert_not_called()
+        command.assert_not_called()
+        importer.side_effect = [
+            ModuleNotFoundError("esptool missing", name="esptool"),
+            ModuleNotFoundError("serial missing", name="serial"),
+        ]
+        finder.return_value = "/opt/esptool.py"
+        command.return_value = subprocess.CompletedProcess(["/opt/esptool.py", "version"], 0, stdout="3.1-dev\n")
+        with self.assertRaisesRegex(ModuleNotFoundError, "serial missing"):
+            serial_dut.preflight_serial(importer, finder, command)
+
+    def test_preflight_rejects_failed_timed_out_or_empty_version_command(self) -> None:
+        error: Exception
+        for error in (
+            OSError("cannot execute"), subprocess.TimeoutExpired(["esptool.py", "version"], 10),
+            subprocess.CalledProcessError(1, ["esptool.py", "version"]),
+        ):
+            with self.subTest(error=error):
+                importer: mock.Mock = mock.Mock(side_effect=ModuleNotFoundError("missing", name="esptool"))
+                finder: mock.Mock = mock.Mock(return_value="/opt/esptool.py")
+                command: mock.Mock = mock.Mock(side_effect=error)
+                context: unittest.case._AssertRaisesContext
+                with self.assertRaisesRegex(InvalidSetup, "esptool version preflight failed") as context:
+                    serial_dut.preflight_serial(importer, finder, command)
+                self.assertIs(error, context.exception.__cause__)
+                importer.assert_called_once_with("esptool")
+        command = mock.Mock(return_value=subprocess.CompletedProcess(["esptool.py", "version"], 0, stdout=" \n"))
+        with self.assertRaisesRegex(InvalidSetup, "produced no version"):
+            serial_dut.preflight_serial(importer, finder, command)
+
+    def test_default_open_sets_inactive_lines_before_open(self) -> None:
+        module: mock.Mock = mock.Mock()
+        serial: mock.Mock = module.Serial.return_value
+
+        def inspect_open() -> None:
+            self.assertFalse(serial.dtr)
+            self.assertFalse(serial.rts)
+            self.assertEqual("/dev/ttyUSB0", serial.port)
+
+        serial.open.side_effect = inspect_open
+        importer: mock.Mock = mock.Mock(return_value=module)
+        self.assertIs(serial, serial_dut.open_serial("/dev/ttyUSB0", 115200, 0.25, importer))
+        importer.assert_called_once_with("serial")
+        module.Serial.assert_called_once_with(port=None, baudrate=115200, timeout=0.25)
+        serial.open.assert_called_once_with()
+
+    def test_reset_sequence_bounded_reads_raw_evidence_and_close(self) -> None:
+        serial: mock.Mock = mock.Mock(spec=serial_dut.SerialConnection)
+        opener: mock.Mock = mock.Mock(return_value=serial)
+        clock: mock.Mock = mock.Mock(side_effect=[0.0, 0.0, 0.3, 0.49, 0.5])
+        sleep: mock.Mock = mock.Mock()
+        command: mock.Mock = mock.Mock(return_value=subprocess.CompletedProcess(
+            [], 0, stdout="MAC: 11:22:33:44:55:66\nHard resetting via RTS pin...\n", stderr="",
+        ))
+        preflight: mock.Mock = mock.Mock(return_value=serial_dut.SerialVersions("4.8.1", "3.5"))
+        order: mock.Mock = mock.Mock()
+        order.attach_mock(command, "command")
+        order.attach_mock(opener, "open")
+
+        def read(size: int) -> bytes:
+            self.assertEqual(4096, size)
+            self.assertGreater(serial.timeout, 0)
+            self.assertLessEqual(serial.timeout, 0.25)
+            self.assertIn(("ESPTOOL RESET RESULT", serial_dut.SerialCommandResult(
+                0, command.return_value.stdout, "",
+            )), self.evidence.entries)
+            return b"boot\xff\r\n"
+
+        serial.read.side_effect = read
+        transport: serial_dut.SerialTransport = serial_dut.SerialTransport(
+            open_fn=opener, monotonic=clock, sleep=sleep, preflight_fn=preflight,
+            run_command=command, python_executable="/test/python",
+        )
+        self.assertEqual(serial_dut.SerialVersions("4.8.1", "3.5"), transport.preflight())
+        result: str = transport.capture(self.port, self.evidence, duration=0.5)
+        expected_command: list[str] = [
+            "/test/python", "-m", "esptool", "--port", "/dev/ttyUSB0", "--before",
+            "default_reset", "--after", "hard_reset", "read_mac",
+        ]
+        self.assertEqual([
+            mock.call.command(expected_command, capture_output=True, text=True, timeout=20.0, check=False),
+            mock.call.open("/dev/ttyUSB0", 115200, 0.25),
+        ], order.mock_calls)
+        preflight.assert_called_once_with()
+        self.assertIn(("ESPTOOL RESET COMMAND", tuple(expected_command)), self.evidence.entries)
+        opener.assert_called_once_with("/dev/ttyUSB0", 115200, 0.25)
+        sleep.assert_not_called()
+        self.assertEqual("boot\\xff\r\n" * 3, result)
+        self.assertEqual(3, serial.read.call_count)
+        serial.reset_input_buffer.assert_not_called()
+        serial.close.assert_called_once_with()
+        self.assertIn(("RAW BOOT CONSOLE", result), self.evidence.entries)
+
+    def test_capture_early_stop_receives_accumulated_text_and_closes(self) -> None:
+        serial: mock.Mock = mock.Mock(spec=serial_dut.SerialConnection)
+        serial.read.side_effect = [b"first\nsec", b"ond\n", AssertionError("read beyond completion")]
+        stop: mock.Mock = mock.Mock(side_effect=[False, True])
+        transport: serial_dut.SerialTransport = serial_dut.SerialTransport(
+            open_fn=mock.Mock(return_value=serial), monotonic=lambda: 0.0,
+            preflight_fn=lambda: serial_dut.SerialVersions("4.8.1", "3.5"),
+            run_command=mock.Mock(return_value=subprocess.CompletedProcess([], 0, stdout="reset", stderr="")),
+        )
+        self.assertEqual("first\nsecond\n", transport.capture(self.port, self.evidence, stop_when=stop))
+        self.assertEqual([mock.call("first\nsec"), mock.call("first\nsecond\n")], stop.call_args_list)
+        self.assertEqual(2, serial.read.call_count)
+        self.assertIn(("RAW BOOT CONSOLE", "first\nsecond\n"), self.evidence.entries)
+        serial.close.assert_called_once_with()
+
+    def test_capture_incomplete_stop_times_out_and_callback_error_closes(self) -> None:
+        serial: mock.Mock = mock.Mock(spec=serial_dut.SerialConnection)
+        serial.read.return_value = b"partial"
+        stop: mock.Mock = mock.Mock(return_value=False)
+        transport: serial_dut.SerialTransport = serial_dut.SerialTransport(
+            open_fn=mock.Mock(return_value=serial), monotonic=mock.Mock(side_effect=[0.0, 0.0, 30.0]),
+            preflight_fn=lambda: serial_dut.SerialVersions("4.8.1", "3.5"),
+            run_command=mock.Mock(return_value=subprocess.CompletedProcess([], 0, stdout="reset", stderr="")),
+        )
+        self.assertEqual("partial", transport.capture(self.port, self.evidence, stop_when=stop))
+        stop.assert_called_once_with("partial")
+        serial.close.assert_called_once_with()
+        serial.reset_mock()
+        transport.monotonic = lambda: 0.0
+        stop.side_effect = ValueError("predicate failed")
+        with self.assertRaisesRegex(ValueError, "predicate failed"):
+            transport.capture(self.port, self.evidence, stop_when=stop)
+        serial.close.assert_called_once_with()
+        self.assertIn(("RAW BOOT CONSOLE", "partial"), self.evidence.entries)
+
+    def test_path_reset_and_read_failure_preserve_partial_log_and_close(self) -> None:
+        serial: mock.Mock = mock.Mock(spec=serial_dut.SerialConnection)
+        serial.read.side_effect = [b"partial", OSError("read failed")]
+        command: mock.Mock = mock.Mock(return_value=subprocess.CompletedProcess([], 0, stdout="reset", stderr=""))
+        transport: serial_dut.SerialTransport = serial_dut.SerialTransport(
+            open_fn=mock.Mock(return_value=serial), monotonic=lambda: 0.0,
+            preflight_fn=lambda: serial_dut.SerialVersions("3.1-dev", "3.5", "/opt/esp idf/esptool.py"),
+            run_command=command,
+        )
+        with self.assertRaisesRegex(OSError, "read failed"):
+            transport.capture(self.port, self.evidence)
+        command.assert_called_once_with([
+            "/opt/esp idf/esptool.py", "--port", "/dev/ttyUSB0", "--before", "default_reset",
+            "--after", "hard_reset", "read_mac",
+        ], capture_output=True, text=True, timeout=20.0, check=False)
+        serial.close.assert_called_once_with()
+        self.assertIn(("RAW BOOT CONSOLE", "partial"), self.evidence.entries)
+
+    def test_reset_errors_prevent_open_and_preserve_command_output(self) -> None:
+        error: Exception
+        expected: serial_dut.SerialCommandResult
+        for error, expected in (
+            (OSError("cannot execute"), serial_dut.SerialCommandResult(None, "", "")),
+            (subprocess.TimeoutExpired("esptool", 20, output=b"partial\xff", stderr=b"timeout"),
+             serial_dut.SerialCommandResult(None, "partial\\xff", "timeout")),
+            (subprocess.CalledProcessError(2, "esptool", output="partial", stderr="failed"),
+             serial_dut.SerialCommandResult(2, "partial", "failed")),
+        ):
+            opener: mock.Mock = mock.Mock()
+            command: mock.Mock = mock.Mock(side_effect=error)
+            transport: serial_dut.SerialTransport = serial_dut.SerialTransport(
+                open_fn=opener, run_command=command,
+                preflight_fn=lambda: serial_dut.SerialVersions("4.8.1", "3.5"),
+            )
+            context: unittest.case._AssertRaisesContext
+            with self.subTest(error=error), self.assertRaisesRegex(InvalidSetup, "read_mac/reset failed") as context:
+                transport.capture(self.port, self.evidence)
+            self.assertIs(error, context.exception.__cause__)
+            self.assertIn(("ESPTOOL RESET RESULT", expected), self.evidence.entries)
+            opener.assert_not_called()
+        command.side_effect = None
+        command.return_value = subprocess.CompletedProcess([], 2, stdout="download mode", stderr="connection failed")
+        with self.assertRaisesRegex(InvalidSetup, "exited with status 2"):
+            transport.capture(self.port, self.evidence)
+        self.assertIn(("ESPTOOL RESET RESULT", serial_dut.SerialCommandResult(
+            2, "download mode", "connection failed",
+        )), self.evidence.entries)
+        opener.assert_not_called()
+
+    def test_bad_duration_open_failure_and_logging_failure(self) -> None:
+        opener: mock.Mock = mock.Mock(side_effect=OSError("port busy"))
+        command: mock.Mock = mock.Mock(return_value=subprocess.CompletedProcess([], 0, stdout="reset", stderr=""))
+        transport: serial_dut.SerialTransport = serial_dut.SerialTransport(
+            open_fn=opener, run_command=command,
+            preflight_fn=lambda: serial_dut.SerialVersions("4.8.1", "3.5"),
+        )
+        duration: float
+        for duration in (0.0, -1.0, float("inf"), float("nan")):
+            with self.subTest(duration=duration), self.assertRaises(InvalidSetup):
+                transport.capture(self.port, self.evidence, duration)
+        opener.assert_not_called()
+        command.assert_not_called()
+        with self.assertRaisesRegex(OSError, "port busy"):
+            transport.capture(self.port, self.evidence)
+        command.reset_mock()
+        with mock.patch.object(self.evidence, "write", side_effect=OSError("disk full")), \
+                self.assertRaisesRegex(OSError, "disk full"):
+            transport.capture(self.port, self.evidence)
+        command.assert_not_called()
+        self.assertEqual(1, opener.call_count)
+        serial: mock.Mock = mock.Mock(spec=serial_dut.SerialConnection)
+        transport.open_fn = mock.Mock(return_value=serial)
+        transport.monotonic = mock.Mock(side_effect=[0.0, 30.0])
+        with mock.patch.object(self.evidence, "write", side_effect=[None, None, None, OSError("disk full")]), \
+                self.assertRaisesRegex(OSError, "disk full"):
+            transport.capture(self.port, self.evidence)
+        serial.close.assert_called_once_with()
 
 
 if __name__ == "__main__":

@@ -36,10 +36,16 @@ class HttpMethod:
 class HttpStatus:
     C_200_OK: int = 200
     C_300_MULTIPLE_CHOICES: int = 300
+    C_301_MOVED_PERMANENTLY: int = 301
     C_302_FOUND: int = 302
+    C_303_SEE_OTHER: int = 303
+    C_307_TEMPORARY_REDIRECT: int = 307
+    C_308_PERMANENT_REDIRECT: int = 308
     C_401_UNAUTHORIZED: int = 401
     C_403_FORBIDDEN: int = 403
     C_404_NOT_FOUND: int = 404
+    C_410_GONE: int = 410
+    C_429_TOO_MANY_REQUESTS: int = 429
     C_500_INTERNAL_SERVER_ERROR: int = 500
 
 
@@ -48,6 +54,8 @@ class HttpHeader:
     WWW_AUTHENTICATE: str = "WWW-Authenticate"
     USER_AGENT: str = "User-Agent"
     COOKIE: str = "Cookie"
+    CONTENT_TYPE: str = "Content-Type"
+    LOCATION: str = "Location"
     RUUVI_ECDH_PUBLIC_KEY: str = "Ruuvi-Ecdh-Pub-Key"
 
 

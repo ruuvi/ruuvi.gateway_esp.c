@@ -1,4 +1,5 @@
 coverage~=7.6.1
+esptool~=4.8.1
 pycryptodome~=3.21.0
 requests~=2.32.4
 ruff~=0.16.8

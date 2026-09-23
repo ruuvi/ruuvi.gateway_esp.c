@@ -127,6 +127,12 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
   and the response before interpreting it.
 - Preserve the result convention: `0` for PASS, `1` for a test assertion FAIL, and `2` for setup,
   transport, protocol, or recovery ERROR.
+- Make terminal verdicts explainable: print the component and expected/observed values for an
+  assertion failure, or the affected check and exception type/reason for ERROR. Identify skipped
+  checks as NOT RUN, keep earlier FAIL explanations visible after later errors, and label
+  informational observations as unverified rather than PASS. Mirror explanations in evidence,
+  without dumping protocol bodies/secrets or counting result lines as additional progress steps.
+  Preserve the final `Overall verdict: <PASS|FAIL|ERROR>` line for 5.5-2-2-A.
 - Verify restoration in any test that changes DUT state. Attempt restoration after failures and
   exceptions, and never report PASS when restoration cannot be verified.
 - Report factory-reset requirements with `FACTORY_RESET_MESSAGE` where the initial or recovered
@@ -190,6 +196,54 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
 - Do not alter or commit local `.env` values or generated `logs/`. Evidence may contain credentials,
   authentication material, configuration values, and HTTP bodies.
 
+### Runtime identification and serial acquisition (5.5-2-2-A)
+
+- Reuse authenticated `GET /ruuvi.json` for `fw_ver`, `nrf52_fw_ver`, and `gw_mac`. `/status.json`
+  reports network status; `ruuvi_gw_status.schema.json` describes outbound statistics, not that GET
+  response. Do not restore the incorrect `ESP_FW`/`NRF_FW`/`DEVICE_ADDR` assumptions. Verify the
+  default-authentication baseline and device identity before serial discovery/reset.
+- Then request `GatewayApi.METRICS` with the same authenticated session. Parse one `ruuvigw_info`
+  sample (value 1), independently of label order, requiring `mac`, `esp_fw`, and `nrf_fw` and
+  checking the MAC against `.env`. Missing/duplicate samples or labels and malformed versions are
+  ERROR. Compare JSON `fw_ver`/`nrf52_fw_ver`, metrics `esp_fw`/`nrf_fw`, and installed UART versions
+  separately for each component. Well-formed disagreements are FAIL; release-existence PASS must
+  never erase them. Preserve HTTP-source FAILs if UART acquisition or later release checks error.
+  Log and print source-labeled version values, and include the metrics phase and comparison phase
+  in progress totals (ten steps for this runner).
+- Use `lib.serial_dut` for hardware access. Keep imports/preflight free of device access and
+  discover exactly one CH340 VID `0x1A86`; zero/multiple matches are ERROR, never a guessed port.
+  Do not add serial settings to the three-key `.env` for this case.
+- Preserve imported-esptool and PATH `esptool`/`esptool.py` support. Fall back only when the
+  top-level module is absent, not when an installed package has a broken dependency. Pyserial
+  must import in the current interpreter. Record tool versions/source, but never treat them as
+  runtime DUT framework evidence.
+- Reset with the preflight-selected tool and discovered port using
+  `--before default_reset --after hard_reset read_mac`. Use an injected subprocess without a shell,
+  a bounded timeout, and evidence of command/output/status (including partial timeout output).
+  Do not flash or erase. Do not reintroduce the hand-written DTR/RTS sequence that stranded the
+  tested gateway in ROM download mode. Open pyserial only after esptool releases the port, with
+  inactive DTR/RTS, and read immediately without another reset, sleep, or input flush.
+- Capture up to eight seconds but stop as soon as complete application ESP-IDF, ESP32 firmware, and
+  installed-nRF52 firmware lines arrive. Use the shared optional `stop_when` callback; require
+  newline-terminated lines so a split serial chunk cannot truncate a version suffix. The nRF52
+  message can arrive after two seconds. The 20-second reset subprocess timeout is separate.
+  Use `cpu_start: App version:` for ESP32 firmware and the stable `### Firmware on nRF52:` prefix
+  for the co-processor, independently of logger-tag spelling (`nRF52Fw` versus `nrf52fw`). Preserve
+  support for legacy unprefixed messages under either tag spelling. Never use `Firmware on FatFS`
+  or an update-image manifest. Include the mixed-case, ANSI-colored 5234-ms startup line in
+  regressions and verify early exit; do not restore a fixed 30-second wait. For the
+  framework, parse only `cpu_start: ESP-IDF:`, allowing whitespace and ANSI colors.
+  A retained older `2nd stage bootloader` banner must neither fail nor satisfy the framework check.
+  Missing application output or `DOWNLOAD_BOOT` / `waiting for download` alone is ERROR; an observed
+  application `v4.2.2` against required `v4.2.5` is FAIL. No manual-reset fallback is part of this AUTO test.
+- Keep GitHub checks scoped to the installed release tags, without credentials or a latest-release
+  requirement. Confirm repository availability/identity before treating a tag 404 as FAIL;
+  transport/rate-limit/malformed-response failures remain ERROR. Preserve earlier component FAILs.
+  mbedTLS, Web-UI, and nRF5 SDK provenance are informational, not runtime-verified versions.
+- Do not assume the proposed `/ruuvi.json` field `espidf_ver` exists: it was not implemented.
+  Do not replace UART observations with repository pins or firmware-version inference. Distinguish
+  user-confirmed live results from offline implementation checks when documenting validation.
+
 ## Host-side implementation tests
 
 - Use `unittest`, matching the existing modules.
@@ -235,6 +289,15 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
 - Cover applicable failure paths: unexpected success/status, immediate abort, malformed or missing
   response data, timeout/connection errors, partial mutation, failed restoration, and final-state
   mismatch. Verify final verdicts, recovery messages, and required evidence/output behavior.
+- For identification tests, retain realistic mixed bootloader/application UART fixtures and
+  separate missing-banner, ROM-download, version-mismatch, missing-release, and network-error cases.
+  Cover each source disagreeing for each firmware component; keep JSON, metrics, and UART fixtures
+  independent. Cover malformed/duplicate metrics, wrong metrics MAC, authenticated request order,
+  delayed/partial UART messages, FatFS-image rejection, early stop, timeout, and cleanup on errors.
+  Assert informative terminal reasons as well as final verdicts, including a prior FAIL followed
+  by ERROR, initialization failures, unchanged progress numbering, and the final verdict line.
+  Keep direct tool-selection/reset-order/timeout/partial-output/port-cleanup tests in `test_lib.py`;
+  inject subprocess execution as well as serial I/O so no host test can reset a real gateway.
 - Exercise each inventory rejection and final assertion independently, and inspect both the
   per-mechanism result and final evidence. Combine wrong/missing/malformed identity with non-default
   authentication fields to verify that recovery advice does not target an unverified device.
