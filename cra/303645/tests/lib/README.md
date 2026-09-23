@@ -100,6 +100,28 @@ bodies. Store and share them with the same care as DUT credentials.
   key derivation. Gateway ECDH public keys at the point at infinity are rejected with
   `GatewayProtocolError` before deriving shared key material.
 
+- `build_encrypted_json(aes_key, payload, iv_generate=secrets.token_bytes)` returns an immutable
+  `EncryptedJsonEnvelope` containing the exact UTF-8 plaintext and the Base64 `encrypted`, `iv`,
+  and `hash` fields. It uses compact JSON, AES-256-CBC/PKCS7 and SHA-256 of the plaintext, matching
+  Web-UI CryptoJS. The key must have 32 bytes and the injected IV generator must return 16 bytes.
+  Nonfinite JSON numbers are rejected. `json_body()` returns only the three wire-envelope fields.
+- `post_encrypted_json(session, path, envelope)` logs the envelope and sends it with
+  `Ruuvi-Ecdh-Encrypted: true`, using normal request evidence, timeouts and disabled redirects.
+  Callers own endpoint selection, authorization, mutation scope, acceptance checks and restoration.
+- `calculate_interactive_response(username, password, challenge)` returns immutable
+  `AuthCalculationEvidence` with HA1 input/output and the challenge-bound response. The login builder
+  uses this calculation. Complete login results expose it as optional `calculation` for compatibility
+  with existing manually constructed results.
+- Parsed challenges and complete login results expose optional immutable `EcdhEvidence` through
+  `ecdh`: both uncompressed P-256 public keys, the 32-byte shared X coordinate, and its SHA-256 AES
+  key. Existing constructors remain valid. Live client results include these observations.
+- `captured_requests` retains immutable `CapturedRequest` snapshots of method, URL, header pairs
+  and body bytes before sending, including attempts whose response is lost. A body of `b""` means
+  no request body; `None` marks an unsupported streaming body which is left unconsumed to preserve
+  existing transport behavior. Evidence-dependent callers must reject incomplete captures.
+  Capture includes all requests through that client, including recovery; it does not inspect a
+  browser or make any TLS claim. These records contain secrets and belong only in local evidence.
+
 For runtime device identification, authenticated `GatewayApi.CONFIG` (`GET /ruuvi.json`) exposes
 `GatewayCfgDesc.FW_VER`, `NRF52_FW_VER`, and `GW_MAC`. Callers can reuse an authenticated configuration
 response that already contains these fields. `/status.json` is network status, not the outbound

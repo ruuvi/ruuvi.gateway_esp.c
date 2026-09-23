@@ -7,6 +7,16 @@ deterministic host-side tests that verify the automation itself without contacti
 Python 3.8 is required to match the firmware project's supported build and test environment.
 Contributor and AI-agent instructions for this entire subtree are in [`AGENTS.md`](AGENTS.md).
 
+## Documentation scope
+
+Keep this README limited to generic information shared across the test project: structure,
+environment setup, configuration, common execution templates, evidence conventions, validation,
+and CI. Do not add sections, script links, concrete commands, or findings for individual test cases.
+All task-specific information must be maintained in the corresponding `task_<id>.md` file in
+[`cra/303645/tasks/`](../tasks), including script references, targets, preconditions, procedures,
+expected results, recovery details, evidence filenames, and implementation or live-run findings.
+Use `test_<id>.py` and `test_test_<id>.py` placeholders here for case-specific command templates.
+
 ## Structure
 
 | Path                | Purpose                                                                         |

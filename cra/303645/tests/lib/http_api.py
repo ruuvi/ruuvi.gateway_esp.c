@@ -56,6 +56,7 @@ class HttpHeader:
     COOKIE: str = "Cookie"
     CONTENT_TYPE: str = "Content-Type"
     LOCATION: str = "Location"
+    RUUVI_ECDH_ENCRYPTED: str = "Ruuvi-Ecdh-Encrypted"
     RUUVI_ECDH_PUBLIC_KEY: str = "Ruuvi-Ecdh-Pub-Key"
 
 

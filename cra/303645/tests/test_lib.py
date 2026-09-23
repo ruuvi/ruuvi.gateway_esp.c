@@ -39,6 +39,8 @@ from lib.errors import (
 )
 from lib.evidence import AssertionEvidence, EvidenceLog, format_utc
 from lib.gateway import (
+    CapturedRequest,
+    EncryptedJsonEnvelope,
     GatewayApi,
     GatewayCfgDesc,
     GatewayCfgLanAuthType,
@@ -533,6 +535,61 @@ class GatewayClientTestCase(unittest.TestCase):
             random_bytes=lambda size: bytes(range(size)),
         )
 
+    def test_encrypted_json_matches_cryptojs_reference_vectors(self) -> None:
+        # Generated with the repository Web-UI crypto-js AES/SHA256 implementation,
+        # zero AES-256 key and IV 000102030405060708090a0b0c0d0e0f. Includes UTF-8 and full-block padding.
+        vectors: tuple[tuple[dict[str, str], str, str], ...] = (
+            ({"coordinates": "test"}, "HeouxTJke2ugUJEYSOexn5kBjsJDAV93AFneTabgXtU=",
+             "TEXgfF1HBbam3+YPFXUgG4yfH6IuL3XX963K1VUgHU4="),
+            ({"coordinates": "é"}, "HeouxTJke2ugUJEYSOexnzrgYJIKCYpLxo04kNHhCLA=",
+             "07CPBQIMytqlzk3hMh2nTcv04zixLnHO1K+FNj8M9/w="),
+            ({"x": "12345678"}, "W3RNdEThQBtzklQ2JsrJAYX6ENdLASPZRpcPS0lnePU=",
+             "FMecIfBtGscUHfu0lTMzczGgso9Bdqfhrwp3dSxnQiE="),
+        )
+        payload: dict[str, str]
+        encrypted: str
+        digest: str
+        for payload, encrypted, digest in vectors:
+            with self.subTest(payload=payload):
+                envelope: EncryptedJsonEnvelope = self.client.build_encrypted_json(
+                    bytes(32), payload, lambda size: bytes(range(size)),
+                )
+                self.assertEqual({"encrypted": encrypted, "iv": "AAECAwQFBgcICQoLDA0ODw==", "hash": digest},
+                                 envelope.json_body())
+                self.assertEqual(payload, json.loads(envelope.plaintext))
+                session: FakeSession = FakeSession(FakeResponse(200))
+                response: requests.Response = self.client.post_encrypted_json(session, GatewayApi.CONFIG, envelope)
+                self.assertEqual(200, response.status_code)
+                captured: CapturedRequest = self.client.captured_requests[-1]
+                self.assertEqual("true", dict(captured.headers)[HttpHeader.RUUVI_ECDH_ENCRYPTED])
+                if captured.body is None:
+                    self.fail("encrypted JSON capture is incomplete")
+                self.assertEqual(envelope.json_body(), json.loads(captured.body))
+                self.assertEqual(("POST", "http://gateway.local/ruuvi.json"), (captured.method, captured.url))
+                self.assertIn(("ENCRYPTED JSON ENVELOPE", envelope), self.evidence.entries)
+
+    def test_encrypted_json_rejects_invalid_key_iv_and_nonfinite_json(self) -> None:
+        key: bytes
+        iv: bytes
+        for key, iv in ((bytes(16), bytes(16)), (bytes(32), bytes(15)), (bytes(32), bytes(17))):
+            with self.subTest(key=len(key), iv=len(iv)), self.assertRaises(ValueError):
+                self.client.build_encrypted_json(key, {}, lambda size, fixed_iv=iv: fixed_iv)
+        with self.assertRaises(ValueError):
+            self.client.build_encrypted_json(bytes(32), {"invalid": float("nan")}, lambda size: bytes(size))
+
+    def test_capture_survives_transport_failure_and_preserves_text_and_stream_behavior(self) -> None:
+        session: FakeSession = FakeSession(error=requests.Timeout("lost response"))
+        with self.assertRaises(GatewayConnectionError):
+            self.client.request(session, HttpMethod.POST, GatewayApi.CONFIG, data="text")
+        self.assertEqual(b"text", self.client.captured_requests[-1].body)
+        session.error = None
+        session.response = FakeResponse()
+        self.client.request(session, HttpMethod.GET, GatewayApi.CONFIG)
+        self.assertEqual(b"", self.client.captured_requests[-1].body)
+        self.client.request(session, HttpMethod.POST, GatewayApi.CONFIG, data=io.BytesIO(b"stream"))
+        self.assertIsNone(self.client.captured_requests[-1].body)
+        self.assertEqual(b"text", self.client.captured_requests[0].body)
+
     def test_new_session_preserves_request_authentication_with_matching_netrc(self) -> None:
         directory: str
         with tempfile.TemporaryDirectory() as directory:
@@ -760,6 +817,12 @@ class GatewayClientTestCase(unittest.TestCase):
         shared: bytes = shared_x.to_bytes(32, "big")
         self.assertEqual(hashlib.sha256(shared).digest(), result.aes_key)
         self.assertEqual(server_raw, result.gateway_public_key_raw)
+        if result.ecdh is None:
+            self.fail("ECDH evidence missing")
+        self.assertEqual(shared, result.ecdh.shared_secret)
+        self.assertEqual(client_private.public_key().export_key(format="SEC1"), result.ecdh.client_public_key)
+        self.assertEqual(server_raw, result.ecdh.gateway_public_key)
+        self.assertEqual(result.aes_key, result.ecdh.aes_key)
 
     def test_parse_challenge_response_reports_auth_mode_and_invalid_key(self) -> None:
         private_key: EccKey = ECC.construct(curve="P-256", d=1)
@@ -865,6 +928,13 @@ class GatewayClientTestCase(unittest.TestCase):
         self.assertIs(challenge_response, result.challenge_response)
         self.assertIs(login_response, result.login_response)
         self.assertEqual(b"a" * 32, result.aes_key)
+        self.assertIsNone(result.ecdh)
+        ha1: str = hashlib.md5(b"user:gateway:password").hexdigest()
+        if result.calculation is None:
+            self.fail("authentication calculation missing")
+        self.assertEqual(ha1, result.calculation.ha1)
+        self.assertEqual("user:gateway:password", result.calculation.ha1_input)
+        self.assertEqual(hashlib.sha256(f"value:{ha1}".encode()).hexdigest(), result.calculation.response)
 
 
 class SerialDutTests(unittest.TestCase):

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import re
 import secrets
 from dataclasses import dataclass
 from typing import Any, Callable, cast
 
 import requests
+from Crypto.Cipher import AES
 from Crypto.PublicKey import ECC
+from Crypto.Util.Padding import pad
 
 from .errors import GatewayAuthenticationModeError, GatewayConnectionError, GatewayProtocolError
 from .evidence import EvidenceLog
@@ -33,6 +36,7 @@ class AuthMech:
 
 
 class GatewayCfgDesc:
+    COORDINATES: str = "coordinates"
     GW_ID: str = "gw_id"
     GW_HOSTNAME: str = "gw_hostname"
     LAN_AUTH_TYPE: str = "lan_auth_type"
@@ -66,6 +70,35 @@ class AuthCalculationEvidence:
     response: str
 
 
+@dataclass(frozen=True)
+class EcdhEvidence:
+    client_public_key: bytes
+    gateway_public_key: bytes
+    shared_secret: bytes
+    aes_key: bytes
+
+
+@dataclass(frozen=True)
+class CapturedRequest:
+    """Immutable snapshot of a prepared request, retained even if sending fails."""
+
+    method: str
+    url: str
+    headers: tuple[tuple[str, str], ...]
+    body: bytes | None
+
+
+@dataclass(frozen=True)
+class EncryptedJsonEnvelope:
+    plaintext: bytes
+    encrypted: str
+    iv: str
+    hash: str
+
+    def json_body(self) -> dict[str, str]:
+        return {"encrypted": self.encrypted, "iv": self.iv, "hash": self.hash}
+
+
 @dataclass
 class InteractiveChallengeRequest:
     session: requests.Session
@@ -87,6 +120,7 @@ class InteractiveAuthChallenge(InteractiveLoginChallenge):
     auth_payload: dict[str, Any]
     gateway_public_key_raw: bytes
     aes_key: bytes
+    ecdh: EcdhEvidence | None = None
 
 
 @dataclass
@@ -107,6 +141,8 @@ class InteractiveAuthResult:
     gateway_public_key_raw: bytes
     aes_key: bytes
     login_response: requests.Response
+    ecdh: EcdhEvidence | None = None
+    calculation: AuthCalculationEvidence | None = None
 
 
 class GatewayClient:
@@ -127,6 +163,7 @@ class GatewayClient:
         self.ecc_generate: Callable[..., ECC.EccKey] = ecc_generate
         self.timeout: tuple[int, int] = timeout
         self.user_agent: str = user_agent
+        self.captured_requests: list[CapturedRequest] = []
 
     def new_session(self) -> requests.Session:
         session: requests.Session = self.session_factory()
@@ -161,6 +198,15 @@ class GatewayClient:
                 data=data,
             )
             prepared_request: requests.PreparedRequest = session.prepare_request(request)
+            body: Any = prepared_request.body
+            # Do not consume caller-owned streaming bodies; None marks incomplete capture.
+            self.captured_requests.append(CapturedRequest(
+                prepared_request.method or "", prepared_request.url or "",
+                tuple(prepared_request.headers.items()),
+                body.encode("utf-8") if isinstance(body, str) else (
+                    body if isinstance(body, bytes) else b"" if body is None else None
+                ),
+            ))
             self.evidence.write_http_request(prepared_request)
             response: requests.Response = session.send(
                 prepared_request,
@@ -363,6 +409,9 @@ class GatewayClient:
             auth_payload=auth_payload,
             gateway_public_key_raw=gateway_public_raw,
             aes_key=aes_key,
+            ecdh=EcdhEvidence(b"\x04" + int(request.private_key.pointQ.x).to_bytes(32, "big")
+                              + int(request.private_key.pointQ.y).to_bytes(32, "big"),
+                              gateway_public_raw, shared_secret, aes_key),
         )
 
     def request_interactive_challenge(self) -> InteractiveAuthChallenge:
@@ -376,25 +425,49 @@ class GatewayClient:
         username: str,
         password: str,
     ) -> InteractiveLoginRequest:
-        challenge: dict[str, str] = login_challenge.challenge
-        ha1_input: str = f"{username}:{challenge['realm']}:{password}"
-        ha1: str = self.calculate_digest_ha1(username, challenge["realm"], password)
-        password_response: str = hashlib.sha256(f"{challenge['challenge']}:{ha1}".encode()).hexdigest()
-        self.evidence.write(
-            "AUTH CALCULATION",
-            AuthCalculationEvidence(
-                username=username,
-                password=password,
-                ha1_input=ha1_input,
-                ha1=ha1,
-                response=password_response,
-            ),
+        calculation: AuthCalculationEvidence = self.calculate_interactive_response(
+            username, password, login_challenge.challenge,
         )
+        self.evidence.write("AUTH CALCULATION", calculation)
         return InteractiveLoginRequest(
             login_challenge=login_challenge,
             username=username,
-            password_response=password_response,
+            password_response=calculation.response,
         )
+
+    @classmethod
+    def calculate_interactive_response(
+        cls, username: str, password: str, challenge: dict[str, str],
+    ) -> AuthCalculationEvidence:
+        ha1_input: str = f"{username}:{challenge['realm']}:{password}"
+        ha1: str = cls.calculate_digest_ha1(username, challenge["realm"], password)
+        response: str = hashlib.sha256(f"{challenge['challenge']}:{ha1}".encode()).hexdigest()
+        return AuthCalculationEvidence(username, password, ha1_input, ha1, response)
+
+    @staticmethod
+    def build_encrypted_json(
+        aes_key: bytes, payload: dict[str, Any],
+        iv_generate: Callable[[int], bytes] = secrets.token_bytes,
+    ) -> EncryptedJsonEnvelope:
+        """CryptoJS-compatible AES-256-CBC/PKCS7 envelope with Base64 SHA-256 of UTF-8 JSON."""
+        if len(aes_key) != 32:
+            raise ValueError("AES-256 requires a 32-byte key")
+        iv: bytes = iv_generate(16)
+        if len(iv) != 16:
+            raise ValueError("AES-CBC requires a 16-byte IV")
+        plaintext: bytes = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
+        ciphertext: bytes = AES.new(aes_key, AES.MODE_CBC, iv).encrypt(pad(plaintext, AES.block_size))
+        return EncryptedJsonEnvelope(
+            plaintext, base64.b64encode(ciphertext).decode("ascii"),
+            base64.b64encode(iv).decode("ascii"), base64.b64encode(hashlib.sha256(plaintext).digest()).decode("ascii"),
+        )
+
+    def post_encrypted_json(
+        self, session: requests.Session, path: str, envelope: EncryptedJsonEnvelope,
+    ) -> requests.Response:
+        self.evidence.write("ENCRYPTED JSON ENVELOPE", envelope)
+        return self.request(session, HttpMethod.POST, path,
+                            headers={HttpHeader.RUUVI_ECDH_ENCRYPTED: "true"}, json_body=envelope.json_body())
 
     def send_interactive_login_request(self, request: InteractiveLoginRequest) -> requests.Response:
         return self.request(
@@ -438,4 +511,6 @@ class GatewayClient:
             gateway_public_key_raw=challenge.gateway_public_key_raw,
             aes_key=challenge.aes_key,
             login_response=login_response,
+            ecdh=challenge.ecdh,
+            calculation=self.calculate_interactive_response(username, password, challenge.challenge),
         )
