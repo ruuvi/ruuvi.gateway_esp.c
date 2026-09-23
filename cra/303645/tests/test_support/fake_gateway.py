@@ -419,8 +419,8 @@ class FakeGateway:
 class DefaultAuthGateway(FakeGateway):
     """Default-credential fixture for access-control cases, with injectable reported auth mode.
 
-    These cases retain a session cookie while refreshing its challenge and return plain denials
-    after failed logins. Brute-force cases use FakeGateway's chained challenge responses instead.
+    These cases retain a session cookie and return plain denials after failed logins.
+    Brute-force cases use FakeGateway's chained challenge responses instead.
     """
 
     def __init__(self, config: DutConfig) -> None:
