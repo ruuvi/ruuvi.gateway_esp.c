@@ -267,7 +267,7 @@ class FakeGateway:
             if self.mode == GatewayCfgLanAuthType.DENY:
                 return FakeResponse(HttpStatus.C_403_FORBIDDEN, {"error": "forbidden"})
             if self.mode == GatewayCfgLanAuthType.BASIC:
-                valid = authorization == f"{HttpAuthScheme.BASIC} {self.custom_ha1}"
+                valid: bool = authorization == f"{HttpAuthScheme.BASIC} {self.custom_ha1}"
                 return FakeResponse(
                     HttpStatus.C_200_OK if valid else HttpStatus.C_401_UNAUTHORIZED,
                     {"authenticated": valid},
