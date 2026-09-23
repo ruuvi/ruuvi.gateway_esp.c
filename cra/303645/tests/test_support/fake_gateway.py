@@ -225,7 +225,7 @@ class FakeGateway:
         ):
             return self._config_response()
 
-        if method == HttpMethod.GET and path == GatewayApi.STATUS and session.authorized:
+        if method == HttpMethod.GET and path == GatewayApi.STATUS and token is None and session.authorized:
             return FakeResponse(HttpStatus.C_200_OK, {"status": "ok"})
 
         if (
@@ -267,6 +267,7 @@ class FakeGateway:
             if self.mode == GatewayCfgLanAuthType.DENY:
                 return FakeResponse(HttpStatus.C_403_FORBIDDEN, {"error": "forbidden"})
             if self.mode == GatewayCfgLanAuthType.BASIC:
+                # In Basic mode, the stored lan_auth_pass is already Base64(username:password).
                 valid: bool = authorization == f"{HttpAuthScheme.BASIC} {self.custom_ha1}"
                 return FakeResponse(
                     HttpStatus.C_200_OK if valid else HttpStatus.C_401_UNAUTHORIZED,

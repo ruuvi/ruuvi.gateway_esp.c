@@ -6,7 +6,7 @@ import hashlib
 import unittest
 from typing import Any
 
-from lib.gateway import GatewayApi, GatewayCfgDesc, GatewayCfgLanAuthType
+from lib.gateway import GatewayApi, GatewayCfgDesc, GatewayCfgLanAuthType, GatewayClient
 from lib.http_api import HttpAuthScheme, HttpHeader, HttpMethod, HttpStatus
 from lib.models import DutConfig
 from test_support.fake_gateway import DefaultAuthGateway, FakeGateway, FakeResponse, FakeSession
@@ -144,6 +144,85 @@ class GatewayTestCase(unittest.TestCase):
                 self.assertEqual(HttpStatus.C_401_UNAUTHORIZED, response.status_code)
                 self.assertEqual("read-write", gateway.rw_key)
                 self.assertEqual([], gateway.config_bodies)
+
+    def test_status_bearer_takes_precedence_over_authorized_session(self) -> None:
+        gateway_type: type[FakeGateway]
+        for gateway_type in (FakeGateway, DefaultAuthGateway):
+            gateway: FakeGateway = gateway_type(CONFIG)
+            gateway.ro_key = "read-only"
+            gateway.rw_key = "read-write"
+            session: FakeSession = FakeSession(gateway)
+            gateway.response_for(session, HttpMethod.GET, GatewayApi.AUTH, {}, None)
+            cookie_headers: dict[str, str] = {HttpHeader.COOKIE: f"RUUVISESSION={session.cookie}"}
+            login: FakeResponse = gateway.response_for(
+                session, HttpMethod.POST, GatewayApi.AUTH, cookie_headers, login_body(CONFIG, session.challenge),
+            )
+            self.assertEqual(HttpStatus.C_200_OK, login.status_code)
+            token: str | None
+            expected_status: int
+            for token, expected_status in (
+                (None, HttpStatus.C_200_OK),
+                ("invalid", HttpStatus.C_401_UNAUTHORIZED),
+                ("", HttpStatus.C_401_UNAUTHORIZED),
+                ("read-only", HttpStatus.C_200_OK),
+                ("read-write", HttpStatus.C_200_OK),
+            ):
+                with self.subTest(gateway=gateway_type.__name__, token=token):
+                    headers: dict[str, str] = dict(cookie_headers)
+                    if token is not None:
+                        headers[HttpHeader.AUTHORIZATION] = f"{HttpAuthScheme.BEARER} {token}"
+                    response: FakeResponse = gateway.response_for(
+                        session, HttpMethod.GET, GatewayApi.STATUS, headers, None,
+                    )
+                    self.assertEqual(expected_status, response.status_code)
+                    self.assertTrue(session.authorized)
+            gateway.ro_key = ""
+            gateway.rw_key = ""
+            for token in ("read-only", "read-write"):
+                with self.subTest(gateway=gateway_type.__name__, revoked_token=token):
+                    response = gateway.response_for(
+                        session, HttpMethod.GET, GatewayApi.STATUS,
+                        {**cookie_headers, HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {token}"}, None,
+                    )
+                    self.assertEqual(HttpStatus.C_401_UNAUTHORIZED, response.status_code)
+
+    def test_basic_auth_accepts_client_header_for_stored_encoded_credentials(self) -> None:
+        gateway: FakeGateway = FakeGateway(CONFIG)
+        session: FakeSession = FakeSession(gateway)
+        gateway.response_for(session, HttpMethod.GET, GatewayApi.AUTH, {}, None)
+        cookie_headers: dict[str, str] = {HttpHeader.COOKIE: f"RUUVISESSION={session.cookie}"}
+        login: FakeResponse = gateway.response_for(
+            session, HttpMethod.POST, GatewayApi.AUTH, cookie_headers, login_body(CONFIG, session.challenge),
+        )
+        self.assertEqual(HttpStatus.C_200_OK, login.status_code)
+        # Independently authored Base64("user:pass"), as stored by the firmware in Basic mode.
+        stored_credentials: str = "dXNlcjpwYXNz"
+        configured: FakeResponse = gateway.response_for(
+            session, HttpMethod.POST, GatewayApi.CONFIG, cookie_headers,
+            {
+                GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.BASIC,
+                GatewayCfgDesc.LAN_AUTH_USER: "user",
+                GatewayCfgDesc.LAN_AUTH_PASS: stored_credentials,
+            },
+        )
+        self.assertEqual(HttpStatus.C_200_OK, configured.status_code)
+        authorization: str
+        expected_status: int
+        for authorization, expected_status in (
+            (GatewayClient.authorization_header_basic("user", "pass"), HttpStatus.C_200_OK),
+            (GatewayClient.authorization_header_basic("user", "wrong"), HttpStatus.C_401_UNAUTHORIZED),
+            (GatewayClient.authorization_header_basic("wrong", "pass"), HttpStatus.C_401_UNAUTHORIZED),
+            (GatewayClient.authorization_header_basic("user", stored_credentials), HttpStatus.C_401_UNAUTHORIZED),
+            ("Basic pass", HttpStatus.C_401_UNAUTHORIZED),
+            ("Basic !!!", HttpStatus.C_401_UNAUTHORIZED),
+            ("", HttpStatus.C_401_UNAUTHORIZED),
+        ):
+            with self.subTest(authorization=authorization):
+                response: FakeResponse = gateway.response_for(
+                    FakeSession(gateway), HttpMethod.GET, GatewayApi.STATUS,
+                    {HttpHeader.AUTHORIZATION: authorization} if authorization else {}, None,
+                )
+                self.assertEqual(expected_status, response.status_code)
 
 
 if __name__ == "__main__":
