@@ -21,8 +21,11 @@ Contributor and AI-agent instructions for this entire subtree are in [`AGENTS.md
 | `requirements.txt`  | Python runtime, coverage, and Ruff linting dependencies                         |
 
 The repeated `test_test_` prefix is deliberate. The first `test_` marks a Python test module; the
-remaining name identifies the live automation script under test. For example,
-`test_test_5_1_1_2_b.py` verifies `test_5_1_1_2_b.py`.
+remaining name identifies the live automation script under test: `test_test_<id>.py` verifies
+`test_<id>.py`. The matching specification is `task_<id>.md` in the [task directory](../tasks).
+Task specifications contain the target, preconditions, procedure, verdict rules, concrete run
+commands, evidence filenames, and any live-run findings. Normalize case and unit identifiers to
+lowercase, replacing dots and hyphens with underscores. This README covers shared workflows.
 
 Shared-library behavior is tested only in `test_lib.py`. The `test_test_*.py` modules may use the
 library as infrastructure while testing a functional runner's sequencing, assertions, recovery,
@@ -38,9 +41,9 @@ explicitly, and session numbering belongs to each gateway.
 
 `DefaultAuthGateway` preserves the default-credential scenarios' stable session cookies, plain
 failed-login responses, and unauthenticated GET redirects. The other gateway model returns fresh
-challenges after failed logins for brute-force campaigns. The case-specific `UnconfiguredGateway`
-and `BearerGateway` subclasses retain response overrides and configuration/restoration fault
-injection through `_response_override`, `_config_response`, and `_unauthorized_response` hooks.
+challenges after failed logins for brute-force campaigns. Runner-local subclasses can inject
+response overrides and configuration/restoration faults through `_response_override`,
+`_config_response`, and `_unauthorized_response` hooks.
 Tests of these shared offline fixture contracts live in `test_test_support.py` and run with the
 implementation-test discovery command. The small sessions used for library response injection and
 client-level orchestration remain local because they do not simulate a gateway transport.
@@ -58,7 +61,9 @@ python3.8 -m venv .venv
 ```
 
 The dependencies provide `requests`, PyCryptodome for P-256 ECDH operations, `coverage.py`, and
-Ruff for required lint checks.
+Ruff for required lint checks. Serial acquisition uses the Python 3.8-compatible esptool and
+pyserial dependencies in `requirements.txt`; see the [serial helper documentation](lib/README.md#serial-discovery-and-capture)
+for tool discovery and preflight behavior.
 
 ## Required linting
 
@@ -114,7 +119,7 @@ use documented line-specific suppressions, as explained in [`AGENTS.md`](AGENTS.
 
 ## DUT configuration
 
-Live tests read `.env` from the current test directory. It must contain exactly these fields:
+DUT-facing live tests read `.env` from the current test directory. It must contain exactly these fields:
 
 ```dotenv
 gw_id=00:11:22:33:44:55:66:77
@@ -129,19 +134,38 @@ gw_hostname=gateway.local
 Replace the example values with the dedicated test gateway values. Blank lines and full-line
 comments are accepted. Unknown and duplicate keys are rejected.
 
-Many tests require the gateway to start in its documented factory-default authentication state.
-When a test reports `USER ACTION REQUIRED`, follow its factory-reset instruction before retrying.
-In 5.1-1-2-B, a rejected default `Admin`/`gw_id` login is ERROR with the shared reset instruction.
-After configuration is available, its MAC is checked before default-field checks: a wrong or
-malformed MAC is ERROR without reset advice, and a non-default baseline without a MAC does not
-prescribe resetting an unverified device. Verify `.env` and the physical DUT identity first.
+### Baseline and recovery
 
-The same recovery policy applies to 5.1-2A-2-B, 5.1-4-2-A/B, and 5.1-5-2-B, including Basic/Digest
-challenges that raise before interactive login returns. Recovery instructions appear in both the
-evidence and final console message. The reset completion signal is red LED 200 ms on/200 ms off
-after the initial restart and erasure; about eleven seconds is typical elapsed time, not a fixed
-threshold. Release CONFIGURE only after this completion signal. Release triggers another restart,
-after which the configuration hotspot opens.
+When a task requires factory-default authentication, compare its required fields and types with
+`default_config_values()` from the checked-in `gw_cfg_default/gw_cfg_default_gen_ui.json`.
+Do not change the DUT to manufacture the baseline. A rejected default `Admin`/`gw_id` login is setup
+ERROR with the shared reset instruction, including Basic/Digest challenges that raise before the
+interactive login returns. Once configuration is available, validate its MAC before default-field
+checks: a wrong or malformed MAC is ERROR without reset advice, and a non-default baseline without
+a MAC does not justify resetting an unverified device. Verify `.env` and the physical DUT identity.
+
+When a runner reports `USER ACTION REQUIRED`, follow its recovery instruction before retrying.
+Include recovery instructions in both evidence and final console output. The shared factory-reset
+completion signal is the red LED repeating 200 ms on/200 ms off after the initial restart and
+erasure; about eleven seconds is typical elapsed time, not a fixed threshold. Release CONFIGURE
+only after this completion signal. Release triggers another restart, after which the configuration
+hotspot opens. See the task specification for the applicable recovery policy.
+
+## Public resources and runtime observations
+
+Public-resource checks use the task's declared URL and need Internet/DNS access and a trusted CA
+bundle. They do not load `.env` or contact a gateway. Reuse the
+[public-resource helper](lib/README.md#public-web-resources) for fresh unauthenticated sessions,
+verified TLS, finite timeouts, bounded redirects, and HTTP evidence. Targets, allowed hosts,
+timeouts, redirect limits, content assertions, and status-to-verdict rules belong in each task.
+Accessibility observations alone do not establish that a document's content satisfies a requirement.
+
+Runtime identification can combine authenticated gateway HTTP responses, UART observations, and
+public release metadata. Reuse the [gateway client](lib/README.md#gateway-http-and-authentication)
+and [serial helper](lib/README.md#serial-discovery-and-capture). Each task specifies the required
+sources, identity gate, capture deadline, expected versions, and comparison rules. A successful
+reset command alone does not prove application startup, and build provenance does not establish
+an observed runtime version.
 
 ## Running tests
 
@@ -161,24 +185,36 @@ Run all deterministic tests of the functional-test automation:
   --pattern "test_test_*.py"
 ```
 
-Run one automation test module:
+Run one automation test module using this command template; replace `<id>` with the normalized
+identifier from its task specification:
 
-```bash
-.venv/bin/python -m unittest --verbose test_test_5_1_1_2_b.py
+```text
+.venv/bin/python -m unittest --verbose test_test_<id>.py
 ```
 
 These commands require no DUT and make no real network requests. The tests use fake HTTP sessions,
 responses, clocks, and random sources.
 
-Run a live-DUT functional test separately:
+Run a live functional test separately after meeting its task preconditions. This is a command
+template; replace `<id>` with the same identifier:
 
-```bash
-.venv/bin/python test_5_1_1_2_b.py
+```text
+.venv/bin/python test_<id>.py
 ```
 
 DUT-facing live scripts take their configuration from `.env`, communicate with the configured
-gateway, print progress, and create a log under `logs/`. Do not run live scripts through `unittest`
-discovery.
+gateway, print progress, and create a log under `logs/`. Public-resource scripts contact their
+declared external target instead. Live scripts take no arguments unless the task specifies otherwise.
+Run them from `cra/303645/tests`; do not run live scripts through `unittest` discovery.
+
+### Evidence and results
+
+Logs use the pattern `logs/<runner-name>_<UTC-date-time>.log`, with a collision suffix when needed.
+Create them through `EvidenceLog`, including for setup failures. Record requests before sending and
+responses before interpretation, along with assertions, per-check outcomes, exceptions, and the
+final verdict. Keep terminal progress and result explanations concise and print the log path.
+Evidence can contain credentials and complete protocol bodies; keep local `.env` and generated logs
+out of commits.
 
 The common process result convention is:
 
@@ -188,226 +224,23 @@ The common process result convention is:
 |       `1` | A security or functional assertion failed                               |
 |       `2` | Setup, transport, protocol, or recovery error prevented a valid verdict |
 
-For 5.1-1-2-B, failed inventory checks and final non-mutation assertions also mark their specific
-mechanism FAIL in `RunResult.outcomes` and the evidence log. Transport/setup/protocol exceptions
-remain ERROR; an incomplete check must not be reported as a security failure.
-Overall PASS additionally requires a PASS for every required mechanism, inventory coverage, and
-final verification. The user-defined mechanism is finalized only after its random-login denial,
-unauthenticated reads, session writes, and potentially mutating probes all pass.
+Attribute assertion failures to the mechanism or check that ran in `RunResult.outcomes` and the
+final evidence. Setup, transport, and malformed-protocol exceptions remain ERROR. Preserve earlier
+per-check FAIL results if a later error prevents completion, and identify unperformed checks as
+NOT RUN. Overall PASS requires every task-required check and final verification to complete.
 
-Once its baseline is validated, 5.1-1-2-B always attempts final authentication and non-mutation
-verification, including after a probe abort. No further negative probes run after failure. With a
-valid final session, configuration and status reads are checked independently; final verification
-reports PASS, FAIL, or ERROR without erasing an earlier mechanism FAIL. An incomplete final check
-makes the overall verdict ERROR. A changed or unverifiable state produces an operator recovery
-warning in the console and evidence log; the runner does not automatically reset or rewrite the DUT.
+Follow the task's probe ordering, abort policy, and final verification requirements. For tasks
+that change state, save candidate recovery credentials before a change might apply, retain prior
+candidates until the transition is verified, and attempt restoration after partial setup, failures,
+and exceptions. Unverified restoration prevents PASS. Report changed or unverifiable final state
+with operator recovery guidance in the console and evidence.
 
-The LAN matrix retains all 26 routes. Missing/Basic/Digest credential probes allow 404 specifically
-for hotspot-only `GET /info.json`, as described in the [HTTP API reference](../../../docs/http_api.md).
-Other protected GET routes retain their denial statuses, and all disabled-bearer probes require 401.
-The fake gateway models this distinction and validates the complete default-login challenge response
-before authorizing a session.
-
-In 5.1-2A-2-B the recorded sequence is provisioning/read-back, all negative GETs, all positive
-RO/RW GETs, negative POSTs with a configuration hash check, then RO POST denial and RW no-op POST
-with another hash check. Every negative authorization success aborts probing; mandatory restoration
-and revoked-key verification still follow. An RO PASS survives a later RW failure. Hash failures
-belong to RW, and failed provisioning/read-back/login controls mark temporary-state setup ERROR.
-
-Regression tests must check exact prepared request sequences and bodies across schemes, independently
-calculated password responses, session cookies and outstanding challenges, and both Basic/Digest
-setup exceptions. Check individual outcomes and final evidence for late failures as well as overall
-exit codes. In 5.1-4-2-A, a full run also uses the real client and fake HTTP transport; its smaller
-client-level fixture is used only for orchestration fault injection. Preserve recovery credentials
-before potentially applied changes and exercise partial mutation and failed restoration.
-
-### Immediate authentication-value invalidation (5.1-4-2-B)
-
-[`test_5_1_4_2_b.py`](test_5_1_4_2_b.py) checks immediate rejection of old interactive credentials
-and session cookies, acceptance of replacement credentials, and independent RO/RW key rotation.
-API-key-only changes must preserve the authorized interactive session. Every bearer authorization
-POST uses exactly `{}` and compares the complete configuration hash afterward, including rejected
-old keys and RO write attempts. Two stable baseline reads precede mutation; each transition sends
-only its authentication fields. Restoration verifies the original full configuration and rejection
-of every possibly applied temporary credential and key, including after partial setup or failures.
-Unverified restoration returns ERROR without discarding earlier per-mechanism FAIL results.
-
-Run the deterministic implementation suite with:
-
-```bash
-.venv/bin/python -m unittest --verbose test_test_5_1_4_2_b.py
-```
-
-For a separately authorized live run on a dedicated gateway with a configuration backup, inactive
-SoftAP, no firmware update or remote configuration in progress, and no concurrent configuration
-changes, run `.venv/bin/python test_5_1_4_2_b.py` from this directory. It uses `.env` with no arguments
-and writes `logs/test_5_1_4_2_b_<UTC-date-time>.log`. It temporarily changes LAN credentials and keys;
-do not run it on a production gateway. Basic/Digest, hotspot provisioning, unauthenticated/disabled
-modes, and Unit A's pure commit/regeneration checks are outside Unit B's scope. Offline test results
-verify the implementation only and supply no live-DUT compliance verdict.
-
-### Public vulnerability disclosure policy (5.2-1-2-A)
-
-[`test_5_2_1_2_a.py`](test_5_2_1_2_a.py) checks public accessibility of the fixed
-`https://ruuvi.com/terms/vulnerability-policy/` URL. It requires Internet/DNS access and a trusted
-CA bundle, takes no arguments, and neither reads `.env` nor contacts a gateway. Run it separately
-from this directory with `.venv/bin/python test_5_2_1_2_a.py`.
-
-The fresh unauthenticated session ignores `.netrc` and environment proxies, verifies TLS, uses
-5-second connect / 20-second read timeouts, and follows at most five redirects within HTTPS and
-`ruuvi.com` / `www.ruuvi.com`. An outside-host or non-HTTPS redirect is logged without following it.
-PASS requires HTTP 200, no authentication challenge anywhere, HTML content, and a non-empty body.
-Access denials, missing resources, forbidden redirects, and wrong/empty content produce FAIL;
-transport/TLS failures, redirect loops/overflow, malformed redirects, HTTP 429, and 5xx produce ERROR.
-An earlier observed assertion FAIL is preserved if a later infrastructure failure makes the overall
-verdict ERROR. Policy wording, contacts, and response timelines belong to Unit B and are not evaluated.
-
-Each run writes `logs/test_5_2_1_2_a_<UTC-date-time>.log` with HTTP exchanges, redirects, assertions,
-and the final verdict. Deterministic offline implementation checks run with
-`.venv/bin/python -m unittest --verbose test_test_5_2_1_2_a.py`; they provide no live compliance verdict.
-
-### Public support-period accessibility (5.3-13-2-b)
-
-[`test_5_3_13_2_b.py`](test_5_3_13_2_b.py) checks unrestricted public access to the fixed
-`https://ruuvi.com/terms/lifecycle-promises/` URL. From this directory, run
-`.venv/bin/python test_5_3_13_2_b.py` with no arguments. It requires Internet/DNS access and a trusted
-CA bundle; it does not load `.env` or contact a gateway.
-
-The shared public-resource helper uses a fresh unauthenticated session with `trust_env=False`,
-verified TLS, 5-second connect / 20-second read timeouts, and at most five HTTPS redirects within
-`ruuvi.com` / `www.ruuvi.com`. Outside-host and non-HTTPS redirects are logged without following.
-PASS requires HTTP 200, no authentication challenge anywhere, HTML content, and a non-empty body.
-Restrictions, missing pages, forbidden redirects, and wrong/empty content yield FAIL (exit 1);
-transport/TLS failures, malformed redirects, loops/overflow, HTTP 429, and 5xx yield ERROR (exit 2).
-Earlier failed checks remain in evidence if a later error prevents completion.
-
-Each run writes `logs/test_5_3_13_2_b_<UTC-date-time>.log` with HTTP exchanges, redirect observations,
-assertions, and the final verdict. Only Unit b accessibility is evaluated: product listing (Unit a)
-and a binding support timeframe (Unit c) are outside scope, so their source FAIL verdicts do not
-determine this runner's verdict. It does not inspect product names, durations, or placeholders.
-
-Run the deterministic implementation tests with
-`.venv/bin/python -m unittest --verbose test_test_5_3_13_2_b.py`. These tests use no network or DUT
-and provide no live compliance verdict.
-
-### Functional implementation identification (5.5-2-2-A)
-
-[`test_5_5_2_2_a.py`](test_5_5_2_2_a.py) compares ESP32/nRF52 versions from authenticated
-`/ruuvi.json`, authenticated `/metrics`, and UART boot output, checks application ESP-IDF,
-and checks the installed ESP32/nRF52 tags
-against unauthenticated public GitHub release endpoints. Run it separately from this directory
-with `.venv/bin/python test_5_5_2_2_a.py`; it takes no arguments and uses the existing three-key `.env`.
-Install `requirements.txt` first: `esptool~=4.8.1` supplies the Python 3.8-compatible tool and pyserial.
-Preflight also accepts ESP-IDF's standalone `esptool.py` (or `esptool`) on `PATH` when the
-`esptool` module cannot be imported. It runs only the executable's `version` command with a
-10-second timeout and records the version and source in evidence. A shell executable on `PATH`
-does not necessarily make the corresponding module importable by Python. Pyserial must be installed
-in the interpreter running this test; using `.venv/bin/python` selects the documented environment.
-
-The runtime fields are `fw_ver` (ESP32), `nrf52_fw_ver` (nRF52), and `gw_mac` (device identity),
-read from the same `/ruuvi.json` response used by the factory-default preflight. `/status.json`
-reports network status and is not queried for versions. The similarly named
-`ruuvi_gw_status.schema.json` describes outbound HTTP statistics, not that LAN GET response.
-The original task's endpoint/schema assumption was corrected after the v1.16.3 live-run log
-and firmware handlers demonstrated this distinction. Missing, malformed, or mismatched device
-information stops execution before serial discovery or reset; versions are never inferred from `.env`.
-
-After validating the JSON baseline, read `/metrics` with the same authenticated session. Require
-one `ruuvigw_info{mac="...",esp_fw="...",nrf_fw="..."} 1` sample and verify its MAC against `.env`.
-The full HTTP sequence is `GET /auth`, `POST /auth`, `GET /ruuvi.json`, `GET /metrics`, then serial reset.
-
-| Component      | `/ruuvi.json`  | `/metrics` info label | UART installed-version line                        |
-| -------------- | -------------- | --------------------- | -------------------------------------------------- |
-| ESP32 app      | `fw_ver`       | `esp_fw`              | `cpu_start: App version:`                          |
-| nRF52 firmware | `nrf52_fw_ver` | `nrf_fw`              | `### Firmware on nRF52:` (tag-independent)        |
-
-Both components must match across all three sources after normalization. Metrics label order and
-comments are accepted; missing/duplicate samples or labels, malformed data, wrong MAC, and missing
-UART lines are ERROR. Well-formed disagreements are FAIL, with all observed values in terminal
-output and structured evidence. An HTTP-source FAIL survives later acquisition errors. The
-consistency outcomes are separate from release-existence checks, so a published release cannot
-mask a mismatch. `Firmware on FatFS` is a stored image version and is never an installed-nRF52 source.
-
-Use a dedicated gateway with default authentication, LAN connectivity, exactly one CH340 bridge
-(USB VID `0x1A86`), and working DTR/RTS reset wiring. No firmware update or remote configuration
-operation may be in progress. The mandatory default-login/configuration/identity gate precedes
-serial enumeration and reset. The runner does not write configuration, flash, or erase; the reset
-briefly interrupts service. It runs the preflight-selected esptool with
-`--port <discovered-port> --before default_reset --after hard_reset read_mac` (20-second command
-timeout), recording the command, output, and exit status. After the tool exits successfully it
-opens UART at 115200 baud and immediately reads until complete ESP-IDF, ESP32-app, and nRF52
-version lines have arrived, with an eight-second upper bound. Capture ends early when
-the required lines arrive sooner, and no extra reset or input-buffer flush. The reset uses the
-imported Python package or the resolved PATH
-executable, including ESP-IDF's `esptool.py`.
-Missing/ambiguous ports, ineffective reset, absent banners, malformed observations, and transport
-or rate-limit failures produce ERROR. ROM download mode (`DOWNLOAD_BOOT` / `waiting for download`)
-also produces ERROR because the application did not start. No manual button/replug fallback is used.
-
-PASS requires both three-source comparisons, application ESP-IDF `v4.2.5` (also cross-checked against
-`CMakeLists.txt`), and both published firmware releases. A confirmed missing release, source
-disagreement, or a different framework version produces FAIL.
-The retained second-stage bootloader may use an older IDF and is not compared with this expectation.
-For example, bootloader `v4.0.3` plus application `v4.2.2` fails because of application `v4.2.2`;
-the same bootloader plus application `v4.2.5` passes the framework check.
-A tag 404 is confirmed with a successful repository-identity lookup; unconfirmed availability
-produces ERROR. Earlier component failures survive later errors. Version normalization trims
-whitespace, folds case, and adds one leading `v`, retaining prerelease/development suffixes.
-mbedTLS, Web-UI, and nRF5 SDK build provenance are informational because their versions are not
-observable through these runtime interfaces. Release existence does not identify the exact audited build.
-
-Each invocation writes `logs/test_5_5_2_2_a_<UTC-date-time>.log`, including setup failures,
-HTTP exchanges, serial/tool details, raw console text, normalization, and component outcomes.
-Terminal output also explains each completed check: the observed and expected application ESP-IDF
-versions, and the installed ESP32/nRF52 tags with their published-release results. A FAIL identifies
-the mismatch or confirmed missing release; an ERROR names the affected check and exception reason,
-with any remaining checks marked NOT RUN. Earlier failure messages remain visible if a later error
-stops execution. Informational components are explicitly identified as not verified at runtime.
-These result lines are also recorded in the log and do not increment the ten progress steps.
-
-#### Live-run findings and troubleshooting
-
-The 2026-09-22 log `test_5_5_2_2_a_20260922T132622.117207Z.log` contained the installed nRF52
-version at boot timestamp 5234 ms, but the parser required lowercase `nrf52fw` and missed the
-actual `nRF52Fw` tag. Match the stable `### Firmware on nRF52:` message instead of requiring a
-specific tag. The corrected capture stops on complete required lines, with an eight-second maximum;
-the generic serial helper's default remains 30 seconds. Legacy unprefixed messages under either
-tag spelling remain supported. Never use `Firmware on FatFS` as a substitute.
-
-The user-confirmed 2026-09-21 run completed with the expected FAIL on firmware `v1.16.3`: the
-application reported ESP-IDF `v4.2.2`, while the test requires `v4.2.5`. Both published-release
-checks passed (`v1.16.3` for ESP32 and `v2.0.0` for nRF52). The reset and two-second capture worked
-with ESP-IDF's standalone `esptool.py` `3.1-dev`. The local evidence file is
-`test_5_5_2_2_a_20260921T180906.127289Z.log`; this result validates acquisition on that bench,
-not all hardware setups or a passing compliance verdict. See the assessment's reusable
-[identification requirements](../Functional_Test_Automation_Assessment.md#runtime-component-identification-and-serial-acquisition-55-2-2-a)
-for guidance independent of any particular test implementation.
-That earlier two-second capture ended before the nRF52 version line and predates the three-source
-requirement. It is not live evidence of the new consistency checks; the extended, early-exit capture
-is required to obtain all observations.
-
-The earlier hand-written DTR/RTS reset left this gateway waiting in ROM download mode. If a run
-reports `DOWNLOAD_BOOT` without an application line, treat it as a reset/acquisition ERROR;
-waiting 30 seconds is not a fix. A successful esptool exit alone also does not prove application
-startup: the required `cpu_start: ESP-IDF:` line must be captured. Preflight failure, reset failure,
-and an observed version mismatch are different outcomes, not interchangeable reasons for FAIL.
-
-The clearer terminal reporting added after that live run includes lines such as:
-
-```text
-FAIL: Application ESP-IDF: observed v4.2.2, expected v4.2.5 (IXIT; bootloader version is not checked)
-PASS: ruuvi.gateway_esp.c: installed v1.16.3 is a published GitHub release
-PASS: NetSecImpl-CoProcessor-Firmware: installed v2.0.0 is a published GitHub release
-Overall verdict: FAIL
-```
-
-This is an illustrative excerpt of the updated output, not the earlier live transcript.
-No `espidf_ver` field was added to `/ruuvi.json`; that was a proposed future improvement only.
-The test continues to obtain application ESP-IDF from UART, not from the host SDK/tool version
-or an inferred firmware-to-IDF mapping.
-
-Run offline implementation checks with `.venv/bin/python -m unittest --verbose test_test_5_5_2_2_a.py`.
-These checks access no hardware or network and provide no live compliance verdict.
+Host-side regression tests should check exact prepared request sequences and bodies, independently
+calculated password responses, session cookies and outstanding challenges, and applicable
+authentication-mode setup exceptions. Verify individual outcomes and final evidence for late
+failures as well as overall exit codes. Use the real client with fake HTTP transport to validate
+protocol integration; smaller client-level fixtures can isolate orchestration fault injection.
+Cover partial mutation and failed restoration where the task changes state.
 
 ## Library coverage
 
@@ -430,7 +263,7 @@ run `.venv/bin/python -m coverage html` and open `htmlcov/index.html`.
 
 ## Continuous integration
 
-[`../../.github/workflows/cra-python-tests.yml`](../../../.github/workflows/cra-python-tests.yml)
+[`../../../.github/workflows/cra-python-tests.yml`](../../../.github/workflows/cra-python-tests.yml)
 runs on relevant pushes and pull requests and can also be started manually. It:
 
 1. Sets up Python 3.8 on Ubuntu 22.04.
@@ -444,7 +277,9 @@ dedicated gateway or its test network.
 
 ## Adding or changing a functional test
 
-1. Add or update `test_<id>.py` for the live-DUT behavior.
+1. Add or update `task_<id>.md` in the [task directory](../tasks) with the case-specific procedure,
+   preconditions, commands, evidence, and verdict rules; implement that behavior in `test_<id>.py`.
+   Keep shared setup and workflow guidance in this README.
 2. Add or update `test_test_<id>.py` with deterministic fakes that verify the runner's sequence,
    outcomes, cleanup, recovery, evidence, and exit codes.
 3. Put reusable configuration, protocol, HTTP, logging, or model behavior in `lib/` and test it in

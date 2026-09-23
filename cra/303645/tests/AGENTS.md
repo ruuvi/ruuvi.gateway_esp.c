@@ -186,8 +186,9 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
   return alone does not establish a passing security assertion or successful restoration.
 - Check route expectations against `docs/http_api.md` and the relevant firmware handler, including
   LAN/hotspot restrictions and authentication precedence. For 5.1-1-2-B, keep `GET /info.json` in
-  the 26-route inventory and allow its LAN-only 404 exception for missing/Basic/Digest credentials;
-  disabled bearer probes still require 401. Do not allow 404 generically for protected routes.
+  the 26-route inventory. In default auth mode, missing/Basic/Digest credentials without an
+  authorized cookie return 302 before dispatch; disabled bearer probes require 401. The LAN-only
+  404 occurs after authorization succeeds and must not be accepted by these negative probes.
 - Keep imports free of DUT access and test execution. Put the executable entry point behind
   `if __name__ == "__main__"`; allow execution wrappers to inject work directories, clocks, and
   output callbacks for offline tests.
@@ -301,8 +302,9 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
 - Exercise each inventory rejection and final assertion independently, and inspect both the
   per-mechanism result and final evidence. Combine wrong/missing/malformed identity with non-default
   authentication fields to verify that recovery advice does not target an unverified device.
-  Model `/info.json` returning 404 on LAN and verify that this exception cannot spread to other
-  routes or bearer probes.
+  Model unauthenticated default-mode LAN `GET /info.json` returning 302 for missing/Basic/Digest
+  credentials. Verify that 404 fails these negative probes and disabled-bearer probes, with the
+  responsible mechanism marked FAIL and mandatory final verification still attempted.
 - Keep fixtures small enough to make the tested behavior visible. Reuse a local fake only when it
   remains clear which state transitions and failures it models.
 - Record prepared HTTP requests in a typed structure (for example, a dataclass), and use a typed
