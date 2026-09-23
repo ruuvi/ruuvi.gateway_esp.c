@@ -368,8 +368,9 @@ responses are `Content-Type: application/json` unless stated otherwise.
     `auth_type`; it is not universally required for unauthenticated checks.
   - Boolean options: `use_saved_password=`, `use_ssl_client_cert=`,
     `use_ssl_server_cert=`, `use_extra_http_path=`, `use_extra_http_query=`,
-    `use_extra_http_headers=`. Send `true` or `false`; omitted options default to
-    `false`. Their effect depends on the selected check.
+    `use_extra_http_headers=`. Send `true` or `false`; omitted SSL certificate
+    options default to `true`, while the other options default to `false`.
+    Their effect depends on the selected check.
 - **Check-specific requirements:**
   - `check_post_advs`, `check_post_stat`, `check_mqtt`, and `check_remote_cfg`
     support `use_saved_password=true` to use that configuration's saved secret
