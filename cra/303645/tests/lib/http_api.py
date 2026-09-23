@@ -1,58 +1,68 @@
 """Canonical firmware HTTP API inventory used by functional tests."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Set, Tuple
 
 
 class GatewayApi:
-    AUTH = "/auth"
-    AP = "/ap.json"
-    STATUS = "/status.json"
-    CONFIG = "/ruuvi.json"
-    FIRMWARE_UPDATE = "/firmware_update.json"
-    INFO = "/info.json"
-    METRICS = "/metrics"
-    HISTORY = "/history"
-    VALIDATE_URL = "/validate_url"
-    EXTRA_CFG = "/extra_cfg"
-    CONNECT = "/connect.json"
-    CONNECT_WPS = "/connect_wps"
-    BLUETOOTH_SCANNING = "/bluetooth_scanning.json"
-    FW_UPDATE = "/fw_update.json"
-    FW_UPDATE_URL = "/fw_update_url.json"
-    FW_UPDATE_RESET = "/fw_update_reset"
-    GW_CFG_DOWNLOAD = "/gw_cfg_download"
-    SSL_CERT = "/ssl_cert"
-    INIT_STORAGE = "/init_storage"
+    AUTH: str = "/auth"
+    AP: str = "/ap.json"
+    STATUS: str = "/status.json"
+    CONFIG: str = "/ruuvi.json"
+    FIRMWARE_UPDATE: str = "/firmware_update.json"
+    INFO: str = "/info.json"
+    METRICS: str = "/metrics"
+    HISTORY: str = "/history"
+    VALIDATE_URL: str = "/validate_url"
+    EXTRA_CFG: str = "/extra_cfg"
+    CONNECT: str = "/connect.json"
+    CONNECT_WPS: str = "/connect_wps"
+    BLUETOOTH_SCANNING: str = "/bluetooth_scanning.json"
+    FW_UPDATE: str = "/fw_update.json"
+    FW_UPDATE_URL: str = "/fw_update_url.json"
+    FW_UPDATE_RESET: str = "/fw_update_reset"
+    GW_CFG_DOWNLOAD: str = "/gw_cfg_download"
+    SSL_CERT: str = "/ssl_cert"
+    INIT_STORAGE: str = "/init_storage"
 
 
 class HttpMethod:
-    GET = "GET"
-    POST = "POST"
-    DELETE = "DELETE"
+    GET: str = "GET"
+    POST: str = "POST"
+    DELETE: str = "DELETE"
 
 
 class HttpStatus:
-    C_200_OK = 200
-    C_300_MULTIPLE_CHOICES = 300
-    C_302_FOUND = 302
-    C_401_UNAUTHORIZED = 401
-    C_403_FORBIDDEN = 403
-    C_500_INTERNAL_SERVER_ERROR = 500
+    C_200_OK: int = 200
+    C_300_MULTIPLE_CHOICES: int = 300
+    C_301_MOVED_PERMANENTLY: int = 301
+    C_302_FOUND: int = 302
+    C_303_SEE_OTHER: int = 303
+    C_307_TEMPORARY_REDIRECT: int = 307
+    C_308_PERMANENT_REDIRECT: int = 308
+    C_401_UNAUTHORIZED: int = 401
+    C_403_FORBIDDEN: int = 403
+    C_404_NOT_FOUND: int = 404
+    C_410_GONE: int = 410
+    C_429_TOO_MANY_REQUESTS: int = 429
+    C_500_INTERNAL_SERVER_ERROR: int = 500
 
 
 class HttpHeader:
-    AUTHORIZATION = "Authorization"
-    WWW_AUTHENTICATE = "WWW-Authenticate"
-    USER_AGENT = "User-Agent"
-    COOKIE = "Cookie"
-    RUUVI_ECDH_PUBLIC_KEY = "Ruuvi-Ecdh-Pub-Key"
+    AUTHORIZATION: str = "Authorization"
+    WWW_AUTHENTICATE: str = "WWW-Authenticate"
+    USER_AGENT: str = "User-Agent"
+    COOKIE: str = "Cookie"
+    CONTENT_TYPE: str = "Content-Type"
+    LOCATION: str = "Location"
+    RUUVI_ECDH_PUBLIC_KEY: str = "Ruuvi-Ecdh-Pub-Key"
 
 
 class HttpAuthScheme:
-    BASIC = "Basic"
-    DIGEST = "Digest"
-    BEARER = "Bearer"
+    BASIC: str = "Basic"
+    DIGEST: str = "Digest"
+    BEARER: str = "Bearer"
 
 
 @dataclass(frozen=True)
@@ -61,7 +71,7 @@ class ApiRoute:
     path: str
 
 
-API_INVENTORY: Tuple[ApiRoute, ...] = (
+API_INVENTORY: tuple[ApiRoute, ...] = (
     ApiRoute(HttpMethod.GET, GatewayApi.AUTH),
     ApiRoute(HttpMethod.GET, GatewayApi.AP),
     ApiRoute(HttpMethod.GET, GatewayApi.STATUS),
@@ -90,7 +100,7 @@ API_INVENTORY: Tuple[ApiRoute, ...] = (
     ApiRoute(HttpMethod.DELETE, GatewayApi.EXTRA_CFG),
 )
 
-EXPECTED_API_INVENTORY: Set[ApiRoute] = {
+EXPECTED_API_INVENTORY: set[ApiRoute] = {
     ApiRoute(HttpMethod.GET, GatewayApi.AUTH),
     ApiRoute(HttpMethod.GET, GatewayApi.AP),
     ApiRoute(HttpMethod.GET, GatewayApi.STATUS),
