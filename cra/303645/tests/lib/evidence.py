@@ -11,6 +11,8 @@ from typing import Any, Callable, TextIO
 
 import requests
 
+from .models import DutConfig
+
 
 @dataclass(frozen=True)
 class AssertionEvidence:
@@ -76,6 +78,9 @@ class EvidenceLog:
 
     def write(self, label: str, value: Any = "") -> None:
         structured_value: Any = asdict(value) if is_dataclass(value) else value
+        if isinstance(value, DutConfig):
+            # Other runners also log this shared configuration but do not use Wi-Fi.
+            structured_value["wifi_password"] = "<redacted>" if value.wifi_password is not None else None
         if isinstance(structured_value, (dict, list, tuple)):
             rendered: str = json.dumps(
                 structured_value,

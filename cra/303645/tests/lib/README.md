@@ -22,6 +22,7 @@ The package is split by responsibility:
 | `models.py`      | DUT configuration, test results, and console progress reporting                                                  |
 | `webresource.py` | Unauthenticated public HTTPS fetching, bounded redirects, transport errors, and immutable observations           |
 | `serial_dut.py`  | CH340 discovery, serial-tool preflight, and bounded reset/console capture with injectable hardware and clocks    |
+| `flash_dut.py`   | Injectable esptool flash reads/writes and strict ESP32 partition-table and OTA metadata decoding                 |
 
 `GatewayClient` is the main runtime boundary. It prepares requests, writes request and response
 evidence, translates `requests` transport failures into library exceptions, and implements the
@@ -36,13 +37,27 @@ deadlines, expected observations, verdict rules, and live-run findings belong in
 
 ### Configuration
 
-- `load_dut_config(path)` reads exactly `gw_id`, `gw_mac`, and `gw_hostname` from a local `.env`
-  file. Unknown, duplicate, missing, and malformed values raise `InvalidConfig`.
+- `load_dut_config(path)` requires `gw_id`, `gw_mac`, and `gw_hostname` in a local `.env` file and
+  accepts optional `gw_fw` as a full `vX.Y.Z-dev` or `vX.Y.Z-prod` release tag. Empty `gw_fw`
+  becomes `None`. `gw_mac` is the nRF52 identity MAC, not an ESP32 network-interface MAC.
+  Optional `wifi_ssid` and `wifi_password` must be supplied together: 1–32 and 8–63 UTF-8
+  bytes respectively, without NUL characters. Their values after `=` are literal, preserving
+  whitespace, `#`, and `=` without quote handling or expansion. Absent fields become `None`;
+  runners decide whether the pair is required. Unknown, duplicate, missing required, and
+  malformed values raise `InvalidConfig`. Errors do not echo credential values.
 - `validate_hostname(value)` accepts DNS names, IPv4 addresses, and IPv6 addresses without a URL
   scheme, port, path, credentials, or surrounding whitespace.
 - `load_ui_default_config(path=...)` reads the generated gateway UI defaults as a JSON object.
+  Omit the path (or pass `None`) to prefer the repository-root
+  `gw_cfg_default/gw_cfg_default_gen_ui.json`, then fall back to
+  `gw_cfg_default_gen_ui.json` beside the test scripts, one directory above `lib/`.
+  This supports standalone/Windows copies without depending on the current working
+  directory. Copy the portable reference from the matching firmware checkout;
+  defaults are never inferred from live DUT state. An explicit path never falls
+  back, and an existing malformed repository reference is an error even if a
+  portable copy exists. Missing automatic candidates report where to copy the file.
 - `default_config_values(fields, path=...)` selects required fields from those defaults and rejects
-  missing fields.
+  missing fields, using the same path-selection rules.
 - `FACTORY_RESET_MESSAGE` and `AUTHENTICATION_DEFAULT_FIELDS` define shared functional-test policy.
   The recovery message requires the red LED completion signal (200 ms on/200 ms off) after boot-time
   erasure, warns about lost local settings, and treats about 11 seconds as typical elapsed time.
@@ -52,8 +67,9 @@ deadlines, expected observations, verdict rules, and live-run findings belong in
 
 ### Models
 
-- `DutConfig` stores the gateway ID, MAC address, and hostname. Its `base_url` property formats DNS,
-  IPv4, and bracketed IPv6 URLs.
+- `DutConfig` stores the gateway ID, nRF52 MAC, and hostname. Its `base_url` property formats DNS,
+  IPv4, and bracketed IPv6 URLs. Optional `gw_fw`, `wifi_ssid`, and `wifi_password` follow
+  the original three fields; `wifi_password` is excluded from the dataclass representation.
 - `RunResult` carries the process exit code, verdict, per-check outcomes, route coverage, and an
   optional recovery message.
 - `ProgressReporter` emits numbered progress messages through an injected output callback.
@@ -61,11 +77,20 @@ deadlines, expected observations, verdict rules, and live-run findings belong in
   concise PASS/FAIL/ERROR reasons and mirror those lines with `EvidenceLog.write_line()`; neither
   `RunResult` nor `EvidenceLog.exception()` automatically prints a diagnostic to the terminal.
 
+Ethernet and Wi-Fi use their own ESP32 MACs, which are absent from `.env`. A packet-capture caller
+must identify the active link MAC from the verified DUT IP and an on-link ARP/neighbor observation
+or equivalent trusted capture context; it must not substitute `DutConfig.gw_mac`. A future ESP32
+Bluetooth interface must be identified separately as well. See the
+[DUT configuration guidance](../README.md#dut-configuration) for the DHCP capture precondition.
+
 ### Evidence
 
 - `EvidenceLog.create(log_dir, filename_prefix, now=...)` creates a timestamped file using exclusive
   creation. A numeric suffix prevents collisions.
 - `write()` and `write_line()` record structured or plain evidence and flush immediately.
+  A top-level `DutConfig` passed to `write()` has its Wi-Fi password redacted in metadata.
+  HTTP transcripts and runner-specific manifests retain their existing complete-evidence contract;
+  they can contain provisioned Wi-Fi credentials.
 - `write_http_request()` and `write_http_response()` record complete HTTP exchanges.
 - `exception()` records an exception and traceback.
 - `finish()` uses one injected end timestamp for all terminal record prefixes and values, records
@@ -79,6 +104,12 @@ bodies. Store and share them with the same care as DUT credentials.
 ### Gateway HTTP and authentication
 
 - `GatewayCfgDesc`, `GatewayCfgLanAuthType`, and `AuthMech` contain shared gateway protocol names.
+  `GatewayCfgDesc` also names Wi-Fi credential fields, the storage-presence mapping, and
+  HTTP/MQTT/remote-config target and authentication fields. `GatewayStorageFile` names the
+  HTTP/MQTT/statistics/remote-config client certificate/key files and HTTP/MQTT server
+  certificates used by data-creation tests. These are protocol descriptors, not a route
+  inventory or a promise that stored contents can be read: current TLS storage uses NVS
+  strings, for which `GET /extra_cfg` returns 403; callers can inspect `storage.<filename>`.
   `gateway.py` re-exports `GatewayApi` for backward compatibility.
 - `GatewayClient.new_session()` disables Requests' environment settings (`trust_env=False`),
   including automatic `.netrc` authentication and environment proxies, so host settings cannot
@@ -159,6 +190,40 @@ response and known redirects when later transport/protocol/loop/overflow failure
 This lets runners preserve earlier failed checks while reporting an overall ERROR. Transient HTTP
 status classification and all accessibility assertions remain the runner's responsibility.
 
+### LAN scan acquisition
+
+`lib.netscan` provides verdict-free network acquisition for full-range interface tests.
+`resolve_host()` selects the first IPv4 address and retains all resolved addresses; failures are
+`ScanError` setup errors. `check_nmap()` checks executable presence and a parseable minimum version,
+then probes Nmap's own UDP privilege with a bounded one-port loopback scan. A capability on Python
+alone does not transfer to the Nmap child process. Its executable lookup, subprocess, and privilege
+check are injectable.
+
+`run_tcp_connect_scan()` uses nmap `-sT -sV`; `run_udp_scan()` uses `--privileged -sU -sV` with
+`--defeat-icmp-ratelimit`. Both accept an optional per-host `scan_delay_ms` for Nmap
+`--scan-delay` and require explicit finite host timeout and retry settings from their
+caller, use an outer subprocess timeout, preserve a nonzero Nmap exit diagnostic even when XML is
+absent, and parse completed nmap XML. `ScanResult` is immutable and
+retains the exact command, raw XML, elapsed time, confirmed-open ports, state counts, explicit port
+observations, and typed `ExtraportsGroup` records. Nmap can compress multiple closed, filtered,
+`open|filtered`, or `closed|filtered` groups without listing their individual port IDs. In that case, the corresponding
+port sets contain only explicitly listed ports; counts still cover the full requested range.
+The optional `enumerate_ports=True` mode adds Nmap `-d3` so indeterminate port IDs remain available
+for coverage evidence; it rejects a result that still compresses an indeterminate group. Optional
+`defeat_icmp_ratelimit` and `service_detection` settings let callers choose scan behavior without
+changing the default scan command.
+With `--defeat-icmp-ratelimit`, Nmap labels nonresponsive UDP ports `closed|filtered`; this is as
+indeterminate for listener absence as `open|filtered` and never a confirmed closed port. Incomplete
+port coverage, timeout, malformed XML, and missing UDP
+privilege raise `ScanError`. The subprocess and monotonic clock are injectable.
+
+`probe_mdns()` sends a direct DNS-SD PTR query for `_services._dns-sd._udp.local` to UDP 5353. It
+returns a typed answer only when the requested IP replies from UDP 5353 and advertises `_http._tcp`.
+Timeout returns `None`, which callers must interpret against their scan coverage. Its socket factory
+is injectable.
+The library does not map findings to IXIT entries or decide a case verdict. Direct helper contracts
+are tested in `test_lib.py` without launching nmap or contacting the network.
+
 ### Serial discovery and capture
 
 `SerialPort(device, vid, pid)` and `SerialVersions(esptool, pyserial, esptool_source=...)` are
@@ -182,7 +247,7 @@ The default enumerator uses `serial.tools.list_ports.comports()`.
 and the Python executable. The legacy `sleep` argument is retained but no longer used.
 Its `preflight()` caches the tool selection and `discover()` exposes port discovery.
 `capture(port, evidence, duration=30.0, *, stop_when=None)` first invokes the preflight-selected tool with
-`--port <discovered-port> --before default_reset --after hard_reset read_mac`.
+`--port <discovered-port> --baud 460800 --before default_reset --after hard_reset read_mac`.
 An imported package runs as `[sys.executable, "-m", "esptool", ...]`; a PATH tool runs by its resolved
 path, including ESP-IDF's `esptool.py`. The subprocess has a 20-second timeout and no shell.
 Evidence records the command before execution and `SerialCommandResult` (return code, stdout,
@@ -200,6 +265,12 @@ read timeout is at most 250 ms and is capped to the remaining window. The raw ca
 a partial read failure, and the port closes on success or failure. Exceptions propagate to the
 runner for ERROR classification. Banner interpretation and all compliance assertions stay in runners.
 
+`SerialTransport.reset(port, evidence)` exposes the same bounded esptool reset as a standalone
+operation for callers that need another observer, such as `tcpdump`, listening before reboot. It
+records the command and result without opening UART or capturing console output. Discover the
+single CH340 port and verify DUT identity before using it; its `read_mac` output is an ESP32 MAC,
+not `.env` `gw_mac`.
+
 The capture duration bounds UART reads, not the entire reset-and-capture operation. A successful
 esptool process is only an acquisition prerequisite: callers still need to validate the captured
 output against their required observations. Increasing the read window does not resolve a chip
@@ -211,10 +282,43 @@ command may report uploading a RAM stub, which is not a partition flash operatio
 output describes the ESP32 MAC; it must not replace the HTTP `gw_mac` identity gate, whose value
 comes from the nRF52 address in `gw_cfg_json_add_items_device_info()`.
 
+`SerialTransport.observe(port, evidence, duration=30.0, *, stop_when=None)` opens UART immediately
+after a caller-controlled reset, reads for a finite duration or until `stop_when` accepts the
+cumulative text, records the raw console, and closes the port. `capture()` delegates to this method
+after resetting. Callers can use `observe()` while a separate packet capture remains active
+to correlate a task-defined startup marker with network traffic; the task owns the marker,
+capture deadline and interpretation.
+
 `SerialTransport` returns captured text without interpreting banners or comparing versions.
 Runners implement the parsing and verdict rules defined by their task specifications. Direct
 early-stop, cumulative-buffer, deadline, callback-error, and port-cleanup tests belong in
 `test_lib.py`; observation parsing and comparison regressions belong in the paired runner tests.
+
+### ESP32 flash access
+
+`flash_dut.FlashTool` uses the serial preflight's selected esptool source and CH340 port. Its
+subprocess runner is injectable. Every `chip_id`, `flash_id`, `read_flash`, and `write_flash`
+command explicitly uses `--baud 460800`. UART boot capture remains at 115200 baud. Reads use `--before default_reset --after hard_reset`;
+writes use `--after no_reset` so
+the caller can attach UART capture before an explicit hard reset. Every command has a finite
+timeout and evidence of the exact command and result. Each flash read command has a 30-second
+timeout; write timeouts scale with transfer size. `read()` assembles a partition from complete
+64 KiB esptool reads. On corrupt data, a short read, or a read timeout, it retries at 115200 baud.
+After a failed or short read, it resumes one 4 KiB sector before the last saved boundary and checks
+overlapping bytes. It permits three failures without new progress, clears that count when new bytes
+are saved, and writes the final backup only after the requested byte count is complete;
+`write()` requires complete 4 KiB aligned sectors because
+esptool erases flash by sector. Both methods leave policy about permitted offsets to the caller.
+After all read attempts fail, `read()` makes a best-effort `read_mac` hard reset so a fatal
+esptool exit does not leave the gateway in download mode. Reset failure is reported separately.
+
+`parse_partition_table()` validates the ESP-IDF MD5 record when present and converts the
+on-device binary table to immutable `Partition` records;
+`parse_partition_csv()` does the same for the repository layout. Callers compare the full tuples
+before writing. `decode_otadata()` validates both OTA selection entries' sequence, state, and
+ESP-IDF seeded CRC (`zlib.crc32(sequence_bytes, 0xFFFFFFFF)`),
+then returns the unambiguous active slot or raises `InvalidSetup`. Direct parser and tool tests
+live in `test_lib.py`.
 
 `open_serial(port, baud, timeout)` initializes inactive DTR/RTS before opening.
 Both default port enumeration and serial opening accept an optional injected module importer.

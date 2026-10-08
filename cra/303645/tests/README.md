@@ -129,20 +129,51 @@ use documented line-specific suppressions, as explained in [`AGENTS.md`](AGENTS.
 
 ## DUT configuration
 
-DUT-facing live tests read `.env` from the current test directory. It must contain exactly these fields:
+DUT-facing live tests read `.env` from the current test directory. It requires these identity fields:
 
 ```dotenv
 gw_id=00:11:22:33:44:55:66:77
 gw_mac=AA:BB:CC:DD:EE:FF
 gw_hostname=gateway.local
+# Optional release tag for runners that select or install firmware:
+gw_fw=v1.17.5-dev
+# Optional shared fields; required by tests that provision a Wi-Fi LAN:
+wifi_ssid=MY_WIFI_123
+wifi_password=12345678
 ```
 
 - `gw_id` is eight colon-separated hexadecimal octets.
-- `gw_mac` is six colon-separated hexadecimal octets.
+- `gw_mac` is the nRF52 MAC (six colon-separated hexadecimal octets). It is the gateway identity
+  reported by authenticated `GET /ruuvi.json`, not the ESP32 Ethernet or Wi-Fi MAC.
 - `gw_hostname` is a DNS name, IPv4 address, or IPv6 address without a URL scheme, port, or path.
+- `gw_fw` is optional and must be a full release tag such as `v1.17.5-dev` or `v1.17.5-prod`.
+  The shared loader maps an absent or empty value to `None`; each task defines whether it is
+  required and any prompt, fallback release or installation policy.
+
+- `wifi_ssid` and `wifi_password` are optional as a pair; individual tests may require them.
+  Use an available password-protected 2.4 GHz test network. SSIDs accept 1–32 UTF-8 bytes;
+  passwords accept 8–63 UTF-8 bytes. Open networks and raw 64-digit PSKs are not supported by
+  this configuration contract. Values after `=` are literal, including spaces, `#`, and `=`;
+  do not add quotes or inline comments. NUL characters are rejected.
+  Merely adding these fields does not change the Gateway's network configuration.
+  DUT metadata logging redacts the Wi-Fi password, but provisioning HTTP evidence and manifests
+  can contain it. Use dedicated test-network credentials and keep those artifacts local.
 
 Replace the example values with the dedicated test gateway values. Blank lines and full-line
 comments are accepted. Unknown and duplicate keys are rejected.
+
+For Ethernet or Wi-Fi packet capture, resolve the verified DUT hostname to its active IP address,
+then obtain the link MAC for that IP from an on-link ARP/neighbor entry or an equivalent trusted
+network observation. Confirm the route and capture interface refer to the DUT's actual LAN; a
+routed address or a neighbor entry for the router does not identify the DUT. Do not use `.env`
+`gw_mac` as a packet-source filter or derive the Ethernet/Wi-Fi MAC from it. Any future ESP32
+Bluetooth interface has its own MAC and requires interface-specific identification.
+
+Packet-capture tests need an observation point that can see the required DUT traffic; a switched
+host port may not see another device's exchanges. The task defines the capture privileges, tools,
+traffic stimulus and observation window. A passive capture may accompany an active reset or
+network change: establish the task's identity and baseline preconditions before either action.
+Do not introduce competing network services or change DUT settings merely to make traffic visible.
 
 ### Baseline and recovery
 
@@ -216,6 +247,21 @@ DUT-facing live scripts take their configuration from `.env`, communicate with t
 gateway, print progress, and create a log under `logs/`. Public-resource scripts contact their
 declared external target instead. Live scripts take no arguments unless the task specifies otherwise.
 Run them from `cra/303645/tests`; do not run live scripts through `unittest` discovery.
+
+### Task instructions and portable copies
+
+Before running a live test, read its `task_<id>.md` specification in the [task directory](../tasks).
+It owns the required hardware, optional environment fields, service setup, network transitions,
+CLI options, prompts, timeouts and recovery procedure. Check the runner's startup instructions
+before changing connections or operating the DUT. Test-specific instructions do not belong here.
+
+For a portable copy, use the task's file list: the runner, any companion fixture modules, matching
+shared library modules and required local reference files must come from the same checkout.
+Install its declared dependencies using the Python interpreter that will run it. Use a clean
+directory and copy only the intended local configuration into it; do not mix script/library versions.
+Run from the directory containing that configuration. A missing local reference is a setup error,
+not a reason to reset the device. Consult [shared configuration loading](lib/README.md#configuration)
+for the generated-default reference and portable lookup behavior.
 
 ### Evidence and results
 

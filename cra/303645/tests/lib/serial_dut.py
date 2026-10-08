@@ -17,6 +17,7 @@ from .evidence import EvidenceLog
 
 CH340_VID: int = 0x1A86
 UART_BAUD: int = 115200
+ESPTOOL_BAUD: int = 460800
 TOOL_VERSION_TIMEOUT: float = 10.0
 RESET_TIMEOUT_SECONDS: float = 20.0
 
@@ -175,7 +176,8 @@ class SerialTransport:
     def discover(self) -> SerialPort:
         return discover_serial_port(self.enumerate_fn)
 
-    def _reset(self, port: SerialPort, evidence: EvidenceLog) -> None:
+    def reset(self, port: SerialPort, evidence: EvidenceLog) -> None:
+        """Reset the ESP32 through esptool without opening a UART capture."""
         versions: SerialVersions = self._versions if self._versions is not None else self.preflight()
         prefix: tuple[str, ...] = (
             (self.python_executable, "-m", "esptool")
@@ -183,7 +185,8 @@ class SerialTransport:
             else (versions.esptool_source,)
         )
         command: tuple[str, ...] = prefix + (
-            "--port", port.device, "--before", "default_reset", "--after", "hard_reset", "read_mac",
+            "--port", port.device, "--baud", str(ESPTOOL_BAUD),
+            "--before", "default_reset", "--after", "hard_reset", "read_mac",
         )
         evidence.write("ESPTOOL RESET TOOL", versions)
         evidence.write("ESPTOOL RESET COMMAND", command)
@@ -209,10 +212,20 @@ class SerialTransport:
         self, port: SerialPort, evidence: EvidenceLog, duration: float = 30.0,
         *, stop_when: Callable[[str], bool] | None = None,
     ) -> str:
+        """Reset, then observe the boot console."""
+        if not math.isfinite(duration) or duration <= 0:
+            raise InvalidSetup("serial capture duration must be finite and positive")
+        self.reset(port, evidence)
+        return self.observe(port, evidence, duration, stop_when=stop_when)
+
+    def observe(
+        self, port: SerialPort, evidence: EvidenceLog, duration: float = 30.0,
+        *, stop_when: Callable[[str], bool] | None = None,
+    ) -> str:
+        """Observe UART after a caller-controlled reset without resetting again."""
         if not math.isfinite(duration) or duration <= 0:
             raise InvalidSetup("serial capture duration must be finite and positive")
         # esptool owns the serial port until its hard_reset and process exit complete.
-        self._reset(port, evidence)
         connection: SerialConnection = self.open_fn(port.device, UART_BAUD, min(0.25, duration))
         chunks: list[bytes] = []
         try:

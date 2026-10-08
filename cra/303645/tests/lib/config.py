@@ -18,9 +18,11 @@ HOSTNAME_RE: re.Pattern[str] = re.compile(
     r"^(?=.{1,253}\.?$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*"
     r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.?$"
 )
+FIRMWARE_VERSION_RE: re.Pattern[str] = re.compile(r"v\d+\.\d+\.\d+-(?:prod|dev)")
 DEFAULT_GATEWAY_UI_CONFIG_PATH: Path = (
-    Path(__file__).resolve().parents[4] / "gw_cfg_default" / "gw_cfg_default_gen_ui.json"
+    Path(__file__).resolve().parent.parent.parent.parent.parent / "gw_cfg_default" / "gw_cfg_default_gen_ui.json"
 )
+PORTABLE_GATEWAY_UI_CONFIG_PATH: Path = Path(__file__).resolve().parent.parent / "gw_cfg_default_gen_ui.json"
 FACTORY_RESET_MESSAGE: str = (
     "USER ACTION REQUIRED: The gateway is not in the required factory-default state. "
     "Factory reset erases saved local configuration, credentials, tokens, and uploaded "
@@ -45,9 +47,21 @@ class InvalidConfig(InvalidSetup):
 
 
 def load_ui_default_config(
-    config_path: Path = DEFAULT_GATEWAY_UI_CONFIG_PATH,
+    config_path: Path | None = None,
 ) -> dict[str, Any]:
     """Load generated defaults as exposed by authenticated GET /ruuvi.json."""
+    if config_path is None:
+        if DEFAULT_GATEWAY_UI_CONFIG_PATH.exists():
+            config_path = DEFAULT_GATEWAY_UI_CONFIG_PATH
+        elif PORTABLE_GATEWAY_UI_CONFIG_PATH.exists():
+            config_path = PORTABLE_GATEWAY_UI_CONFIG_PATH
+        else:
+            raise InvalidConfig(
+                "Missing factory-default reference file. Copy gw_cfg_default/gw_cfg_default_gen_ui.json "
+                f"from the matching firmware checkout to {PORTABLE_GATEWAY_UI_CONFIG_PATH} "
+                "(beside the test scripts), or run from the full repository. "
+                f"Repository path checked: {DEFAULT_GATEWAY_UI_CONFIG_PATH}"
+            )
     try:
         payload: Any = json.loads(config_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
@@ -60,7 +74,7 @@ def load_ui_default_config(
 
 def default_config_values(
     fields: Iterable[str],
-    config_path: Path = DEFAULT_GATEWAY_UI_CONFIG_PATH,
+    config_path: Path | None = None,
 ) -> dict[str, Any]:
     defaults: dict[str, Any] = load_ui_default_config(config_path)
     requested: tuple[str, ...] = tuple(fields)
@@ -91,11 +105,12 @@ def validate_hostname(value: str) -> None:
 
 
 def load_dut_config(env_path: Path) -> DutConfig:
-    expected: set[str] = {
+    required: set[str] = {
         GatewayCfgDesc.GW_ID,
         GatewayCfgDesc.GW_MAC,
         GatewayCfgDesc.GW_HOSTNAME,
     }
+    allowed: set[str] = required | {"gw_fw", "wifi_ssid", "wifi_password"}
     values: dict[str, str] = {}
     try:
         lines: list[str] = env_path.read_text(encoding="utf-8").splitlines()
@@ -114,13 +129,16 @@ def load_dut_config(env_path: Path) -> DutConfig:
         value: str
         key: str
         key, value = (part.strip() for part in line.split("=", 1))
-        if key not in expected:
+        if key in ("wifi_ssid", "wifi_password"):
+            # Credentials are literal: retain spaces, # and =, without shell expansion.
+            value = raw_line.split("=", 1)[1]
+        if key not in allowed:
             raise InvalidConfig(f"unknown .env key {key!r} on line {line_number}")
         if key in values:
             raise InvalidConfig(f"duplicate .env key {key!r}")
         values[key] = value
 
-    missing: set[str] = expected.difference(values)
+    missing: set[str] = required.difference(values)
     if missing:
         raise InvalidConfig(f"missing .env key(s): {', '.join(sorted(missing))}")
     if not OCTETS_8_RE.fullmatch(values[GatewayCfgDesc.GW_ID]):
@@ -128,4 +146,18 @@ def load_dut_config(env_path: Path) -> DutConfig:
     if not OCTETS_6_RE.fullmatch(values[GatewayCfgDesc.GW_MAC]):
         raise InvalidConfig(f"{GatewayCfgDesc.GW_MAC} must contain six colon-separated hexadecimal octets")
     validate_hostname(values[GatewayCfgDesc.GW_HOSTNAME])
-    return DutConfig(**values)
+    firmware_version: str | None = values.get("gw_fw") or None
+    if firmware_version is not None and FIRMWARE_VERSION_RE.fullmatch(firmware_version) is None:
+        raise InvalidConfig("gw_fw must look like v1.17.5-dev or v1.17.5-prod")
+    wifi_ssid: str | None = values.get("wifi_ssid")
+    wifi_password: str | None = values.get("wifi_password")
+    if (wifi_ssid is None) != (wifi_password is None):
+        raise InvalidConfig("wifi_ssid and wifi_password must be supplied together")
+    if wifi_ssid is not None and not 1 <= len(wifi_ssid.encode("utf-8")) <= 32:
+        raise InvalidConfig("wifi_ssid must contain 1 to 32 UTF-8 bytes")
+    if wifi_password is not None and not 8 <= len(wifi_password.encode("utf-8")) <= 63:
+        raise InvalidConfig("wifi_password must contain 8 to 63 UTF-8 bytes for a password-protected test network")
+    if wifi_ssid is not None and wifi_password is not None and ("\0" in wifi_ssid or "\0" in wifi_password):
+        raise InvalidConfig("Wi-Fi credentials must not contain NUL characters")
+    return DutConfig(values[GatewayCfgDesc.GW_ID], values[GatewayCfgDesc.GW_MAC],
+                     values[GatewayCfgDesc.GW_HOSTNAME], firmware_version, wifi_ssid, wifi_password)
