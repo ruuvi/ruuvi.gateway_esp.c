@@ -31,7 +31,7 @@ state transitions on top of this client.
 
 This README describes reusable API contracts and helper behavior. Concrete procedures, capture
 deadlines, expected observations, verdict rules, and live-run findings belong in the matching
-`task_<id>.md` specification in the [task directory](../../tasks).
+`cra/303645/tasks/task_<id>.md` specification in the [task directory](../../tasks).
 
 ## Public API
 
@@ -147,7 +147,8 @@ bodies. Store and share them with the same care as DUT credentials.
   `ecdh`: both uncompressed P-256 public keys, the 32-byte shared X coordinate, and its SHA-256 AES
   key. Existing constructors remain valid. Live client results include these observations.
 - `captured_requests` retains immutable `CapturedRequest` snapshots of method, URL, header pairs
-  and body bytes before sending, including attempts whose response is lost. A body of `b""` means
+  and body bytes before sending, including attempts whose response is lost. Mutable `bytearray`
+  bodies are copied into immutable bytes. A body of `b""` means
   no request body; `None` marks an unsupported streaming body which is left unconsumed to preserve
   existing transport behavior. Evidence-dependent callers must reject incomplete captures.
   Capture includes all requests through that client, including recovery; it does not inspect a
@@ -201,8 +202,10 @@ check are injectable.
 
 `run_tcp_connect_scan()` uses nmap `-sT -sV`; `run_udp_scan()` uses `--privileged -sU -sV` with
 `--defeat-icmp-ratelimit`. Both accept an optional per-host `scan_delay_ms` for Nmap
-`--scan-delay` and require explicit finite host timeout and retry settings from their
-caller, use an outer subprocess timeout, preserve a nonzero Nmap exit diagnostic even when XML is
+`--scan-delay`. Host timeout and scan delay must be positive integers; retries must be a
+non-negative integer. Invalid limits, including non-finite numbers, raise `ScanError` before
+creating temporary files or launching Nmap. Both scans use an outer subprocess timeout,
+preserve a nonzero Nmap exit diagnostic even when XML is
 absent, and parse completed nmap XML. `ScanResult` is immutable and
 retains the exact command, raw XML, elapsed time, confirmed-open ports, state counts, explicit port
 observations, and typed `ExtraportsGroup` records. Nmap can compress multiple closed, filtered,
@@ -219,8 +222,9 @@ privilege raise `ScanError`. The subprocess and monotonic clock are injectable.
 
 `probe_mdns()` sends a direct DNS-SD PTR query for `_services._dns-sd._udp.local` to UDP 5353. It
 returns a typed answer only when the requested IP replies from UDP 5353 and advertises `_http._tcp`.
-Timeout returns `None`, which callers must interpret against their scan coverage. Its socket factory
-is injectable.
+Timeout returns `None`, which callers must interpret against their scan coverage. Non-finite or
+nonpositive timeouts raise `ScanError` before opening a socket; malformed non-ASCII DNS labels
+also raise `ScanError`. Its socket factory is injectable.
 The library does not map findings to IXIT entries or decide a case verdict. Direct helper contracts
 are tested in `test_lib.py` without launching nmap or contacting the network.
 
@@ -308,12 +312,14 @@ After a failed or short read, it resumes one 4 KiB sector before the last saved 
 overlapping bytes. It permits three failures without new progress, clears that count when new bytes
 are saved, and writes the final backup only after the requested byte count is complete;
 `write()` requires complete 4 KiB aligned sectors because
-esptool erases flash by sector. Both methods leave policy about permitted offsets to the caller.
+esptool erases flash by sector. Both methods reject negative offsets, and `read()` requires a
+positive size. Invalid ranges raise `InvalidSetup` before touching files or invoking esptool.
+Policy about permitted partitions remains with the caller.
 After all read attempts fail, `read()` makes a best-effort `read_mac` hard reset so a fatal
 esptool exit does not leave the gateway in download mode. Reset failure is reported separately.
 
 `parse_partition_table()` validates the ESP-IDF MD5 record when present and converts the
-on-device binary table to immutable `Partition` records;
+on-device binary table to immutable `Partition` records, rejecting non-ASCII names as `InvalidSetup`;
 `parse_partition_csv()` does the same for the repository layout. Callers compare the full tuples
 before writing. `decode_otadata()` validates both OTA selection entries' sequence, state, and
 ESP-IDF seeded CRC (`zlib.crc32(sequence_bytes, 0xFFFFFFFF)`),
@@ -329,6 +335,8 @@ Direct helper tests are in `test_lib.py`; no live hardware is needed for library
 
 - `GatewayApi`, `HttpMethod`, `HttpStatus`, `HttpHeader`, and `HttpAuthScheme` centralize endpoint
   paths and HTTP vocabulary in `http_api.py`.
+  Named statuses cover all common firmware responses documented in `docs/http_api.md`, including
+  400, 409, 502, 503, and 504.
   `HttpStatus.C_404_NOT_FOUND` represents unavailable routes; runners decide where it is expected
   (for example, hotspot-only `/info.json` on LAN after authorization succeeds). Authentication
   runs before dispatch: in default mode, missing/Basic/Digest credentials without an authorized

@@ -41,12 +41,17 @@ class HttpStatus:
     C_303_SEE_OTHER: int = 303
     C_307_TEMPORARY_REDIRECT: int = 307
     C_308_PERMANENT_REDIRECT: int = 308
+    C_400_BAD_REQUEST: int = 400
     C_401_UNAUTHORIZED: int = 401
     C_403_FORBIDDEN: int = 403
     C_404_NOT_FOUND: int = 404
+    C_409_CONFLICT: int = 409
     C_410_GONE: int = 410
     C_429_TOO_MANY_REQUESTS: int = 429
     C_500_INTERNAL_SERVER_ERROR: int = 500
+    C_502_BAD_GATEWAY: int = 502
+    C_503_SERVICE_UNAVAILABLE: int = 503
+    C_504_GATEWAY_TIMEOUT: int = 504
 
 
 class HttpHeader:

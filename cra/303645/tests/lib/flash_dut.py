@@ -77,7 +77,11 @@ def parse_partition_table(data: bytes) -> tuple[Partition, ...]:
             break
         if entry[:2] != b"\xaa\x50":
             raise InvalidSetup(f"invalid partition entry magic at 0x{index:x}")
-        name: str = entry[12:28].split(b"\x00", 1)[0].decode("ascii")
+        try:
+            name: str = entry[12:28].split(b"\x00", 1)[0].decode("ascii")
+        except UnicodeDecodeError as error:
+            error: UnicodeDecodeError
+            raise InvalidSetup(f"non-ASCII partition name at 0x{index:x}") from error
         if not name or any(part.name == name for part in parts):
             raise InvalidSetup(f"missing or duplicate partition name {name}")
         parts.append(Partition(name, entry[2], entry[3],
@@ -184,6 +188,8 @@ class FlashTool:
         return chip.stdout, flash.stdout
 
     def read(self, offset: int, size: int, path: Path) -> bytes:
+        if offset < 0 or size <= 0:
+            raise InvalidSetup("flash reads require a non-negative offset and positive size")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.unlink(missing_ok=True)
         chunk_path: Path = path.with_name(f"{path.name}.chunk")
@@ -259,6 +265,8 @@ class FlashTool:
         ) from last_error
 
     def write(self, offset: int, data: bytes, path: Path) -> None:
+        if offset < 0:
+            raise InvalidSetup("flash writes require a non-negative offset")
         if offset % SECTOR_SIZE or len(data) % SECTOR_SIZE or not data:
             raise InvalidSetup("flash writes must cover aligned complete sectors")
         path.parent.mkdir(parents=True, exist_ok=True)

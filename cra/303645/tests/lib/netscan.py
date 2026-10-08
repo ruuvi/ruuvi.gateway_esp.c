@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import re
 import shutil
@@ -200,7 +201,8 @@ def parse_nmap_xml(xml_text: str, protocol: str, requested: frozenset[int],
             raise ScanError("nmap XML is incomplete or scan did not finish successfully")
         if host.get("timedout") == "true":
             raise ScanError("nmap host timed out before scan completion")
-        if host.find("status") is None or host.find("status").get("state") != "up":
+        status: ElementTree.Element | None = host.find("status")
+        if status is None or status.get("state") != "up":
             raise ScanError("nmap did not scan an available host")
         if _port_set(scaninfo.attrib["services"]) != requested:
             raise ScanError("nmap XML does not cover the requested ports")
@@ -280,8 +282,10 @@ def _run_scan(
     defeat_icmp_ratelimit: bool = True, service_detection: bool = True,
 ) -> ScanResult:
     requested: frozenset[int] = _port_set(ports)
-    if host_timeout <= 0 or max_retries < 0 or (scan_delay_ms is not None and scan_delay_ms <= 0):
-        raise ScanError("scan timeout and retries must be finite and valid")
+    limits: tuple[int, ...] = (host_timeout, max_retries) + (() if scan_delay_ms is None else (scan_delay_ms,))
+    if (any(type(value) is not int for value in limits) or host_timeout <= 0 or max_retries < 0
+            or (scan_delay_ms is not None and scan_delay_ms <= 0)):
+        raise ScanError("scan timeout and limits must be finite integers with valid ranges")
     with tempfile.TemporaryDirectory(prefix="ruuvi-netscan-") as directory:
         xml_path: Path = Path(directory) / "nmap.xml"
         command: tuple[str, ...] = (
@@ -364,7 +368,11 @@ def _dns_name(packet: bytes, offset: int) -> tuple[str, int]:
             continue
         if length & 0xC0 or offset + 1 + length > len(packet):
             raise ScanError("invalid mDNS label")
-        labels.append(packet[offset + 1:offset + 1 + length].decode("ascii"))
+        try:
+            labels.append(packet[offset + 1:offset + 1 + length].decode("ascii"))
+        except UnicodeDecodeError as error:
+            error: UnicodeDecodeError
+            raise ScanError("non-ASCII mDNS label") from error
         offset += 1 + length
     raise ScanError("unterminated mDNS name")
 
@@ -372,8 +380,8 @@ def _dns_name(packet: bytes, offset: int) -> tuple[str, int]:
 def probe_mdns(
     ip: str, *, timeout: float = 3.0, socket_factory: Callable[..., DatagramSocket] = new_datagram_socket,
 ) -> MdnsAnswer | None:
-    if timeout <= 0:
-        raise ScanError("mDNS probe timeout must be positive")
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise ScanError("mDNS probe timeout must be finite and positive")
     query: bytes = (
         b"\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00"
         b"\x09_services\x07_dns-sd\x04_udp\x05local\x00\x00\x0c\x80\x01"

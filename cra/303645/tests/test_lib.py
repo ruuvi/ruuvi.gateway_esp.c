@@ -59,6 +59,7 @@ from lib.http_api import (
     ApiRoute,
     HttpHeader,
     HttpMethod,
+    HttpStatus,
 )
 from lib.http_api import (
     GatewayApi as HttpGatewayApi,
@@ -502,6 +503,16 @@ class ConfigTestCase(unittest.TestCase):
 
 
 class ModelsAndApiTestCase(unittest.TestCase):
+    def test_http_status_covers_documented_firmware_responses(self) -> None:
+        self.assertEqual(
+            (200, 302, 400, 401, 403, 404, 409, 500, 502, 503, 504),
+            (HttpStatus.C_200_OK, HttpStatus.C_302_FOUND, HttpStatus.C_400_BAD_REQUEST,
+             HttpStatus.C_401_UNAUTHORIZED, HttpStatus.C_403_FORBIDDEN, HttpStatus.C_404_NOT_FOUND,
+             HttpStatus.C_409_CONFLICT, HttpStatus.C_500_INTERNAL_SERVER_ERROR,
+             HttpStatus.C_502_BAD_GATEWAY, HttpStatus.C_503_SERVICE_UNAVAILABLE,
+             HttpStatus.C_504_GATEWAY_TIMEOUT),
+        )
+
     def test_base_url_formats_dns_ipv4_and_ipv6(self) -> None:
         self.assertEqual("http://gateway.local", CONFIG.base_url)
         self.assertEqual(
@@ -708,6 +719,24 @@ class GatewayClientTestCase(unittest.TestCase):
                         self.assertEqual(authorization, prepared.headers.get(HttpHeader.AUTHORIZATION))
                         self.assertIs(prepared, self.evidence.requests[-1])
 
+    def test_bytearray_request_capture_is_immutable_even_when_send_fails(self) -> None:
+        error: requests.Timeout | None
+        for error in (None, requests.Timeout("lost response")):
+            with self.subTest(error=error):
+                body: bytearray = bytearray(b"\x00\xffpayload")
+                session: FakeSession = FakeSession(response=FakeResponse(), error=error)
+                if error is None:
+                    self.client.request(session, HttpMethod.POST, GatewayApi.CONFIG, data=body)
+                else:
+                    with self.assertRaises(GatewayConnectionError):
+                        self.client.request(session, HttpMethod.POST, GatewayApi.CONFIG, data=body)
+                captured: CapturedRequest = self.client.captured_requests[-1]
+                self.assertIsInstance(captured.body, bytes)
+                self.assertEqual(b"\x00\xffpayload", captured.body)
+                self.assertIs(body, self.evidence.requests[-1].body)
+                body[:] = b"changed"
+                self.assertEqual(b"\x00\xffpayload", captured.body)
+
     def test_request_prepares_logs_and_sends_expected_http_request(self) -> None:
         response: requests.Response = requests.Response()
         session: FakeSession = FakeSession(response=response)
@@ -727,6 +756,8 @@ class GatewayClientTestCase(unittest.TestCase):
         self.assertEqual("ruuvi-cra-functional-test", prepared.headers[HttpHeader.USER_AGENT])
         self.assertEqual("yes", prepared.headers["X-Test"])
         self.assertEqual(b'{"enabled": true}', prepared.body)
+        if prepared.url is None:
+            self.fail("prepared request has no URL")
         self.assertEqual("mode=test", prepared.url.split("?", 1)[1])
         self.assertEqual({"timeout": (5, 15), "allow_redirects": True}, options)
         self.assertEqual([prepared], self.evidence.requests)
@@ -1601,6 +1632,35 @@ class NetScanTests(unittest.TestCase):
                 mock.patch.object(Path, "read_text", side_effect=OSError("no proc")):
             self.assertFalse(netscan.raw_socket_privilege())
 
+    def test_scan_rejects_invalid_limits_before_creating_files_or_running(self) -> None:
+        scan: Callable[..., netscan.ScanResult]
+        parameter: str
+        value: float
+        for scan in (netscan.run_tcp_connect_scan, netscan.run_udp_scan):
+            for parameter in ("host_timeout", "max_retries", "scan_delay_ms"):
+                for value in (float("nan"), float("inf"), float("-inf"), -1, 1.5, True):
+                    with self.subTest(scan=scan.__name__, parameter=parameter, value=value):
+                        # Dynamic kwargs deliberately exercise malformed public API inputs.
+                        kwargs: dict[str, Any] = {parameter: value}
+                        if scan is netscan.run_udp_scan:
+                            kwargs["has_raw_privilege"] = True
+                        runner: mock.Mock = mock.Mock()
+                        directory: mock.MagicMock
+                        with mock.patch("lib.netscan.tempfile.TemporaryDirectory") as directory, \
+                                self.assertRaisesRegex(netscan.ScanError, "finite"):
+                            scan("192.0.2.1", "80", runner=runner, **kwargs)
+                        runner.assert_not_called()
+                        directory.assert_not_called()
+
+    def test_mdns_rejects_invalid_timeout_before_opening_socket(self) -> None:
+        timeout: float
+        for timeout in (0.0, -1.0, float("nan"), float("inf"), float("-inf")):
+            with self.subTest(timeout=timeout):
+                factory: mock.Mock = mock.Mock()
+                with self.assertRaisesRegex(netscan.ScanError, "finite and positive"):
+                    netscan.probe_mdns("192.0.2.1", timeout=timeout, socket_factory=factory)
+                factory.assert_not_called()
+
     def test_mdns_response_timeout_and_malformed(self) -> None:
         class Socket:
             def __init__(self, packet: bytes | None, source: str = "192.0.2.1",
@@ -1647,6 +1707,16 @@ class NetScanTests(unittest.TestCase):
             netscan.probe_mdns("192.0.2.1", timeout=0)
         with self.assertRaisesRegex(netscan.ScanError, "truncated"):
             netscan.probe_mdns("192.0.2.1", socket_factory=lambda *a: Socket(response[:-2]))
+        malformed: bytes
+        for malformed in (response.replace(b"_services", b"\xffservices"),
+                          response.replace(b"_http", b"\xffhttp")):
+            with self.subTest(packet=malformed):
+                channel = Socket(malformed)
+                failure: unittest.case._AssertRaisesContext
+                with self.assertRaisesRegex(netscan.ScanError, "non-ASCII mDNS label") as failure:
+                    netscan.probe_mdns("192.0.2.1", socket_factory=lambda *a, current=channel: current)
+                self.assertIsInstance(failure.exception.__cause__, UnicodeDecodeError)
+                self.assertTrue(channel.closed)
 
 
 class FlashDutTests(unittest.TestCase):
@@ -1669,6 +1739,10 @@ class FlashDutTests(unittest.TestCase):
             flash_dut.Partition("ota_0", 0, 0x10, 0x100000, 0x400000),
         )
         self.assertEqual(expected, flash_dut.parse_partition_table(table))
+        failure: unittest.case._AssertRaisesContext
+        with self.assertRaisesRegex(InvalidSetup, "non-ASCII partition name at 0x0") as failure:
+            flash_dut.parse_partition_table(table[:12] + b"\xff" + table[13:])
+        self.assertIsInstance(failure.exception.__cause__, UnicodeDecodeError)
         checksum: bytes = b"\xeb\xeb" + b"\xff" * 14 + hashlib.md5(record).digest()
         checked_table: bytes = (record + checksum).ljust(flash_dut.PARTITION_TABLE_SIZE, b"\xff")
         self.assertEqual(expected, flash_dut.parse_partition_table(checked_table))
@@ -1727,6 +1801,34 @@ class FlashDutTests(unittest.TestCase):
         raw[flash_dut.SECTOR_SIZE:flash_dut.SECTOR_SIZE + 4] = b"\xff" * 4
         with self.assertRaisesRegex(InvalidSetup, "unambiguous"):
             flash_dut.decode_otadata(bytes(raw))
+
+    def test_invalid_flash_ranges_preserve_files_and_do_not_run_esptool(self) -> None:
+        runner: mock.Mock = mock.Mock()
+        tool: flash_dut.FlashTool = flash_dut.FlashTool(
+            serial_dut.SerialPort("/dev/ttyUSB0", 0x1A86, 0x7523),
+            serial_dut.SerialVersions("4.8.1", "3.5"), self.log, run_command=runner,
+        )
+        existing: Path = self.root / "backup.bin"
+        chunk: Path = self.root / "backup.bin.chunk"
+        existing.write_bytes(b"existing backup")
+        chunk.write_bytes(b"existing chunk")
+        missing: Path = self.root / "missing" / "backup.bin"
+        path: Path
+        offset: int
+        size: int
+        for path in (existing, missing):
+            for offset, size in ((-0x1000, 0x1000), (-1, 1), (0, -1), (0, 0)):
+                with self.subTest(operation="read", path=path, offset=offset, size=size), \
+                        self.assertRaisesRegex(InvalidSetup, "non-negative offset and positive size"):
+                    tool.read(offset, size, path)
+            for offset in (-0x1000, -1):
+                with self.subTest(operation="write", path=path, offset=offset), \
+                        self.assertRaisesRegex(InvalidSetup, "non-negative offset"):
+                    tool.write(offset, bytes(0x1000), path)
+        self.assertEqual(b"existing backup", existing.read_bytes())
+        self.assertEqual(b"existing chunk", chunk.read_bytes())
+        self.assertFalse(missing.parent.exists())
+        runner.assert_not_called()
 
     def test_esptool_command_read_write_and_transport_failures(self) -> None:
         commands: list[list[str]] = []

@@ -242,7 +242,7 @@ class GatewayClient:
                 prepared_request.method or "", prepared_request.url or "",
                 tuple(prepared_request.headers.items()),
                 body.encode("utf-8") if isinstance(body, str) else (
-                    body if isinstance(body, bytes) else b"" if body is None else None
+                    bytes(body) if isinstance(body, (bytes, bytearray)) else b"" if body is None else None
                 ),
             ))
             self.evidence.write_http_request(prepared_request)
