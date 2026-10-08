@@ -173,6 +173,8 @@ returns responses without assigning a compliance verdict.
 max_redirects, user_agent, session_factory=requests.Session)` uses a fresh caller-supplied session
 and closes it after the fetch. It disables environment authentication/proxies, clears initial
 credentials/cookies/parameters, and always sends `verify=True` with finite positive timeouts.
+`max_redirects` must be a non-negative integer; invalid limits are rejected before opening the
+session. Zero permits the initial request but no subsequent request to an allowed redirect target.
 It uses `EvidenceLog` to record requests before transmission and responses before interpretation.
 No DUT configuration is loaded. Case-specific URLs, host sets, and acceptable statuses stay in runners.
 
@@ -224,7 +226,8 @@ privilege raise `ScanError`. The subprocess and monotonic clock are injectable.
 returns a typed answer only when the requested IP replies from UDP 5353 and advertises `_http._tcp`.
 Timeout returns `None`, which callers must interpret against their scan coverage. Non-finite or
 nonpositive timeouts raise `ScanError` before opening a socket; malformed non-ASCII DNS labels
-also raise `ScanError`. Its socket factory is injectable.
+also raise `ScanError`. Socket creation and I/O failures become `ScanError`, and opened sockets
+are closed even on timeout or failure. Its socket factory is injectable.
 The library does not map findings to IXIT entries or decide a case verdict. Direct helper contracts
 are tested in `test_lib.py` without launching nmap or contacting the network.
 
@@ -323,7 +326,8 @@ on-device binary table to immutable `Partition` records, rejecting non-ASCII nam
 `parse_partition_csv()` does the same for the repository layout. Callers compare the full tuples
 before writing. `decode_otadata()` validates both OTA selection entries' sequence, state, and
 ESP-IDF seeded CRC (`zlib.crc32(sequence_bytes, 0xFFFFFFFF)`),
-then returns the unambiguous active slot or raises `InvalidSetup`. Direct parser and tool tests
+then selects the highest valid sequence, retaining entry 0 on a tie as the pinned bootloader does.
+Equal valid sequences select the same OTA slot. No valid entry raises `InvalidSetup`. Direct parser and tool tests
 live in `test_lib.py`.
 
 `open_serial(port, baud, timeout)` initializes inactive DTR/RTS before opening.

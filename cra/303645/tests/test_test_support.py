@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import unittest
 from typing import Any
+
+import requests
 
 from lib.gateway import GatewayApi, GatewayCfgDesc, GatewayCfgLanAuthType, GatewayClient
 from lib.http_api import HttpAuthScheme, HttpHeader, HttpMethod, HttpStatus
@@ -144,6 +147,48 @@ class GatewayTestCase(unittest.TestCase):
                 self.assertEqual(HttpStatus.C_401_UNAUTHORIZED, response.status_code)
                 self.assertEqual("read-write", gateway.rw_key)
                 self.assertEqual([], gateway.config_bodies)
+
+    def test_non_object_config_bodies_are_rejected_without_mutation(self) -> None:
+        gateway_type: type[FakeGateway]
+        for gateway_type in (FakeGateway, DefaultAuthGateway):
+            gateway: FakeGateway = gateway_type(CONFIG)
+            gateway.ro_key = "read-only"
+            gateway.rw_key = "read-write"
+            session: FakeSession = FakeSession(gateway)
+            gateway.response_for(session, HttpMethod.GET, GatewayApi.AUTH, {}, None)
+            login: FakeResponse = gateway.response_for(
+                session, HttpMethod.POST, GatewayApi.AUTH,
+                {HttpHeader.COOKIE: f"RUUVISESSION={session.cookie}"}, login_body(CONFIG, session.challenge),
+            )
+            self.assertEqual(HttpStatus.C_200_OK, login.status_code)
+            original_auth: tuple[str, str, str] = (gateway.mode, gateway.custom_username, gateway.custom_ha1)
+            token: str | None
+            expected_status: int
+            for token, expected_status in (
+                (None, HttpStatus.C_503_SERVICE_UNAVAILABLE),
+                ("read-write", HttpStatus.C_503_SERVICE_UNAVAILABLE),
+                ("read-only", HttpStatus.C_401_UNAUTHORIZED),
+                ("invalid", HttpStatus.C_401_UNAUTHORIZED),
+            ):
+                body: Any
+                for body in ([], [{GatewayCfgDesc.LAN_AUTH_API_KEY_RW: "changed"}], None, "text", 7, False):
+                    with self.subTest(gateway=gateway_type.__name__, token=token, body=body):
+                        headers: dict[str, str] = {HttpHeader.CONTENT_TYPE: "application/json"}
+                        if token is not None:
+                            headers[HttpHeader.AUTHORIZATION] = f"{HttpAuthScheme.BEARER} {token}"
+                        prepared: requests.PreparedRequest = session.prepare_request(requests.Request(
+                            HttpMethod.POST, f"{CONFIG.base_url}{GatewayApi.CONFIG}",
+                            headers=headers, data=json.dumps(body),
+                        ))
+                        response: FakeResponse = session.send(prepared, allow_redirects=False)
+                        self.assertEqual(expected_status, response.status_code)
+                        self.assertEqual(body, gateway.calls[-1].body)
+                        self.assertEqual([], gateway.config_bodies)
+                        self.assertEqual([], gateway.restoration_attempts)
+                        self.assertEqual(original_auth, (gateway.mode, gateway.custom_username, gateway.custom_ha1))
+                        self.assertEqual(("read-only", "read-write"), (gateway.ro_key, gateway.rw_key))
+                        self.assertTrue(session.authorized)
+                        self.assertEqual([session], gateway.authorized_sessions)
 
     def test_status_bearer_takes_precedence_over_authorized_session(self) -> None:
         gateway_type: type[FakeGateway]

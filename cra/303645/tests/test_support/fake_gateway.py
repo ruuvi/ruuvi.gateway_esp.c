@@ -206,6 +206,8 @@ class FakeGateway:
                     HttpStatus.C_401_UNAUTHORIZED,
                     {"error": "unauthorized"},
                 )
+            if not isinstance(body, dict):
+                return FakeResponse(HttpStatus.C_503_SERVICE_UNAVAILABLE)
             self.config_bodies.append(body)
             restoring: bool = body.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DEFAULT
             if restoring:

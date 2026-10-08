@@ -300,6 +300,29 @@ class WebResourceTestCase(unittest.TestCase):
                 self.assertIsNone(caught.exception.observation)
                 self.assertIn("HTTP REQUEST END", self.stream.getvalue())
 
+    def test_invalid_redirect_limits_never_open_session(self) -> None:
+        # Deliberately malformed values at the public API boundary.
+        limit: Any
+        for limit in (float("nan"), float("inf"), float("-inf"), -1, 1.5, 1.0, True, False, "1", None):
+            with self.subTest(limit=limit):
+                factory: mock.Mock = mock.Mock()
+                with self.assertRaisesRegex(InvalidSetup, "redirect limit a non-negative integer"):
+                    fetch_public_resource(
+                        self.url, self.log, allowed_hosts=self.hosts, connect_timeout=5, read_timeout=20,
+                        max_redirects=limit, user_agent="test", session_factory=factory,
+                    )
+                factory.assert_not_called()
+
+    def test_zero_redirect_limit_allows_initial_response_only(self) -> None:
+        self.send.return_value = FakeResponse(payload="page")
+        self.assertEqual(200, self.fetch(max_redirects=0).status)
+        self.send.assert_called_once()
+        self.send.reset_mock()
+        self.send.return_value = FakeResponse(302, headers={"Location": "/another"})
+        with self.assertRaises(WebResourceRedirectError):
+            self.fetch(max_redirects=0)
+        self.send.assert_called_once()
+
     def test_transport_failure_preserves_prior_challenge_and_redirect(self) -> None:
         self.send.side_effect = [
             FakeResponse(302, headers={"Location": "/next", "WWW-Authenticate": "Basic realm=private"}),
@@ -1718,6 +1741,35 @@ class NetScanTests(unittest.TestCase):
                 self.assertIsInstance(failure.exception.__cause__, UnicodeDecodeError)
                 self.assertTrue(channel.closed)
 
+    def test_mdns_transport_errors_are_typed_and_close_socket(self) -> None:
+        operation: str
+        for operation in ("create", "settimeout", "sendto", "recvfrom", "close"):
+            with self.subTest(operation=operation):
+                error: OSError = OSError(f"{operation} failed")
+                channel: mock.Mock = mock.Mock(spec=netscan.DatagramSocket)
+                channel.recvfrom.return_value = (b"", ("192.0.2.1", 5353))
+                factory: mock.Mock = mock.Mock(return_value=channel)
+                if operation == "create":
+                    factory.side_effect = error
+                else:
+                    getattr(channel, operation).side_effect = error
+                caught: unittest.case._AssertRaisesContext
+                with self.assertRaisesRegex(netscan.ScanError, "mDNS probe failed for 192.0.2.1") as caught:
+                    netscan.probe_mdns("192.0.2.1", socket_factory=factory)
+                self.assertIs(error, caught.exception.__cause__)
+                if operation == "create":
+                    channel.close.assert_not_called()
+                else:
+                    channel.close.assert_called_once_with()
+
+    def test_mdns_receive_timeout_remains_no_answer_and_closes_socket(self) -> None:
+        channel: mock.Mock = mock.Mock(spec=netscan.DatagramSocket)
+        channel.recvfrom.side_effect = socket.timeout("no answer")
+        factory: mock.Mock = mock.Mock(return_value=channel)
+        self.assertIsNone(netscan.probe_mdns("192.0.2.1", socket_factory=factory))
+        factory.assert_called_once_with(socket.AF_INET, socket.SOCK_DGRAM)
+        channel.close.assert_called_once_with()
+
 
 class FlashDutTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -1777,7 +1829,7 @@ class FlashDutTests(unittest.TestCase):
         with self.assertRaisesRegex(InvalidSetup, "cannot parse"):
             flash_dut.parse_partition_csv(self.root / "missing.csv")
 
-    def test_otadata_validity_and_ambiguity(self) -> None:
+    def test_otadata_validity_and_selection(self) -> None:
         raw: bytearray = bytearray(b"\xff" * flash_dut.OTADATA_SIZE)
         raw[:4] = b"\x01\x00\x00\x00"
         raw[24:28] = (2).to_bytes(4, "little")
@@ -1785,7 +1837,7 @@ class FlashDutTests(unittest.TestCase):
         self.assertEqual("ota_0", flash_dut.decode_otadata(bytes(raw)).active_slot)
         wrong_crc: bytearray = bytearray(raw)
         wrong_crc[28:32] = (0x66074786).to_bytes(4, "little")
-        with self.assertRaisesRegex(InvalidSetup, "unambiguous"):
+        with self.assertRaisesRegex(InvalidSetup, "no valid OTA slot"):
             flash_dut.decode_otadata(bytes(wrong_crc))
         with self.assertRaisesRegex(InvalidSetup, "length"):
             flash_dut.decode_otadata(bytes(raw[:-1]))
@@ -1795,12 +1847,31 @@ class FlashDutTests(unittest.TestCase):
         raw[second + 28:second + 32] = (0x55F63774).to_bytes(4, "little")
         self.assertEqual("ota_1", flash_dut.decode_otadata(bytes(raw)).active_slot)
         raw[second:second + 32] = raw[:32]
-        with self.assertRaisesRegex(InvalidSetup, "unambiguous"):
-            flash_dut.decode_otadata(bytes(raw))
+        self.assertEqual("ota_0", flash_dut.decode_otadata(bytes(raw)).active_slot)
         raw[:4] = b"\xff" * 4
         raw[flash_dut.SECTOR_SIZE:flash_dut.SECTOR_SIZE + 4] = b"\xff" * 4
-        with self.assertRaisesRegex(InvalidSetup, "unambiguous"):
+        with self.assertRaisesRegex(InvalidSetup, "no valid OTA slot"):
             flash_dut.decode_otadata(bytes(raw))
+
+    def test_otadata_equal_valid_sequences_select_the_shared_slot(self) -> None:
+        sequence: int
+        crc: int
+        slot: str
+        for sequence, crc, slot in ((1, 0x4743989A, "ota_0"), (2, 0x55F63774, "ota_1")):
+            with self.subTest(sequence=sequence):
+                raw: bytearray = bytearray(b"\xff" * flash_dut.OTADATA_SIZE)
+                index: int
+                for index in range(2):
+                    offset: int = index * flash_dut.SECTOR_SIZE
+                    raw[offset:offset + 4] = sequence.to_bytes(4, "little")
+                    raw[offset + 24:offset + 28] = (2).to_bytes(4, "little")
+                    raw[offset + 28:offset + 32] = crc.to_bytes(4, "little")
+                selected: flash_dut.OtaSelection = flash_dut.decode_otadata(bytes(raw))
+                self.assertEqual(slot, selected.active_slot)
+                self.assertEqual((
+                    flash_dut.OtaEntry(0, sequence, 2, crc, True),
+                    flash_dut.OtaEntry(1, sequence, 2, crc, True),
+                ), selected.entries)
 
     def test_invalid_flash_ranges_preserve_files_and_do_not_run_esptool(self) -> None:
         runner: mock.Mock = mock.Mock()

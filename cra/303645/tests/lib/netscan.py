@@ -386,18 +386,22 @@ def probe_mdns(
         b"\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00"
         b"\x09_services\x07_dns-sd\x04_udp\x05local\x00\x00\x0c\x80\x01"
     )
-    channel: DatagramSocket = socket_factory(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        channel.settimeout(timeout)
-        channel.sendto(query, (ip, 5353))
+        channel: DatagramSocket = socket_factory(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            packet: bytes
-            address: tuple[str, int]
-            packet, address = channel.recvfrom(4096)
-        except socket.timeout:
-            return None
-    finally:
-        channel.close()
+            channel.settimeout(timeout)
+            channel.sendto(query, (ip, 5353))
+            try:
+                packet: bytes
+                address: tuple[str, int]
+                packet, address = channel.recvfrom(4096)
+            except socket.timeout:
+                return None
+        finally:
+            channel.close()
+    except OSError as error:
+        error: OSError
+        raise ScanError(f"mDNS probe failed for {ip}: {error}") from error
     if address != (ip, 5353) or len(packet) < 12 or packet[2] & 0x80 == 0:
         return None
     question_count: int = int.from_bytes(packet[4:6], "big")

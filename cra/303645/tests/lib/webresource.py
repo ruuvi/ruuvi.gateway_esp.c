@@ -148,8 +148,9 @@ def fetch_public_resource(
     if parsed.scheme != "https" or parsed.hostname not in allowed_hosts:
         raise InvalidSetup("initial public URL must use HTTPS and an allowed host")
     if (not math.isfinite(connect_timeout) or connect_timeout <= 0
-            or not math.isfinite(read_timeout) or read_timeout <= 0 or max_redirects < 0):
-        raise InvalidSetup("public-resource timeouts must be finite and positive; redirect limit nonnegative")
+            or not math.isfinite(read_timeout) or read_timeout <= 0
+            or type(max_redirects) is not int or max_redirects < 0):
+        raise InvalidSetup("public-resource timeouts must be finite and positive; redirect limit a non-negative integer")
     evidence.write("TLS VERIFICATION ENABLED", True)
     session: requests.Session = session_factory()
     try:

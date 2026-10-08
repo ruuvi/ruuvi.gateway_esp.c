@@ -135,8 +135,9 @@ def decode_otadata(data: bytes) -> OtaSelection:
         valid: bool = sequence not in (0, 0xFFFFFFFF) and state not in (3, 4) and crc == expected_crc
         entries.append(OtaEntry(index, sequence, state, crc, valid))
     valid_entries: list[OtaEntry] = [entry for entry in entries if entry.valid]
-    if not valid_entries or (len(valid_entries) == 2 and entries[0].sequence == entries[1].sequence):
-        raise InvalidSetup("otadata does not select an unambiguous valid OTA slot")
+    if not valid_entries:
+        raise InvalidSetup("otadata has no valid OTA slot")
+    # max() retains the first entry on a tie, matching the pinned bootloader.
     chosen: OtaEntry = max(valid_entries, key=lambda entry: entry.sequence)
     return OtaSelection((entries[0], entries[1]), f"ota_{(chosen.sequence - 1) % 2}")
 
