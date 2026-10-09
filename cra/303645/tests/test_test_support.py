@@ -91,6 +91,7 @@ class GatewayTestCase(unittest.TestCase):
                 allow_redirects=False,
             )
             self.assertEqual(HttpStatus.C_200_OK, response.status_code)
+            self.assertEqual(f"other=value; RUUVISESSION={session.cookie}; another=value", gateway.calls[-1].cookie)
 
     def test_ruuvi_mode_still_accepts_interactive_login_and_cookie_reads(self) -> None:
         gateway: FakeGateway = FakeGateway(CONFIG)
@@ -177,6 +178,60 @@ class GatewayTestCase(unittest.TestCase):
                 self.assertEqual(HttpStatus.C_200_OK if token == gateway.rw_key else HttpStatus.C_401_UNAUTHORIZED,
                                  response.status_code)
                 self.assertFalse(session.authorized)
+
+    def test_bearer_and_cookie_header_names_are_case_insensitive_and_recorded(self) -> None:
+        gateway_type: type[FakeGateway]
+        authorization_name: str
+        cookie_name: str
+        token: str
+        for gateway_type in (FakeGateway, DefaultAuthGateway):
+            gateway: FakeGateway = gateway_type(CONFIG)
+            gateway.ro_key = "read-only"
+            session: FakeSession = FakeSession(gateway)
+            session.trust_env = False
+            self.addCleanup(session.close)
+            for authorization_name, cookie_name in (("Authorization", "Cookie"), ("authorization", "cookie"),
+                                                   ("aUtHoRiZaTiOn", "cOoKiE")):
+                for token in ("read-only", "wrong"):
+                    with self.subTest(gateway=gateway_type.__name__, header=authorization_name, token=token):
+                        response: requests.Response = session.get(
+                            f"{CONFIG.base_url}{GatewayApi.STATUS}",
+                            headers={authorization_name: f"Bearer {token}", cookie_name: "unrelated=value"},
+                            allow_redirects=False,
+                        )
+                        self.assertEqual(HttpStatus.C_200_OK if token == "read-only" else HttpStatus.C_401_UNAUTHORIZED,
+                                         response.status_code)
+                        self.assertEqual(f"Bearer {token}", gateway.calls[-1].authorization)
+                        self.assertEqual(token, gateway.calls[-1].bearer_token)
+                        self.assertEqual("unrelated=value", gateway.calls[-1].cookie)
+
+    def test_failed_login_removes_default_session_without_changing_cookie_or_other_sessions(self) -> None:
+        gateway: DefaultAuthGateway = DefaultAuthGateway(CONFIG)
+        session: FakeSession = self.authenticated_session(gateway)
+        other: FakeSession = self.authenticated_session(gateway)
+        original_cookie: str = session.cookie
+        original_challenge: str = session.challenge
+        self.assertEqual([session, other], gateway.authorized_sessions)
+        response: requests.Response = session.post(
+            f"{CONFIG.base_url}{GatewayApi.AUTH}", json={"login": "Admin", "password": "wrong"},
+            allow_redirects=False,
+        )
+        self.assertEqual(HttpStatus.C_401_UNAUTHORIZED, response.status_code)
+        self.assertEqual({"authenticated": False}, response.json())
+        self.assertNotIn(HttpHeader.WWW_AUTHENTICATE, response.headers)
+        self.assertEqual({}, response.cookies.get_dict())
+        self.assertFalse(session.authorized)
+        self.assertEqual([other], gateway.authorized_sessions)
+        self.assertTrue(other.authorized)
+        self.assertEqual(original_cookie, session.cookie)
+        self.assertEqual(original_cookie, session.cookies.get("RUUVISESSION"))
+        self.assertEqual(original_challenge, session.challenge)
+        self.assertEqual(HttpStatus.C_302_FOUND, session.get(
+            f"{CONFIG.base_url}{GatewayApi.STATUS}", allow_redirects=False,
+        ).status_code)
+        self.assertEqual(HttpStatus.C_200_OK, other.get(
+            f"{CONFIG.base_url}{GatewayApi.STATUS}", allow_redirects=False,
+        ).status_code)
 
     def test_non_interactive_modes_reject_pending_login_before_credentials_or_body(self) -> None:
         gateway_type: type[FakeGateway]
@@ -431,17 +486,20 @@ class GatewayTestCase(unittest.TestCase):
             )
         self.assertEqual(0, gateway.digest_authenticated_timeouts)
         expected_status: int
+        header_name: str
         for authorization, expected_status in (
             (valid_header, HttpStatus.C_200_OK),
             (valid_header.replace(digest, "wrong"), HttpStatus.C_401_UNAUTHORIZED),
         ):
-            with self.subTest(authorization=authorization):
-                response = session.get(
-                    f"{CONFIG.base_url}{GatewayApi.STATUS}",
-                    headers={HttpHeader.AUTHORIZATION: authorization}, allow_redirects=False,
-                )
-                self.assertEqual(expected_status, response.status_code)
-                self.assertEqual({"authenticated": expected_status == HttpStatus.C_200_OK}, response.json())
+            for header_name in ("Authorization", "authorization", "aUtHoRiZaTiOn"):
+                with self.subTest(authorization=authorization, header=header_name):
+                    response = session.get(
+                        f"{CONFIG.base_url}{GatewayApi.STATUS}",
+                        headers={header_name: authorization}, allow_redirects=False,
+                    )
+                    self.assertEqual(expected_status, response.status_code)
+                    self.assertEqual({"authenticated": expected_status == HttpStatus.C_200_OK}, response.json())
+                    self.assertEqual(authorization, gateway.calls[-1].authorization)
 
     def test_basic_auth_accepts_client_header_for_stored_encoded_credentials(self) -> None:
         gateway: FakeGateway = FakeGateway(CONFIG)
@@ -465,6 +523,7 @@ class GatewayTestCase(unittest.TestCase):
         self.assertEqual(HttpStatus.C_200_OK, configured.status_code)
         authorization: str
         expected_status: int
+        header_name: str
         for authorization, expected_status in (
             (GatewayClient.authorization_header_basic("user", "pass"), HttpStatus.C_200_OK),
             (GatewayClient.authorization_header_basic("user", "wrong"), HttpStatus.C_401_UNAUTHORIZED),
@@ -474,12 +533,14 @@ class GatewayTestCase(unittest.TestCase):
             ("Basic !!!", HttpStatus.C_401_UNAUTHORIZED),
             ("", HttpStatus.C_401_UNAUTHORIZED),
         ):
-            with self.subTest(authorization=authorization):
-                response: FakeResponse = gateway.response_for(
-                    FakeSession(gateway), HttpMethod.GET, GatewayApi.STATUS,
-                    {HttpHeader.AUTHORIZATION: authorization} if authorization else {}, None,
-                )
-                self.assertEqual(expected_status, response.status_code)
+            for header_name in ("Authorization", "authorization", "aUtHoRiZaTiOn"):
+                with self.subTest(authorization=authorization, header=header_name):
+                    response: FakeResponse = gateway.response_for(
+                        FakeSession(gateway), HttpMethod.GET, GatewayApi.STATUS,
+                        {header_name: authorization} if authorization else {}, None,
+                    )
+                    self.assertEqual(expected_status, response.status_code)
+                    self.assertEqual(authorization, gateway.calls[-1].authorization)
 
 
 if __name__ == "__main__":

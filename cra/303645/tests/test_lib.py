@@ -399,6 +399,26 @@ class WebResourceTestCase(unittest.TestCase):
         self.send.assert_not_called()
         factory.assert_not_called()
 
+    def test_invalid_connect_and_read_timeout_types_never_open_session(self) -> None:
+        name: str
+        value: Any
+        values: tuple[Any, ...] = (None, "5", "invalid", True, False, 1 + 2j, [], {},
+                                   0, -1, float("inf"), float("-inf"), float("nan"))
+        for name in ("connect_timeout", "read_timeout"):
+            for value in values:
+                with self.subTest(name=name, value=value):
+                    timeouts: dict[str, Any] = {
+                        "connect_timeout": value if name == "connect_timeout" else 5,
+                        "read_timeout": value if name == "read_timeout" else 20,
+                    }
+                    factory: mock.Mock = mock.Mock()
+                    with self.assertRaisesRegex(InvalidSetup, "timeouts must be finite and positive"):
+                        fetch_public_resource(
+                            self.url, self.log, allowed_hosts=self.hosts, max_redirects=5,
+                            user_agent="test", session_factory=factory, **timeouts,
+                        )
+                    factory.assert_not_called()
+
     def assert_safe_url_diagnostic(self, error: WebResourceProtocolError, reason: str,
                                    secrets: tuple[str, ...]) -> None:
         self.assertIn(reason, str(error))

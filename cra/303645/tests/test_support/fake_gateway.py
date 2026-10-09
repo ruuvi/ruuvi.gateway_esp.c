@@ -122,7 +122,7 @@ class FakeGateway:
         self.server_public_b64: str = base64.b64encode(raw).decode("ascii")
 
     @staticmethod
-    def _bearer(headers: dict[str, str]) -> str | None:
+    def _bearer(headers: Mapping[str, str]) -> str | None:
         authorization: str = headers.get(HttpHeader.AUTHORIZATION, "")
         bearer_prefix: str = f"{HttpAuthScheme.BEARER} "
         return authorization[len(bearer_prefix) :] if authorization.startswith(bearer_prefix) else None
@@ -135,13 +135,13 @@ class FakeGateway:
         return token == self.ro_key and path != GatewayApi.AP
 
     @staticmethod
-    def _has_session_cookie(session: FakeSession, headers: dict[str, str]) -> bool:
-        cookie_header: str = CaseInsensitiveDict(headers).get(HttpHeader.COOKIE, "")
+    def _has_session_cookie(session: FakeSession, headers: Mapping[str, str]) -> bool:
+        cookie_header: str = headers.get(HttpHeader.COOKIE, "")
         pairs: list[list[str]] = [pair.strip().split("=", 1) for pair in cookie_header.split(";")]
         values: list[str] = [pair[1] for pair in pairs if len(pair) == 2 and pair[0] == "RUUVISESSION"]
         return bool(session.cookie) and values == [session.cookie]
 
-    def _is_session_authorized(self, session: FakeSession, headers: dict[str, str]) -> bool:
+    def _is_session_authorized(self, session: FakeSession, headers: Mapping[str, str]) -> bool:
         return (self.mode in (GatewayCfgLanAuthType.DEFAULT, GatewayCfgLanAuthType.RUUVI)
                 and session.authorized and self._has_session_cookie(session, headers))
 
@@ -177,10 +177,11 @@ class FakeGateway:
         session: FakeSession,
         method: str,
         path: str,
-        headers: dict[str, str],
+        headers: Mapping[str, str],
         body: Any,
         allow_redirects: bool = False,
     ) -> FakeResponse:
+        headers = CaseInsensitiveDict(headers)
         token: str | None = self._bearer(headers)
         self.calls.append(
             RecordedRequest(
@@ -327,7 +328,7 @@ class FakeGateway:
         return None
 
     def _auth_response(
-        self, session: FakeSession, method: str, headers: dict[str, str], body: Any,
+        self, session: FakeSession, method: str, headers: Mapping[str, str], body: Any,
     ) -> FakeResponse:
         if method == HttpMethod.GET:
             if self.mode in (GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST):
@@ -418,7 +419,7 @@ class FakeGateway:
     def _read_response(self, path: str) -> FakeResponse:
         return FakeResponse(HttpStatus.C_200_OK, {})
 
-    def _unauthorized_response(self, method: str, path: str, headers: dict[str, str]) -> FakeResponse:
+    def _unauthorized_response(self, method: str, path: str, headers: Mapping[str, str]) -> FakeResponse:
         return FakeResponse(HttpStatus.C_401_UNAUTHORIZED, {"error": "unauthorized"})
 
     def _apply_config(self, body: dict[str, str]) -> None:
@@ -457,12 +458,13 @@ class DefaultAuthGateway(FakeGateway):
         return f"challenge-{session.number}-{session.challenge_number}", f"session-{session.number}"
 
     def _failed_login_response(self, session: FakeSession) -> FakeResponse:
+        self.authorized_sessions = [active for active in self.authorized_sessions if active is not session]
         return FakeResponse(HttpStatus.C_401_UNAUTHORIZED, {"authenticated": False})
 
     def _read_response(self, path: str) -> FakeResponse:
         return FakeResponse(HttpStatus.C_200_OK, {"data": []} if path == GatewayApi.HISTORY else {})
 
-    def _unauthorized_response(self, method: str, path: str, headers: dict[str, str]) -> FakeResponse:
+    def _unauthorized_response(self, method: str, path: str, headers: Mapping[str, str]) -> FakeResponse:
         status: int = (
             HttpStatus.C_302_FOUND
             if method == HttpMethod.GET and self._bearer(headers) is None
@@ -497,7 +499,7 @@ class FakeSession(requests.Session):
             self,
             method,
             urlsplit(url).path,
-            dict(request.headers),
+            request.headers,
             body,
         )
         self.cookies.update(response.cookies)

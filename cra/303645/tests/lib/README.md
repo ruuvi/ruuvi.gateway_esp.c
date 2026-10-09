@@ -174,6 +174,8 @@ max_redirects, user_agent, session_factory=requests.Session, max_response_bytes=
 total_timeout=60.0, monotonic=time.monotonic)` uses a fresh caller-supplied session
 and closes it after the fetch. It disables environment authentication/proxies, clears initial
 credentials/cookies/parameters, and always sends `verify=True` with finite positive timeouts.
+Connect, read, and total timeouts must be numeric `int` or `float` values; booleans and other
+types are rejected as `InvalidSetup` before opening a session.
 `max_redirects` must be a non-negative integer; invalid limits are rejected before opening the
 session. Zero permits the initial request but no subsequent request to an allowed redirect target.
 Responses are streamed with a 4 MiB per-response decoded-body limit and a 60-second transfer

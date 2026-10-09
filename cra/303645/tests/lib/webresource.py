@@ -187,7 +187,9 @@ def fetch_public_resource(
     parsed: SplitResult = _parse_url(url)
     if parsed.scheme != "https" or parsed.hostname not in allowed_hosts:
         raise InvalidSetup("initial public URL must use HTTPS and an allowed host")
-    if (not math.isfinite(connect_timeout) or connect_timeout <= 0
+    if (isinstance(connect_timeout, bool) or not isinstance(connect_timeout, (int, float))
+            or not math.isfinite(connect_timeout) or connect_timeout <= 0
+            or isinstance(read_timeout, bool) or not isinstance(read_timeout, (int, float))
             or not math.isfinite(read_timeout) or read_timeout <= 0
             or type(max_redirects) is not int or max_redirects < 0):
         raise InvalidSetup("public-resource timeouts must be finite and positive; redirect limit a non-negative integer")
