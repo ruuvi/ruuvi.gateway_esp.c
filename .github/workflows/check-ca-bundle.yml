@@ -1,157 +1,163 @@
 name: Check CA Bundle
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ '*' ]
-    types: [opened, synchronize, reopened]
   schedule:
-    # Run weekly (Monday 06:00 UTC) so updates are noticed even without commits.
-    # NOTE: scheduled runs only fire on the repository's default branch.
+    # Run weekly (Monday 06:00 UTC), even without commits.
+    # Scheduled runs only fire on the repository's default branch.
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
-# Workflow-level permissions are kept minimal. The `notify` job below
-# requests `issues: write` at the job level, and it only runs on `schedule`.
 permissions:
   contents: read
 
 jobs:
-  check-ca-bundle:
+  update-ca-bundle:
+    # Manual runs must select the default branch, just like scheduled runs.
+    if: >-
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     permissions:
-      contents: read
-    # Expose the script's raw exit code to downstream jobs so they can
-    # distinguish "bundle is stale" (1) from "internal error" (2) — the
-    # built-in `needs.<job>.result` (success/failure) cannot tell them apart.
-    outputs:
-      exit_code: ${{ steps.run.outputs.exit_code }}
+      contents: write
+      issues: write
+      pull-requests: write
+    concurrency:
+      group: ca-bundle-update
+      cancel-in-progress: false
 
     steps:
-      - name: Check out code
+      - name: Check out the default branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
 
-      # Capture the script's exit code without failing the step, so that
-      # the `gate` step below can both (a) propagate it to downstream jobs
-      # via a step output, and (b) still mark this job as failed when the
-      # bundle is stale (exit 1) or the check errored (exit 2).
-      - name: Verify bundled Mozilla CA certificates are up-to-date
-        id: run
+      - name: Update bundled Mozilla CA certificates
+        run: bash scripts/check_ca_bundle_up_to_date.sh --update
+
+      - name: Validate the PEM bundle
         shell: bash
         run: |
-          set +e
-          bash scripts/check_ca_bundle_up_to_date.sh
-          rc=$?
-          echo "exit_code=${rc}" >> "${GITHUB_OUTPUT}"
-          exit 0
+          grep -q '^-----BEGIN CERTIFICATE-----$' esp_crt_bundle/cacert.pem
+          openssl crl2pkcs7 -nocrl -certfile esp_crt_bundle/cacert.pem -out /dev/null
 
-      - name: Fail the job if the check did not succeed
-        if: steps.run.outputs.exit_code != '0'
+      - name: Prepare the dated CA bundle issue title
+        id: bundle
+        shell: bash
         run: |
-          echo "::error::scripts/check_ca_bundle_up_to_date.sh exited with code ${{ steps.run.outputs.exit_code }}"
-          exit 1
+          python3 - <<'PY' >> "${GITHUB_OUTPUT}"
+          from datetime import datetime
+          from pathlib import Path
+          import subprocess
 
-  # Schedule-only job that opens or closes a tracking issue based on the
-  # outcome of `check-ca-bundle`. Kept as a separate job so `issues: write`
-  # is granted only for scheduled runs (GitHub Actions permissions are
-  # job-scoped, not step-scoped).
-  notify:
-    needs: check-ca-bundle
-    if: github.event_name == 'schedule' && always()
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-      issues: write
+          path = "esp_crt_bundle/cacert.pem"
+          prefix = "## Certificate data from Mozilla as of: "
+          header = next((line for line in Path(path).read_text().splitlines()
+                         if line.startswith(prefix)), None)
+          if header is None:
+              raise ValueError("Missing Mozilla certificate data timestamp")
+          date = datetime.strptime(header[len(prefix):].strip(),
+                                   "%a %b %d %H:%M:%S %Y GMT").strftime("%Y-%m-%d")
+          diff = subprocess.run(["git", "diff", "--quiet", "--", path])
+          if diff.returncode not in (0, 1):
+              raise RuntimeError("Could not check CA bundle changes")
+          print(f"date={date}")
+          print(f"issue-title=chore(esp_crt_bundle) Update Mozilla CA bundle to {date}")
+          print(f"changed={'true' if diff.returncode else 'false'}")
+          PY
 
-    steps:
-      - name: Open or close the CA-bundle tracking issue
+      - name: Create or reuse the CA bundle release-note issue
+        if: steps.bundle.outputs.changed == 'true'
+        id: issue
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          CHECK_EXIT_CODE: ${{ needs.check-ca-bundle.outputs.exit_code }}
-          CHECK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ISSUE_TITLE: ${{ steps.bundle.outputs.issue-title }}
+          BUNDLE_DATE: ${{ steps.bundle.outputs.date }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
+          github-token: ${{ secrets.CA_BUNDLE_PR_TOKEN || github.token }}
           script: |
-            const title  = 'CA bundle (esp_crt_bundle/cacert.pem) is out of date';
-            const runUrl = process.env.CHECK_RUN_URL;
-            const exit   = process.env.CHECK_EXIT_CODE;
-            // 0 = bundle fresh, 1 = bundle stale, anything else = internal error
-            // (download/parse failure, etc.). Internal errors must NOT toggle
-            // the tracking issue, otherwise transient outages would create
-            // misleading "out of date" reports.
-            if (exit !== '0' && exit !== '1') {
-              core.warning(
-                `CA-bundle check exited with code '${exit}' (internal error). ` +
-                `Leaving the tracking issue untouched. See ${runUrl}.`);
-              return;
-            }
-            const stale = exit === '1';
-
-            // Find any existing open tracking issue with this exact title.
-            // The repository does not define dedicated labels for this check,
-            // so we identify the issue purely by its (constant) title.
             const issues = await github.paginate(github.rest.issues.listForRepo, {
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
+              ...context.repo,
+              state: 'all',
+              per_page: 100,
+            });
+            // The issues endpoint also returns PRs. Reuse matching issues even
+            // when closed, so retries never create another issue for this date.
+            let issue = issues.find(item => !item.pull_request && item.title === process.env.ISSUE_TITLE);
+            if (issue) {
+              core.notice(`Reusing CA bundle issue: ${issue.html_url}`);
+            } else {
+              const body = [
+                `Update the bundled Mozilla CA certificates to ${process.env.BUNDLE_DATE}.`,
+                '',
+                'Source: [Mozilla CA bundle published by curl](https://curl.se/docs/caextract.html).',
+                'The update replaces `esp_crt_bundle/cacert.pem`, including added and removed roots.',
+                'Track this certificate update in the release notes and review the linked PR before merging.',
+                '',
+                `[Automation run](${process.env.RUN_URL})`,
+              ].join('\n');
+              ({ data: issue } = await github.rest.issues.create({
+                ...context.repo,
+                title: process.env.ISSUE_TITLE,
+                body,
+              }));
+              core.notice(`Created CA bundle issue: ${issue.html_url}`);
+            }
+            const title = `chore(esp_crt_bundle) #${issue.number} Update Mozilla CA bundle to ${process.env.BUNDLE_DATE}`;
+            core.setOutput('title', title);
+            core.setOutput('commit-message', `${title}\n\nCloses #${issue.number}`);
+            core.setOutput('pr-closing', `Closed #${issue.number}`);
+
+      - name: Check for an open pull request with the same title
+        if: steps.bundle.outputs.changed == 'true'
+        id: existing-pr
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_TITLE: ${{ steps.issue.outputs.title }}
+        with:
+          github-token: ${{ secrets.CA_BUNDLE_PR_TOKEN || github.token }}
+          script: |
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              ...context.repo,
               state: 'open',
               per_page: 100,
             });
-            const existing = issues.find(i => i.title === title && !i.pull_request);
-
-            if (stale) {
-              const body = [
-                'The scheduled **Check CA Bundle** workflow found a newer Mozilla CA',
-                'certificate bundle on https://curl.se/docs/caextract.html.',
-                '',
-                'The bundle embedded in the firmware (`esp_crt_bundle/cacert.pem`)',
-                'should be refreshed so that TLS connections continue to trust',
-                'newly-added roots and stop trusting roots that have been removed.',
-                '',
-                `**Failing run:** ${runUrl}`,
-                '',
-                '### How to update',
-                '',
-                '```bash',
-                'scripts/check_ca_bundle_up_to_date.sh --update',
-                'git add esp_crt_bundle/cacert.pem',
-                'git commit -m "esp_crt_bundle: update Mozilla CA bundle"',
-                '```',
-                '',
-                'The next successful scheduled run of this workflow will close',
-                'this issue automatically.',
-              ].join('\n');
-
-              if (existing) {
-                await github.rest.issues.update({
-                  owner: context.repo.owner,
-                  repo:  context.repo.repo,
-                  issue_number: existing.number,
-                  body,
-                });
-                core.notice(`Refreshed tracking issue #${existing.number}.`);
-              } else {
-                const { data: created } = await github.rest.issues.create({
-                  owner: context.repo.owner,
-                  repo:  context.repo.repo,
-                  title,
-                  body,
-                });
-                core.notice(`Opened tracking issue #${created.number}.`);
-              }
-            } else if (existing) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo:  context.repo.repo,
-                issue_number: existing.number,
-                body: `Resolved automatically: the bundled CA certificates are up-to-date again. See ${runUrl}.`,
-              });
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo:  context.repo.repo,
-                issue_number: existing.number,
-                state: 'closed',
-              });
-              core.notice(`Closed tracking issue #${existing.number}.`);
-            } else {
-              core.info('Bundle is up-to-date and no tracking issue is open. Nothing to do.');
+            const existing = pulls.find(pr => pr.title === process.env.PR_TITLE);
+            core.setOutput('exists', existing ? 'true' : 'false');
+            if (existing) {
+              core.notice(`Skipping duplicate CA bundle update: ${existing.html_url}`);
             }
+
+      # Skip publishing when an open PR already has the same dated title.
+      # Still run when the default branch is current to clean up obsolete PRs/branches.
+      - name: Create or update the CA bundle pull request
+        if: steps.bundle.outputs.changed == 'false' || steps.existing-pr.outputs.exists == 'false'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          # Set CA_BUNDLE_PR_TOKEN to a fine-grained PAT to run PR CI without
+          # a separate workflow approval. See esp_crt_bundle/README.md.
+          token: ${{ secrets.CA_BUNDLE_PR_TOKEN || github.token }}
+          branch: automation/update-ca-bundle
+          base: ${{ github.event.repository.default_branch }}
+          delete-branch: true
+          add-paths: esp_crt_bundle/cacert.pem
+          # With no bundle changes, the issue step is skipped; these fallbacks
+          # let the action clean up obsolete branches without creating an issue.
+          commit-message: ${{ steps.issue.outputs.commit-message || steps.bundle.outputs.issue-title }}
+          title: ${{ steps.issue.outputs.title || steps.bundle.outputs.issue-title }}
+          body: |
+            Refresh `esp_crt_bundle/cacert.pem` from [curl's Mozilla CA bundle](https://curl.se/docs/caextract.html).
+
+            Generated with `bash scripts/check_ca_bundle_up_to_date.sh --update`.
+            Mozilla certificate data date: **${{ steps.bundle.outputs.date }}**.
+            The downloaded bundle has a newer Mozilla data date and passes OpenSSL PEM parsing.
+            This replaces the full bundle, including both added and removed roots.
+
+            Review the certificate changes and CI results, then approve and merge.
+            If GitHub displays **Approve workflows to run**, approve those runs first.
+
+            [Automation run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ${{ steps.issue.outputs.pr-closing }}
