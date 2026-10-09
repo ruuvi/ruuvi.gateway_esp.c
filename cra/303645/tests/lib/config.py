@@ -18,7 +18,7 @@ HOSTNAME_RE: re.Pattern[str] = re.compile(
     r"^(?=.{1,253}\.?$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*"
     r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.?$"
 )
-FIRMWARE_VERSION_RE: re.Pattern[str] = re.compile(r"v\d+\.\d+\.\d+-(?:prod|dev)")
+FIRMWARE_VERSION_RE: re.Pattern[str] = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+-(?:prod|dev)")
 DEFAULT_GATEWAY_UI_CONFIG_PATH: Path = (
     Path(__file__).resolve().parent.parent.parent.parent.parent / "gw_cfg_default" / "gw_cfg_default_gen_ui.json"
 )

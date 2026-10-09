@@ -109,6 +109,7 @@ def resolve_host(hostname: str, *, resolver: Resolver = system_resolver) -> Reso
             hostname, None, type=socket.SOCK_STREAM,
         )
     except OSError as error:
+        error: OSError
         raise ScanError(
             f"cannot resolve {hostname}: {error}; enable host mDNS resolution or set gw_hostname to an IPv4 literal"
         ) from error
@@ -144,6 +145,7 @@ def check_nmap(
             [path, "--version"], capture_output=True, text=True, timeout=10, check=False,
         )
     except (OSError, subprocess.TimeoutExpired) as error:
+        error: OSError | subprocess.TimeoutExpired
         raise ScanError(f"nmap version preflight failed: {error}") from error
     match: re.Match[str] | None = re.search(r"Nmap version (\d+)\.(\d+)", completed.stdout)
     if completed.returncode != 0 or match is None:
@@ -184,6 +186,7 @@ def _port_set(specification: str) -> frozenset[int]:
             else:
                 selected.add(int(token))
     except ValueError as error:
+        error: ValueError
         raise ScanError(f"invalid scan port range {specification}") from error
     if not selected or min(selected) < 1 or max(selected) > 65535:
         raise ScanError("invalid scan port range")
@@ -272,6 +275,7 @@ def parse_nmap_xml(xml_text: str, protocol: str, requested: frozenset[int],
             state_counts["closed|filtered"],
         )
     except (ElementTree.ParseError, KeyError, ValueError) as error:
+        error: ElementTree.ParseError | KeyError | ValueError
         raise ScanError(f"invalid nmap XML: {error}") from error
 
 
@@ -286,6 +290,7 @@ def _run_scan(
     if (any(type(value) is not int for value in limits) or host_timeout <= 0 or max_retries < 0
             or (scan_delay_ms is not None and scan_delay_ms <= 0)):
         raise ScanError("scan timeout and limits must be finite integers with valid ranges")
+    directory: str
     with tempfile.TemporaryDirectory(prefix="ruuvi-netscan-") as directory:
         xml_path: Path = Path(directory) / "nmap.xml"
         command: tuple[str, ...] = (
@@ -304,6 +309,7 @@ def _run_scan(
                 list(command), capture_output=True, text=True, timeout=host_timeout + 30, check=False,
             )
         except (OSError, UnicodeError, subprocess.TimeoutExpired) as error:
+            error: OSError | UnicodeError | subprocess.TimeoutExpired
             raise ScanError(f"{protocol.upper()} scan failed or timed out: {error}") from error
         if completed.returncode != 0:
             raise ScanError(f"{protocol.upper()} scan exited {completed.returncode}: {completed.stderr.strip()}")

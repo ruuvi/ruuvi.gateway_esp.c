@@ -85,8 +85,10 @@ class GatewayStorageFile:
     MQTT_SRV_CERT: str = "mqtt_srv_cert"
     STAT_CLI_CERT: str = "stat_cli_cert"
     STAT_CLI_KEY: str = "stat_cli_key"
+    STAT_SRV_CERT: str = "stat_srv_cert"
     RCFG_CLI_CERT: str = "rcfg_cli_cert"
     RCFG_CLI_KEY: str = "rcfg_cli_key"
+    RCFG_SRV_CERT: str = "rcfg_srv_cert"
 
 
 class GatewayCfgLanAuthType:

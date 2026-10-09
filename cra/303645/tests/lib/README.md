@@ -38,7 +38,7 @@ deadlines, expected observations, verdict rules, and live-run findings belong in
 ### Configuration
 
 - `load_dut_config(path)` requires `gw_id`, `gw_mac`, and `gw_hostname` in a local `.env` file and
-  accepts optional `gw_fw` as a full `vX.Y.Z-dev` or `vX.Y.Z-prod` release tag. Empty `gw_fw`
+  accepts optional `gw_fw` as a full `vX.Y.Z-dev` or `vX.Y.Z-prod` release tag with ASCII digits. Empty `gw_fw`
   becomes `None`. `gw_mac` is the nRF52 identity MAC, not an ESP32 network-interface MAC.
   Optional `wifi_ssid` and `wifi_password` must be supplied together: 1–32 and 8–63 UTF-8
   bytes respectively, without NUL characters. Their values after `=` are literal, preserving
@@ -106,7 +106,7 @@ bodies. Store and share them with the same care as DUT credentials.
 - `GatewayCfgDesc`, `GatewayCfgLanAuthType`, and `AuthMech` contain shared gateway protocol names.
   `GatewayCfgDesc` also names Wi-Fi credential fields, the storage-presence mapping, and
   HTTP/MQTT/remote-config target and authentication fields. `GatewayStorageFile` names the
-  HTTP/MQTT/statistics/remote-config client certificate/key files and HTTP/MQTT server
+  HTTP/MQTT/statistics/remote-config client certificate/key files and server
   certificates used by data-creation tests. These are protocol descriptors, not a route
   inventory or a promise that stored contents can be read: current TLS storage uses NVS
   strings, for which `GET /extra_cfg` returns 403; callers can inspect `storage.<filename>`.
@@ -324,7 +324,12 @@ esptool exit does not leave the gateway in download mode. Reset failure is repor
 `parse_partition_table()` validates the ESP-IDF MD5 record when present and converts the
 on-device binary table to immutable `Partition` records, rejecting non-ASCII names as `InvalidSetup`;
 `parse_partition_csv()` does the same for the repository layout. Callers compare the full tuples
-before writing. `decode_otadata()` validates both OTA selection entries' sequence, state, and
+before writing. `Partition.flags` preserves the complete 32-bit binary flags word and participates
+in equality; its default is zero for existing constructors. CSV flags accept `encrypted` (bit 0)
+in a colon-separated list, matching ESP-IDF v4.2.5; omitted or empty flags mean zero, and unknown
+flag names raise `InvalidSetup`. A binary terminator must have magic, type, and subtype all erased
+(`0xff` across its first four bytes); malformed terminators raise `InvalidSetup`.
+`decode_otadata()` validates both OTA selection entries' sequence, state, and
 ESP-IDF seeded CRC (`zlib.crc32(sequence_bytes, 0xFFFFFFFF)`),
 then selects the highest valid sequence, retaining entry 0 on a tie as the pinned bootloader does.
 Equal valid sequences select the same OTA slot. No valid entry raises `InvalidSetup`. Direct parser and tool tests

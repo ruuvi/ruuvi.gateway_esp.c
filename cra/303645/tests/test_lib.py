@@ -47,6 +47,7 @@ from lib.gateway import (
     GatewayCfgDesc,
     GatewayCfgLanAuthType,
     GatewayClient,
+    GatewayStorageFile,
     InteractiveAuthChallenge,
     InteractiveAuthResult,
     InteractiveChallengeRequest,
@@ -492,10 +493,24 @@ class ConfigTestCase(unittest.TestCase):
         directory: str
         with tempfile.TemporaryDirectory() as directory:
             path: Path = Path(directory) / ".env"
-            path.write_text(valid + "gw_fw = v1.17.5-dev\n", encoding="utf-8")
-            self.assertEqual("v1.17.5-dev", load_dut_config(path).gw_fw)
+            version: str
+            for version in ("v1.17.5-dev", "v12.34.56-prod"):
+                path.write_text(valid + f"gw_fw = {version}\n", encoding="utf-8")
+                self.assertEqual(version, load_dut_config(path).gw_fw)
             path.write_text(valid + "gw_fw=\n", encoding="utf-8")
             self.assertIsNone(load_dut_config(path).gw_fw)
+
+    def test_firmware_version_rejects_non_ascii_digits_in_each_component(self) -> None:
+        valid: str = "gw_id=00:11:22:33:44:55:66:77\ngw_mac=AA:BB:CC:DD:EE:FF\ngw_hostname=gateway.local\n"
+        directory: str
+        with tempfile.TemporaryDirectory() as directory:
+            path: Path = Path(directory) / ".env"
+            version: str
+            for version in ("v١.١.١-dev", "v１.2.3-prod", "v1.٢.3-dev", "v1.2.３-prod"):
+                with self.subTest(version=version):
+                    path.write_text(valid + f"gw_fw={version}\n", encoding="utf-8")
+                    with self.assertRaisesRegex(InvalidConfig, "gw_fw must look like"):
+                        load_dut_config(path)
 
     def test_load_dut_config_rejects_each_invalid_env_shape(self) -> None:
         valid: str = "gw_id=00:11:22:33:44:55:66:77\ngw_mac=AA:BB:CC:DD:EE:FF\ngw_hostname=gateway.local\n"
@@ -526,6 +541,18 @@ class ConfigTestCase(unittest.TestCase):
 
 
 class ModelsAndApiTestCase(unittest.TestCase):
+    def test_tls_storage_descriptors_cover_all_firmware_certificate_files(self) -> None:
+        self.assertEqual(
+            ("http_cli_cert", "http_cli_key", "http_srv_cert",
+             "mqtt_cli_cert", "mqtt_cli_key", "mqtt_srv_cert",
+             "stat_cli_cert", "stat_cli_key", "stat_srv_cert",
+             "rcfg_cli_cert", "rcfg_cli_key", "rcfg_srv_cert"),
+            (GatewayStorageFile.HTTP_CLI_CERT, GatewayStorageFile.HTTP_CLI_KEY, GatewayStorageFile.HTTP_SRV_CERT,
+             GatewayStorageFile.MQTT_CLI_CERT, GatewayStorageFile.MQTT_CLI_KEY, GatewayStorageFile.MQTT_SRV_CERT,
+             GatewayStorageFile.STAT_CLI_CERT, GatewayStorageFile.STAT_CLI_KEY, GatewayStorageFile.STAT_SRV_CERT,
+             GatewayStorageFile.RCFG_CLI_CERT, GatewayStorageFile.RCFG_CLI_KEY, GatewayStorageFile.RCFG_SRV_CERT),
+        )
+
     def test_http_status_covers_documented_firmware_responses(self) -> None:
         self.assertEqual(
             (200, 302, 400, 401, 403, 404, 409, 500, 502, 503, 504),
@@ -1828,6 +1855,60 @@ class FlashDutTests(unittest.TestCase):
         self.assertEqual(expected, flash_dut.parse_partition_csv(csv_path))
         with self.assertRaisesRegex(InvalidSetup, "cannot parse"):
             flash_dut.parse_partition_csv(self.root / "missing.csv")
+
+    def test_partition_flags_affect_binary_and_csv_layout_comparison(self) -> None:
+        record: bytes = (b"\xaa\x50\x00\x10" + (0x100000).to_bytes(4, "little")
+                         + (0x400000).to_bytes(4, "little") + b"ota_0".ljust(16, b"\x00"))
+        plain: tuple[flash_dut.Partition, ...] = (
+            flash_dut.Partition("ota_0", 0, 0x10, 0x100000, 0x400000),
+        )
+        csv_path: Path = self.root / "flags.csv"
+        suffix: str
+        for suffix in ("", ",", ",  "):
+            with self.subTest(flags=suffix):
+                csv_path.write_text(f"ota_0,app,ota_0,0x100000,4M{suffix}\n", encoding="utf-8")
+                self.assertEqual(plain, flash_dut.parse_partition_csv(csv_path))
+        encrypted: tuple[flash_dut.Partition, ...] = (
+            flash_dut.Partition("ota_0", 0, 0x10, 0x100000, 0x400000, flags=1),
+        )
+        for suffix in ("encrypted", " encrypted ", "encrypted:encrypted", ":encrypted:"):
+            with self.subTest(flags=suffix):
+                csv_path.write_text(f"ota_0,app,ota_0,0x100000,4M,{suffix}\n", encoding="utf-8")
+                self.assertEqual(encrypted, flash_dut.parse_partition_csv(csv_path))
+                self.assertNotEqual(plain, flash_dut.parse_partition_csv(csv_path))
+        flags: int
+        for flags in (0, 1, 2, 0x80000001):
+            with self.subTest(binary_flags=flags):
+                table: bytes = (record + flags.to_bytes(4, "little")).ljust(flash_dut.PARTITION_TABLE_SIZE, b"\xff")
+                parsed: tuple[flash_dut.Partition, ...] = flash_dut.parse_partition_table(table)
+                self.assertEqual(flags, parsed[0].flags)
+                self.assertEqual(flags == 0, parsed == plain)
+                self.assertEqual(flags == 1, parsed == encrypted)
+        for suffix in ("unknown", "encrypted:unknown", "1"):
+            with self.subTest(flags=suffix):
+                csv_path.write_text(f"ota_0,app,ota_0,0x100000,4M,{suffix}\n", encoding="utf-8")
+                with self.assertRaisesRegex(InvalidSetup, "cannot parse partition CSV"):
+                    flash_dut.parse_partition_csv(csv_path)
+
+    def test_partition_terminator_requires_erased_type_and_subtype(self) -> None:
+        record: bytes = (b"\xaa\x50\x00\x10" + (0x100000).to_bytes(4, "little")
+                         + (0x400000).to_bytes(4, "little") + b"ota_0".ljust(16, b"\x00") + bytes(4))
+        expected: tuple[flash_dut.Partition, ...] = (
+            flash_dut.Partition("ota_0", 0, 0x10, 0x100000, 0x400000),
+        )
+        # The bootloader checks only these four bytes of the terminating entry.
+        terminator: bytes = b"\xff" * 4 + bytes(28)
+        table: bytes = (record + terminator).ljust(flash_dut.PARTITION_TABLE_SIZE, b"\xff")
+        self.assertEqual(expected, flash_dut.parse_partition_table(table))
+        type_id: int
+        subtype: int
+        for type_id, subtype in ((0, 0xFF), (0xFF, 0), (0, 0)):
+            with self.subTest(type_id=type_id, subtype=subtype):
+                malformed: bytes = (record + b"\xff\xff" + bytes((type_id, subtype)) + bytes(28)).ljust(
+                    flash_dut.PARTITION_TABLE_SIZE, b"\xff",
+                )
+                with self.assertRaisesRegex(InvalidSetup, "invalid partition table terminator at 0x20"):
+                    flash_dut.parse_partition_table(malformed)
 
     def test_otadata_validity_and_selection(self) -> None:
         raw: bytearray = bytearray(b"\xff" * flash_dut.OTADATA_SIZE)

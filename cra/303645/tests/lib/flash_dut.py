@@ -9,7 +9,7 @@ import sys
 import zlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, TextIO
 
 from .errors import InvalidSetup
 from .evidence import EvidenceLog
@@ -35,6 +35,7 @@ class Partition:
     subtype: int
     offset: int
     size: int
+    flags: int = 0
 
 
 @dataclass(frozen=True)
@@ -68,6 +69,8 @@ def parse_partition_table(data: bytes) -> tuple[Partition, ...]:
     for index in range(0, len(data), PARTITION_ENTRY_SIZE):
         entry: bytes = data[index:index + PARTITION_ENTRY_SIZE]
         if entry[:2] == b"\xff\xff":
+            if entry[2:4] != b"\xff\xff":
+                raise InvalidSetup(f"invalid partition table terminator at 0x{index:x}")
             break
         if entry[:2] == b"\xeb\xeb":
             if entry[2:16] != b"\xff" * 14 or entry[16:32] != hashlib.md5(data[:index]).digest():
@@ -86,7 +89,8 @@ def parse_partition_table(data: bytes) -> tuple[Partition, ...]:
             raise InvalidSetup(f"missing or duplicate partition name {name}")
         parts.append(Partition(name, entry[2], entry[3],
                                int.from_bytes(entry[4:8], "little"),
-                               int.from_bytes(entry[8:12], "little")))
+                               int.from_bytes(entry[8:12], "little"),
+                               int.from_bytes(entry[28:32], "little")))
     if not parts:
         raise InvalidSetup("partition table has no entries")
     return tuple(parts)
@@ -105,7 +109,9 @@ def parse_partition_csv(path: Path) -> tuple[Partition, ...]:
     subtype_ids: dict[str, int] = {"nvs": 2, "ota": 0, "phy": 1, "fat": 0x81,
                                     "ota_0": 0x10, "ota_1": 0x11}
     type_ids: dict[str, int] = {"app": 0, "data": 1}
+    flag_masks: dict[str, int] = {"encrypted": 1}
     parts: list[Partition] = []
+    stream: TextIO
     try:
         with path.open(newline="", encoding="utf-8") as stream:
             row: list[str]
@@ -113,9 +119,15 @@ def parse_partition_csv(path: Path) -> tuple[Partition, ...]:
                 if not row or not row[0].strip():
                     continue
                 name: str = row[0].strip()
+                flags: int = 0
+                flag: str
+                for flag in row[5].strip().split(":") if len(row) > 5 else ():
+                    if flag:
+                        flags |= flag_masks[flag]
                 parts.append(Partition(name, type_ids[row[1].strip()], subtype_ids[row[2].strip()],
-                                       _number(row[3]), _number(row[4])))
+                                       _number(row[3]), _number(row[4]), flags))
     except (OSError, UnicodeError, ValueError, KeyError, IndexError) as error:
+        error: OSError | UnicodeError | ValueError | KeyError | IndexError
         raise InvalidSetup(f"cannot parse partition CSV {path}: {error}") from error
     return tuple(parts)
 
@@ -170,6 +182,7 @@ class FlashTool:
                 list(command), capture_output=True, text=True, timeout=timeout, check=False,
             )
         except (OSError, subprocess.SubprocessError) as error:
+            error: OSError | subprocess.SubprocessError
             self.evidence.write("ESPTOOL FAILURE", f"{type(error).__name__}: {error}")
             raise InvalidSetup(f"esptool {' '.join(args)} failed: {error}") from error
         result: FlashCommandResult = FlashCommandResult(args, completed.returncode,
