@@ -181,9 +181,14 @@ session. Zero permits the initial request but no subsequent request to an allowe
 Responses are streamed with a 4 MiB per-response decoded-body limit and a 60-second transfer
 deadline shared by the whole redirect chain. Both limits can be overridden; the size must be a
 positive integer and the timeout finite and positive. The injected monotonic clock supports
-offline deadline tests. Byte-sized reads expose slow trickles to deadline checks; an in-progress
-socket read remains subject to the read timeout, capped by the time remaining when its request
-starts. Only complete, bounded bodies are cached and passed to the response evidence writer.
+offline deadline tests. Responses use 64 KiB buffered reads. During network-body acquisition, a
+deadline timer shuts down a duplicate socket handle if the total budget expires, interrupting
+blocked reads even while a peer keeps sending small amounts of data. The timer is cancelled and
+joined and the duplicate handle is closed on every exit. Connect/header acquisition retains
+Requests' timeouts, capped by the time remaining when its request starts. Cached responses and
+in-memory test streams use the same size/deadline checks without a network timer; other streamed
+transports must expose a socket descriptor or the fetch fails as incomplete. Only complete,
+bounded bodies are cached and passed to the response evidence writer.
 Limit failures raise `WebResourceConnectionError` as incomplete fetches, preserving the last
 complete observation rather than reporting a truncated body as successfully fetched. Every
 response is closed on success or failure, including redirects.

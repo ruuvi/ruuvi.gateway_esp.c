@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import io
 import math
+import socket
+import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
-from typing import Callable
+from typing import Callable, Iterator
 from urllib.parse import SplitResult, urldefrag, urljoin, urlsplit
 
 import requests
@@ -26,23 +30,74 @@ REDIRECT_STATUSES: frozenset[int] = frozenset((
 ))
 MAX_RESPONSE_BYTES: int = 4 * 1024 * 1024
 TOTAL_TIMEOUT: float = 60.0
+RESPONSE_CHUNK_SIZE: int = 64 * 1024
+
+
+@contextmanager
+def _response_deadline(
+    response: requests.Response, deadline: float, monotonic: Callable[[], float], socket_timeout: float,
+) -> Iterator[None]:
+    # Cached bodies and in-memory test streams cannot block on a network read.
+    if response._content is not False or isinstance(response.raw, io.BytesIO):
+        yield
+        return
+    try:
+        borrowed: socket.socket = socket.socket(fileno=response.raw.fileno())
+        try:
+            # dup() copies this wrapper's timeout. Preserve Requests' non-blocking
+            # descriptor mode rather than copying the wrapper's default blocking mode.
+            borrowed.settimeout(socket_timeout)
+            interrupt_socket: socket.socket = borrowed.dup()
+        finally:
+            # The response owns the original descriptor; only the duplicate belongs to us.
+            borrowed.detach()
+    except (OSError, ValueError, TypeError, AttributeError) as error:
+        error: OSError | ValueError | TypeError | AttributeError
+        raise WebResourceConnectionError("cannot enforce public-resource response deadline") from error
+
+    expired: threading.Event = threading.Event()
+
+    def interrupt() -> None:
+        expired.set()
+        try:
+            # close() alone may wait for a buffered read; shutdown interrupts it immediately.
+            interrupt_socket.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass  # The peer may already have closed the connection.
+
+    timer: threading.Timer = threading.Timer(max(0.0, deadline - monotonic()), interrupt)
+    try:
+        timer.start()
+        try:
+            yield
+        except requests.RequestException:
+            if not expired.is_set():
+                raise
+        finally:
+            timer.cancel()
+            timer.join()
+        if expired.is_set():
+            raise WebResourceConnectionError("incomplete public-resource fetch: total transfer deadline exceeded") from None
+    finally:
+        interrupt_socket.close()
 
 
 def _read_response(
     response: requests.Response, max_response_bytes: int, deadline: float, monotonic: Callable[[], float],
+    socket_timeout: float,
 ) -> None:
     """Cache only a complete bounded body for the existing response evidence writer."""
     body: bytearray = bytearray()
     chunk: bytes
-    # A one-byte read exposes slow trickles instead of waiting for a large chunk to fill.
-    for chunk in response.iter_content(chunk_size=1):
+    with _response_deadline(response, deadline, monotonic, socket_timeout):
+        for chunk in response.iter_content(chunk_size=RESPONSE_CHUNK_SIZE):
+            if monotonic() >= deadline:
+                raise WebResourceConnectionError("incomplete public-resource fetch: total transfer deadline exceeded")
+            if len(body) + len(chunk) > max_response_bytes:
+                raise WebResourceConnectionError("incomplete public-resource fetch: response size limit exceeded")
+            body.extend(chunk)
         if monotonic() >= deadline:
             raise WebResourceConnectionError("incomplete public-resource fetch: total transfer deadline exceeded")
-        if len(body) + len(chunk) > max_response_bytes:
-            raise WebResourceConnectionError("incomplete public-resource fetch: response size limit exceeded")
-        body.extend(chunk)
-    if monotonic() >= deadline:
-        raise WebResourceConnectionError("incomplete public-resource fetch: total transfer deadline exceeded")
     response._content = bytes(body)
 
 
@@ -119,7 +174,7 @@ def _fetch_session(
                 allow_redirects=False, verify=True, proxies={}, stream=True,
             )
             try:
-                _read_response(response, max_response_bytes, deadline, monotonic)
+                _read_response(response, max_response_bytes, deadline, monotonic, min(timeout[1], remaining))
                 evidence.write_http_response(response)
             finally:
                 response.close()

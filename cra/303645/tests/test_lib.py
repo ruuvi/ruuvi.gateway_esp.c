@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import base64
+import gzip
 import hashlib
+import http.client
 import io
 import json
 import os
 import socket
 import subprocess
 import tempfile
+import threading
+import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -19,9 +23,10 @@ from unittest import mock
 import requests
 from Crypto.PublicKey import ECC
 from Crypto.PublicKey.ECC import EccKey, EccPoint
+from urllib3.response import HTTPResponse
 
 from lib import config as config_module
-from lib import evidence, flash_dut, netscan, serial_dut
+from lib import evidence, flash_dut, netscan, serial_dut, webresource
 from lib.config import (
     FACTORY_RESET_MESSAGE,
     InvalidConfig,
@@ -234,8 +239,9 @@ class WebResourceTestCase(unittest.TestCase):
                 reads += 1
                 yield b"x"
 
-        raw: mock.Mock = mock.Mock()
-        raw.stream.side_effect = trickle
+        chunks: Iterator[bytes] = trickle(webresource.RESPONSE_CHUNK_SIZE)
+        raw: mock.Mock = mock.Mock(spec=io.BytesIO)
+        raw.read.side_effect = lambda _amount: next(chunks)
         response: requests.Response = requests.Response()
         response.status_code = 200
         response.raw = raw
@@ -243,9 +249,8 @@ class WebResourceTestCase(unittest.TestCase):
         with self.assertRaisesRegex(WebResourceConnectionError, "incomplete.*deadline"):
             self.fetch(total_timeout=1, monotonic=lambda: elapsed)
         self.assertEqual(4, reads)
-        raw.stream.assert_called_once_with(1, decode_content=True)
+        self.assertEqual([mock.call(webresource.RESPONSE_CHUNK_SIZE)] * 4, raw.read.call_args_list)
         raw.close.assert_called_once_with()
-        raw.release_conn.assert_called_once_with()
         self.assertEqual((1, 1), self.send.call_args.kwargs["timeout"])
         self.assertNotIn("PUBLIC RESOURCE OBSERVATION", self.stream.getvalue())
 
@@ -270,8 +275,9 @@ class WebResourceTestCase(unittest.TestCase):
                         return
                     yield b"too large"
 
-                raw: mock.Mock = mock.Mock()
-                raw.stream.side_effect = stream
+                chunks: Iterator[bytes] = stream(webresource.RESPONSE_CHUNK_SIZE)
+                raw: mock.Mock = mock.Mock(spec=io.BytesIO)
+                raw.read.side_effect = lambda _amount, iterator=chunks: next(iterator, b"")
                 response: requests.Response = requests.Response()
                 response.status_code = 200
                 response.raw = raw
@@ -281,7 +287,115 @@ class WebResourceTestCase(unittest.TestCase):
                     self.fetch(max_response_bytes=4, total_timeout=1, monotonic=monotonic)
                 self.assertEqual(302, caught.exception.observation.status)
                 self.assertEqual("https://public.example/next", caught.exception.observation.redirects[0].to_url)
-                raw.release_conn.assert_called_once_with()
+                if failure != "timeout":
+                    raw.close.assert_called_once_with()
+
+    def test_large_response_uses_buffered_reads(self) -> None:
+        response: requests.Response = requests.Response()
+        response.status_code = 200
+        data: bytes = b"x" * webresource.MAX_RESPONSE_BYTES
+        raw: mock.Mock = mock.Mock(spec=io.BytesIO, wraps=io.BytesIO(data))
+        response.raw = raw
+        self.send.return_value = response
+        clock: mock.Mock = mock.Mock(return_value=0.0)
+        result: PublicResourceResult = self.fetch(monotonic=clock)
+        self.assertEqual(len(data), result.body_length)
+        self.assertEqual(data, response.content)
+        self.assertEqual(len(data) // webresource.RESPONSE_CHUNK_SIZE + 1, raw.read.call_count)
+        self.assertLess(clock.call_count, 100)
+        raw.close()
+
+    def test_deadline_interrupts_buffered_socket_read_during_continuous_trickle(self) -> None:
+        reader: socket.socket
+        writer: socket.socket
+        reader, writer = socket.socketpair()
+        self.addCleanup(reader.close)
+        self.addCleanup(writer.close)
+        reader.settimeout(1.0)
+        writer.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 65536\r\n\r\n")
+        wire: http.client.HTTPResponse = http.client.HTTPResponse(reader)
+        wire.begin()
+        response: requests.Response = requests.Response()
+        response.status_code = 200
+        response.raw = HTTPResponse(body=wire, headers=dict(wire.getheaders()), preload_content=False)
+        self.send.return_value = response
+        stopped: threading.Event = threading.Event()
+        writes: list[int] = []
+
+        def trickle() -> None:
+            end: float = time.monotonic() + 3.0
+            try:
+                while time.monotonic() < end and not stopped.wait(0.01):
+                    writer.sendall(b"x")
+                    writes.append(1)
+            except OSError:
+                pass  # The deadline shuts down the reader's connection.
+            finally:
+                writer.close()
+
+        sender: threading.Thread = threading.Thread(target=trickle)
+        sender.start()
+        started: float = time.monotonic()
+        try:
+            with self.assertRaisesRegex(WebResourceConnectionError, "incomplete.*deadline"):
+                self.fetch(total_timeout=0.15)
+            self.assertLess(time.monotonic() - started, 1.5)
+            self.assertGreater(len(writes), 1)
+            self.assertTrue(response.raw.closed)
+            self.assertIs(False, response._content)
+        finally:
+            stopped.set()
+            sender.join(timeout=2.0)
+        self.assertFalse(sender.is_alive())
+
+    def test_stream_without_interruptible_socket_fails_and_closes(self) -> None:
+        response: requests.Response = requests.Response()
+        response.status_code = 200
+        raw: mock.Mock = mock.Mock()
+        raw.fileno.side_effect = OSError("not a socket")
+        response.raw = raw
+        self.send.return_value = response
+        with self.assertRaisesRegex(WebResourceConnectionError, "cannot enforce"):
+            self.fetch()
+        raw.stream.assert_not_called()
+        raw.close.assert_called_once_with()
+
+    def test_buffered_socket_success_preserves_compression_and_cancels_watchdog(self) -> None:
+        body: bytes = b"public page" * 100
+        encoded: bytes = gzip.compress(body)
+        reader: socket.socket
+        writer: socket.socket
+        reader, writer = socket.socketpair()
+        self.addCleanup(reader.close)
+        self.addCleanup(writer.close)
+        reader.settimeout(1.0)
+        writer.sendall(
+            f"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: {len(encoded)}\r\n\r\n".encode()
+            + encoded,
+        )
+        wire: http.client.HTTPResponse = http.client.HTTPResponse(reader)
+        wire.begin()
+        response: requests.Response = requests.Response()
+        response.status_code = 200
+        response.raw = HTTPResponse(body=wire, headers=dict(wire.getheaders()), preload_content=False)
+        self.send.return_value = response
+        timers: list[threading.Timer] = []
+        real_timer: type[threading.Timer] = threading.Timer
+
+        def timer_factory(interval: float, callback: Callable[[], None]) -> threading.Timer:
+            timer: threading.Timer = real_timer(interval, callback)
+            timers.append(timer)
+            return timer
+
+        with mock.patch("lib.webresource.threading.Timer", side_effect=timer_factory):
+            result: PublicResourceResult = self.fetch()
+        self.assertEqual(len(body), result.body_length)
+        self.assertEqual(body, response.content)
+        self.assertEqual(1, len(timers))
+        self.assertTrue(timers[0].finished.is_set())
+        self.assertFalse(timers[0].is_alive())
+        self.assertTrue(response.raw.closed)
+        self.assertFalse(os.get_blocking(reader.fileno()))
 
     def test_transfer_deadline_is_shared_by_redirects(self) -> None:
         clock: mock.Mock = mock.Mock(side_effect=[0.0, 0.0, 0.9, 1.0])
