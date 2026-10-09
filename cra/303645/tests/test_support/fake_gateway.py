@@ -301,12 +301,15 @@ class FakeGateway:
                             )
                         },
                     )
+                parameters: dict[str, str | None] = requests.utils.parse_dict_header(
+                    authorization[len(f"{HttpAuthScheme.DIGEST} ") :]
+                )
+                required: tuple[str, ...] = ("uri", "nonce", "nc", "cnonce", "qop", "username", "response")
+                if not all(parameters.get(name) for name in required):
+                    return FakeResponse(HttpStatus.C_401_UNAUTHORIZED, {"authenticated": False})
                 if self.digest_authenticated_timeouts > 0:
                     self.digest_authenticated_timeouts -= 1
                     raise requests.Timeout("Digest authenticated request timeout")
-                parameters: dict[str, str] = requests.utils.parse_dict_header(
-                    authorization[len(f"{HttpAuthScheme.DIGEST} ") :]
-                )
                 ha2: str = hashlib.md5(f"{HttpMethod.GET}:{parameters['uri']}".encode()).hexdigest()
                 expected: str = hashlib.md5(
                     f"{self.custom_ha1}:{parameters['nonce']}:{parameters['nc']}:"

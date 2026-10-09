@@ -386,6 +386,63 @@ class GatewayTestCase(unittest.TestCase):
                     )
                     self.assertEqual(HttpStatus.C_401_UNAUTHORIZED, response.status_code)
 
+    def test_digest_auth_rejects_incomplete_parameters_without_transport_errors(self) -> None:
+        gateway: FakeGateway = FakeGateway(CONFIG)
+        gateway.mode = GatewayCfgLanAuthType.DIGEST
+        gateway.custom_username = "user"
+        gateway.custom_ha1 = hashlib.md5(b"user:Ruuvi Gateway:pass").hexdigest()
+        ha2: str = hashlib.md5(b"GET:/status.json").hexdigest()
+        digest: str = hashlib.md5(f"{gateway.custom_ha1}:nonce:00000001:client:auth:{ha2}".encode()).hexdigest()
+        parameters: dict[str, str] = {
+            "username": "user", "realm": "Ruuvi Gateway", "uri": "/status.json", "nonce": "nonce",
+            "nc": "00000001", "cnonce": "client", "qop": "auth", "response": digest,
+        }
+        fields: dict[str, str] = {name: f'{name}="{value}"' for name, value in parameters.items()}
+        valid_header: str = "Digest " + ", ".join(fields.values())
+        malformed_headers: list[str] = ["Digest ", 'Digest username="user"']
+        name: str
+        for name in ("uri", "nonce", "nc", "cnonce", "qop", "username", "response"):
+            remaining: list[str] = [field for key, field in fields.items() if key != name]
+            malformed_headers.extend((
+                "Digest " + ", ".join(remaining),
+                "Digest " + ", ".join(remaining + [name]),
+                "Digest " + ", ".join(remaining + [f'{name}=""']),
+            ))
+        session: FakeSession = FakeSession(gateway)
+        session.trust_env = False
+        self.addCleanup(session.close)
+        gateway.digest_authenticated_timeouts = 1
+        authorization: str
+        for authorization in malformed_headers:
+            with self.subTest(authorization=authorization):
+                response: requests.Response = session.get(
+                    f"{CONFIG.base_url}{GatewayApi.STATUS}",
+                    headers={HttpHeader.AUTHORIZATION: authorization}, allow_redirects=False,
+                )
+                self.assertEqual(HttpStatus.C_401_UNAUTHORIZED, response.status_code)
+                self.assertEqual({"authenticated": False}, response.json())
+                self.assertEqual(authorization, gateway.calls[-1].authorization)
+                self.assertFalse(session.authorized)
+                self.assertEqual(1, gateway.digest_authenticated_timeouts)
+        with self.assertRaisesRegex(requests.Timeout, "Digest authenticated request timeout"):
+            session.get(
+                f"{CONFIG.base_url}{GatewayApi.STATUS}",
+                headers={HttpHeader.AUTHORIZATION: valid_header}, allow_redirects=False,
+            )
+        self.assertEqual(0, gateway.digest_authenticated_timeouts)
+        expected_status: int
+        for authorization, expected_status in (
+            (valid_header, HttpStatus.C_200_OK),
+            (valid_header.replace(digest, "wrong"), HttpStatus.C_401_UNAUTHORIZED),
+        ):
+            with self.subTest(authorization=authorization):
+                response = session.get(
+                    f"{CONFIG.base_url}{GatewayApi.STATUS}",
+                    headers={HttpHeader.AUTHORIZATION: authorization}, allow_redirects=False,
+                )
+                self.assertEqual(expected_status, response.status_code)
+                self.assertEqual({"authenticated": expected_status == HttpStatus.C_200_OK}, response.json())
+
     def test_basic_auth_accepts_client_header_for_stored_encoded_credentials(self) -> None:
         gateway: FakeGateway = FakeGateway(CONFIG)
         session: FakeSession = FakeSession(gateway)
