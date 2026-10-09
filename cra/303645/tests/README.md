@@ -57,11 +57,14 @@ ALLOW and DENY apply across the modeled LAN routes, preserving bearer precedence
 routes. GET `/auth` ignores bearer credentials: ALLOW returns authorized state and issues a
 session cookie when needed without interactive challenge or ECDH headers, DENY returns 403, and
 Basic/Digest return 200 only for valid scheme credentials, otherwise 401 with the configured
-challenge. Digest credentials must match the actual request path and the advertised realm,
+challenge. Basic/Digest credentials are also checked before dispatching ordinary LAN routes,
+including configuration writes; bearer RO/RW permissions still take precedence when supplied.
+Digest credentials must match the actual request method and path and the advertised realm,
 nonce, qop, and opaque value before their response hash is accepted.
 
 `DefaultAuthGateway` preserves the default-credential scenarios' stable session cookies, plain
-failed-login responses, and unauthenticated GET redirects. The other gateway model returns fresh
+failed-login responses, and unauthenticated GET redirects. Failed logins reissue any retained
+session cookie without authorizing it or advertising a new challenge. The other gateway model returns fresh
 challenges after failed logins for brute-force campaigns. Runner-local subclasses can inject
 response overrides and configuration/restoration faults through `_response_override`,
 `_config_response`, and `_unauthorized_response` hooks.

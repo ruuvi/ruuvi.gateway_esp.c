@@ -350,8 +350,9 @@ are saved, and writes the final backup only after the requested byte count is co
 esptool erases flash by sector. Both methods reject negative offsets, and `read()` requires a
 positive size. Invalid ranges raise `InvalidSetup` before touching files or invoking esptool.
 Policy about permitted partitions remains with the caller.
-After all read attempts fail, `read()` makes a best-effort `read_mac` hard reset so a fatal
-esptool exit does not leave the gateway in download mode. Reset failure is reported separately.
+After all read attempts fail or overlapping bytes disagree, `read()` makes a best-effort
+`read_mac` hard reset before raising `InvalidSetup`, preserving the existing backup.
+Reset failure is reported alongside the original read failure.
 
 `parse_partition_table()` validates the ESP-IDF MD5 record when present and converts the
 on-device binary table to immutable `Partition` records, rejecting non-ASCII names as `InvalidSetup`;

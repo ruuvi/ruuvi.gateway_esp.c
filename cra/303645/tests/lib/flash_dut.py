@@ -230,6 +230,7 @@ class FlashTool:
         failures: int = 0
         read_baud: int = FLASH_BAUD
         last_error: InvalidSetup | OSError | None = None
+        read_error: InvalidSetup | None = None
         while frontier < size:
             chunk_size: int = min(FLASH_READ_CHUNK_SIZE, size - cursor)
             chunk: bytes = b""
@@ -268,7 +269,8 @@ class FlashTool:
             end: int = cursor + chunk_size
             overlap: int = min(frontier, end) - cursor
             if overlap > 0 and buffer[cursor:cursor + overlap] != chunk[:overlap]:
-                raise InvalidSetup(f"flash contents changed during chunked read at 0x{offset + cursor:x}")
+                read_error = InvalidSetup(f"flash contents changed during chunked read at 0x{offset + cursor:x}")
+                break
             buffer[cursor:end] = chunk
             if end > frontier:
                 frontier = end
@@ -285,6 +287,11 @@ class FlashTool:
                 replacement.write_bytes(data)
                 replacement.replace(path)
             return data
+        if read_error is None:
+            read_error = InvalidSetup(
+                f"flash read at 0x{offset + cursor:x} failed after {FLASH_READ_ATTEMPTS} attempts: "
+                f"{last_error}"
+            )
         try:
             self.command("read_mac")
             self.evidence.write("FLASH READ RECOVERY RESET", "hard reset completed")
@@ -292,13 +299,9 @@ class FlashTool:
             reset_error: InvalidSetup
             self.evidence.write("FLASH READ RECOVERY RESET FAILURE", str(reset_error))
             raise InvalidSetup(
-                f"flash read at 0x{offset + cursor:x} failed after {FLASH_READ_ATTEMPTS} attempts; "
-                f"last error: {last_error}; gateway reset also failed"
+                f"{read_error}; gateway reset also failed"
             ) from reset_error
-        raise InvalidSetup(
-            f"flash read at 0x{offset + cursor:x} failed after {FLASH_READ_ATTEMPTS} attempts: "
-            f"{last_error}"
-        ) from last_error
+        raise read_error from last_error
 
     def write(self, offset: int, data: bytes, path: Path) -> None:
         if offset < 0:

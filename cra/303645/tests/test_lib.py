@@ -2647,19 +2647,24 @@ class FlashDutTests(unittest.TestCase):
     def test_failed_flash_reads_preserve_existing_backup(self) -> None:
         backup: Path = self.root / "recovery.bin"
         mode: str
-        for mode in ("first chunk", "later chunk", "changed overlap"):
+        for mode in ("first chunk", "later chunk", "changed overlap", "changed overlap reset failure"):
             with self.subTest(mode=mode):
                 backup.write_bytes(b"previous backup")
                 attempts: int = 0
+                resets: int = 0
 
                 def run(command: list[str], failure_mode: str = mode, **_kwargs: Any) -> subprocess.CompletedProcess[str]:
-                    nonlocal attempts
+                    nonlocal attempts, resets
                     self.assertEqual(b"previous backup", backup.read_bytes())
                     if command[-1] == "read_mac":
+                        resets += 1
+                        self.assertEqual("hard_reset", command[command.index("--after") + 1])
+                        if failure_mode == "changed overlap reset failure":
+                            return subprocess.CompletedProcess(command, 2, "", "reset failed")
                         return subprocess.CompletedProcess(command, 0, "reset", "")
                     attempts += 1
                     if ((failure_mode != "first chunk" and attempts == 1)
-                            or (failure_mode == "changed overlap" and attempts > 2)):
+                            or (failure_mode.startswith("changed overlap") and attempts > 2)):
                         Path(command[-1]).write_bytes(
                             (b"x" if attempts == 1 else b"y") * int(command[-2], 16),
                         )
@@ -2670,8 +2675,15 @@ class FlashDutTests(unittest.TestCase):
                     serial_dut.SerialPort("/dev/ttyUSB0", 0x1A86, 0x7523),
                     serial_dut.SerialVersions("4.8.1", "3.5"), self.log, run_command=run,
                 )
-                with self.assertRaises(InvalidSetup):
+                expected_error: str = ("flash contents changed during chunked read at 0xf000"
+                                       if mode.startswith("changed overlap") else "failed after 3 attempts")
+                if mode == "changed overlap reset failure":
+                    expected_error += "; gateway reset also failed"
+                with self.assertRaisesRegex(InvalidSetup, expected_error):
                     tool.read(0, 0x20000, backup)
+                self.assertEqual(1, resets)
+                if mode.startswith("changed overlap"):
+                    self.assertEqual(3, attempts)
                 self.assertEqual(b"previous backup", backup.read_bytes())
                 self.assertFalse(backup.with_name("recovery.bin.chunk").exists())
                 self.assertEqual([], list(self.root.glob(".recovery.bin.*")))

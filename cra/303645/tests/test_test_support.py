@@ -214,6 +214,7 @@ class GatewayTestCase(unittest.TestCase):
         original_cookie: str = session.cookie
         original_challenge: str = session.challenge
         self.assertEqual([session, other], gateway.authorized_sessions)
+        session.cookies.clear()
         response: requests.Response = session.post(
             f"{CONFIG.base_url}{GatewayApi.AUTH}", json={"login": "Admin", "password": "wrong"},
             allow_redirects=False,
@@ -221,7 +222,7 @@ class GatewayTestCase(unittest.TestCase):
         self.assertEqual(HttpStatus.C_401_UNAUTHORIZED, response.status_code)
         self.assertEqual({"authenticated": False}, response.json())
         self.assertNotIn(HttpHeader.WWW_AUTHENTICATE, response.headers)
-        self.assertEqual({}, response.cookies.get_dict())
+        self.assertEqual({"RUUVISESSION": original_cookie}, response.cookies.get_dict())
         self.assertFalse(session.authorized)
         self.assertEqual([other], gateway.authorized_sessions)
         self.assertTrue(other.authorized)
@@ -387,6 +388,92 @@ class GatewayTestCase(unittest.TestCase):
                             self.assertTrue(response.headers[HttpHeader.WWW_AUTHENTICATE].startswith(f"{scheme} "))
                         self.assertFalse(session.authorized)
                         self.assertEqual({}, session.cookies.get_dict())
+
+    def test_basic_and_digest_authorize_lan_routes_without_changing_bearer_permissions(self) -> None:
+        gateway_type: type[FakeGateway]
+        mode: str
+        method: str
+        path: str
+        authorization: str
+        expected_status: int
+        routes: tuple[tuple[str, str], ...] = (
+            (HttpMethod.GET, GatewayApi.CONFIG), (HttpMethod.GET, GatewayApi.HISTORY),
+            (HttpMethod.GET, GatewayApi.AP), (HttpMethod.GET, GatewayApi.STATUS),
+            (HttpMethod.POST, GatewayApi.CONFIG),
+        )
+        for gateway_type in (FakeGateway, DefaultAuthGateway):
+            for mode in (GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST):
+                for method, path in routes:
+                    gateway: FakeGateway = gateway_type(CONFIG)
+                    gateway.mode = mode
+                    gateway.custom_username = "user"
+                    gateway.ro_key = "read-only"
+                    ha1: str = hashlib.md5(b"user:Ruuvi Gateway:pass").hexdigest()
+                    ha2: str = hashlib.md5(f"{method}:{path}".encode()).hexdigest()
+                    digest: str = hashlib.md5(f"{ha1}:nonce:00000001:client:auth:{ha2}".encode()).hexdigest()
+                    if mode == GatewayCfgLanAuthType.BASIC:
+                        gateway.custom_ha1 = "dXNlcjpwYXNz"
+                        valid_header: str = "Basic dXNlcjpwYXNz"
+                        wrong_header: str = "Basic dXNlcjp3cm9uZw=="
+                        scheme: str = HttpAuthScheme.BASIC
+                    else:
+                        gateway.custom_ha1 = ha1
+                        valid_header = ('Digest username="user", realm="Ruuvi Gateway", opaque="opaque", '
+                                        f'uri="{path}", nonce="nonce", nc=00000001, '
+                                        f'cnonce="client", qop=auth, response="{digest}"')
+                        wrong_header = valid_header.replace(digest, "wrong")
+                        scheme = HttpAuthScheme.DIGEST
+                    cases: list[tuple[str, int]] = [
+                        (valid_header, HttpStatus.C_200_OK), (wrong_header, HttpStatus.C_401_UNAUTHORIZED),
+                        ("", HttpStatus.C_401_UNAUTHORIZED), ("Bearer invalid", HttpStatus.C_401_UNAUTHORIZED),
+                        ("Bearer ", HttpStatus.C_401_UNAUTHORIZED), ("Bearer read-write", HttpStatus.C_200_OK),
+                        ("Bearer read-only", HttpStatus.C_401_UNAUTHORIZED
+                         if method == HttpMethod.POST or path == GatewayApi.AP else HttpStatus.C_200_OK),
+                    ]
+                    if mode == GatewayCfgLanAuthType.DIGEST:
+                        wrong_method: str = HttpMethod.GET if method == HttpMethod.POST else HttpMethod.POST
+                        wrong_ha2: str = hashlib.md5(f"{wrong_method}:{path}".encode()).hexdigest()
+                        wrong_digest: str = hashlib.md5(
+                            f"{ha1}:nonce:00000001:client:auth:{wrong_ha2}".encode(),
+                        ).hexdigest()
+                        cases.append((valid_header.replace(digest, wrong_digest), HttpStatus.C_401_UNAUTHORIZED))
+                    session: FakeSession = FakeSession(gateway)
+                    session.trust_env = False
+                    self.addCleanup(session.close)
+                    for authorization, expected_status in cases:
+                        with self.subTest(gateway=gateway_type.__name__, mode=mode, method=method,
+                                          path=path, authorization=authorization):
+                            gateway.rw_key = "read-write"
+                            gateway.config_bodies.clear()
+                            body: dict[str, str] | None = (
+                                {GatewayCfgDesc.LAN_AUTH_API_KEY_RW: "updated"} if method == HttpMethod.POST else None
+                            )
+                            response: requests.Response = session.request(
+                                method, f"{CONFIG.base_url}{path}", json=body,
+                                headers={"authorization": authorization}, allow_redirects=False,
+                            )
+                            self.assertEqual(expected_status, response.status_code)
+                            self.assertEqual((method, path, body, authorization), (
+                                gateway.calls[-1].method, gateway.calls[-1].path,
+                                gateway.calls[-1].body, gateway.calls[-1].authorization,
+                            ))
+                            self.assertIsNone(gateway.calls[-1].cookie)
+                            self.assertFalse(session.authorized)
+                            if expected_status != HttpStatus.C_200_OK:
+                                self.assertEqual([], gateway.config_bodies)
+                                self.assertEqual("read-write", gateway.rw_key)
+                                if not authorization.startswith("Bearer "):
+                                    self.assertTrue(response.headers[HttpHeader.WWW_AUTHENTICATE].startswith(scheme))
+                            elif method == HttpMethod.POST:
+                                self.assertEqual([body], gateway.config_bodies)
+                                self.assertEqual("updated", gateway.rw_key)
+                            elif path == GatewayApi.CONFIG:
+                                self.assertEqual(CONFIG.gw_mac, response.json()[GatewayCfgDesc.GW_MAC])
+                            elif path == GatewayApi.STATUS and authorization == valid_header:
+                                self.assertEqual({"status": "ok"}, response.json())
+                            else:
+                                self.assertEqual({"data": []} if gateway_type is DefaultAuthGateway
+                                                 and path == GatewayApi.HISTORY else {}, response.json())
 
     def test_non_interactive_modes_reject_pending_login_before_credentials_or_body(self) -> None:
         gateway_type: type[FakeGateway]
@@ -639,7 +726,10 @@ class GatewayTestCase(unittest.TestCase):
                         )
                         self.assertEqual(HttpStatus.C_200_OK if field is None else HttpStatus.C_401_UNAUTHORIZED,
                                          response.status_code)
-                        self.assertEqual(field is None, response.json()["authenticated"])
+                        if field is None and path == GatewayApi.STATUS:
+                            self.assertEqual({"status": "ok"}, response.json())
+                        else:
+                            self.assertEqual(field is None, response.json()["authenticated"])
                         if field is not None:
                             self.assertEqual(challenge.headers[HttpHeader.WWW_AUTHENTICATE],
                                              response.headers[HttpHeader.WWW_AUTHENTICATE])
@@ -701,7 +791,8 @@ class GatewayTestCase(unittest.TestCase):
                         headers={header_name: authorization}, allow_redirects=False,
                     )
                     self.assertEqual(expected_status, response.status_code)
-                    self.assertEqual({"authenticated": expected_status == HttpStatus.C_200_OK}, response.json())
+                    self.assertEqual({"status": "ok"} if expected_status == HttpStatus.C_200_OK
+                                     else {"authenticated": False}, response.json())
                     self.assertEqual(authorization, gateway.calls[-1].authorization)
 
     def test_basic_auth_accepts_client_header_for_stored_encoded_credentials(self) -> None:
