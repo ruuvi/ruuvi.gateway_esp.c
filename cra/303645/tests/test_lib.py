@@ -2006,6 +2006,55 @@ class FlashDutTests(unittest.TestCase):
                 with self.assertRaisesRegex(InvalidSetup, "invalid partition table terminator at 0x20"):
                     flash_dut.parse_partition_table(malformed)
 
+    def test_partition_table_requires_terminator_with_and_without_md5(self) -> None:
+        indices: range = range(flash_dut.PARTITION_TABLE_SIZE // 32)
+        records: list[bytes] = [
+            b"\xaa\x50\x01\x02" + (0x10000 + index * 0x1000).to_bytes(4, "little")
+            + (0x1000).to_bytes(4, "little") + f"part{index}".encode("ascii").ljust(16, b"\x00") + bytes(4)
+            for index in indices
+        ]
+        full_table: bytes = b"".join(records)
+        with self.assertRaisesRegex(InvalidSetup, "no terminating entry"):
+            flash_dut.parse_partition_table(full_table)
+        prefix: bytes = b"".join(records[:-1])
+        checksum: bytes = b"\xeb\xeb" + b"\xff" * 14 + hashlib.md5(prefix).digest()
+        with self.assertRaisesRegex(InvalidSetup, "no terminating entry"):
+            flash_dut.parse_partition_table(prefix + checksum)
+        self.assertEqual(95, len(flash_dut.parse_partition_table(prefix + b"\xff" * 32)))
+        prefix = b"".join(records[:-2])
+        checksum = b"\xeb\xeb" + b"\xff" * 14 + hashlib.md5(prefix).digest()
+        self.assertEqual(94, len(flash_dut.parse_partition_table(prefix + checksum + b"\xff" * 32)))
+
+    def test_otadata_zero_sequence_matches_unsigned_bootloader_slot_selection(self) -> None:
+        index: int
+        for index in (0, 1):
+            with self.subTest(index=index):
+                raw: bytearray = bytearray(b"\xff" * flash_dut.OTADATA_SIZE)
+                offset: int = index * flash_dut.SECTOR_SIZE
+                raw[offset:offset + 4] = bytes(4)
+                raw[offset + 24:offset + 28] = (2).to_bytes(4, "little")
+                # ESP-IDF's seeded CRC of four zero bytes is UINT32_MAX.
+                raw[offset + 28:offset + 32] = b"\xff" * 4
+                selected: flash_dut.OtaSelection = flash_dut.decode_otadata(bytes(raw))
+                self.assertEqual("ota_1", selected.active_slot)
+                self.assertTrue(selected.entries[index].valid)
+                self.assertFalse(selected.entries[1 - index].valid)
+                state: int
+                for state in (3, 4):
+                    raw[offset + 24:offset + 28] = state.to_bytes(4, "little")
+                    with self.assertRaisesRegex(InvalidSetup, "no valid OTA slot"):
+                        flash_dut.decode_otadata(bytes(raw))
+                raw[offset + 24:offset + 28] = (2).to_bytes(4, "little")
+                raw[offset + 28] ^= 1
+                with self.assertRaisesRegex(InvalidSetup, "no valid OTA slot"):
+                    flash_dut.decode_otadata(bytes(raw))
+                raw[offset + 28] ^= 1
+                other: int = (1 - index) * flash_dut.SECTOR_SIZE
+                raw[other:other + 4] = (1).to_bytes(4, "little")
+                raw[other + 24:other + 28] = (2).to_bytes(4, "little")
+                raw[other + 28:other + 32] = (0x4743989A).to_bytes(4, "little")
+                self.assertEqual("ota_0", flash_dut.decode_otadata(bytes(raw)).active_slot)
+
     def test_otadata_validity_and_selection(self) -> None:
         raw: bytearray = bytearray(b"\xff" * flash_dut.OTADATA_SIZE)
         raw[:4] = b"\x01\x00\x00\x00"

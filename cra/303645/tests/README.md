@@ -48,6 +48,11 @@ and runner tests; its optional `json_error` injects a specific decoding exceptio
 `FakeGateway` and `FakeSession` share request recording, independent server-side login validation,
 bearer authorization, and partial configuration updates. They accept the caller's `DutConfig`
 explicitly, and session numbering belongs to each gateway.
+Every session-authorized request must carry that session's `RUUVISESSION` cookie; the fake
+transport stores response cookies and includes them in later prepared requests. Bearer-only
+requests do not require a session cookie. Issuing a new challenge clears authorization for the
+replaced session, and interactive `POST /auth` is accepted only in DEFAULT or RUUVI mode;
+other modes return 503 before login validation.
 
 `DefaultAuthGateway` preserves the default-credential scenarios' stable session cookies, plain
 failed-login responses, and unauthenticated GET redirects. The other gateway model returns fresh

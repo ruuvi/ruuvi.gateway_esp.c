@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import unittest
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import requests
 
-from lib.gateway import GatewayApi, GatewayCfgDesc, GatewayCfgLanAuthType, GatewayClient
+from lib.evidence import EvidenceLog
+from lib.gateway import GatewayApi, GatewayCfgDesc, GatewayCfgLanAuthType, GatewayClient, InteractiveAuthResult
 from lib.http_api import HttpAuthScheme, HttpHeader, HttpMethod, HttpStatus
 from lib.models import DutConfig
 from test_support.fake_gateway import DefaultAuthGateway, FakeGateway, FakeResponse, FakeSession
@@ -55,6 +59,152 @@ class ResponseTestCase(unittest.TestCase):
 
 
 class GatewayTestCase(unittest.TestCase):
+    def authenticated_session(self, gateway: FakeGateway) -> FakeSession:
+        stream: io.StringIO = io.StringIO()
+        self.addCleanup(stream.close)
+        log: EvidenceLog = EvidenceLog(Path("<memory>"), stream, datetime(2025, 1, 1, tzinfo=timezone.utc))
+        client: GatewayClient = GatewayClient(gateway.dut_config, log, session_factory=lambda: FakeSession(gateway))
+        login: InteractiveAuthResult = client.authenticate_interactive("Admin", gateway.dut_config.gw_id)
+        self.assertEqual(HttpStatus.C_200_OK, login.login_response.status_code)
+        if not isinstance(login.session, FakeSession):
+            self.fail("client did not use the injected fake session")
+        self.assertEqual(login.session.cookie, login.session.cookies.get("RUUVISESSION"))
+        return login.session
+
+    def test_authenticated_requests_persist_cookie_and_accept_other_cookie_pairs(self) -> None:
+        gateway_type: type[FakeGateway]
+        for gateway_type in (FakeGateway, DefaultAuthGateway):
+            gateway: FakeGateway = gateway_type(CONFIG)
+            session: FakeSession = self.authenticated_session(gateway)
+            path: str
+            for path in (GatewayApi.CONFIG, GatewayApi.STATUS, GatewayApi.HISTORY, GatewayApi.AP, GatewayApi.AUTH):
+                with self.subTest(gateway=gateway_type.__name__, path=path):
+                    response: requests.Response = session.get(f"{CONFIG.base_url}{path}", allow_redirects=False)
+                    self.assertEqual(HttpStatus.C_200_OK, response.status_code)
+                    self.assertEqual(f"RUUVISESSION={session.cookie}", gateway.calls[-1].cookie)
+            response = session.post(f"{CONFIG.base_url}{GatewayApi.CONFIG}", json={}, allow_redirects=False)
+            self.assertEqual(HttpStatus.C_200_OK, response.status_code)
+            self.assertEqual([{}], gateway.config_bodies)
+            response = session.get(
+                f"{CONFIG.base_url}{GatewayApi.STATUS}",
+                headers={"cookie": f"other=value; RUUVISESSION={session.cookie}; another=value"},
+                allow_redirects=False,
+            )
+            self.assertEqual(HttpStatus.C_200_OK, response.status_code)
+
+    def test_ruuvi_mode_still_accepts_interactive_login_and_cookie_reads(self) -> None:
+        gateway: FakeGateway = FakeGateway(CONFIG)
+        gateway.mode = GatewayCfgLanAuthType.RUUVI
+        gateway.custom_username = "Admin"
+        gateway.custom_ha1 = hashlib.md5(f"Admin:Ruuvi Gateway:{CONFIG.gw_id}".encode()).hexdigest()
+        session: FakeSession = self.authenticated_session(gateway)
+        response: requests.Response = session.get(f"{CONFIG.base_url}{GatewayApi.CONFIG}", allow_redirects=False)
+        self.assertEqual(HttpStatus.C_200_OK, response.status_code)
+        self.assertEqual(GatewayCfgLanAuthType.RUUVI, response.json()[GatewayCfgDesc.LAN_AUTH_TYPE])
+
+    def test_all_session_authorized_routes_reject_missing_wrong_and_swapped_cookies(self) -> None:
+        gateway_type: type[FakeGateway]
+        method: str
+        path: str
+        cookie_kind: str
+        routes: tuple[tuple[str, str], ...] = (
+            (HttpMethod.POST, GatewayApi.CONFIG), (HttpMethod.GET, GatewayApi.CONFIG),
+            (HttpMethod.GET, GatewayApi.STATUS), (HttpMethod.GET, GatewayApi.HISTORY),
+            (HttpMethod.GET, GatewayApi.AP), (HttpMethod.GET, GatewayApi.AUTH),
+        )
+        for gateway_type in (FakeGateway, DefaultAuthGateway):
+            for method, path in routes:
+                for cookie_kind in ("missing", "empty", "wrong", "swapped", "duplicate"):
+                    with self.subTest(gateway=gateway_type.__name__, method=method, path=path, cookie=cookie_kind):
+                        gateway: FakeGateway = gateway_type(CONFIG)
+                        session: FakeSession = self.authenticated_session(gateway)
+                        other: FakeSession = self.authenticated_session(gateway)
+                        original_cookie: str = session.cookie
+                        cookie: str = {
+                            "empty": "", "wrong": "RUUVISESSION=wrong",
+                            "swapped": f"RUUVISESSION={other.cookie}",
+                            "duplicate": f"RUUVISESSION={session.cookie}; RUUVISESSION=wrong",
+                            "missing": "",
+                        }[cookie_kind]
+                        session.cookies.clear()
+                        headers: dict[str, str] = {} if cookie_kind == "missing" else {HttpHeader.COOKIE: cookie}
+                        response: requests.Response = session.request(
+                            method, f"{CONFIG.base_url}{path}", headers=headers,
+                            json={GatewayCfgDesc.LAN_AUTH_API_KEY_RW: "changed"} if method == HttpMethod.POST else None,
+                            allow_redirects=False,
+                        )
+                        expected: int = (HttpStatus.C_302_FOUND
+                                         if gateway_type is DefaultAuthGateway and method == HttpMethod.GET
+                                         and path != GatewayApi.AUTH else HttpStatus.C_401_UNAUTHORIZED)
+                        self.assertEqual(expected, response.status_code)
+                        self.assertEqual(None if cookie_kind == "missing" else cookie, gateway.calls[-1].cookie)
+                        self.assertEqual([], gateway.config_bodies)
+                        self.assertEqual("", gateway.rw_key)
+                        if path == GatewayApi.AUTH:
+                            self.assertFalse(session.authorized)
+                            self.assertNotIn(session, gateway.authorized_sessions)
+                            self.assertEqual(session.cookie, session.cookies.get("RUUVISESSION"))
+                            response = session.get(f"{CONFIG.base_url}{GatewayApi.CONFIG}", allow_redirects=False)
+                            self.assertNotEqual(HttpStatus.C_200_OK, response.status_code)
+                        else:
+                            self.assertEqual(original_cookie, session.cookie)
+
+    def test_bearer_only_access_does_not_require_session_cookie(self) -> None:
+        gateway_type: type[FakeGateway]
+        for gateway_type in (FakeGateway, DefaultAuthGateway):
+            gateway: FakeGateway = gateway_type(CONFIG)
+            gateway.ro_key = "read-only"
+            gateway.rw_key = "read-write"
+            session: FakeSession = FakeSession(gateway)
+            session.trust_env = False
+            token: str
+            for token in (gateway.ro_key, gateway.rw_key):
+                path: str
+                for path in (GatewayApi.CONFIG, GatewayApi.STATUS, GatewayApi.HISTORY, GatewayApi.AP):
+                    with self.subTest(gateway=gateway_type.__name__, token=token, path=path):
+                        response: requests.Response = session.get(
+                            f"{CONFIG.base_url}{path}",
+                            headers={HttpHeader.AUTHORIZATION: f"Bearer {token}"}, allow_redirects=False,
+                        )
+                        expected: int = (HttpStatus.C_401_UNAUTHORIZED if token == gateway.ro_key
+                                         and path == GatewayApi.AP else HttpStatus.C_200_OK)
+                        self.assertEqual(expected, response.status_code)
+                        self.assertIsNone(gateway.calls[-1].cookie)
+                response = session.post(
+                    f"{CONFIG.base_url}{GatewayApi.CONFIG}", json={},
+                    headers={HttpHeader.AUTHORIZATION: f"Bearer {token}"}, allow_redirects=False,
+                )
+                self.assertEqual(HttpStatus.C_200_OK if token == gateway.rw_key else HttpStatus.C_401_UNAUTHORIZED,
+                                 response.status_code)
+                self.assertFalse(session.authorized)
+
+    def test_non_interactive_modes_reject_pending_login_before_credentials_or_body(self) -> None:
+        gateway_type: type[FakeGateway]
+        mode: str
+        body: Any
+        for gateway_type in (FakeGateway, DefaultAuthGateway):
+            for mode in (GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST,
+                         GatewayCfgLanAuthType.ALLOW, GatewayCfgLanAuthType.DENY):
+                gateway: FakeGateway = gateway_type(CONFIG)
+                session: FakeSession = FakeSession(gateway)
+                gateway.response_for(session, HttpMethod.GET, GatewayApi.AUTH, {}, None)
+                challenge: str = session.challenge
+                cookie: str = session.cookie
+                valid_body: dict[str, str] = login_body(CONFIG, challenge)
+                gateway.mode = mode
+                gateway.wrong_login_success = True
+                for body in (valid_body, None, []):
+                    with self.subTest(gateway=gateway_type.__name__, mode=mode, body=body):
+                        response: FakeResponse = gateway.response_for(
+                            session, HttpMethod.POST, GatewayApi.AUTH,
+                            {HttpHeader.COOKIE: f"RUUVISESSION={cookie}"}, body,
+                        )
+                        self.assertEqual(HttpStatus.C_503_SERVICE_UNAVAILABLE, response.status_code)
+                        self.assertFalse(session.authorized)
+                        self.assertEqual([], gateway.authorized_sessions)
+                        self.assertEqual((challenge, cookie), (session.challenge, session.cookie))
+                        self.assertTrue(gateway.wrong_login_success)
+
     def test_gateway_identity_and_session_counters_are_independent(self) -> None:
         other_config: DutConfig = DutConfig("11:22:33:44:55:66:77:88", "BB:CC:DD:EE:FF:00", "other.local")
         first: FakeGateway = FakeGateway(CONFIG)
@@ -72,7 +222,8 @@ class GatewayTestCase(unittest.TestCase):
         )
         self.assertEqual(HttpStatus.C_200_OK, response.status_code)
         config_response: FakeResponse = second.response_for(
-            second_session, HttpMethod.GET, GatewayApi.CONFIG, {}, None,
+            second_session, HttpMethod.GET, GatewayApi.CONFIG,
+            {HttpHeader.COOKIE: f"RUUVISESSION={second_session.cookie}"}, None,
         )
         self.assertEqual(other_config.gw_mac, config_response.json()[GatewayCfgDesc.GW_MAC])
         self.assertEqual([], first.calls)
@@ -110,15 +261,16 @@ class GatewayTestCase(unittest.TestCase):
         )
         self.assertEqual(HttpStatus.C_200_OK, login.status_code)
         gateway.rw_key = "existing-rw"
+        cookie_headers: dict[str, str] = {HttpHeader.COOKIE: f"RUUVISESSION={session.cookie}"}
         body: dict[str, str]
         for body in ({GatewayCfgDesc.LAN_AUTH_API_KEY: "new-ro"}, {}):
-            response: FakeResponse = gateway.response_for(session, HttpMethod.POST, GatewayApi.CONFIG, {}, body)
+            response: FakeResponse = gateway.response_for(session, HttpMethod.POST, GatewayApi.CONFIG, cookie_headers, body)
             self.assertEqual(HttpStatus.C_200_OK, response.status_code)
             self.assertEqual(("new-ro", "existing-rw"), (gateway.ro_key, gateway.rw_key))
             self.assertEqual(GatewayCfgLanAuthType.DEFAULT, gateway.mode)
             self.assertTrue(session.authorized)
         response = gateway.response_for(
-            session, HttpMethod.POST, GatewayApi.CONFIG, {},
+            session, HttpMethod.POST, GatewayApi.CONFIG, cookie_headers,
             {
                 GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.RUUVI,
                 GatewayCfgDesc.LAN_AUTH_USER: "changed-user",
@@ -173,7 +325,10 @@ class GatewayTestCase(unittest.TestCase):
                 body: Any
                 for body in ([], [{GatewayCfgDesc.LAN_AUTH_API_KEY_RW: "changed"}], None, "text", 7, False):
                     with self.subTest(gateway=gateway_type.__name__, token=token, body=body):
-                        headers: dict[str, str] = {HttpHeader.CONTENT_TYPE: "application/json"}
+                        headers: dict[str, str] = {
+                            HttpHeader.CONTENT_TYPE: "application/json",
+                            HttpHeader.COOKIE: f"RUUVISESSION={session.cookie}",
+                        }
                         if token is not None:
                             headers[HttpHeader.AUTHORIZATION] = f"{HttpAuthScheme.BEARER} {token}"
                         prepared: requests.PreparedRequest = session.prepare_request(requests.Request(

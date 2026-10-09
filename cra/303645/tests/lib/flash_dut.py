@@ -77,7 +77,7 @@ def parse_partition_table(data: bytes) -> tuple[Partition, ...]:
                 raise InvalidSetup(f"invalid partition table MD5 record at 0x{index:x}")
             if any(byte != 0xFF for byte in data[index + PARTITION_ENTRY_SIZE:]):
                 raise InvalidSetup("partition table has data after its MD5 record")
-            break
+            continue
         if entry[:2] != b"\xaa\x50":
             raise InvalidSetup(f"invalid partition entry magic at 0x{index:x}")
         try:
@@ -91,6 +91,8 @@ def parse_partition_table(data: bytes) -> tuple[Partition, ...]:
                                int.from_bytes(entry[4:8], "little"),
                                int.from_bytes(entry[8:12], "little"),
                                int.from_bytes(entry[28:32], "little")))
+    else:
+        raise InvalidSetup("partition table has no terminating entry")
     if not parts:
         raise InvalidSetup("partition table has no entries")
     return tuple(parts)
@@ -144,14 +146,15 @@ def decode_otadata(data: bytes) -> OtaSelection:
         crc: int = int.from_bytes(raw[28:32], "little")
         # ESP-IDF crc32_le(UINT32_MAX, sequence, 4) matches zlib's seeded CRC.
         expected_crc: int = zlib.crc32(raw[:4], 0xFFFFFFFF)
-        valid: bool = sequence not in (0, 0xFFFFFFFF) and state not in (3, 4) and crc == expected_crc
+        valid: bool = sequence != 0xFFFFFFFF and state not in (3, 4) and crc == expected_crc
         entries.append(OtaEntry(index, sequence, state, crc, valid))
     valid_entries: list[OtaEntry] = [entry for entry in entries if entry.valid]
     if not valid_entries:
         raise InvalidSetup("otadata has no valid OTA slot")
     # max() retains the first entry on a tie, matching the pinned bootloader.
     chosen: OtaEntry = max(valid_entries, key=lambda entry: entry.sequence)
-    return OtaSelection((entries[0], entries[1]), f"ota_{(chosen.sequence - 1) % 2}")
+    raw_sequence: int = (chosen.sequence - 1) & 0xFFFFFFFF
+    return OtaSelection((entries[0], entries[1]), f"ota_{raw_sequence % 2}")
 
 
 class FlashTool:

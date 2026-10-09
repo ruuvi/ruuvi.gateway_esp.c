@@ -333,10 +333,13 @@ before writing. `Partition.flags` preserves the complete 32-bit binary flags wor
 in equality; its default is zero for existing constructors. CSV flags accept `encrypted` (bit 0)
 in a colon-separated list, matching ESP-IDF v4.2.5; omitted or empty flags mean zero, and unknown
 flag names raise `InvalidSetup`. A binary terminator must have magic, type, and subtype all erased
-(`0xff` across its first four bytes); malformed terminators raise `InvalidSetup`.
+(`0xff` across its first four bytes); malformed or missing terminators raise `InvalidSetup`.
+The terminator must fit within the table, including after an optional MD5 record.
 `decode_otadata()` validates both OTA selection entries' sequence, state, and
 ESP-IDF seeded CRC (`zlib.crc32(sequence_bytes, 0xFFFFFFFF)`),
 then selects the highest valid sequence, retaining entry 0 on a tie as the pinned bootloader does.
+CRC-valid sequence zero is accepted; subtracting one wraps as a 32-bit unsigned value and
+selects `ota_1` in this two-slot layout. Sequence `UINT32_MAX` and INVALID/ABORTED states remain invalid.
 Equal valid sequences select the same OTA slot. No valid entry raises `InvalidSetup`. Direct parser and tool tests
 live in `test_lib.py`.
 

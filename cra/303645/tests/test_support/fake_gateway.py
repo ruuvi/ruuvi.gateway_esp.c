@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 
 import requests
 from Crypto.PublicKey import ECC
+from requests.structures import CaseInsensitiveDict
 
 from lib.gateway import GatewayApi, GatewayCfgDesc, GatewayCfgLanAuthType
 from lib.http_api import HttpAuthScheme, HttpHeader, HttpMethod, HttpStatus
@@ -133,11 +134,24 @@ class FakeGateway:
             return True
         return token == self.ro_key and path != GatewayApi.AP
 
+    @staticmethod
+    def _has_session_cookie(session: FakeSession, headers: dict[str, str]) -> bool:
+        cookie_header: str = CaseInsensitiveDict(headers).get(HttpHeader.COOKIE, "")
+        pairs: list[list[str]] = [pair.strip().split("=", 1) for pair in cookie_header.split(";")]
+        values: list[str] = [pair[1] for pair in pairs if len(pair) == 2 and pair[0] == "RUUVISESSION"]
+        return bool(session.cookie) and values == [session.cookie]
+
+    def _is_session_authorized(self, session: FakeSession, headers: dict[str, str]) -> bool:
+        return (self.mode in (GatewayCfgLanAuthType.DEFAULT, GatewayCfgLanAuthType.RUUVI)
+                and session.authorized and self._has_session_cookie(session, headers))
+
     def _interactive_challenge_response(
         self,
         session: FakeSession,
         include_ecdh_public_key: bool,
     ) -> FakeResponse:
+        session.authorized = False
+        self.authorized_sessions = [active for active in self.authorized_sessions if active is not session]
         session.challenge_number += 1
         session.challenge, session.cookie = self._challenge_values(session)
         auth_header: str = (
@@ -188,8 +202,9 @@ class FakeGateway:
         if path == GatewayApi.AUTH:
             return self._auth_response(session, method, headers, body)
 
+        session_authorized: bool = self._is_session_authorized(session, headers)
         if method == HttpMethod.POST and path == GatewayApi.CONFIG:
-            authorized: bool = bool(token) and token == self.rw_key if token is not None else session.authorized
+            authorized: bool = bool(token) and token == self.rw_key if token is not None else session_authorized
             if not authorized:
                 if token and token not in {self.ro_key, self.rw_key}:
                     if self.guess_exceptions:
@@ -223,11 +238,11 @@ class FakeGateway:
             return FakeResponse(HttpStatus.C_200_OK, {})
 
         if method == HttpMethod.GET and path == GatewayApi.CONFIG and (
-            self._is_real_bearer(token, path) if token is not None else session.authorized
+            self._is_real_bearer(token, path) if token is not None else session_authorized
         ):
             return self._config_response()
 
-        if method == HttpMethod.GET and path == GatewayApi.STATUS and token is None and session.authorized:
+        if method == HttpMethod.GET and path == GatewayApi.STATUS and token is None and session_authorized:
             return FakeResponse(HttpStatus.C_200_OK, {"status": "ok"})
 
         if (
@@ -239,11 +254,11 @@ class FakeGateway:
                 GatewayApi.STATUS,
                 GatewayApi.CONFIG,
             }
-            and (token or session.authorized)
+            and (token or session_authorized)
         ):
             if self.temporary_bearers_survive and self.mode == GatewayCfgLanAuthType.DEFAULT:
                 return FakeResponse(HttpStatus.C_200_OK, {})
-            if self._is_real_bearer(token, path) if token is not None else session.authorized:
+            if self._is_real_bearer(token, path) if token is not None else session_authorized:
                 return self._read_response(path)
             if token in {self.ro_key, self.rw_key}:
                 return FakeResponse(
@@ -321,7 +336,7 @@ class FakeGateway:
                     {GatewayCfgDesc.LAN_AUTH_TYPE: self.mode},
                     headers={HttpHeader.WWW_AUTHENTICATE: f'{scheme} realm="Ruuvi Gateway"'},
                 )
-            if session.authorized:
+            if self._is_session_authorized(session, headers):
                 return FakeResponse(
                     HttpStatus.C_200_OK,
                     {GatewayCfgDesc.LAN_AUTH_TYPE: self.mode},
@@ -329,6 +344,8 @@ class FakeGateway:
             return self._interactive_challenge_response(session, True)
 
         if method == HttpMethod.POST:
+            if self.mode not in (GatewayCfgLanAuthType.DEFAULT, GatewayCfgLanAuthType.RUUVI):
+                return FakeResponse(HttpStatus.C_503_SERVICE_UNAVAILABLE)
             credentials: tuple[str, str] | None = self._login_credentials()
             valid: bool = False
             if credentials is not None:
@@ -338,7 +355,7 @@ class FakeGateway:
                 expected_response: str = hashlib.sha256(f"{session.challenge}:{ha1}".encode()).hexdigest()
                 valid = (
                     bool(session.challenge)
-                    and headers.get(HttpHeader.COOKIE) == f"RUUVISESSION={session.cookie}"
+                    and self._has_session_cookie(session, headers)
                     and body == {"login": username, "password": expected_response}
                 )
             if self.wrong_login_success and not valid:
@@ -473,13 +490,15 @@ class FakeSession(requests.Session):
         if method is None or url is None:
             raise ValueError("prepared request must contain a method and URL")
         body: Any = json.loads(request.body) if request.body else None
-        return self.gateway.response_for(
+        response: FakeResponse = self.gateway.response_for(
             self,
             method,
             urlsplit(url).path,
             dict(request.headers),
             body,
         )
+        self.cookies.update(response.cookies)
+        return response
 
 
 class UniqueRandom:
