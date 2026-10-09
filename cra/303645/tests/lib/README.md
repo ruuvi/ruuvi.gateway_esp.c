@@ -170,11 +170,21 @@ returns responses without assigning a compliance verdict.
 ### Public web resources
 
 `fetch_public_resource(url, evidence, *, allowed_hosts, connect_timeout, read_timeout,
-max_redirects, user_agent, session_factory=requests.Session)` uses a fresh caller-supplied session
+max_redirects, user_agent, session_factory=requests.Session, max_response_bytes=4194304,
+total_timeout=60.0, monotonic=time.monotonic)` uses a fresh caller-supplied session
 and closes it after the fetch. It disables environment authentication/proxies, clears initial
 credentials/cookies/parameters, and always sends `verify=True` with finite positive timeouts.
 `max_redirects` must be a non-negative integer; invalid limits are rejected before opening the
 session. Zero permits the initial request but no subsequent request to an allowed redirect target.
+Responses are streamed with a 4 MiB per-response decoded-body limit and a 60-second transfer
+deadline shared by the whole redirect chain. Both limits can be overridden; the size must be a
+positive integer and the timeout finite and positive. The injected monotonic clock supports
+offline deadline tests. Byte-sized reads expose slow trickles to deadline checks; an in-progress
+socket read remains subject to the read timeout, capped by the time remaining when its request
+starts. Only complete, bounded bodies are cached and passed to the response evidence writer.
+Limit failures raise `WebResourceConnectionError` as incomplete fetches, preserving the last
+complete observation rather than reporting a truncated body as successfully fetched. Every
+response is closed on success or failure, including redirects.
 It uses `EvidenceLog` to record requests before transmission and responses before interpretation.
 No DUT configuration is loaded. Case-specific URLs, host sets, and acceptable statuses stay in runners.
 
@@ -318,7 +328,11 @@ result with any available return code and partial stdout/stderr before raising `
 Byte output is decoded as UTF-8 with `backslashreplace`; unavailable output becomes an empty
 string and an unavailable return code becomes `None`. Each flash read command has a 30-second
 timeout; write timeouts scale with transfer size. `read()` assembles a partition from complete
-64 KiB esptool reads. On corrupt data, a short read, or a read timeout, it retries at 115200 baud.
+64 KiB esptool reads. An existing backup remains in place throughout acquisition and validation.
+The complete replacement is written to a temporary directory beside the backup and atomically
+renamed over it; acquisition, validation, or replacement failures leave the old backup intact.
+Temporary replacement files are cleaned up on success or failure.
+On corrupt data, a short read, or a read timeout, it retries at 115200 baud.
 After a failed or short read, it resumes one 4 KiB sector before the last saved boundary and checks
 overlapping bytes. It permits three failures without new progress, clears that count when new bytes
 are saved, and writes the final backup only after the requested byte count is complete;

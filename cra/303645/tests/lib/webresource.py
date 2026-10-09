@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import time
 from dataclasses import dataclass, replace
 from typing import Callable
 from urllib.parse import SplitResult, urldefrag, urljoin, urlsplit
@@ -23,6 +24,26 @@ REDIRECT_STATUSES: frozenset[int] = frozenset((
     HttpStatus.C_301_MOVED_PERMANENTLY, HttpStatus.C_302_FOUND, HttpStatus.C_303_SEE_OTHER,
     HttpStatus.C_307_TEMPORARY_REDIRECT, HttpStatus.C_308_PERMANENT_REDIRECT,
 ))
+MAX_RESPONSE_BYTES: int = 4 * 1024 * 1024
+TOTAL_TIMEOUT: float = 60.0
+
+
+def _read_response(
+    response: requests.Response, max_response_bytes: int, deadline: float, monotonic: Callable[[], float],
+) -> None:
+    """Cache only a complete bounded body for the existing response evidence writer."""
+    body: bytearray = bytearray()
+    chunk: bytes
+    # A one-byte read exposes slow trickles instead of waiting for a large chunk to fill.
+    for chunk in response.iter_content(chunk_size=1):
+        if monotonic() >= deadline:
+            raise WebResourceConnectionError("incomplete public-resource fetch: total transfer deadline exceeded")
+        if len(body) + len(chunk) > max_response_bytes:
+            raise WebResourceConnectionError("incomplete public-resource fetch: response size limit exceeded")
+        body.extend(chunk)
+    if monotonic() >= deadline:
+        raise WebResourceConnectionError("incomplete public-resource fetch: total transfer deadline exceeded")
+    response._content = bytes(body)
 
 
 @dataclass(frozen=True)
@@ -76,6 +97,9 @@ def _fetch_session(
     allowed_hosts: frozenset[str],
     timeout: tuple[float, float],
     max_redirects: int,
+    max_response_bytes: int,
+    deadline: float,
+    monotonic: Callable[[], float],
 ) -> PublicResourceResult:
     observation: PublicResourceResult | None = None
     redirects: tuple[RedirectHop, ...] = ()
@@ -83,14 +107,22 @@ def _fetch_session(
     authentication_seen: bool = False
     try:
         while True:
+            remaining: float = deadline - monotonic()
+            if remaining <= 0:
+                raise WebResourceConnectionError("incomplete public-resource fetch: total transfer deadline exceeded")
             prepared: requests.PreparedRequest = session.prepare_request(requests.Request(HttpMethod.GET, url))
             current_url: str = prepared.url or url
             visited.add(current_url)
             evidence.write_http_request(prepared)
             response: requests.Response = session.send(
-                prepared, timeout=timeout, allow_redirects=False, verify=True, proxies={}, stream=False,
+                prepared, timeout=(min(timeout[0], remaining), min(timeout[1], remaining)),
+                allow_redirects=False, verify=True, proxies={}, stream=True,
             )
-            evidence.write_http_response(response)
+            try:
+                _read_response(response, max_response_bytes, deadline, monotonic)
+                evidence.write_http_response(response)
+            finally:
+                response.close()
             authentication_seen = authentication_seen or HttpHeader.WWW_AUTHENTICATE in response.headers
             parsed: SplitResult = _parse_url(current_url)
             current: PublicResourceResult = PublicResourceResult(
@@ -142,6 +174,9 @@ def fetch_public_resource(
     max_redirects: int,
     user_agent: str,
     session_factory: Callable[[], requests.Session] = requests.Session,
+    max_response_bytes: int = MAX_RESPONSE_BYTES,
+    total_timeout: float = TOTAL_TIMEOUT,
+    monotonic: Callable[[], float] = time.monotonic,
 ) -> PublicResourceResult:
     """Fetch within HTTPS/host bounds, returning observations without a compliance verdict.
 
@@ -156,6 +191,12 @@ def fetch_public_resource(
             or not math.isfinite(read_timeout) or read_timeout <= 0
             or type(max_redirects) is not int or max_redirects < 0):
         raise InvalidSetup("public-resource timeouts must be finite and positive; redirect limit a non-negative integer")
+    if type(max_response_bytes) is not int or max_response_bytes <= 0:
+        raise InvalidSetup("public-resource response size limit must be a positive integer")
+    if (isinstance(total_timeout, bool) or not isinstance(total_timeout, (int, float))
+            or not math.isfinite(total_timeout) or total_timeout <= 0):
+        raise InvalidSetup("public-resource total timeout must be finite and positive")
+    deadline: float = monotonic() + total_timeout
     evidence.write("TLS VERIFICATION ENABLED", True)
     session: requests.Session = session_factory()
     try:
@@ -169,6 +210,7 @@ def fetch_public_resource(
         session.proxies.clear()
         return _fetch_session(
             session, url, evidence, allowed_hosts, (connect_timeout, read_timeout), max_redirects,
+            max_response_bytes, deadline, monotonic,
         )
     finally:
         session.close()

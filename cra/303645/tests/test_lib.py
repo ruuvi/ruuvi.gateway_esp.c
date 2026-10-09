@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, BinaryIO, Callable, Iterator, Mapping
 from unittest import mock
 
 import requests
@@ -127,11 +127,19 @@ class WebResourceTestCase(unittest.TestCase):
         self.url: str = "https://public.example/policy"
         self.hosts: frozenset[str] = frozenset({"public.example", "www.public.example"})
 
-    def fetch(self, max_redirects: int = 5) -> PublicResourceResult:
-        with mock.patch.object(self.session, "send", self.send):
+    def fetch(self, max_redirects: int = 5, **limits: Any) -> PublicResourceResult:
+        def send(request: requests.PreparedRequest, **kwargs: Any) -> requests.Response:
+            response: requests.Response = self.send(request, **kwargs)
+            if isinstance(response, FakeResponse):
+                # These fixtures already hold a complete body; mark it as cached for iter_content().
+                _cached_body: bytes = response.content
+            return response
+
+        with mock.patch.object(self.session, "send", side_effect=send):
             return fetch_public_resource(
                 self.url, self.log, allowed_hosts=self.hosts, connect_timeout=5, read_timeout=20,
                 max_redirects=max_redirects, user_agent="offline-test", session_factory=lambda: self.session,
+                **limits,
             )
 
     def test_fresh_request_and_complete_response_evidence(self) -> None:
@@ -150,6 +158,7 @@ class WebResourceTestCase(unittest.TestCase):
             self.assertEqual((5, 20), kwargs["timeout"])
             self.assertIs(True, kwargs["verify"])
             self.assertIs(False, kwargs["allow_redirects"])
+            self.assertIs(True, kwargs["stream"])
             self.assertEqual({}, kwargs["proxies"])
             return response
 
@@ -188,6 +197,115 @@ class WebResourceTestCase(unittest.TestCase):
         self.assertNotIn("Authorization", self.send.call_args.args[0].headers)
         self.assertEqual({}, self.send.call_args.kwargs["proxies"])
         self.assertIs(True, self.send.call_args.kwargs["verify"])
+
+    def test_stream_size_limit_accepts_exact_body_and_rejects_overflow(self) -> None:
+        data: bytes
+        for data in (b"", b"page", b"pages and more"):
+            with self.subTest(data=data):
+                response: requests.Response = requests.Response()
+                response.status_code = 200
+                raw: io.BytesIO = io.BytesIO(data)
+                response.raw = raw
+                self.send.return_value = response
+                close: mock.Mock
+                with mock.patch.object(response, "close", wraps=response.close) as close:
+                    if len(data) <= 4:
+                        result: PublicResourceResult = self.fetch(max_response_bytes=4)
+                        self.assertEqual(len(data), result.body_length)
+                        self.assertEqual(data, response.content)
+                    else:
+                        caught: unittest.case._AssertRaisesContext
+                        with self.assertRaisesRegex(WebResourceConnectionError, "incomplete.*size limit") as caught:
+                            self.fetch(max_response_bytes=4)
+                        self.assertIsNone(caught.exception.observation)
+                        self.assertIs(False, response._content)
+                        self.assertTrue(raw.closed)
+                close.assert_called_once_with()
+                raw.close()
+
+    def test_stream_deadline_stops_trickle_and_closes_response(self) -> None:
+        elapsed: float = 0.0
+        reads: int = 0
+
+        def trickle(_amount: int, **_kwargs: Any) -> Iterator[bytes]:
+            nonlocal elapsed, reads
+            while True:
+                elapsed += 0.25
+                reads += 1
+                yield b"x"
+
+        raw: mock.Mock = mock.Mock()
+        raw.stream.side_effect = trickle
+        response: requests.Response = requests.Response()
+        response.status_code = 200
+        response.raw = raw
+        self.send.return_value = response
+        with self.assertRaisesRegex(WebResourceConnectionError, "incomplete.*deadline"):
+            self.fetch(total_timeout=1, monotonic=lambda: elapsed)
+        self.assertEqual(4, reads)
+        raw.stream.assert_called_once_with(1, decode_content=True)
+        raw.close.assert_called_once_with()
+        raw.release_conn.assert_called_once_with()
+        self.assertEqual((1, 1), self.send.call_args.kwargs["timeout"])
+        self.assertNotIn("PUBLIC RESOURCE OBSERVATION", self.stream.getvalue())
+
+    def test_stream_failure_retains_prior_redirect_and_closes_response(self) -> None:
+        elapsed: float = 0.0
+
+        def monotonic() -> float:
+            return elapsed
+
+        failure: str
+        for failure in ("size", "timeout", "connection"):
+            with self.subTest(failure=failure):
+                elapsed = 0.0
+
+                def stream(_amount: int, failure_kind: str = failure, **_kwargs: Any) -> Iterator[bytes]:
+                    nonlocal elapsed
+                    yield b"x"
+                    if failure_kind == "connection":
+                        raise requests.ConnectionError("lost body")
+                    if failure_kind == "timeout":
+                        elapsed = 2.0
+                        return
+                    yield b"too large"
+
+                raw: mock.Mock = mock.Mock()
+                raw.stream.side_effect = stream
+                response: requests.Response = requests.Response()
+                response.status_code = 200
+                response.raw = raw
+                self.send.side_effect = [FakeResponse(302, headers={"Location": "/next"}), response]
+                caught: unittest.case._AssertRaisesContext
+                with self.assertRaises(WebResourceConnectionError) as caught:
+                    self.fetch(max_response_bytes=4, total_timeout=1, monotonic=monotonic)
+                self.assertEqual(302, caught.exception.observation.status)
+                self.assertEqual("https://public.example/next", caught.exception.observation.redirects[0].to_url)
+                raw.release_conn.assert_called_once_with()
+
+    def test_transfer_deadline_is_shared_by_redirects(self) -> None:
+        clock: mock.Mock = mock.Mock(side_effect=[0.0, 0.0, 0.9, 1.0])
+        self.send.return_value = FakeResponse(302, headers={"Location": "/next"})
+        caught: unittest.case._AssertRaisesContext
+        with self.assertRaisesRegex(WebResourceConnectionError, "deadline") as caught:
+            self.fetch(total_timeout=1, monotonic=clock)
+        self.assertEqual(302, caught.exception.observation.status)
+        self.send.assert_called_once()
+
+    def test_invalid_transfer_limits_never_open_session(self) -> None:
+        name: str
+        value: Any
+        values: tuple[Any, ...] = (0, -1, float("inf"), float("nan"), True, None, "1")
+        for name in ("max_response_bytes", "total_timeout"):
+            for value in values + ((1.5,) if name == "max_response_bytes" else ()):
+                with self.subTest(name=name, value=value):
+                    factory: mock.Mock = mock.Mock()
+                    with self.assertRaises(InvalidSetup):
+                        fetch_public_resource(
+                            self.url, self.log, allowed_hosts=self.hosts, connect_timeout=5, read_timeout=20,
+                            max_redirects=5, user_agent="test", session_factory=factory, **{name: value},
+                        )
+                    factory.assert_not_called()
 
     def test_all_redirect_statuses_and_exact_budget(self) -> None:
         statuses: tuple[int, ...] = (301, 302, 303, 307, 308)
@@ -2331,10 +2449,13 @@ class FlashDutTests(unittest.TestCase):
 
     def test_flash_read_rewinds_one_sector_and_clears_retries_after_progress(self) -> None:
         source: bytes = bytes(range(256)) * (0x30000 // 256)
+        backup: Path = self.root / "resumed.bin"
+        backup.write_bytes(b"previous backup")
         offsets: list[int] = []
         failures: dict[int, int] = {0x10000: 1, 0x1F000: 1, 0x1E000: 1}
 
         def read_chunk(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+            self.assertEqual(b"previous backup", backup.read_bytes())
             self.assertIn("read_flash", command)
             address: int = int(command[-3], 16)
             size: int = int(command[-2], 16)
@@ -2354,12 +2475,88 @@ class FlashDutTests(unittest.TestCase):
             serial_dut.SerialPort("/dev/ttyUSB0", 0x1A86, 0x7523),
             serial_dut.SerialVersions("4.8.1", "3.5"), self.log, run_command=read_chunk,
         )
-        backup: Path = self.root / "resumed.bin"
         self.assertEqual(source, tool.read(0x100000, len(source), backup))
         self.assertEqual(source, backup.read_bytes())
         self.assertFalse(backup.with_name("resumed.bin.chunk").exists())
         self.assertEqual([0, 0x10000, 0xF000, 0x1F000, 0x1E000, 0x1E000, 0x2E000], offsets)
         self.assertEqual({0x10000: 0, 0x1F000: 0, 0x1E000: 0}, failures)
+
+    def test_failed_flash_reads_preserve_existing_backup(self) -> None:
+        backup: Path = self.root / "recovery.bin"
+        mode: str
+        for mode in ("first chunk", "later chunk", "changed overlap"):
+            with self.subTest(mode=mode):
+                backup.write_bytes(b"previous backup")
+                attempts: int = 0
+
+                def run(command: list[str], failure_mode: str = mode, **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+                    nonlocal attempts
+                    self.assertEqual(b"previous backup", backup.read_bytes())
+                    if command[-1] == "read_mac":
+                        return subprocess.CompletedProcess(command, 0, "reset", "")
+                    attempts += 1
+                    if ((failure_mode != "first chunk" and attempts == 1)
+                            or (failure_mode == "changed overlap" and attempts > 2)):
+                        Path(command[-1]).write_bytes(
+                            (b"x" if attempts == 1 else b"y") * int(command[-2], 16),
+                        )
+                        return subprocess.CompletedProcess(command, 0, "ok", "")
+                    return subprocess.CompletedProcess(command, 2, "Corrupt data", "")
+
+                tool: flash_dut.FlashTool = flash_dut.FlashTool(
+                    serial_dut.SerialPort("/dev/ttyUSB0", 0x1A86, 0x7523),
+                    serial_dut.SerialVersions("4.8.1", "3.5"), self.log, run_command=run,
+                )
+                with self.assertRaises(InvalidSetup):
+                    tool.read(0, 0x20000, backup)
+                self.assertEqual(b"previous backup", backup.read_bytes())
+                self.assertFalse(backup.with_name("recovery.bin.chunk").exists())
+                self.assertEqual([], list(self.root.glob(".recovery.bin.*")))
+
+    def test_backup_replacement_is_atomic_and_failures_preserve_old_file(self) -> None:
+        backup: Path = self.root / "atomic.bin"
+        data: bytes = b"x" * 0x1000
+
+        def run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+            self.assertEqual(b"previous backup", backup.read_bytes())
+            Path(command[-1]).write_bytes(data)
+            return subprocess.CompletedProcess(command, 0, "ok", "")
+
+        tool: flash_dut.FlashTool = flash_dut.FlashTool(
+            serial_dut.SerialPort("/dev/ttyUSB0", 0x1A86, 0x7523),
+            serial_dut.SerialVersions("4.8.1", "3.5"), self.log, run_command=run,
+        )
+        mode: str
+        for mode in ("write failure", "replace failure", "success"):
+            with self.subTest(mode=mode):
+                backup.write_bytes(b"previous backup")
+
+                def write(path: Path, content: bytes, failure_mode: str = mode) -> int:
+                    stream: BinaryIO
+                    with path.open("wb") as stream:
+                        if failure_mode == "write failure" and path.name == backup.name:
+                            stream.write(b"partial")
+                            raise OSError("disk full")
+                        return stream.write(content)
+
+                def publish(path: Path, target: Path, failure_mode: str = mode) -> Path:
+                    self.assertEqual(backup, target)
+                    self.assertEqual(data, path.read_bytes())
+                    self.assertEqual(b"previous backup", target.read_bytes())
+                    self.assertEqual(target.parent, path.parent.parent)
+                    if failure_mode == "replace failure":
+                        raise OSError("replace failed")
+                    os.replace(path, target)
+                    return target
+
+                with mock.patch.object(Path, "write_bytes", write), mock.patch.object(Path, "replace", publish):
+                    if mode == "success":
+                        self.assertEqual(data, tool.read(0, len(data), backup))
+                    else:
+                        with self.assertRaises(OSError):
+                            tool.read(0, len(data), backup)
+                self.assertEqual(data if mode == "success" else b"previous backup", backup.read_bytes())
+                self.assertEqual([], list(self.root.glob(".atomic.bin.*")))
 
     def test_flash_read_timeout_retries_at_safe_baud(self) -> None:
         bauds: list[str] = []

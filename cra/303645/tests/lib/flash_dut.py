@@ -6,6 +6,7 @@ import csv
 import hashlib
 import subprocess
 import sys
+import tempfile
 import zlib
 from dataclasses import dataclass
 from pathlib import Path
@@ -219,7 +220,7 @@ class FlashTool:
         if offset < 0 or size <= 0:
             raise InvalidSetup("flash reads require a non-negative offset and positive size")
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.unlink(missing_ok=True)
+        # Keep the existing backup until the complete read has been validated.
         chunk_path: Path = path.with_name(f"{path.name}.chunk")
         buffer: bytearray = bytearray(size)
         frontier: int = 0
@@ -275,7 +276,12 @@ class FlashTool:
                                                         "total_bytes": size})
         if frontier == size:
             data: bytes = bytes(buffer)
-            path.write_bytes(data)
+            # Keep the previous backup until a complete replacement is on the same filesystem.
+            directory: str
+            with tempfile.TemporaryDirectory(prefix=f".{path.name}.", dir=path.parent) as directory:
+                replacement: Path = Path(directory) / path.name
+                replacement.write_bytes(data)
+                replacement.replace(path)
             return data
         try:
             self.command("read_mac")
