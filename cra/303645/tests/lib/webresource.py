@@ -51,17 +51,22 @@ class PublicResourceResult:
 def _parse_url(url: str) -> SplitResult:
     try:
         parsed: SplitResult = urlsplit(url)
-        if not parsed.hostname or parsed.username is not None or parsed.password is not None:
-            raise ValueError("URL must have a host and no credentials")
-        # Accessing port also validates its range and syntax.
-        if parsed.port is not None and parsed.port == 0:
-            raise ValueError("URL port must be positive")
-        if any(character.isspace() for character in url):
-            raise ValueError("URL must not contain whitespace")
-        return parsed
-    except ValueError as error:
-        error: ValueError
-        raise WebResourceProtocolError(f"invalid public-resource URL: {url}") from error
+    except ValueError:
+        # urllib errors can echo the authority, including credentials, in tracebacks.
+        raise WebResourceProtocolError("invalid public-resource URL: malformed authority or host") from None
+    if parsed.username is not None or parsed.password is not None:
+        raise WebResourceProtocolError("invalid public-resource URL: userinfo is not allowed")
+    if not parsed.hostname:
+        raise WebResourceProtocolError("invalid public-resource URL: host is required")
+    try:
+        port: int | None = parsed.port
+    except ValueError:
+        raise WebResourceProtocolError("invalid public-resource URL: invalid port") from None
+    if port == 0:
+        raise WebResourceProtocolError("invalid public-resource URL: port must be positive")
+    if any(character.isspace() for character in url):
+        raise WebResourceProtocolError("invalid public-resource URL: whitespace is not allowed")
+    return parsed
 
 
 def _fetch_session(
@@ -122,9 +127,9 @@ def _fetch_session(
     except requests.RequestException as request_error:
         request_error: requests.RequestException
         raise WebResourceConnectionError(f"public-resource HTTP failure: {request_error}", observation) from request_error
-    except ValueError as url_error:
-        url_error: ValueError
-        raise WebResourceProtocolError(f"malformed public-resource redirect: {url_error}", observation) from url_error
+    except ValueError:
+        # urljoin/urldefrag can fail before _parse_url; do not expose their raw diagnostics.
+        raise WebResourceProtocolError("malformed public-resource redirect: invalid URL syntax", observation) from None
 
 
 def fetch_public_resource(

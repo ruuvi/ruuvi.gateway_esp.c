@@ -183,6 +183,11 @@ headers, cookies, content type, byte length, TLS verification, any authenticatio
 the complete tuple of immutable `RedirectHop(status, from_url, to_url)` records. It contains no
 compliance verdict. Redirects 301/302/303/307/308 are resolved explicitly; a missing/malformed
 Location is a protocol error. Relative destinations are resolved against the current URL.
+URL-validation diagnostics explain the rejection without including the supplied URL or userinfo.
+Unsafe URL-parser exception chains are suppressed so terminal messages and exception tracebacks
+cannot repeat those credentials. This also applies to malformed redirect destinations. Complete
+HTTP response evidence and redirect observations still retain their original URLs and headers;
+keep those local artifacts protected as described under Evidence.
 
 An off-host or non-HTTPS redirect is recorded but not followed: `stopped_at_redirect=True`,
 `final_url` still identifies the last response actually received, and the attempted destination

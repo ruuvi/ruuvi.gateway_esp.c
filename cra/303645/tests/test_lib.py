@@ -281,6 +281,102 @@ class WebResourceTestCase(unittest.TestCase):
         self.send.assert_not_called()
         factory.assert_not_called()
 
+    def assert_safe_url_diagnostic(self, error: WebResourceProtocolError, reason: str,
+                                   secrets: tuple[str, ...]) -> None:
+        self.assertIn(reason, str(error))
+        start: int = self.stream.tell()
+        self.log.exception(error)
+        traceback_text: str = self.stream.getvalue()[start:]
+        self.assertIn("WebResourceProtocolError", traceback_text)
+        self.assertIn("Traceback", traceback_text)
+        secret: str
+        for secret in secrets:
+            self.assertNotIn(secret, str(error))
+            self.assertNotIn(secret, repr(error))
+            self.assertNotIn(secret, traceback_text)
+
+    def test_initial_url_errors_do_not_expose_userinfo_in_diagnostics(self) -> None:
+        username: str = "private-user"
+        password: str = "private-password"
+        authority: str
+        reason: str
+        for authority, reason in (
+            (f"{username}:{password}@public.example", "userinfo is not allowed"),
+            (f"{username}@public.example", "userinfo is not allowed"),
+            (f":{password}@public.example", "userinfo is not allowed"),
+            (f"{username}:{password}@[::1]", "userinfo is not allowed"),
+            (f"{username}:{password}@public.example:bad", "userinfo is not allowed"),
+            (f"{username}:{password}@[broken", "malformed authority or host"),
+            (f"{username}:{password}@public.example\uff0fhidden", "malformed authority or host"),
+        ):
+            with self.subTest(reason=reason):
+                url: str = f"https://{authority}/"
+                factory: mock.Mock = mock.Mock()
+                try:
+                    fetch_public_resource(
+                        url, self.log, allowed_hosts=self.hosts, connect_timeout=5, read_timeout=20,
+                        max_redirects=5, user_agent="test", session_factory=factory,
+                    )
+                except WebResourceProtocolError as error:
+                    error: WebResourceProtocolError
+                    self.assert_safe_url_diagnostic(error, reason, (username, password, url))
+                    self.assertIsNone(error.observation)
+                else:
+                    self.fail("URL with userinfo was accepted")
+                factory.assert_not_called()
+
+    def test_redirect_errors_do_not_expose_userinfo_in_diagnostics(self) -> None:
+        username: str = "private-user"
+        password: str = "private-password"
+        target: str
+        reason: str
+        for target, reason in (
+            (f"https://{username}:{password}@public.example/next", "userinfo is not allowed"),
+            (f"//{username}:{password}@public.example/next", "userinfo is not allowed"),
+            (f"https://{username}:{password}@[broken/", "invalid URL syntax"),
+            (f"https://{username}:{password}@public.example\uff0fhidden/", "invalid URL syntax"),
+        ):
+            with self.subTest(reason=reason):
+                self.send.reset_mock()
+                self.send.return_value = FakeResponse(302, headers={"Location": target})
+                close: mock.Mock
+                with mock.patch.object(self.session, "close") as close:
+                    try:
+                        self.fetch()
+                    except WebResourceProtocolError as error:
+                        error: WebResourceProtocolError
+                        self.assert_safe_url_diagnostic(error, reason, (username, password, target))
+                        if error.observation is None:
+                            self.fail("redirect failure lost its response observation")
+                        self.assertEqual(self.url, error.observation.final_url)
+                        self.assertEqual(302, error.observation.status)
+                        self.assertEqual(target, dict(error.observation.headers)["Location"])
+                    else:
+                        self.fail("redirect with userinfo was accepted")
+                self.send.assert_called_once()
+                close.assert_called_once_with()
+
+    def test_url_errors_explain_invalid_host_port_and_whitespace_without_raw_url(self) -> None:
+        url: str
+        reason: str
+        for url, reason in (
+            ("https:///no-host", "host is required"),
+            ("https://public.example:private-password/", "invalid port"),
+            ("https://public.example:65536/", "invalid port"),
+            ("https://public.example:0/", "port must be positive"),
+            ("https://public.example/a b", "whitespace is not allowed"),
+        ):
+            with self.subTest(reason=reason):
+                self.url = url
+                try:
+                    self.fetch()
+                except WebResourceProtocolError as error:
+                    error: WebResourceProtocolError
+                    self.assert_safe_url_diagnostic(error, reason, (url, "private-password"))
+                else:
+                    self.fail("invalid URL was accepted")
+        self.send.assert_not_called()
+
     def test_transport_failures_are_typed_and_close_session(self) -> None:
         errors: tuple[requests.RequestException, ...] = (
             requests.ConnectionError("DNS lookup failed"), requests.ConnectionError("connection refused"),
