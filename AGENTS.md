@@ -184,8 +184,10 @@ Ten workflows run on push, pull requests, schedules, and/or manual dispatch:
    runs `scripts/clang_format_all.sh`, and fails if any file changes (`git diff --exit-code`).
 3. **`check-schemas.yml` (Check JSON Schemas)** — installs `check-jsonschema` pip package,
    runs `schemas/check_schemas.sh`.
-4. **`check-ca-bundle.yml` (Check CA Bundle)** — verifies the bundled Mozilla CA certificates and,
-   on scheduled runs, maintains a tracking issue when the bundle is stale.
+4. **`check-ca-bundle.yml` (Check CA Bundle)** — checks for newer Mozilla CA certificates and
+   opens or updates a CA-bundle pull request on weekly/manual default-branch runs.
+   PR titles include the Mozilla data date; an open PR with the same title prevents duplicate updates.
+   See `esp_crt_bundle/README.md` for repository permissions and automatic PR CI setup.
 5. **`build-fw-dev.yml` (Build Firmware — dev)** — builds firmware in dev environment on push/PR,
    runs reproducible build (build → touch → build), uploads artifact with all binary images.
    Requires `bincopy` pip package and secure boot signing key.

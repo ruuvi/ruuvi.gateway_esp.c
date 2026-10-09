@@ -17,5 +17,54 @@ rebuilt automatically on the next build.
 
 The `scripts/check_ca_bundle_up_to_date.sh` helper compares the local bundle's date with the
 latest one published at <https://curl.se/ca/cacert.pem> and can update the local file in place
-when run with `--update`. The same script is executed by the **Check CA Bundle** GitHub Actions
-workflow on every push, PR, and weekly schedule.
+when run with `--update`.
+
+## Automatic update pull requests
+
+The [Check CA Bundle workflow](../.github/workflows/check-ca-bundle.yml) runs weekly and can also
+be started manually. It does not run on pushes or pull requests.
+
+Every Monday at 06:00 UTC, it runs the script with `--update`, validates the PEM
+certificates with OpenSSL, and opens a pull request against the default branch. It commits only
+`esp_crt_bundle/cacert.pem` and reuses the `automation/update-ca-bundle` branch.
+
+The PR title includes the bundle's Mozilla data date in `YYYY-MM-DD` format. For example,
+`## Certificate data from Mozilla as of: Thu Aug 13 03:12:01 2026 GMT` produces
+`esp_crt_bundle: update Mozilla CA bundle to 2026-08-13`. The commit message uses the same title.
+Before publishing an update, the workflow checks all open repository PRs, including drafts,
+for an exact title match. If one exists, it skips publishing and logs the existing PR URL.
+Otherwise, it creates a PR or updates the existing automation-branch PR with the newer bundle
+and dated title. Closed PRs do not block a new update.
+
+If the bundle is current, it creates no PR and cleans up any obsolete
+update PR/branch. Download, date-parsing, and PEM-validation errors fail the workflow before it
+can publish changes. Scheduled runs replace the previous tracking-issue notification.
+
+After merging the workflow changes into the default branch, it can also be run immediately via
+**Actions → Check CA Bundle → Run workflow**. Select the default branch; the update job skips
+manual runs on other branches. Review the certificate additions/removals and CI results, then
+approve and merge the generated PR. The workflow does not approve or merge it automatically.
+
+### Repository setup
+
+For the built-in `GITHUB_TOKEN` fallback, enable **Allow GitHub Actions to create and approve
+pull requests** in **Settings → Actions → General → Workflow permissions**. An organization
+policy may require an administrator to enable this. A configured `CA_BUNDLE_PR_TOKEN` uses its
+own permissions. The workflow grants `contents: write` and `pull-requests: write` to the update job.
+
+By default, the workflow uses `GITHUB_TOKEN`. GitHub requires a maintainer to select **Approve
+workflows to run** before the repository's other PR CI workflows run on PRs created or updated
+with this token. See
+[GitHub's token documentation](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs).
+
+To have CI start automatically so the routine human task is only review, approval, and merge,
+create a fine-grained personal access token limited to this repository with **Contents: Read and
+write** and **Pull requests: Read and write**. Save it as the repository Actions secret
+`CA_BUNDLE_PR_TOKEN` under **Settings → Secrets and variables → Actions**. The workflow uses it
+for both branch pushes and PR creation/updates. Use a token whose owner has repository write
+access, obtain organization approval if required, and renew it before expiration. The PR author
+cannot approve their own PR, so use a bot/service account token if the token owner also needs to
+review and approve these updates. A GitHub App installation token is another option, but would
+need an additional workflow step to generate a short-lived token for each run.
+
+Any tracking issue opened by the old workflow can be closed manually once the update is merged.
