@@ -1,0 +1,30 @@
+[tool.ruff]
+# Match the right margin used in JetBrains.
+line-length = 120
+
+# Normal Python indentation.
+indent-width = 4
+
+# Oldest supported Python version.
+target-version = "py38"
+
+
+[tool.ruff.lint]
+# Add import sorting to Ruff's default lint rules.
+extend-select = ["I"]
+
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+line-ending = "lf"
+
+# A trailing comma keeps a construct expanded across multiple lines.
+skip-magic-trailing-comma = false
+
+# Do not rewrite Python examples embedded in docstrings.
+docstring-code-format = false
+
+# Avoid experimental formatting changes.
+preview = false
+
