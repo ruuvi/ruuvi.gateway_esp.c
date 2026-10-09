@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+      issues: write
       pull-requests: write
     concurrency:
       group: ca-bundle-update
@@ -41,7 +42,7 @@ jobs:
           grep -q '^-----BEGIN CERTIFICATE-----$' esp_crt_bundle/cacert.pem
           openssl crl2pkcs7 -nocrl -certfile esp_crt_bundle/cacert.pem -out /dev/null
 
-      - name: Prepare the dated CA bundle pull request title
+      - name: Prepare the dated CA bundle issue title
         id: bundle
         shell: bash
         run: |
@@ -62,16 +63,59 @@ jobs:
           if diff.returncode not in (0, 1):
               raise RuntimeError("Could not check CA bundle changes")
           print(f"date={date}")
-          print(f"title=esp_crt_bundle: update Mozilla CA bundle to {date}")
+          print(f"issue-title=chore(esp_crt_bundle) Update Mozilla CA bundle to {date}")
           print(f"changed={'true' if diff.returncode else 'false'}")
           PY
+
+      - name: Create or reuse the CA bundle release-note issue
+        if: steps.bundle.outputs.changed == 'true'
+        id: issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ISSUE_TITLE: ${{ steps.bundle.outputs.issue-title }}
+          BUNDLE_DATE: ${{ steps.bundle.outputs.date }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          github-token: ${{ secrets.CA_BUNDLE_PR_TOKEN || github.token }}
+          script: |
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo,
+              state: 'all',
+              per_page: 100,
+            });
+            // The issues endpoint also returns PRs. Reuse matching issues even
+            // when closed, so retries never create another issue for this date.
+            let issue = issues.find(item => !item.pull_request && item.title === process.env.ISSUE_TITLE);
+            if (issue) {
+              core.notice(`Reusing CA bundle issue: ${issue.html_url}`);
+            } else {
+              const body = [
+                `Update the bundled Mozilla CA certificates to ${process.env.BUNDLE_DATE}.`,
+                '',
+                'Source: [Mozilla CA bundle published by curl](https://curl.se/docs/caextract.html).',
+                'The update replaces `esp_crt_bundle/cacert.pem`, including added and removed roots.',
+                'Track this certificate update in the release notes and review the linked PR before merging.',
+                '',
+                `[Automation run](${process.env.RUN_URL})`,
+              ].join('\n');
+              ({ data: issue } = await github.rest.issues.create({
+                ...context.repo,
+                title: process.env.ISSUE_TITLE,
+                body,
+              }));
+              core.notice(`Created CA bundle issue: ${issue.html_url}`);
+            }
+            const title = `chore(esp_crt_bundle) #${issue.number} Update Mozilla CA bundle to ${process.env.BUNDLE_DATE}`;
+            core.setOutput('title', title);
+            core.setOutput('commit-message', `${title}\n\nCloses #${issue.number}`);
+            core.setOutput('pr-closing', `Closed #${issue.number}`);
 
       - name: Check for an open pull request with the same title
         if: steps.bundle.outputs.changed == 'true'
         id: existing-pr
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          PR_TITLE: ${{ steps.bundle.outputs.title }}
+          PR_TITLE: ${{ steps.issue.outputs.title }}
         with:
           github-token: ${{ secrets.CA_BUNDLE_PR_TOKEN || github.token }}
           script: |
@@ -99,8 +143,10 @@ jobs:
           base: ${{ github.event.repository.default_branch }}
           delete-branch: true
           add-paths: esp_crt_bundle/cacert.pem
-          commit-message: ${{ steps.bundle.outputs.title }}
-          title: ${{ steps.bundle.outputs.title }}
+          # With no bundle changes, the issue step is skipped; these fallbacks
+          # let the action clean up obsolete branches without creating an issue.
+          commit-message: ${{ steps.issue.outputs.commit-message || steps.bundle.outputs.issue-title }}
+          title: ${{ steps.issue.outputs.title || steps.bundle.outputs.issue-title }}
           body: |
             Refresh `esp_crt_bundle/cacert.pem` from [curl's Mozilla CA bundle](https://curl.se/docs/caextract.html).
 
@@ -113,3 +159,5 @@ jobs:
             If GitHub displays **Approve workflows to run**, approve those runs first.
 
             [Automation run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ${{ steps.issue.outputs.pr-closing }}
