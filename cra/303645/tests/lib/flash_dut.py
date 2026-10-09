@@ -126,8 +126,12 @@ def parse_partition_csv(path: Path) -> tuple[Partition, ...]:
                 for flag in row[5].strip().split(":") if len(row) > 5 else ():
                     if flag:
                         flags |= flag_masks[flag]
+                offset: int = _number(row[3])
+                size: int = _number(row[4])
+                if offset < 0 or size <= 0:
+                    raise ValueError(f"partition {name} requires a non-negative offset and positive size")
                 parts.append(Partition(name, type_ids[row[1].strip()], subtype_ids[row[2].strip()],
-                                       _number(row[3]), _number(row[4]), flags))
+                                       offset, size, flags))
     except (OSError, UnicodeError, ValueError, KeyError, IndexError) as error:
         error: OSError | UnicodeError | ValueError | KeyError | IndexError
         raise InvalidSetup(f"cannot parse partition CSV {path}: {error}") from error
@@ -186,6 +190,13 @@ class FlashTool:
             )
         except (OSError, subprocess.SubprocessError) as error:
             error: OSError | subprocess.SubprocessError
+            stdout: str | bytes | None = getattr(error, "stdout", None)
+            stderr: str | bytes | None = getattr(error, "stderr", None)
+            self.evidence.write("ESPTOOL RESULT", FlashCommandResult(
+                args, getattr(error, "returncode", None),
+                stdout.decode("utf-8", errors="backslashreplace") if isinstance(stdout, bytes) else stdout or "",
+                stderr.decode("utf-8", errors="backslashreplace") if isinstance(stderr, bytes) else stderr or "",
+            ))
             self.evidence.write("ESPTOOL FAILURE", f"{type(error).__name__}: {error}")
             raise InvalidSetup(f"esptool {' '.join(args)} failed: {error}") from error
         result: FlashCommandResult = FlashCommandResult(args, completed.returncode,

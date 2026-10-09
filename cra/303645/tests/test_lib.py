@@ -1952,6 +1952,26 @@ class FlashDutTests(unittest.TestCase):
         with self.assertRaisesRegex(InvalidSetup, "cannot parse"):
             flash_dut.parse_partition_csv(self.root / "missing.csv")
 
+    def test_partition_csv_rejects_negative_offsets_and_nonpositive_sizes(self) -> None:
+        csv_path: Path = self.root / "ranges.csv"
+        offset: str
+        size: str
+        cases: tuple[tuple[str, str], ...] = (
+            ("-1", "4K"), ("-0x1000", "4K"), ("-1K", "4K"), ("-1M", "4K"),
+            ("0", "0"), ("0x1000", "0x0"), ("0x1000", "0K"),
+            ("0x1000", "-1"), ("0x1000", "-4K"), ("0x1000", "-1M"),
+        )
+        for offset, size in cases:
+            with self.subTest(offset=offset, size=size):
+                csv_path.write_text(
+                    f"nvs,data,nvs,0,4K,\nota_0,app,ota_0,{offset},{size},\n", encoding="utf-8",
+                )
+                with self.assertRaisesRegex(InvalidSetup, "partition ota_0 requires a non-negative offset and positive size"):
+                    flash_dut.parse_partition_csv(csv_path)
+        csv_path.write_text("ota_0,app,ota_0,0,1,encrypted\n", encoding="utf-8")
+        self.assertEqual((flash_dut.Partition("ota_0", 0, 0x10, 0, 1, flags=1),),
+                         flash_dut.parse_partition_csv(csv_path))
+
     def test_partition_flags_affect_binary_and_csv_layout_comparison(self) -> None:
         record: bytes = (b"\xaa\x50\x00\x10" + (0x100000).to_bytes(4, "little")
                          + (0x400000).to_bytes(4, "little") + b"ota_0".ljust(16, b"\x00"))
@@ -2216,6 +2236,42 @@ class FlashDutTests(unittest.TestCase):
         with self.assertRaisesRegex(InvalidSetup, "unplugged"):
             transport.command("chip_id")
 
+    def test_esptool_exceptions_record_partial_output_before_raising(self) -> None:
+        error: OSError | subprocess.SubprocessError
+        return_code: int | None
+        stdout: str
+        stderr: str
+        cases: tuple[tuple[OSError | subprocess.SubprocessError, int | None, str, str], ...] = (
+            (subprocess.TimeoutExpired("esptool", 30, output=b"partial \xe2\x82", stderr=b"warning \xff"),
+             None, "partial \\xe2\\x82", "warning \\xff"),
+            (subprocess.TimeoutExpired("esptool", 30, output="partial é", stderr="warning"),
+             None, "partial é", "warning"),
+            (subprocess.TimeoutExpired("esptool", 30), None, "", ""),
+            (subprocess.CalledProcessError(7, "esptool", output=b"started", stderr=b"failed"),
+             7, "started", "failed"),
+            (OSError("unplugged"), None, "", ""),
+        )
+        operation: str
+        for operation in ("read_flash", "write_flash"):
+            for error, return_code, stdout, stderr in cases:
+                with self.subTest(operation=operation, error=type(error).__name__, stdout=stdout):
+                    recording: RecordingEvidence = RecordingEvidence()
+                    runner: mock.Mock = mock.Mock(side_effect=error)
+                    tool: flash_dut.FlashTool = flash_dut.FlashTool(
+                        serial_dut.SerialPort("/dev/ttyUSB0", 0x1A86, 0x7523),
+                        serial_dut.SerialVersions("4.8.1", "3.5"), recording, run_command=runner,
+                    )
+                    caught: unittest.case._AssertRaisesContext
+                    with self.assertRaisesRegex(InvalidSetup, "esptool .* failed") as caught:
+                        tool.command(operation, "0x1000", "image.bin")
+                    self.assertIs(error, caught.exception.__cause__)
+                    self.assertEqual(["ESPTOOL COMMAND", "ESPTOOL RESULT", "ESPTOOL FAILURE"],
+                                     [label for label, _ in recording.entries])
+                    self.assertEqual(flash_dut.FlashCommandResult(
+                        (operation, "0x1000", "image.bin"), return_code, stdout, stderr,
+                    ), recording.entries[1][1])
+                    runner.assert_called_once()
+
     def test_flash_read_retries_transient_corruption_and_reports_exhaustion(self) -> None:
         attempts: int = 0
 
@@ -2312,7 +2368,7 @@ class FlashDutTests(unittest.TestCase):
             self.assertEqual(flash_dut.FLASH_READ_TIMEOUT, kwargs["timeout"])
             bauds.append(command[command.index("--baud") + 1])
             if len(bauds) == 1:
-                raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+                raise subprocess.TimeoutExpired(command, kwargs["timeout"], output=b"read started", stderr=b"partial \xff")
             Path(command[-1]).write_bytes(b"\x45" * 0x1000)
             return subprocess.CompletedProcess(command, 0, "ok", "")
 
@@ -2322,6 +2378,15 @@ class FlashDutTests(unittest.TestCase):
         )
         self.assertEqual(b"\x45" * 0x1000, tool.read(0x8000, 0x1000, self.root / "timeout.bin"))
         self.assertEqual(["460800", "115200"], bauds)
+        lines: list[str] = self.log.path.read_text(encoding="utf-8").splitlines()
+        results: list[dict[str, Any]] = [
+            json.loads(line.partition("ESPTOOL RESULT: ")[2]) for line in lines if "ESPTOOL RESULT: " in line
+        ]
+        self.assertEqual(2, len(results))
+        self.assertIsNone(results[0]["return_code"])
+        self.assertEqual("read started", results[0]["stdout"])
+        self.assertEqual("partial \\xff", results[0]["stderr"])
+        self.assertEqual(0, results[1]["return_code"])
 
 
 if __name__ == "__main__":

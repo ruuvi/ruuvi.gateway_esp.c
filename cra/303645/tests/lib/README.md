@@ -313,7 +313,10 @@ subprocess runner is injectable. Every `chip_id`, `flash_id`, `read_flash`, and 
 command explicitly uses `--baud 460800`. UART boot capture remains at 115200 baud. Reads use `--before default_reset --after hard_reset`;
 writes use `--after no_reset` so
 the caller can attach UART capture before an explicit hard reset. Every command has a finite
-timeout and evidence of the exact command and result. Each flash read command has a 30-second
+timeout and evidence of the exact command and result. Command exceptions also record a structured
+result with any available return code and partial stdout/stderr before raising `InvalidSetup`.
+Byte output is decoded as UTF-8 with `backslashreplace`; unavailable output becomes an empty
+string and an unavailable return code becomes `None`. Each flash read command has a 30-second
 timeout; write timeouts scale with transfer size. `read()` assembles a partition from complete
 64 KiB esptool reads. On corrupt data, a short read, or a read timeout, it retries at 115200 baud.
 After a failed or short read, it resumes one 4 KiB sector before the last saved boundary and checks
@@ -328,7 +331,8 @@ esptool exit does not leave the gateway in download mode. Reset failure is repor
 
 `parse_partition_table()` validates the ESP-IDF MD5 record when present and converts the
 on-device binary table to immutable `Partition` records, rejecting non-ASCII names as `InvalidSetup`;
-`parse_partition_csv()` does the same for the repository layout. Callers compare the full tuples
+`parse_partition_csv()` does the same for the repository layout, rejecting negative offsets and
+non-positive sizes as `InvalidSetup`. Zero is a valid offset. Callers compare the full tuples
 before writing. `Partition.flags` preserves the complete 32-bit binary flags word and participates
 in equality; its default is zero for existing constructors. CSV flags accept `encrypted` (bit 0)
 in a colon-separated list, matching ESP-IDF v4.2.5; omitted or empty flags mean zero, and unknown
