@@ -1650,19 +1650,37 @@ class SerialDutTests(unittest.TestCase):
         )), self.evidence.entries)
         opener.assert_not_called()
 
-    def test_bad_duration_open_failure_and_logging_failure(self) -> None:
+    def test_invalid_capture_and_observe_durations_do_not_touch_hardware(self) -> None:
+        opener: mock.Mock = mock.Mock()
+        command: mock.Mock = mock.Mock()
+        preflight: mock.Mock = mock.Mock()
+        clock: mock.Mock = mock.Mock()
+        transport: serial_dut.SerialTransport = serial_dut.SerialTransport(
+            open_fn=opener, run_command=command, preflight_fn=preflight, monotonic=clock,
+        )
+        duration: Any
+        operation: Callable[..., str]
+        operations: tuple[Callable[..., str], ...] = (transport.capture, transport.observe)
+        durations: tuple[Any, ...] = (None, "1", "invalid", True, False, 1 + 2j, [], {},
+                                      0, -1, float("inf"), float("-inf"), float("nan"))
+        for operation in operations:
+            for duration in durations:
+                with self.subTest(operation=operation, duration=duration), \
+                        self.assertRaisesRegex(InvalidSetup, "duration must be finite and positive"):
+                    operation(self.port, self.evidence, duration)
+        opener.assert_not_called()
+        command.assert_not_called()
+        preflight.assert_not_called()
+        clock.assert_not_called()
+        self.assertEqual([], self.evidence.entries)
+
+    def test_open_failure_and_logging_failure(self) -> None:
         opener: mock.Mock = mock.Mock(side_effect=OSError("port busy"))
         command: mock.Mock = mock.Mock(return_value=subprocess.CompletedProcess([], 0, stdout="reset", stderr=""))
         transport: serial_dut.SerialTransport = serial_dut.SerialTransport(
             open_fn=opener, run_command=command,
             preflight_fn=lambda: serial_dut.SerialVersions("4.8.1", "3.5"),
         )
-        duration: float
-        for duration in (0.0, -1.0, float("inf"), float("nan")):
-            with self.subTest(duration=duration), self.assertRaises(InvalidSetup):
-                transport.capture(self.port, self.evidence, duration)
-        opener.assert_not_called()
-        command.assert_not_called()
         with self.assertRaisesRegex(OSError, "port busy"):
             transport.capture(self.port, self.evidence)
         command.reset_mock()
@@ -2069,8 +2087,13 @@ class FlashDutTests(unittest.TestCase):
             flash_dut.parse_partition_table(bytes(malformed_checksum))
         extra_entry: bytearray = bytearray(checked_table)
         extra_entry[64] = 0
-        with self.assertRaisesRegex(InvalidSetup, "after its MD5"):
+        with self.assertRaisesRegex(InvalidSetup, "invalid partition entry magic at 0x40"):
             flash_dut.parse_partition_table(bytes(extra_entry))
+        second_checksum: bytes = b"\xeb\xeb" + b"\xff" * 14 + hashlib.md5(record + checksum).digest()
+        with self.assertRaisesRegex(InvalidSetup, "more than one MD5"):
+            flash_dut.parse_partition_table(
+                (record + checksum + second_checksum).ljust(flash_dut.PARTITION_TABLE_SIZE, b"\xff"),
+            )
         with self.assertRaisesRegex(InvalidSetup, "length"):
             flash_dut.parse_partition_table(table[:-1])
         with self.assertRaisesRegex(InvalidSetup, "magic"):
@@ -2150,19 +2173,24 @@ class FlashDutTests(unittest.TestCase):
         expected: tuple[flash_dut.Partition, ...] = (
             flash_dut.Partition("ota_0", 0, 0x10, 0x100000, 0x400000),
         )
-        # The bootloader checks only these four bytes of the terminating entry.
-        terminator: bytes = b"\xff" * 4 + bytes(28)
-        table: bytes = (record + terminator).ljust(flash_dut.PARTITION_TABLE_SIZE, b"\xff")
-        self.assertEqual(expected, flash_dut.parse_partition_table(table))
+        checksum: bytes = b"\xeb\xeb" + b"\xff" * 14 + hashlib.md5(record).digest()
+        prefix: bytes
+        trailing: bytes
         type_id: int
         subtype: int
-        for type_id, subtype in ((0, 0xFF), (0xFF, 0), (0, 0)):
-            with self.subTest(type_id=type_id, subtype=subtype):
-                malformed: bytes = (record + b"\xff\xff" + bytes((type_id, subtype)) + bytes(28)).ljust(
-                    flash_dut.PARTITION_TABLE_SIZE, b"\xff",
-                )
-                with self.assertRaisesRegex(InvalidSetup, "invalid partition table terminator at 0x20"):
-                    flash_dut.parse_partition_table(malformed)
+        for prefix in (record, record + checksum):
+            # Only the first four terminator bytes matter, even after an MD5 record.
+            for trailing in (bytes(28), bytes(range(28)), b"\xff" * 28):
+                with self.subTest(prefix_length=len(prefix), trailing=trailing):
+                    table: bytes = (prefix + b"\xff" * 4 + trailing).ljust(flash_dut.PARTITION_TABLE_SIZE, b"\xa5")
+                    self.assertEqual(expected, flash_dut.parse_partition_table(table))
+            for type_id, subtype in ((0, 0xFF), (0xFF, 0), (0, 0)):
+                with self.subTest(prefix_length=len(prefix), type_id=type_id, subtype=subtype):
+                    malformed: bytes = (prefix + b"\xff\xff" + bytes((type_id, subtype)) + bytes(28)).ljust(
+                        flash_dut.PARTITION_TABLE_SIZE, b"\xff",
+                    )
+                    with self.assertRaisesRegex(InvalidSetup, f"invalid partition table terminator at 0x{len(prefix):x}"):
+                        flash_dut.parse_partition_table(malformed)
 
     def test_partition_table_requires_terminator_with_and_without_md5(self) -> None:
         indices: range = range(flash_dut.PARTITION_TABLE_SIZE // 32)

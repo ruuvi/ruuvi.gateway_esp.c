@@ -66,6 +66,7 @@ def parse_partition_table(data: bytes) -> tuple[Partition, ...]:
     if len(data) != PARTITION_TABLE_SIZE:
         raise InvalidSetup(f"partition table length is {len(data)}, expected {PARTITION_TABLE_SIZE}")
     parts: list[Partition] = []
+    md5_seen: bool = False
     index: int
     for index in range(0, len(data), PARTITION_ENTRY_SIZE):
         entry: bytes = data[index:index + PARTITION_ENTRY_SIZE]
@@ -74,10 +75,11 @@ def parse_partition_table(data: bytes) -> tuple[Partition, ...]:
                 raise InvalidSetup(f"invalid partition table terminator at 0x{index:x}")
             break
         if entry[:2] == b"\xeb\xeb":
+            if md5_seen:
+                raise InvalidSetup("partition table has more than one MD5 record")
             if entry[2:16] != b"\xff" * 14 or entry[16:32] != hashlib.md5(data[:index]).digest():
                 raise InvalidSetup(f"invalid partition table MD5 record at 0x{index:x}")
-            if any(byte != 0xFF for byte in data[index + PARTITION_ENTRY_SIZE:]):
-                raise InvalidSetup("partition table has data after its MD5 record")
+            md5_seen = True
             continue
         if entry[:2] != b"\xaa\x50":
             raise InvalidSetup(f"invalid partition entry magic at 0x{index:x}")

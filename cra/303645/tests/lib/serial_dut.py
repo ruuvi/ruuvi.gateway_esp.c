@@ -213,7 +213,8 @@ class SerialTransport:
         *, stop_when: Callable[[str], bool] | None = None,
     ) -> str:
         """Reset, then observe the boot console."""
-        if not math.isfinite(duration) or duration <= 0:
+        if (isinstance(duration, bool) or not isinstance(duration, (int, float))
+                or not math.isfinite(duration) or duration <= 0):
             raise InvalidSetup("serial capture duration must be finite and positive")
         self.reset(port, evidence)
         return self.observe(port, evidence, duration, stop_when=stop_when)
@@ -223,7 +224,8 @@ class SerialTransport:
         *, stop_when: Callable[[str], bool] | None = None,
     ) -> str:
         """Observe UART after a caller-controlled reset without resetting again."""
-        if not math.isfinite(duration) or duration <= 0:
+        if (isinstance(duration, bool) or not isinstance(duration, (int, float))
+                or not math.isfinite(duration) or duration <= 0):
             raise InvalidSetup("serial capture duration must be finite and positive")
         # esptool owns the serial port until its hard_reset and process exit complete.
         connection: SerialConnection = self.open_fn(port.device, UART_BAUD, min(0.25, duration))

@@ -284,8 +284,10 @@ read; returning true stops capture immediately, with no fixed wait afterward. Wi
 capture reads until the duration expires. Callers choose the duration and completion predicate for
 their required observations. A predicate that parses lines should require complete lines so a
 partial serial chunk cannot truncate a value.
-The prepared bench must support esptool reset wiring. The window must be finite and positive; each
-read timeout is at most 250 ms and is capped to the remaining window. The raw captured text is recorded even after
+The prepared bench must support esptool reset wiring. Both `capture()` and `observe()` require a
+finite, positive `int` or `float` duration; booleans and other types raise `InvalidSetup` before
+resetting or opening UART. Each read timeout is at most 250 ms and is capped to the remaining
+window. The raw captured text is recorded even after
 a partial read failure, and the port closes on success or failure. Exceptions propagate to the
 runner for ERROR classification. Banner interpretation and all compliance assertions stay in runners.
 
@@ -354,7 +356,9 @@ in equality; its default is zero for existing constructors. CSV flags accept `en
 in a colon-separated list, matching ESP-IDF v4.2.5; omitted or empty flags mean zero, and unknown
 flag names raise `InvalidSetup`. A binary terminator must have magic, type, and subtype all erased
 (`0xff` across its first four bytes); malformed or missing terminators raise `InvalidSetup`.
-The terminator must fit within the table, including after an optional MD5 record.
+The terminator must fit within the table, including after an optional MD5 record. Its remaining
+28 bytes and all bytes after the terminator are ignored, matching the bootloader with or without
+MD5. Invalid checksums and multiple MD5 records raise `InvalidSetup`.
 `decode_otadata()` validates both OTA selection entries' sequence, state, and
 ESP-IDF seeded CRC (`zlib.crc32(sequence_bytes, 0xFFFFFFFF)`),
 then selects the highest valid sequence, retaining entry 0 on a tie as the pinned bootloader does.
