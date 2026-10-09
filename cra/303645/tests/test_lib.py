@@ -2069,8 +2069,9 @@ class NetScanTests(unittest.TestCase):
                         directory.assert_not_called()
 
     def test_mdns_rejects_invalid_timeout_before_opening_socket(self) -> None:
-        timeout: float
-        for timeout in (0.0, -1.0, float("nan"), float("inf"), float("-inf")):
+        timeout: Any
+        for timeout in (None, "3", "invalid", True, False, 1 + 2j, [], {},
+                        0.0, -1.0, float("nan"), float("inf"), float("-inf")):
             with self.subTest(timeout=timeout):
                 factory: mock.Mock = mock.Mock()
                 with self.assertRaisesRegex(netscan.ScanError, "finite and positive"):

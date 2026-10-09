@@ -283,10 +283,10 @@ class FakeGateway:
 
         if (method == HttpMethod.GET and path == GatewayApi.STATUS
                 and self.mode in (GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST)):
-            return self._credentials_response(headers)
+            return self._credentials_response(headers, path)
         return self._unauthorized_response(method, path, headers)
 
-    def _credentials_response(self, headers: Mapping[str, str]) -> FakeResponse:
+    def _credentials_response(self, headers: Mapping[str, str], path: str) -> FakeResponse:
         """Validate the configured Basic/Digest scheme for status and GET /auth."""
         authorization: str = headers.get(HttpHeader.AUTHORIZATION, "")
         valid: bool = False
@@ -296,17 +296,22 @@ class FakeGateway:
             valid = authorization == f"{HttpAuthScheme.BASIC} {self.custom_ha1}"
             challenge = 'Basic realm="Ruuvi Gateway"'
         else:
-            challenge = 'Digest realm="Ruuvi Gateway" qop="auth" nonce="nonce" opaque="opaque"'
+            challenge_parameters: dict[str, str] = {
+                "realm": "Ruuvi Gateway", "qop": "auth", "nonce": "nonce", "opaque": "opaque",
+            }
+            challenge = "Digest " + ", ".join(f'{name}="{value}"' for name, value in challenge_parameters.items())
             if authorization.startswith(f"{HttpAuthScheme.DIGEST} "):
                 parameters: dict[str, str | None] = requests.utils.parse_dict_header(
                     authorization[len(f"{HttpAuthScheme.DIGEST} ") :]
                 )
                 required: tuple[str, ...] = ("uri", "nonce", "nc", "cnonce", "qop", "username", "response")
-                if all(parameters.get(name) for name in required):
+                if (all(parameters.get(name) for name in required)
+                        and parameters["uri"] == path
+                        and all(parameters.get(name) == value for name, value in challenge_parameters.items())):
                     if self.digest_authenticated_timeouts > 0:
                         self.digest_authenticated_timeouts -= 1
                         raise requests.Timeout("Digest authenticated request timeout")
-                    ha2: str = hashlib.md5(f"{HttpMethod.GET}:{parameters['uri']}".encode()).hexdigest()
+                    ha2: str = hashlib.md5(f"{HttpMethod.GET}:{path}".encode()).hexdigest()
                     expected: str = hashlib.md5(
                         f"{self.custom_ha1}:{parameters['nonce']}:{parameters['nc']}:"
                         f"{parameters['cnonce']}:{parameters['qop']}:{ha2}".encode()
@@ -330,21 +335,22 @@ class FakeGateway:
                 return FakeResponse(HttpStatus.C_403_FORBIDDEN,
                                     {GatewayCfgDesc.LAN_AUTH_TYPE: self.mode, "authenticated": False})
             if self.mode == GatewayCfgLanAuthType.ALLOW:
-                response_headers: Mapping[str, str] = {}
                 cookies: Mapping[str, str] = {}
                 if not session.authorized or not self._has_session_cookie(session, headers):
-                    challenge: FakeResponse = self._interactive_challenge_response(session, True)
-                    response_headers = challenge.headers
-                    cookies = challenge.cookies.get_dict()
+                    self.authorized_sessions = [active for active in self.authorized_sessions if active is not session]
+                    session.challenge_number += 1
+                    session.challenge = ""
+                    session.cookie = self._challenge_values(session)[1]
+                    cookies = {"RUUVISESSION": session.cookie}
                     session.authorized = True
                     self.authorized_sessions.append(session)
                     if self.session_limit is not None and len(self.authorized_sessions) > self.session_limit:
                         self.authorized_sessions.pop(0).authorized = False
                 return FakeResponse(HttpStatus.C_200_OK,
                                     {GatewayCfgDesc.LAN_AUTH_TYPE: self.mode, "authenticated": True},
-                                    headers=response_headers, cookies=cookies)
+                                    cookies=cookies)
             if self.mode in (GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST):
-                credential_response: FakeResponse = self._credentials_response(headers)
+                credential_response: FakeResponse = self._credentials_response(headers, GatewayApi.AUTH)
                 return FakeResponse(
                     credential_response.status_code,
                     {GatewayCfgDesc.LAN_AUTH_TYPE: self.mode,

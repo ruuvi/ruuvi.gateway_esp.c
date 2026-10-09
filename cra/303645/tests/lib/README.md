@@ -246,8 +246,9 @@ privilege raise `ScanError`. The subprocess and monotonic clock are injectable.
 
 `probe_mdns()` sends a direct DNS-SD PTR query for `_services._dns-sd._udp.local` to UDP 5353. It
 returns a typed answer only when the requested IP replies from UDP 5353 and advertises `_http._tcp`.
-Timeout returns `None`, which callers must interpret against their scan coverage. Non-finite or
-nonpositive timeouts raise `ScanError` before opening a socket; malformed non-ASCII DNS labels
+Timeout returns `None`, which callers must interpret against their scan coverage. Timeouts must
+be finite, positive `int` or `float` values; booleans and other types raise `ScanError` before
+opening a socket, as do non-finite or nonpositive values. Malformed non-ASCII DNS labels
 also raise `ScanError`. Socket creation and I/O failures become `ScanError`, and opened sockets
 are closed even on timeout or failure. Its socket factory is injectable.
 The library does not map findings to IXIT entries or decide a case verdict. Direct helper contracts

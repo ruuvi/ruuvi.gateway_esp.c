@@ -386,7 +386,8 @@ def _dns_name(packet: bytes, offset: int) -> tuple[str, int]:
 def probe_mdns(
     ip: str, *, timeout: float = 3.0, socket_factory: Callable[..., DatagramSocket] = new_datagram_socket,
 ) -> MdnsAnswer | None:
-    if not math.isfinite(timeout) or timeout <= 0:
+    if (isinstance(timeout, bool) or not isinstance(timeout, (int, float))
+            or not math.isfinite(timeout) or timeout <= 0):
         raise ScanError("mDNS probe timeout must be finite and positive")
     query: bytes = (
         b"\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00"

@@ -9,9 +9,11 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 import requests
 
+from lib.errors import GatewayAuthenticationModeError
 from lib.evidence import EvidenceLog
 from lib.gateway import GatewayApi, GatewayCfgDesc, GatewayCfgLanAuthType, GatewayClient, InteractiveAuthResult
 from lib.http_api import HttpAuthScheme, HttpHeader, HttpMethod, HttpStatus
@@ -269,6 +271,9 @@ class GatewayTestCase(unittest.TestCase):
                             self.assertEqual(mode, response.json()[GatewayCfgDesc.LAN_AUTH_TYPE])
                             self.assertEqual(mode == GatewayCfgLanAuthType.ALLOW, response.json()["authenticated"])
                             if mode == GatewayCfgLanAuthType.ALLOW:
+                                self.assertNotIn(HttpHeader.WWW_AUTHENTICATE, response.headers)
+                                self.assertNotIn(HttpHeader.RUUVI_ECDH_PUBLIC_KEY, response.headers)
+                                self.assertEqual("", session.challenge)
                                 self.assertEqual(session.cookie, response.cookies.get("RUUVISESSION"))
                                 self.assertEqual([session], gateway.authorized_sessions)
                                 cookie: str = session.cookie
@@ -276,9 +281,35 @@ class GatewayTestCase(unittest.TestCase):
                                 self.assertEqual(HttpStatus.C_200_OK, response.status_code)
                                 self.assertEqual(cookie, session.cookie)
                                 self.assertEqual({}, response.cookies.get_dict())
+                                self.assertNotIn(HttpHeader.WWW_AUTHENTICATE, response.headers)
+                                self.assertNotIn(HttpHeader.RUUVI_ECDH_PUBLIC_KEY, response.headers)
                             else:
                                 self.assertEqual({}, response.cookies.get_dict())
                                 self.assertEqual([], gateway.authorized_sessions)
+
+    def test_allow_mode_is_rejected_by_interactive_client_without_posting_login(self) -> None:
+        gateway_type: type[FakeGateway]
+        for gateway_type in (FakeGateway, DefaultAuthGateway):
+            with self.subTest(gateway=gateway_type.__name__):
+                gateway: FakeGateway = gateway_type(CONFIG)
+                gateway.mode = GatewayCfgLanAuthType.ALLOW
+                session: FakeSession = FakeSession(gateway)
+                self.addCleanup(session.close)
+                stream: io.StringIO = io.StringIO()
+                self.addCleanup(stream.close)
+                log: EvidenceLog = EvidenceLog(Path("<memory>"), stream, datetime(2025, 1, 1, tzinfo=timezone.utc))
+                factory: mock.Mock = mock.Mock(return_value=session)
+                client: GatewayClient = GatewayClient(CONFIG, log, session_factory=factory)
+                caught: unittest.case._AssertRaisesContext
+                with self.assertRaises(GatewayAuthenticationModeError) as caught:
+                    client.authenticate_interactive("Admin", CONFIG.gw_id)
+                self.assertEqual(GatewayCfgLanAuthType.ALLOW, caught.exception.auth_type)
+                factory.assert_called_once_with()
+                self.assertEqual([(HttpMethod.GET, GatewayApi.AUTH)], [(call.method, call.path) for call in gateway.calls])
+                self.assertEqual(session.cookie, session.cookies.get("RUUVISESSION"))
+                self.assertEqual("", session.challenge)
+                self.assertTrue(session.authorized)
+                self.assertEqual([session], gateway.authorized_sessions)
 
     def test_allow_and_deny_modes_preserve_bearer_precedence_outside_auth(self) -> None:
         mode: str
@@ -330,7 +361,8 @@ class GatewayTestCase(unittest.TestCase):
                     gateway.custom_ha1 = hashlib.md5(b"user:Ruuvi Gateway:pass").hexdigest()
                     ha2: str = hashlib.md5(b"GET:/auth").hexdigest()
                     digest: str = hashlib.md5(f"{gateway.custom_ha1}:nonce:00000001:client:auth:{ha2}".encode()).hexdigest()
-                    valid_header = ('Digest username="user", uri="/auth", nonce="nonce", nc=00000001, '
+                    valid_header = ('Digest username="user", realm="Ruuvi Gateway", opaque="opaque", '
+                                    'uri="/auth", nonce="nonce", nc=00000001, '
                                     f'cnonce="client", qop=auth, response="{digest}"')
                     wrong_header = valid_header.replace(digest, "wrong")
                     scheme = HttpAuthScheme.DIGEST
@@ -564,6 +596,54 @@ class GatewayTestCase(unittest.TestCase):
                     )
                     self.assertEqual(HttpStatus.C_401_UNAUTHORIZED, response.status_code)
 
+    def test_digest_requires_request_uri_and_advertised_challenge(self) -> None:
+        advertised: dict[str, str] = {
+            "realm": "Ruuvi Gateway", "nonce": "nonce", "qop": "auth", "opaque": "opaque",
+        }
+        gateway_type: type[FakeGateway]
+        path: str
+        field: str | None
+        value: str
+        for gateway_type in (FakeGateway, DefaultAuthGateway):
+            gateway: FakeGateway = gateway_type(CONFIG)
+            gateway.mode = GatewayCfgLanAuthType.DIGEST
+            gateway.custom_username = "user"
+            gateway.custom_ha1 = hashlib.md5(b"user:Ruuvi Gateway:pass").hexdigest()
+            session: FakeSession = FakeSession(gateway)
+            session.trust_env = False
+            self.addCleanup(session.close)
+            for path in (GatewayApi.AUTH, GatewayApi.STATUS):
+                challenge: requests.Response = session.get(f"{CONFIG.base_url}{path}", allow_redirects=False)
+                self.assertEqual(HttpStatus.C_401_UNAUTHORIZED, challenge.status_code)
+                self.assertEqual(advertised, requests.utils.parse_dict_header(
+                    challenge.headers[HttpHeader.WWW_AUTHENTICATE][len("Digest "):],
+                ))
+                for field, value in ((None, ""), ("uri", GatewayApi.STATUS if path == GatewayApi.AUTH else GatewayApi.AUTH),
+                                     ("nonce", "other-nonce"), ("qop", "auth-int"), ("realm", "other-realm"),
+                                     ("opaque", "other-opaque")):
+                    with self.subTest(gateway=gateway_type.__name__, path=path, field=field):
+                        parameters: dict[str, str] = {
+                            **advertised, "username": "user", "uri": path, "nc": "00000001", "cnonce": "client",
+                        }
+                        if field is not None:
+                            parameters[field] = value
+                        # Hash each altered header correctly; a stale response hash must not explain rejection.
+                        ha2: str = hashlib.md5(f"GET:{parameters['uri']}".encode()).hexdigest()
+                        parameters["response"] = hashlib.md5(
+                            f"{gateway.custom_ha1}:{parameters['nonce']}:{parameters['nc']}:"
+                            f"{parameters['cnonce']}:{parameters['qop']}:{ha2}".encode()
+                        ).hexdigest()
+                        header: str = "Digest " + ", ".join(f'{name}="{item}"' for name, item in parameters.items())
+                        response: requests.Response = session.get(
+                            f"{CONFIG.base_url}{path}", headers={HttpHeader.AUTHORIZATION: header}, allow_redirects=False,
+                        )
+                        self.assertEqual(HttpStatus.C_200_OK if field is None else HttpStatus.C_401_UNAUTHORIZED,
+                                         response.status_code)
+                        self.assertEqual(field is None, response.json()["authenticated"])
+                        if field is not None:
+                            self.assertEqual(challenge.headers[HttpHeader.WWW_AUTHENTICATE],
+                                             response.headers[HttpHeader.WWW_AUTHENTICATE])
+
     def test_digest_auth_rejects_incomplete_parameters_without_transport_errors(self) -> None:
         gateway: FakeGateway = FakeGateway(CONFIG)
         gateway.mode = GatewayCfgLanAuthType.DIGEST
@@ -573,13 +653,13 @@ class GatewayTestCase(unittest.TestCase):
         digest: str = hashlib.md5(f"{gateway.custom_ha1}:nonce:00000001:client:auth:{ha2}".encode()).hexdigest()
         parameters: dict[str, str] = {
             "username": "user", "realm": "Ruuvi Gateway", "uri": "/status.json", "nonce": "nonce",
-            "nc": "00000001", "cnonce": "client", "qop": "auth", "response": digest,
+            "nc": "00000001", "cnonce": "client", "qop": "auth", "opaque": "opaque", "response": digest,
         }
         fields: dict[str, str] = {name: f'{name}="{value}"' for name, value in parameters.items()}
         valid_header: str = "Digest " + ", ".join(fields.values())
         malformed_headers: list[str] = ["Digest ", 'Digest username="user"']
         name: str
-        for name in ("uri", "nonce", "nc", "cnonce", "qop", "username", "response"):
+        for name in ("uri", "nonce", "nc", "cnonce", "qop", "username", "response", "realm", "opaque"):
             remaining: list[str] = [field for key, field in fields.items() if key != name]
             malformed_headers.extend((
                 "Digest " + ", ".join(remaining),
