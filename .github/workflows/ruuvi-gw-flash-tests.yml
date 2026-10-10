@@ -1,0 +1,35 @@
+name: Ruuvi Gateway flash script tests
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - "ruuvi_gw_flash.py"
+      - "test_ruuvi_gw_flash.py"
+      - ".github/workflows/ruuvi-gw-flash-tests.yml"
+  pull_request:
+    branches: [ '*' ]
+    paths:
+      - "ruuvi_gw_flash.py"
+      - "test_ruuvi_gw_flash.py"
+      - ".github/workflows/ruuvi-gw-flash-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.8"
+
+      - name: Run flashing script unit tests
+        run: python -m unittest --verbose test_ruuvi_gw_flash.py
