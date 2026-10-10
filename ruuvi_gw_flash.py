@@ -42,6 +42,10 @@ This script is used to handle firmware operations for the Ruuvi Gateway.
 It can download and write specific firmware version binaries from GitHub to the device.
 It also has the option to erase flash before writing the firmware,
 or flash only specific binaries (ruuvi_gateway_esp.bin and ota_data_initial.bin) after compiling the project.
+Use --compile_and_flash for a faster development cycle when only the app has changed;
+it flashes ota_0 and OTA metadata, excluding FATFS images.
+Use --flash_both_slots for full flashing of both OTA slots and their FATFS images.
+These two options are mutually exclusive.
 
 Serial port can be specified, if not, the script will automatically detect the only available port,
 if none or multiple ports are available, it will prompt the user to specify.
@@ -58,9 +62,10 @@ Possible operations:
 4) [download, erase and flash specific version]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --erase_flash v1.17.1-dev
 5) [Build and flash]: python3 ruuvi_gw_flash.py build
 6) [Compile and flash only ruuvi_gateway_esp.bin and ota_data_initial.bin]: python3 ruuvi_gw_flash.py --compile_and_flash build
-7) [Compile and flash only ruuvi_gateway_esp.bin and ota_data_initial.bin]: python3 ruuvi_gw_flash.py --compile_only build
+7) [Compile only]: python3 ruuvi_gw_flash.py --compile_only build
 8) [Reset]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] --reset -
 9) [Reset and save UART logs]: python3 ruuvi_gw_flash.py [--port /dev/ttyUSB0] - --reset --log_uart
+10) [Flash both OTA slots and FATFS partitions]: python3 ruuvi_gw_flash.py --flash_both_slots v1.17.2-prod
 """
 parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
 
@@ -459,8 +464,9 @@ def parse_arguments():
 
     parser.add_argument('--compile_and_flash',
                         action='store_true',
-                        help='Compile the project and flash only ruuvi_gateway_esp.bin and ota_data_initial.bin '
-                             '(use with "build" as fw_ver.')
+                        help='Compile the project and flash ruuvi_gateway_esp.bin to ota_0 plus ota_data_initial.bin, '
+                             'excluding FATFS images, for a faster development cycle. '
+                             'Use with "build" as fw_ver. Cannot be combined with --flash_both_slots.')
 
     parser.add_argument('--compile_only',
                         action='store_true',
@@ -476,6 +482,11 @@ def parse_arguments():
                         help='Flash gw_cfg_def.bin to the gw_cfg_def partition at 0xB00000. '
                              'For v1.17.0 and newer release ZIPs this file is downloaded automatically, '
                              'but it is flashed only when this option is specified.')
+
+    parser.add_argument('--flash_both_slots',
+                        action='store_true',
+                        help='Flash the firmware and FATFS images to both OTA slots. '
+                             'Cannot be combined with --compile_and_flash.')
 
     parser.add_argument('--log_uart',
                         action='store_true',
@@ -502,6 +513,13 @@ def parse_arguments():
 
     if arguments.log_to_console:
         arguments.log_uart = True
+    if arguments.flash_both_slots and arguments.compile_and_flash:
+        error("Arguments '--flash_both_slots' and '--compile_and_flash' are mutually exclusive.")
+        sys.exit(1)
+    if arguments.flash_both_slots and (arguments.fw_ver == "-" or arguments.compile_only or
+                                       arguments.download_only or arguments.print_port):
+        error("Argument '--flash_both_slots' requires a flashing command with a firmware version or 'build'.")
+        sys.exit(1)
     if (arguments.fw_ver == "-" and not arguments.erase_flash and not arguments.reset and not arguments.log_uart and
             not arguments.print_port):
         error("Nothing to do: "
@@ -690,17 +708,14 @@ def main():
             logger.info('cd ..')
             os.chdir("..")
             sys.exit(0)
-    if arguments.compile_and_flash:
-        if not os.path.isdir("build"):
-            arguments.compile_and_flash = False
-        else:
-            logger.info('cd build')
-            os.chdir("build")
-            run_process_with_logging(['ninja', 'ruuvi_gateway_esp.elf'])
-            run_process_with_logging(['ninja', '.bin_timestamp'])
-            logger.info('cd ..')
-            os.chdir("..")
-    if not arguments.compile_and_flash and arguments.fw_ver == "build":
+    if arguments.compile_and_flash and os.path.isdir("build"):
+        logger.info('cd build')
+        os.chdir("build")
+        run_process_with_logging(['ninja', 'ruuvi_gateway_esp.elf'])
+        run_process_with_logging(['ninja', '.bin_timestamp'])
+        logger.info('cd ..')
+        os.chdir("..")
+    elif arguments.fw_ver == "build":
         if shutil.which('idf.py') is None:
             error("idf.py not found.")
             if not ask_user_to_continue():
@@ -726,6 +741,10 @@ def main():
                     '0x100000', f'{arguments.fw_ver}/ruuvi_gateway_esp.bin',
                     '0x500000', f'{arguments.fw_ver}/fatfs_gwui.bin',
                     '0x5C0000', f'{arguments.fw_ver}/fatfs_nrf52.bin']
+                if arguments.flash_both_slots:
+                    append_flash_file(esptool_cmd_with_args, '0x600000', f'{arguments.fw_ver}/ruuvi_gateway_esp.bin')
+                    append_flash_file(esptool_cmd_with_args, '0xA00000', f'{arguments.fw_ver}/fatfs_gwui.bin')
+                    append_flash_file(esptool_cmd_with_args, '0xAC0000', f'{arguments.fw_ver}/fatfs_nrf52.bin')
                 if arguments.flash_gw_cfg_def:
                     append_flash_file(esptool_cmd_with_args, '0xB00000', f'{arguments.fw_ver}/gw_cfg_def.bin')
             else:
@@ -736,6 +755,10 @@ def main():
                     '0x100000', f'{RELEASES_DIR}/{arguments.fw_ver}/ruuvi_gateway_esp.bin',
                     '0x500000', f'{RELEASES_DIR}/{arguments.fw_ver}/fatfs_gwui.bin',
                     '0x5C0000', f'{RELEASES_DIR}/{arguments.fw_ver}/fatfs_nrf52.bin']
+                if arguments.flash_both_slots:
+                    append_flash_file(esptool_cmd_with_args, '0x600000', f'{RELEASES_DIR}/{arguments.fw_ver}/ruuvi_gateway_esp.bin')
+                    append_flash_file(esptool_cmd_with_args, '0xA00000', f'{RELEASES_DIR}/{arguments.fw_ver}/fatfs_gwui.bin')
+                    append_flash_file(esptool_cmd_with_args, '0xAC0000', f'{RELEASES_DIR}/{arguments.fw_ver}/fatfs_nrf52.bin')
                 if arguments.flash_gw_cfg_def:
                     append_flash_file(esptool_cmd_with_args, '0xB00000', f'{RELEASES_DIR}/{arguments.fw_ver}/gw_cfg_def.bin')
         run_process_with_logging(esptool_cmd_with_args)
