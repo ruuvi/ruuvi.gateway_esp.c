@@ -109,18 +109,23 @@ Personal data on associated services
 
 #### Initiation and Interaction
 
-The user signs into their account on the official Ruuvi Cloud web portal or Ruuvi Station
-application and submits an account deletion request. To prevent accidental or unauthorized data
-loss, the cloud system sends a confirmation link to the user's registered email address. The user
-must click the confirmation link to authorize final account eradication.
+The user signs into their account on the official Ruuvi Cloud web portal (https://station.ruuvi.com)
+or Ruuvi Station mobile application and submits an account deletion request. To prevent accidental
+or unauthorized data loss, the cloud system sends a confirmation link with an authorization token to
+the user's registered email address. The user must click the confirmation link to authorize final
+account eradication.
 
 #### Confirmation
 
-Upon user confirmation via the emailed link, the user is automatically logged out of active app and
-browser sessions, and the web interface displays an account termination confirmation message. All
-personally identifiable information (PII) is removed immediately, and associated data records (such
-as custom background images, gateway assignment mappings, and historical sensor readings) are queued
-for automated background deletion from cloud databases.
+Upon user confirmation via the emailed link:
+
+* The user is automatically logged out of active app and browser sessions, and the web interface
+  displays an account termination confirmation message.
+* All personally identifiable information (PII)—including account name, email address, custom sensor
+  tag names, and gateway association mappings—is removed immediately from active operational
+  databases.
+* Historical sensor readings associated with the account are queued for automated background
+  deletion from cloud databases in accordance with corporate data retention schedules.
 
 ---
 
