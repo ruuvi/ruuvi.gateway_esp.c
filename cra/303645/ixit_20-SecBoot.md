@@ -19,10 +19,12 @@ executed within the core application binary to enforce signature validation cons
   Although the application firmware build configuration defines `CONFIG_SECURE_BOOT_V2_ENABLED`, a
   precompiled secondary bootloader (`components/binaries/bootloader.bin`, v1.9.2) is flashed to the
   device target without burning the hardware eFuses for Secure Boot or Flash Encryption.
-  Consequently, cryptographic signature enforcement is handled programmatically by the main
-  application runtime engine post-boot. The static public cryptographic root of trust (
+  Consequently, cryptographic signature enforcement is handled programmatically by the Ruuvi
+  Gateway application runtime engine. The static public cryptographic root of trust (
   `SecParam-FW-Verification-Key`) is compiled directly into the immutable text segment of the main
-  application binary image file.
+  application binary image file. A complete ROM-loader reflash can replace that application on
+  v1.17.x and is a sustained-physical-access release limitation; it is not prevented until Secure
+  Boot eFuses and flash encryption are enabled in a future released version.
 * **Protected Components:** The verification engine validates the complete software ecosystem across
   three distinct layers: the main application firmware image itself, the read-only Web-UI asset file
   system partition (`fatfs_gwui`), and the read-only nRF52 co-processor binary partition (
@@ -30,16 +32,17 @@ executed within the core application binary to enforce signature validation cons
 
 #### Security Guarantees
 
-Ensures the **Integrity** and **Authenticity** of the complete software operational application
-space prior to full system initialization. This blocks the execution of unauthorized, manipulated,
-or truncated code payloads, preventing malicious local physical or remote network write
-modifications from operating on either the ESP32 or the nRF52811 microcontrollers.
+Ensures the **Integrity** and **Authenticity** of the complete selected Ruuvi Gateway software
+partition set before normal service initialization. This blocks unauthorized, manipulated, or
+truncated code payloads delivered through the supported network update flows. The v1.17.x physical
+ROM-loader limitation is recorded in `IXIT 7-UpdMech` and is outside the ETSI baseline threat scope.
 
 #### Detection Mechanisms
 
 During the early system initialization phase, the firmware invokes the
-`fw_update_read_flash_info_and_check_signatures()` tracking routine. This routine executes the
-following multi-stage verification steps:
+`fw_update_read_flash_info_and_check_signatures()` routine. Network OTA first verifies the candidate
+main image before selecting it for boot. After that reboot, this routine executes the following
+multi-stage verification steps for the selected partition set:
 
 1. **Self-Validation:** Invokes the low-level API utility `esp_image_verify` from the native ESP-IDF
    `bootloader_support` library. Passing the active partition's address properties and memory
@@ -55,8 +58,8 @@ following multi-stage verification steps:
    `esp_secure_boot_verify_rsa_signature_block` validation routine.
 
 If any signature verification block check fails or an unexpected partition structural size mismatch
-is encountered, the verification framework drops the initialization sequence and flags the active
-slot block as corrupted.
+is encountered, the verification framework drops the initialization sequence. The pending OTA image
+is not marked valid, so the OTA rollback mechanism reboots to the previously working slot.
 
 #### User Notification
 

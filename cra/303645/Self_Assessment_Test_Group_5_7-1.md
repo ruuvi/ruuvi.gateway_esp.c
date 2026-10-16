@@ -44,7 +44,10 @@ guarantees (`b`).
   eFuses. Cryptographic verification is enforced programmatically at the application layer upon
   initialization. Under the ETSI EN 303 645 Level Basic Attacker Model (Clause D.2),
   application-layer RSA-3072 signature verification provides adequate software integrity protection
-  against remote network and logical manipulation vectors.
+  against remote network and logical manipulation vectors. It does not authenticate a complete
+  v1.17.x ROM-loader reflash; that sustained-physical-access limitation is recorded in
+  `IXIT 7-UpdMech` and is planned to be addressed by Secure Boot eFuses and flash encryption in a
+  future released version.
 
 * **Unit B Verdict**: **PASS**
 
@@ -98,7 +101,8 @@ device implements multi-stage software integrity verification (`IXIT 20-SecBoot`
 ESP32 application, Web-UI asset partition (`fatfs_gwui`), and nRF52 co-processor code partition (
 `fatfs_nrf52`). Cryptographic signatures are validated during early initialization using RSA-3072
 with RSA-PSS padding over SHA-256 digests. Functional testing confirms that tampered or corrupted
-software binaries are detected, preventing unauthorized code execution and triggering automated slot
-rollback recovery.
+selected Ruuvi Gateway partitions are detected, preventing normal service initialization and
+triggering automated slot rollback recovery. The v1.17.x ROM-loader physical-reflash limitation is
+recorded separately in `IXIT 7-UpdMech`.
 
 **Group Verdict**: **PASS**

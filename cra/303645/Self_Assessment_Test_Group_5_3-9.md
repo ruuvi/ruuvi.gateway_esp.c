@@ -15,11 +15,11 @@ itself prior to installation.
 
 ### Test Units Conceptual Assessment Matrix
 
-| Mechanism ID    | Delivery Medium       | Unit a: Source/Target Authenticity Verification                                                                                                             | Unit b: Payload Integrity Verification                                                                                                                      |                Unit c: Authenticity Verified by DUT Itself?                |                   Unit d: Integrity Verified by DUT Itself?                    | Case Verdict |
-|:----------------|:----------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------:|:------------------------------------------------------------------------------:|:------------:|
-| `UpdMech-WebUI` | Network (HTTPS)       | Enforces RSA-3072-PSS digital signature verification against the embedded public key (`SecParam-FW-Verification-Key`). Rejects forged or untrusted sources. | Computes SHA-256 hash over downloaded binaries (`ruuvi_gateway_esp.bin`, `fatfs_gwui.bin`, `fatfs_nrf52.bin`) and compares against signed signature blocks. | **Yes** (Executed locally by application task prior to staging completion) | **Yes** (Executed locally via `esp_image_verify` and partition RSA-PSS checks) |   **PASS**   |
-| `UpdMech-Auto`  | Network (HTTPS)       | Evaluates identical RSA-3072-PSS signature blocks embedded in the main firmware header during background updates.                                           | Validates main image SHA-256 digest and cross-verifies auxiliary filesystem signatures embedded in main firmware manifest at boot.                          |          **Yes** (Executed locally during background OTA staging)          |           **Yes** (Executed locally on-device before reboot handoff)           |   **PASS**   |
-| `UpdMech-USB`   | Local Port (USB-UART) | Post-reset application layer parses RSA-3072-PSS signature block before executing runtime handoff or mounting partition tables.                             | Flasher tool executes MD5 transfer checks. Main application executes RSA signature checks on boot prior to initializing services.                           |            **Yes** (Bootloader/App validates signature on DUT)             |                   **Yes** (Executed on-device post-flashing)                   |   **PASS**   |
+| Mechanism ID    | Delivery Medium       | Unit a: Source/Target Authenticity Verification                                                                                                                                                                                                                                | Unit b: Payload Integrity Verification                                                                                                                                                                                                                                     |                              Unit c: Authenticity Verified by DUT Itself?                               |                                                Unit d: Integrity Verified by DUT Itself?                                                 |          Case Verdict          |
+|:----------------|:----------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------:|
+| `UpdMech-WebUI` | Network (HTTPS)       | The DUT validates the downloaded main application using RSA-3072-PSS and requires the signer public-key digest to match that of the running application.                                                                                                                       | The main candidate image is validated before the boot target is changed. The Web-UI and nRF52 images are written only to inactive partitions, then their SHA-256 digests are verified against signatures embedded in the new main application during early initialization. |               **Yes** (the DUT validates the main candidate before selecting it to boot)                | **Yes** (the DUT validates the main candidate before boot selection and the complete selected partition set during early initialization) |            **PASS**            |
+| `UpdMech-Auto`  | Network (HTTPS)       | Same on-device RSA-3072-PSS and signer-key continuity checks as `UpdMech-WebUI`.                                                                                                                                                                                               | Same staged-partition and early-initialization verification sequence as `UpdMech-WebUI`.                                                                                                                                                                                   |                                                 **Yes**                                                 |                                                                 **Yes**                                                                  |            **PASS**            |
+| `UpdMech-USB`   | Local Port (USB-UART) | v1.17.x ROM-loader flashing requires sustained physical access and a boot-strap action. It is a recovery/service path, not a remotely accessible operational update flow. An officially signed Ruuvi Gateway image performs the normal application self-check after it starts. | The host flasher's MD5 check confirms transfer integrity only. Because Secure Boot eFuses are not enabled in v1.17.x, the ROM loader does not authenticate a complete physical reflash.                                                                                    | **Qualified** (application self-check applies only after a signed Ruuvi Gateway application is running) |                                                     **Qualified** (same limitation)                                                      | **PASS (ETSI baseline scope)** |
 
 ---
 
@@ -27,71 +27,65 @@ itself prior to installation.
 
 #### Unit a: Authenticity Verification
 
-* **Assessment**: For all update mechanisms, authenticity is established via an **RSA-3072 digital
-  signature with RSA-PSS padding over a SHA-256 digest**. The public verification key (
-  `SecParam-FW-Verification-Key`) is embedded directly inside the main application text segment.
-  Because an attacker cannot forge an RSA-3072-PSS signature without access to the manufacturer's
-  private key (stored in secure `GitHub Secrets`), the DUT reliably verifies that the update
-  originates from the legitimate manufacturer.
+* **Assessment**: For `UpdMech-WebUI` and `UpdMech-Auto`, authenticity is established by an
+  **RSA-3072 digital signature with RSA-PSS padding over a SHA-256 digest**. The DUT verifies the
+  downloaded main application and requires its public-key digest to match the running application
+  before it changes the boot target. The verification key is a product security parameter; the
+  technical file does not depend on the storage location of the manufacturer's private signing key.
+  The auxiliary partition signatures are embedded in the new main application, so they are checked
+  by that application during the subsequent early-initialization self-check.
 * **Verdict**: **PASS**
 
 #### Unit b: Integrity Verification
 
-* **Assessment**: Integrity is verified by calculating the SHA-256 digest over the downloaded binary
-  payload blocks and comparing the result against the decrypted signature hash. Any payload
-  modification (such as bit flips during network transit or malicious code injection) produces a
-  hash mismatch, causing immediate rejection of the binary package.
+* **Assessment**: The main application candidate is verified after download and before the boot
+  target changes; a signature or signer-key mismatch fails the update and the inactive partitions
+  are invalidated. The Web-UI and nRF52 images are staged in inactive partitions. After reboot, the
+  new main application calculates their SHA-256 digests and verifies them against the signatures it
+  carries. This sequencing is necessary because the authoritative signatures for those partitions
+  are part of the new main application. A failure aborts initialization and invokes the OTA rollback
+  path, which reboots from the previously working slot.
 * **Verdict**: **PASS**
 
 #### Units c & d: Performing Entity (Verification by DUT Itself)
 
-* **Assessment**: Verification is performed entirely on-device by the DUT itself without relying on
-  external third-party proxies:
-  1. **Main Application:** Upon completing network downloads (`UpdMech-WebUI` / `UpdMech-Auto`), the
-     main application invokes `esp_image_verify` from the native ESP-IDF `bootloader_support`
-     library to parse the RSA-3072-PSS signature appended to `ruuvi_gateway_esp.bin`.
-  2. **Auxiliary Partitions:** Post-reboot, the main firmware executes
-     `esp_secure_boot_verify_rsa_signature_block` over `fatfs_gwui.bin` and `fatfs_nrf52.bin` using
-     signature manifests embedded within `ruuvi_gateway_esp.bin`.
-  3. **Co-Processor Flash:** The ESP32 host halts the nRF52 co-processor, injects
-     `nrf52swd_calc_sha256_digest_on_nrf52` into nRF52 RAM via SWD, reads back the calculated live
-     flash digest, and compares it against `fatfs_nrf52.bin`.
+* **Assessment**: Verification is performed by the DUT itself without relying on an external proxy:
+  1. **Main application candidate:** `esp_ota_end_patched` verifies the downloaded main image and
+     `fw_update_check_is_valid_pub_key` compares its signer-key digest with the running image before
+     `esp_ota_set_boot_partition_patched` selects the candidate for reboot.
+  2. **Selected partition set:** During early initialization, the new application calls
+     `esp_image_verify` for itself and `esp_secure_boot_verify_rsa_signature_block` for
+     `fatfs_gwui` and `fatfs_nrf52`. On failure, the normal OTA rollback state is retained and the
+     device reboots to the previously working OTA slot.
+  3. **Co-processor flash:** After the selected partition set passes signature validation, the ESP32
+     checks the nRF52 flash with `nrf52swd_calc_sha256_digest_on_nrf52` and restores it from the
+     signed selected `fatfs_nrf52` image when required.
+
+#### USB Recovery / Service Interface Scope
+
+`UpdMech-USB` is retained in the IXIT because it is a documented local recovery and factory-service
+path. It requires physical connection, boot-strap entry into the ESP32 ROM loader, and sustained
+control of the device. ETSI EN 303 645 addresses baseline threats and does not aim to protect
+against attacks requiring sustained physical access. A complete custom reflash replaces the Ruuvi
+Gateway software and is therefore outside the operational Ruuvi Gateway update flow evaluated here.
+
+This is a release limitation, not an authentication claim for the v1.17.x ROM loader: its transfer
+MD5 check is not an authenticity control, and application-level verification only applies once a
+Ruuvi Gateway application is running. The planned v1.18.x Secure Boot eFuse and flash-encryption
+implementation is the control that will cryptographically restrict physical reflashing; it must be
+verified and documented when released.
+
 * **Verdict**: **PASS**
-
----
-
-## Test case 5.3-9-2 (functional)
-
-**Purpose**: To functionally verify that the DUT itself detects and rejects software updates that
-fail authenticity or integrity checks prior to committing partition slots for execution.
-
-### Test Units A & B: Functional Verification of On-Device Authenticity and Integrity Checks
-
-**Testing Methodology**: The test laboratory introduced corrupted, bit-flipped, and improperly
-signed binaries across all update mechanisms to verify that the DUT autonomously rejects invalid
-updates.
-
-| Test Scenario / Injected Failure        | Execution Pathway                                              | Observed On-Device System Behavior                                                                                                                                                                       | Case Verdict |
-|:----------------------------------------|:---------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------:|
-| **Injected Bit-Flip / Corrupted Image** | Network update via `UpdMech-WebUI` or `UpdMech-Auto`           | `esp_image_verify` detected SHA-256 digest mismatch post-download. The DUT invalidated the staged inactive slot (`ota_0`/`ota_1`), aborted system restart, and maintained active application continuity. |   **PASS**   |
-| **Untrusted / Forged RSA Signature**    | Signed binary using an arbitrary 3072-bit RSA private key      | `esp_image_verify` evaluated the signature against the embedded `SecParam-FW-Verification-Key`. Signature validation failed; the DUT dropped the payload and refused partition handoff.                  |   **PASS**   |
-| **Auxiliary Manifest Mismatch**         | Uploaded valid main binary with tampered `fatfs_gwui.bin`      | Main application booted, executed `esp_secure_boot_verify_rsa_signature_block` checks, detected the auxiliary manifest hash mismatch, and executed an immediate rollback to the previous partition set.  |   **PASS**   |
-| **Co-Processor SWD Flash Tampering**    | Flashed modified code directly to nRF52 via external SWD probe | Post-reboot SWD RAM check (`nrf52swd_calc_sha256_digest_on_nrf52`) detected a digest mismatch against `fatfs_nrf52.bin` and automatically re-flashed the nRF52 chip to restore factory integrity.        |   **PASS**   |
-
-**Assessment Justification**: Functional testing demonstrates that the DUT autonomously validates
-payload authenticity and integrity. Corrupted, tampered, or improperly signed binaries are reliably
-detected and rejected on-device prior to committing execution partition slots.
-
-**Verdict**: **PASS**
 
 ---
 
 ## Group Summary
 
-The Ruuvi Gateway complies fully with Provision 5.3-9 of `ETSI EN 303 645`. All software update
-mechanisms (`UpdMech-WebUI`, `UpdMech-Auto`, `UpdMech-USB`) rely on on-device cryptographic
-verification performed directly by the DUT itself prior to installation. RSA-3072-PSS signature
-validation, SHA-256 hash checks, and inter-chip SWD RAM audits ensure that untrusted, corrupted, or
-tampered updates are rejected without impacting operational continuity.
+The Ruuvi Gateway's network update mechanisms (`UpdMech-WebUI` and `UpdMech-Auto`) perform
+on-device verification before selecting a new main application for boot. The selected application
+then verifies itself and the Web-UI and nRF52 partitions before normal service initialization; a
+failure invokes rollback to the previously working OTA slot. `UpdMech-USB` is a sustained-physical-
+access recovery/service path with the v1.17.x limitation recorded above. Functional adversarial
+testing is assessed under TS 103 701 test cases 5.3-2-2 and 5.7-1-2, not this conceptual test case.
 
 **Group Verdict**: **PASS**
