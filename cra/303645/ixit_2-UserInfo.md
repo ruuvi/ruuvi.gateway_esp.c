@@ -1,6 +1,6 @@
-# CRA: 303 645 IXIT-2-USERINFO: User Information
+# IXIT-2-UserInfo: User Information
 
-Source: ETSI TS 103 701 V2.1.1 / ETSI EN 303 645  
+Source: ETSI TS 103 701 V2.1.1 / ETSI EN 303 645\
 Section A.3: Implementation eXtra Information for Testing (IXIT) pro forma — "IXIT 2-UserInfo: User
 Information"
 
