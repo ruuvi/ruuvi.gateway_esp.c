@@ -11,8 +11,8 @@ exposure risks, and transport layer resilience measures.
 #### Description
 
 The DUT hosts an internal HTTP server (Port 80) acting as the execution environment for the Web-UI
-and primary local configuration wizard. It handles endpoint execution routines such as `/auth` (
-authentication binds), `/ruuvi.json` (device settings), and `/history` (sensor data logs).
+and primary local configuration wizard. It handles endpoint execution routines such as `/auth`
+(authentication binds), `/ruuvi.json` (device settings), and `/history` (sensor data logs).
 
 #### Access
 
@@ -44,6 +44,36 @@ boundaries. If unauthenticated TCP socket starvation floods occur, the interface
 transient response delays (denial of service mitigation state), but internal credential values,
 memory spaces, and system data integrity properties are maintained within protected flash
 partitions.
+
+---
+
+### **ID**: LogIntf-mDNS-Responder
+
+#### Description
+
+The DUT runs an mDNS responder on UDP Port 5353 while connected to the local network. It publishes
+the configured gateway hostname under `.local` and advertises `_http._tcp` on TCP Port 80 for local
+HTTP service discovery. The responder starts on network connection and stops on disconnection.
+
+#### Access
+
+* `PhyIntf-Ethernet` (Accessible on the connected local network)
+* `PhyIntf-WiFi` (Accessible on the connected local wireless network)
+
+#### Status
+
+Enabled in the initialized, network-connected state.
+
+#### Disclosed Information
+
+Unauthenticated mDNS queries can reveal the configured hostname, the HTTP service type, and its
+advertised TCP port. Discovery does not grant access to protected HTTP endpoints.
+
+#### Resilience Measures
+
+The responder is tied to network connection state and is stopped when the network disconnects.
+It does not process configuration writes; access controls for the advertised HTTP service are
+enforced by `LogIntf-HTTP-Server`.
 
 ---
 
@@ -216,6 +246,12 @@ device from initialization failures or corrupted binaries.
 The DUT drives a native network background time sync process utilizing the UDP Network Time
 Protocol (NTP) to coordinate internal wall-clock timestamps across four target pools:
 `time.google.com`, `time.cloudflare.com`, `pool.ntp.org`, and `time.ruuvi.com`.
+UDP/123 is the **server destination port**, not a fixed listening port on the DUT. The SNTP
+client's local UDP source port is dynamically allocated from 49152-65535. ESP-IDF v4.2.5 LwIP
+seeds that allocator with `esp_random()` at boot, so the source port may change after each reboot
+or SNTP restart (including a time-server configuration change). The client accepts replies on that
+socket but does not serve incoming NTP requests; a UDP scan may report the current source port as
+`open|filtered`.
 
 #### Access
 
@@ -449,8 +485,8 @@ flash access.
 
 #### Resilience Measures
 
-Activated programmatically over the USB interface by toggling the USB-to-UART bridge control lines (
-DTR/RTS) to reset the chip and force entry into the bootloader state. The interface operates
+Activated programmatically over the USB interface by toggling the USB-to-UART bridge control lines
+(DTR/RTS) to reset the chip and force entry into the bootloader state. The interface operates
 strictly synchronously and is completely isolated from the network stack, containing the threat
 boundary to actors with immediate physical connection access to the physical USB port.
 
@@ -498,20 +534,21 @@ starvation injections.
 
 ## Summary Matrix for the Technical File
 
-| Interface ID                      | Type / Port        | Protocol          | Remote Network Access? | Initial Status | Security Relevant Disclosed Info                         |
-|:----------------------------------|:-------------------|:------------------|:----------------------:|:---------------|:---------------------------------------------------------|
-| `LogIntf-HTTP-Server`             | Server / 80        | HTTP              |    Yes (LAN / WLAN)    | Enabled        | None (`Server: Ruuvi Gateway` header; 302/401 gated)     |
-| `LogIntf-Cloud-HTTPS-Telemetry`   | Client / 443       | HTTPS             |   Yes (WAN Network)    | Enabled        | None (TLS Encrypted Payload)                             |
-| `LogIntf-Custom-HTTP-Telemetry`   | Client / Config    | HTTP/HTTPS        |  Yes (Local Network)   | Disabled       | None if HTTPS transport is selected                      |
-| `LogIntf-Custom-Stream-Telemetry` | Client / Config    | MQTT/MQTTS/WS/WSS |  Yes (Local Network)   | Disabled       | None if MQTTS/WSS transport is selected                  |
-| `LogIntf-Cloud-HTTPS-Status`      | Client / 443       | HTTPS             |   Yes (WAN Network)    | Enabled        | None (TLS Encrypted Payload)                             |
-| `LogIntf-FW-Update-Client`        | Client / 443       | HTTPS             |   Yes (WAN Network)    | Enabled        | None (RSA Signed Firmware Payload Validation)            |
-| `LogIntf-Time-NTP-Client`         | Client / 123       | NTP / UDP         |   Yes (WAN Network)    | Enabled        | None                                                     |
-| `LogIntf-Network-DHCP-Client`     | Client / 67, 68    | DHCP / UDP        |  Yes (Local Network)   | Enabled        | None (Exposes MAC and Hostname strings)                  |
-| `LogIntf-Hotspot-DHCP-Server`     | Server / 67, 68    | DHCP / UDP        | No (Local Media Only)  | Transient      | None                                                     |
-| `LogIntf-Network-DNS-Client`      | Client / 53        | DNS / UDP         |  Yes (Local Network)   | Enabled        | None (Reveals lookup destination domains)                |
-| `LogIntf-Hotspot-DNS-Server`      | Server / 53        | DNS / UDP         | No (Local Media Only)  | Transient      | None (Captive Portal structural redirection only)        |
-| `LogIntf-WiFi-WPS-Client`         | Client / Mgmt      | 802.11 / WPS      | No (Local Media Only)  | Transient      | None (Exposes transient device attributes)               |
-| `LogIntf-USB-UART-Log-Stream`     | Stream / Serial    | UART / Text       |  No (Local Port Only)  | Enabled        | Operational diagnostic traces only (No secrets)          |
-| `LogIntf-USB-Boot-Flasher`        | Server / ROM       | ROM Bootloader    |  No (Local Port Only)  | Enabled        | Full hardware flash memory control access                |
-| `LogIntf-Internal-SWD-Bus`        | Master-Target Link | SWD               |   No (Internal Only)   | Enabled        | Bare-metal access to nRF52 register and flash structures |
+| Interface ID                      | Type / Port                          | Protocol          | Remote Network Access? | Initial Status | Security Relevant Disclosed Info                         |
+|:----------------------------------|:-------------------------------------|:------------------|:----------------------:|:---------------|:---------------------------------------------------------|
+| `LogIntf-HTTP-Server`             | Server / 80                          | HTTP              |    Yes (LAN / WLAN)    | Enabled        | None (`Server: Ruuvi Gateway` header; 302/401 gated)     |
+| `LogIntf-mDNS-Responder`          | Server / 5353                        | mDNS / UDP        |    Yes (LAN / WLAN)    | Enabled        | Hostname and HTTP service type/port                      |
+| `LogIntf-Cloud-HTTPS-Telemetry`   | Client / 443                         | HTTPS             |   Yes (WAN Network)    | Enabled        | None (TLS Encrypted Payload)                             |
+| `LogIntf-Custom-HTTP-Telemetry`   | Client / Config                      | HTTP/HTTPS        |  Yes (Local Network)   | Disabled       | None if HTTPS transport is selected                      |
+| `LogIntf-Custom-Stream-Telemetry` | Client / Config                      | MQTT/MQTTS/WS/WSS |  Yes (Local Network)   | Disabled       | None if MQTTS/WSS transport is selected                  |
+| `LogIntf-Cloud-HTTPS-Status`      | Client / 443                         | HTTPS             |   Yes (WAN Network)    | Enabled        | None (TLS Encrypted Payload)                             |
+| `LogIntf-FW-Update-Client`        | Client / 443                         | HTTPS             |   Yes (WAN Network)    | Enabled        | None (RSA Signed Firmware Payload Validation)            |
+| `LogIntf-Time-NTP-Client`         | Client / dynamic source → server 123 | NTP / UDP         |   Yes (WAN Network)    | Enabled        | None                                                     |
+| `LogIntf-Network-DHCP-Client`     | Client / 67, 68                      | DHCP / UDP        |  Yes (Local Network)   | Enabled        | None (Exposes MAC and Hostname strings)                  |
+| `LogIntf-Hotspot-DHCP-Server`     | Server / 67, 68                      | DHCP / UDP        | No (Local Media Only)  | Transient      | None                                                     |
+| `LogIntf-Network-DNS-Client`      | Client / 53                          | DNS / UDP         |  Yes (Local Network)   | Enabled        | None (Reveals lookup destination domains)                |
+| `LogIntf-Hotspot-DNS-Server`      | Server / 53                          | DNS / UDP         | No (Local Media Only)  | Transient      | None (Captive Portal structural redirection only)        |
+| `LogIntf-WiFi-WPS-Client`         | Client / Mgmt                        | 802.11 / WPS      | No (Local Media Only)  | Transient      | None (Exposes transient device attributes)               |
+| `LogIntf-USB-UART-Log-Stream`     | Stream / Serial                      | UART / Text       |  No (Local Port Only)  | Enabled        | Operational diagnostic traces only (No secrets)          |
+| `LogIntf-USB-Boot-Flasher`        | Server / ROM                         | ROM Bootloader    |  No (Local Port Only)  | Enabled        | Full hardware flash memory control access                |
+| `LogIntf-Internal-SWD-Bus`        | Master-Target Link                   | SWD               |   No (Internal Only)   | Enabled        | Bare-metal access to nRF52 register and flash structures |
