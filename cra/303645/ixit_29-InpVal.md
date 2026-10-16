@@ -8,6 +8,49 @@ application boundaries to prevent memory corruption, injection exploits, or inva
 
 ## Table C.29: IXIT 29-InpVal (Data Input Validation)
 
+### **ID**: InpVal-Button-Timing-State-Validation
+
+#### Source
+
+* `UserIntf-Physical-Configure-Button`
+* `PhyIntf-Configure-Button`
+
+#### Description
+
+Physical user input via the tactile `CONFIGURE` push-button is handled through GPIO state-change
+events, a runtime restart timer, and a boot-time button-state sample. No timed debounce filter is
+implemented. Rejecting presses released within 50 ms is pending in
+[issue #1658](https://github.com/ruuvi/ruuvi.gateway_esp.c/issues/1658), milestone `v1.17.6`.
+
+* **Format and Structure Rules:** GPIO interrupt events are captured and serialized into firmware
+  signals handled by `reset_task_handle_sig_configure_button_event()`:
+  - *Short Press (within 2 s):* Conservative operator guidance for opening the hotspot without
+    reboot, not a two-second firmware threshold or a minimum-press filter. On release, the
+    background 5-second restart timer is canceled, active station links are dropped, and the
+    configuration hotspot is spawned without modifying stored parameters.
+  - *Reboot Hold (~5–6 s):* A 5-second software timer requests restart. If held until the timer
+    expires, the status LED extinguishes and the device requests a system restart
+    (`gateway_restart()`).
+  - *Boot-Held Factory Reset (~11 s total hold):* The early boot routine
+    `handle_reset_button_is_pressed_during_boot()` in `main_task_init()` executes partition erasure
+    (`ruuvi_nvs_erase()` and `gw_cfg_storage_deinit_erase_init()`) if the button is held at the
+    boot-time sample. For restart-only operation, use a **3 seconds window** after restart to
+    release the button and keep it released. The current check is reported at approximately 3600 ms;
+    an explicit minimum of 3000 ms is pending
+    in [issue #1657](https://github.com/ruuvi/ruuvi.gateway_esp.c/issues/1657), milestone `v1.17.6`.
+    Recovery takes approximately 500 ms, followed by the red 200 ms on/off completion signal. Button
+    release then triggers another restart into factory defaults.
+* **Handling Unexpected Data:** GPIO state tracking suppresses duplicate notifications of the same
+  state, but it does not reject short pulses or mechanical contact bounce. A brief pulse can
+  disconnect the current network and activate the hotspot. Release before the five-second restart
+  timer expires cancels that timer, including releases between two and five seconds; this is the
+  same release path as a shorter press. Near timer expiry, release and restart can race, so use the
+  two-second short-press guidance. After restart, a released button at the boot-time sample permits
+  normal boot without partition erasure. Once that sample selects recovery, release does not
+  cancel erasure. See [IXIT 25](ixit_25-DelFunc.md#initiation-and-interaction).
+
+---
+
 ### **ID**: InpVal-JSON-Schema-Validation
 
 #### Source
@@ -121,9 +164,10 @@ strict token validation filters.
 
 ## Summary Matrix for the Technical File
 
-| Validation ID                                     | Data Input Medium               | Evaluation Verification Method                                            | Action on Unexpected Input                                                                                                    |
-|:--------------------------------------------------|:--------------------------------|:--------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------|
-| **InpVal-JSON-Schema-Validation**                 | Local Web-UI Configuration      | Type-matching and key alignment schema checks                             | Drop input, retain parameters, and return HTTP 400.                                                                           |
-| **InpVal-BLE-Advertisement-Filtering**            | Wireless 2.4 GHz Air Interfaces | Transceiver Link-Layer CRC, PHY, and MAC Mask filters                     | Immediate packet drop by the nRF52811 radio sub-system.                                                                       |
-| **InpVal-Firmware-Binary-Signature-Verification** | Outbound Update Network Link    | Post-download `esp_image_verify` / Pre-initialization Embedded RSA checks | Terminate update sequence on download failure; trigger an automated partition rollback loop if post-reboot asset checks fail. |
-| **InpVal-M2M-Token-Validation**                   | Programmatic Local HTTP Queries | Direct alphanumeric string matching                                       | Terminate connection and return HTTP 401 Unauthorized.                                                                        |
+| Validation ID                                     | Data Input Medium               | Evaluation Verification Method                                            | Action on Unexpected Input                                                                                                                                     |
+|:--------------------------------------------------|:--------------------------------|:--------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **InpVal-Button-Timing-State-Validation**         | Physical `CONFIGURE` Button     | GPIO state qualification, 5 s restart timer, and boot-held line sampling  | No timed debounce; release cancels the runtime timer; release before the boot-time sample preserves settings; erasure cannot be canceled once recovery starts. |
+| **InpVal-JSON-Schema-Validation**                 | Local Web-UI Configuration      | Type-matching and key alignment schema checks                             | Drop input, retain parameters, and return HTTP 400 Bad Request.                                                                                                |
+| **InpVal-BLE-Advertisement-Filtering**            | Wireless 2.4 GHz Air Interfaces | Transceiver Link-Layer CRC, PHY, and MAC Mask filters                     | Immediate packet drop by the nRF52811 radio sub-system.                                                                                                        |
+| **InpVal-Firmware-Binary-Signature-Verification** | Outbound Update Network Link    | Post-download `esp_image_verify` / Pre-initialization Embedded RSA checks | Terminate update sequence on download failure; trigger an automated partition rollback loop if post-reboot asset checks fail.                                  |
+| **InpVal-M2M-Token-Validation**                   | Programmatic Local HTTP Queries | Direct alphanumeric string matching                                       | Terminate connection and return HTTP 401 Unauthorized.                                                                                                         |
