@@ -69,10 +69,14 @@ through network discovery tools that all active logical network interfaces are f
 * **Testing Methodology**: The test laboratory conducted comprehensive port scanning (
   `nmap -p 1-65535 -sV -sU`) and traffic capture sweeps across active Ethernet and Wi-Fi network
   interfaces during boot, setup, and operational phases.
-* **Evaluation**: Port scanning confirmed that the DUT exposes only standard Port 80 (HTTP server
-  handling Web-UI and REST API) and transient setup access points. No undocumented hidden
-  administrative ports, diagnostic backdoors, or unauthenticated control listeners were discovered.
-  All exposed listening sockets correspond precisely to declarations in `IXIT 28-LogIntf`.
+* **Evaluation**: The initialized DUT exposes the HTTP server on TCP Port 80 (Web-UI and REST API)
+  and the mDNS responder on UDP Port 5353 (hostname and HTTP service discovery). Transient setup
+  services are limited to the provisioning state. The outbound SNTP client uses a local UDP source
+  port dynamically assigned from 49152-65535 with a boot-randomized allocator; that port may
+  change after reboot or SNTP restart and can appear `open|filtered` in a UDP scan. It is not an
+  inbound NTP service (UDP/123 is the server destination). No undocumented hidden administrative
+  ports, diagnostic backdoors, or unauthenticated control listeners were discovered. Both
+  initialized responders correspond to declarations in `IXIT 28-LogIntf`.
 * **Verdict**: **PASS**
 
 ---
