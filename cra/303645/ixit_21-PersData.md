@@ -42,7 +42,8 @@ Maintained dynamically within temporary system runtime memory blocks (RAM) while
 active. Entries are automatically flushed from memory upon a link disconnect, DHCP lease expiration,
 system crash, or manual hardware power cycle. Manually configured static IP profiles are retained
 persistently inside the `ruuvi.json` configuration manifest within the `nvs` flash partition block
-until deleted or rewritten.
+until deleted or rewritten. Stored static IP parameters are completely cleared during a local
+hardware factory reset (`DelFunc-Hardware-Factory-Reset`).
 
 #### Processing Activities
 
@@ -69,10 +70,10 @@ configuration wizard.
 
 #### Withdrawing Consent
 
-The user can completely withdraw consent and terminate IP processing loops by disconnecting the
-physical network media or erasing station credentials via a 7-second hold of the physical
-`CONFIGURE` button (`DelFunc-Hardware-Factory-Reset`), which forces a complete low-level formatting
-block-erasure across the `nvs` flash partition.
+The user can terminate active IP routing by disconnecting the physical network media or erase saved
+static IP assignments and network credentials by executing a local hardware factory reset (
+`DelFunc-Hardware-Factory-Reset`) via the physical `CONFIGURE` button (~11 seconds hold elapsed
+time; confirmed by the status LED blinking red 200 ms on / 200 ms off).
 
 #### Storing Consent
 
@@ -137,9 +138,8 @@ credentials to bridge the gateway onto their local network.
 
 #### Withdrawing Consent
 
-The user can cease local MAC exposure instantly by disconnecting the physical network media or
-wiping stored network credentials via the hardware factory reset routine (
-`DelFunc-Hardware-Factory-Reset`).
+Ceased on the local network segment by disconnecting the physical Ethernet cable or erasing saved
+Wi-Fi station credentials via a local hardware factory reset (`DelFunc-Hardware-Factory-Reset`).
 
 #### Storing Consent
 
@@ -317,7 +317,7 @@ Alphanumeric parameters (passwords/bearer keys) reside within the standard non-v
 configurations file (`ruuvi.json` on the `nvs` partition). High-volume cryptographic assets, such as
 user x509 PEM certificates and companion private keys, are stored as separate allocation blocks on
 the expanded size NVS storage partition named `gw_cfg_def`. These items are held persistently until
-cleared via the Web-UI or erased completely during a hardware factory reset loop (
+cleared via the Web-UI or erased during a local hardware factory reset (
 `DelFunc-Hardware-Factory-Reset`).
 
 #### Processing Activities
@@ -343,9 +343,11 @@ into the device configuration profile.
 
 #### Withdrawing Consent
 
-The consumer can withdraw consent instantly by clearing the credential fields inside the Web-UI form
-or executing a physical hardware factory reset (`DelFunc-Hardware-Factory-Reset`) to format the NVS
-storage partition blocks.
+The user can stop using custom credentials by clearing the credential fields in the Web-UI
+settings dashboard and saving the configuration. This clears the current values only; previous
+values may remain in append-only NVS records. To erase retained credentials from flash, execute a
+local hardware factory reset (`DelFunc-Hardware-Factory-Reset`), which formats the `nvs` and
+`gw_cfg_def` partitions.
 
 #### Storing Consent
 

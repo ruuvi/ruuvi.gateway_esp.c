@@ -83,23 +83,24 @@ login credentials (`SecParam-LAN-WebUI-Credentials`) and the device network acce
   from the diagnostic console trace maps streaming across `LogIntf-USB-UART-Log-Stream`.
 * **Updates:** Modified on-demand by an authenticated administrator holding an active session
   context established through the LAN Web-UI panel.
-* **Decommissioning, Archival & Destruction:** Eradication of these parameters is achieved via a
-  local factory reset execution loop, triggered by pressing and holding the physical `CONFIGURE`
-  button for 7 seconds or longer. Because the underlying ESP-IDF NVS partition layer utilizes an
-  append-only transaction log structure for wear-leveling, standard configuration updates do not
-  instantly overwrite old physical flash sectors when saving changes. To guarantee total data
-  destruction, the 7-second hardware button press forces a low-level structural formatting
-  block-erasure sequence across both the `nvs` and `gw_cfg_def` flash partition blocks. This clears
-  all raw flash allocation cells and rolls back the interface to the baseline unique per-device
-  factory default state. No archival logs are kept.
+* **Decommissioning, Archival & Destruction:** Eradication of these parameters is achieved via the
+  local hardware factory reset functionality (`DelFunc-Hardware-Factory-Reset`). Triggered by
+  holding the physical `CONFIGURE` button through a reboot cycle until the status LED indicates
+  configuration erasure completion (~11 seconds total hold elapsed time; status LED blinking red 200
+  ms on / 200 ms off), the boot handler executes low-level erasure routines across both the `nvs`
+  and `gw_cfg_def` flash partition blocks (`ruuvi_nvs_erase()` and
+  `gw_cfg_storage_deinit_erase_init()`). This permanently removes saved network configurations,
+  custom administrator credentials, and custom keys, reverting the device to its unique
+  factory-default state. No archival records are kept on the DUT.
 * **Compromise Management:** If local credentials are compromised, an administrator can invalidate
-  all active session tokens by triggering a factory reset via the physical hardware button or
-  submitting a credential update payload via an authenticated session.
+  active credentials by triggering a hardware factory reset via the physical `CONFIGURE` button or
+  by authenticating into the Web-UI and submitting an updated password string to replace the stored
+  hash.
 
 #### Cross-Reference
 
-* Directly tracks and manages the parameters declared under `SecParam-LAN-WebUI-Credentials` and
-  `SecParam-WiFi-STA-Credentials`.
+* Directly tracks and manages the parameters declared under `SecParam-LAN-WebUI-Credentials`,
+  `SecParam-WiFi-STA-Credentials`, and `DelFunc-Hardware-Factory-Reset`.
 
 ---
 
@@ -126,17 +127,24 @@ encapsulated under `SecParam-LAN-Bearer-Tokens`.
   via complete token replacement, where a newly generated string overwrites the existing entry. If
   an entry is cleared and left empty, its corresponding API endpoint verification loop is
   deactivated.
-* **Decommissioning & Destruction:** Clearing a token field inside the Web-UI dashboard panel or
-  executing a hardware factory reset completely purges the string segment from non-volatile storage,
-  invalidating any downstream programmatic script loop attempting to access the endpoints.
+* **Decommissioning & Destruction:** Purging tokens from persistent storage can be executed
+  logically by clearing the respective token input fields within the Web-UI dashboard and saving
+  the configuration, or physically by performing a hardware factory reset (
+  `DelFunc-Hardware-Factory-Reset`) via the physical `CONFIGURE` button, which formats the
+  non-volatile `nvs` storage partition. Either method immediately invalidates downstream client
+  scripts attempting to access the local API endpoints. Clearing and saving fields updates the
+  active configuration only; previous token values may remain in append-only NVS records until
+  hardware factory reset formats the partition.
 * **Compromise Management:** Because these tokens are transmitted via standard HTTP `Authorization`
-  headers over Port 80, they are vulnerable to local network interception. In the event of
-  network-layer exposure, the administrator can invalidate the token by navigating to the advanced
-  configurations panel to regenerate or permanently wipe the exposed token fields.
+  headers over Port 80, they are vulnerable to local network interception if used across untrusted
+  networks. In the event of exposure, the administrator can invalidate the compromised token
+  immediately by navigating to the Web-UI to generate a replacement token or clear the token field
+  entirely.
 
 #### Cross-Reference
 
-* Directly tracks and manages the validation parameters declared under `SecParam-LAN-Bearer-Tokens`.
+* Directly tracks and manages the validation parameters declared under `SecParam-LAN-Bearer-Tokens`
+  and `DelFunc-Hardware-Factory-Reset`.
 
 ---
 
@@ -163,9 +171,9 @@ keys/certificates grouped under `SecParam-Remote-Config-Assets`,
   detailed in `SecParam-HMAC-Symmetric-Secrets`, the keys can be dynamically rotated at runtime by a
   verified receiving cloud server infrastructure through the ingestion of a high-entropy string
   passed inside the `Ruuvi-HMAC-KEY` inbound HTTPS response header field.
-* **Decommissioning & Destruction:** Completely wiped from flash storage cells during local
-  system-wide hardware factory reset cycles via a clean formatting of the NVS storage partition
-  blocks.
+* **Decommissioning & Destruction:** Completely wiped from persistent flash storage cells during a
+  hardware factory reset (`DelFunc-Hardware-Factory-Reset`), where the boot handler executes
+  structural formatting sweeps across both the `nvs` and `gw_cfg_def` flash partitions.
 * **Compromise Management:** Outbound connection structures use isolated mbedTLS context instances.
   If an endpoint credential leaks, updating the target secret inside the local gateway configuration
   invalidates the compromised token stream.
@@ -174,8 +182,8 @@ keys/certificates grouped under `SecParam-Remote-Config-Assets`,
 
 * Directly tracks and manages the cryptographic parameters declared under
   `SecParam-HMAC-Symmetric-Secrets`, `SecParam-Remote-Config-Assets`,
-  `SecParam-Custom-HTTP-Telemetry-Assets`, `SecParam-Custom-Stream-Telemetry-Assets`, and
-  `SecParam-System-Statistics-Assets`.
+  `SecParam-Custom-HTTP-Telemetry-Assets`, `SecParam-Custom-Stream-Telemetry-Assets`,
+  `SecParam-System-Statistics-Assets`, and `DelFunc-Hardware-Factory-Reset`.
 
 ---
 
@@ -214,10 +222,10 @@ of the physical nRF52811 co-processor sub-system.
 
 ## Summary Matrix for the Technical File
 
-| Management Process ID                 | Target Parameters Governed                                          | Primary Provisioning Method                                    | Destruction / Decommissioning Mechanism                                     | Associated Index ID                                                  |
-|:--------------------------------------|:--------------------------------------------------------------------|:---------------------------------------------------------------|:----------------------------------------------------------------------------|:---------------------------------------------------------------------|
-| `SecMgmt-Hardware-Silicon-Root`       | `SecParam-Hardware-DeviceID`                                        | Pre-programmed by Silicon Vendor (nRF52 FICR registers)        | Physical Component Destruction Only                                         | `SecParam-Hardware-DeviceID`                                         |
-| `SecMgmt-Local-Credentials`           | `SecParam-LAN-WebUI-Credentials`<br>`SecParam-WiFi-STA-Credentials` | MD5 Hashed Onboarding Setup / Manual Input                     | Local Factory Reset (Complete physical NVS partition formatting)            | `SecParam-LAN-WebUI-Credentials`<br>`SecParam-WiFi-STA-Credentials`  |
-| `SecMgmt-Programmatic-M2M-Tokens`     | `SecParam-LAN-Bearer-Tokens`                                        | Browser Web Crypto API / Direct M2M JSON Payload Configuration | UI Key Clearing / Local Factory Reset (Complete partition formatting)       | `SecParam-LAN-Bearer-Tokens`                                         |
-| `SecMgmt-Outbound-Assets-And-Secrets` | `SecParam-HMAC-Symmetric-Secrets`<br>and Remote Telemetry Assets    | Manual Web Entry / Dynamic Header Session Key Rotation         | Local Factory Reset (Complete physical NVS partition formatting)            | `SecParam-HMAC-Symmetric-Secrets`<br>`SecParam-Remote-Config-Assets` |
-| `SecMgmt-CoProcessor-Integrity`       | `SoftComp-nRF52FW` Firmware Stack Blocks                            | Boot-Time Automated SWD Dynamic RAM Stub Injection             | Automatic Host Overwrite / NVS Firmware Rollback Flash Partition formatting | `SoftComp-nRF52FW`<br>`SecComMech-CoProcessor-SWD-Validation`        |
+| Management Process ID                 | Target Parameters Governed                                          | Primary Provisioning Method                                    | Destruction / Decommissioning Mechanism                                                                                     | Associated Index ID                                                                                      |
+|:--------------------------------------|:--------------------------------------------------------------------|:---------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------|
+| `SecMgmt-Hardware-Silicon-Root`       | `SecParam-Hardware-DeviceID`                                        | Pre-programmed by Silicon Vendor (nRF52 FICR registers)        | Physical Component Destruction Only                                                                                         | `SecParam-Hardware-DeviceID`                                                                             |
+| `SecMgmt-Local-Credentials`           | `SecParam-LAN-WebUI-Credentials`<br>`SecParam-WiFi-STA-Credentials` | MD5 Hashed Onboarding Setup / Manual Input                     | Hardware Factory Reset (`DelFunc-Hardware-Factory-Reset`: `CONFIGURE` button held ~11 s, formatting `nvs` and `gw_cfg_def`) | `SecParam-LAN-WebUI-Credentials`<br>`SecParam-WiFi-STA-Credentials`<br>`DelFunc-Hardware-Factory-Reset`  |
+| `SecMgmt-Programmatic-M2M-Tokens`     | `SecParam-LAN-Bearer-Tokens`                                        | Browser Web Crypto API / Direct M2M JSON Payload Configuration | UI Key Clearing / Hardware Factory Reset (`DelFunc-Hardware-Factory-Reset`)                                                 | `SecParam-LAN-Bearer-Tokens`<br>`DelFunc-Hardware-Factory-Reset`                                         |
+| `SecMgmt-Outbound-Assets-And-Secrets` | `SecParam-HMAC-Symmetric-Secrets`<br>and Remote Telemetry Assets    | Manual Web Entry / Dynamic Header Session Key Rotation         | Hardware Factory Reset (`DelFunc-Hardware-Factory-Reset`: formatting `nvs` and `gw_cfg_def`)                                | `SecParam-HMAC-Symmetric-Secrets`<br>`SecParam-Remote-Config-Assets`<br>`DelFunc-Hardware-Factory-Reset` |
+| `SecMgmt-CoProcessor-Integrity`       | `SoftComp-nRF52FW` Firmware Stack Blocks                            | Boot-Time Automated SWD Dynamic RAM Stub Injection             | Automatic Host Overwrite / NVS Firmware Rollback Flash Partition formatting                                                 | `SoftComp-nRF52FW`<br>`SecComMech-CoProcessor-SWD-Validation`                                            |

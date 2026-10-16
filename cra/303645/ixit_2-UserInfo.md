@@ -118,19 +118,40 @@ deletion pathways are formally cataloged in the core user manuals and privacy fr
 
 * **Access Vector:** Permanent data cleanup mechanisms are documented across the following target
   endpoints:
+  * Technical Guidance: [Understand LEDs and configuration button][reset-guide], specifically
+    [Before you press CONFIGURE][reset-warning], [Choose the button action][reset-action],
+    [Interpret the status LED][reset-led], and [Validate the result][reset-validation].
   * Product User Documentation: https://docs.ruuvi.com/ruuvi-gateway-firmware/
   * Privacy Policy Eradication Portal: https://ruuvi.com/privacy/
 * **Scope:** The documentation instructs the user on:
-  * **Local Hardware Erasure:** How to execute a manual physical long-press of the `CONFIGURE`
-    button for 7 seconds or longer to trigger low-level formatting loops across the `nvs` and
-    `gw_cfg_def` partitions, completely wiping custom SSL certificates, keys, M2M tokens, and Wi-Fi
-    credentials.
-  * **API Token Deactivation:** How to manually purge authorization values inside the Web-UI to
-    instantly return HTTP 401 unauthenticated errors to client scripts.
-  * **Associated Cloud Deletion:** How to leverage the routing dashboard to terminate outbound
-    HTTP/MQTT pipelines, causing the gateway identifier to fall permanently offline within the
-    manufacturer’s cloud databases, and how to request formal profile erasure from remote backend
-    systems.
+  * **Local Hardware Erasure (`DelFunc-Hardware-Factory-Reset`):** Back up needed settings first.
+    Factory reset permanently erases saved local Gateway and network configurations, administrative
+    credentials, M2M API tokens, custom target URLs, and uploaded certificates/private keys; it does
+    not delete cloud accounts or data already transmitted to remote servers.\
+    The user presses and holds the physical `CONFIGURE` button continuously through the status LED
+    turning off and the Gateway initiating a restart (~5–6 seconds). The user maintains the button
+    press until the red status LED repeatedly turns on for 200 ms and off for 200 ms (a cadence
+    indicating that `ruuvi_nvs_erase()` and `gw_cfg_storage_deinit_erase_init()` completed across
+    the `nvs` and `gw_cfg_def` partitions, typically occurring approximately 11 seconds after the
+    initial press). Upon observing this confirmation pattern, the user releases the button,
+    triggering another restart. The default unauthenticated configuration hotspot
+    (`Configure Ruuvi Gateway XXXX`) opens after that restart.
+  * **API Token Deactivation:** How to manually clear authorization token fields within the Web-UI
+    settings dashboard to immediately invalidate client access and return HTTP 401 Unauthorized to
+    subsequent API requests. Saving empty fields clears the active values but does not format NVS;
+    previous values may remain in append-only records. Use hardware factory reset to erase retained
+    values from the configuration partitions.
+  * **Associated Cloud Deletion (`DelFunc-Service-Account-Deletion`):** How to leverage the routing
+    dashboard to terminate outbound telemetry streams, causing the gateway identifier to fall
+    permanently offline within cloud databases, and how to submit a formal profile and data
+    eradication request via the Ruuvi Cloud portal or Ruuvi Station application, confirmed via an
+    email authorization link.
+
+[reset-guide]: ../../docs/Ruuvi%20Gateway%20Advanced%20Guide/ruuvi-gateway-advanced-guide-md/02-access-network/012-2.5-understand-leds-and-configuration-button.md
+[reset-warning]: ../../docs/Ruuvi%20Gateway%20Advanced%20Guide/ruuvi-gateway-advanced-guide-md/02-access-network/012-2.5-understand-leds-and-configuration-button.md#before-you-press-configure
+[reset-action]: ../../docs/Ruuvi%20Gateway%20Advanced%20Guide/ruuvi-gateway-advanced-guide-md/02-access-network/012-2.5-understand-leds-and-configuration-button.md#choose-the-button-action
+[reset-led]: ../../docs/Ruuvi%20Gateway%20Advanced%20Guide/ruuvi-gateway-advanced-guide-md/02-access-network/012-2.5-understand-leds-and-configuration-button.md#interpret-the-status-led
+[reset-validation]: ../../docs/Ruuvi%20Gateway%20Advanced%20Guide/ruuvi-gateway-advanced-guide-md/02-access-network/012-2.5-understand-leds-and-configuration-button.md#validate-the-result
 
 ## Model Designation
 
@@ -183,12 +204,12 @@ and update capabilities, managed via secure dual-slot flash layouts (`ota_0` and
 
 ## Summary Matrix for the Technical File
 
-| Documentation Domain      | Primary Publication Vector  | User Access Interface / URL                                                                  | Compliance Verification Reference                          |
-|:--------------------------|:----------------------------|:---------------------------------------------------------------------------------------------|:-----------------------------------------------------------|
-| **Change Mechanisms**     | Online Document Portal      | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/access-settings-from-lan    | Hardening dashboard verification.                          |
-| **Sensors & Filtering**   | Online Document Portal      | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/bluetooth-scanning-settings | Radio constraint adjustments.                              |
-| **Secure Setup Rules**    | Setup Wizard Manual         | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/access-settings-from-lan    | Wizard execution workflow & physical environment guidance. |
-| **Data & Token Deletion** | Technical & Privacy Manuals | https://docs.ruuvi.com/ruuvi-gateway-firmware/                                               | Physical formatting and cloud deactivation.                |
-| **Model Labeling**        | Casing Enclosure Layout     | Underneath casing structure sticker label                                                    | Direct physical visual identification.                     |
-| **Support Promises**      | Lifecycle Index Page        | https://ruuvi.com/terms/lifecycle-promises/                                                  | Enforces 5-year security patch tracking.                   |
-| **Vulnerability Gating**  | Security Disclosure Page    | https://ruuvi.com/terms/vulnerability-policy/                                                | Standardized report coordination drop.                     |
+| Documentation Domain      | Primary Publication Vector         | User Access Interface / URL                                                                  | Compliance Verification Reference                                                                       |
+|:--------------------------|:-----------------------------------|:---------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------|
+| **Change Mechanisms**     | Online Document Portal             | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/access-settings-from-lan    | Hardening dashboard verification.                                                                       |
+| **Sensors & Filtering**   | Online Document Portal             | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/bluetooth-scanning-settings | Radio constraint adjustments.                                                                           |
+| **Secure Setup Rules**    | Setup Wizard Manual                | https://docs.ruuvi.com/ruuvi-gateway-firmware/gateway-html-pages/access-settings-from-lan    | Wizard execution workflow & physical environment guidance.                                              |
+| **Data & Token Deletion** | Technical Manual & Privacy Portals | [Local reset draft][reset-guide]; https://docs.ruuvi.com/ruuvi-gateway-firmware/             | Physical reset (~11 s hold, red 200 ms on/off LED feedback, release to continue booting) & cloud purge. |
+| **Model Labeling**        | Casing Enclosure Layout            | Underneath casing structure sticker label                                                    | Direct physical visual identification.                                                                  |
+| **Support Promises**      | Lifecycle Index Page               | https://ruuvi.com/terms/lifecycle-promises/                                                  | Enforces 5-year security patch tracking.                                                                |
+| **Vulnerability Gating**  | Security Disclosure Page           | https://ruuvi.com/terms/vulnerability-policy/                                                | Standardized report coordination drop.                                                                  |

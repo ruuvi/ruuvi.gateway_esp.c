@@ -43,7 +43,10 @@ The secure management processes described under `IXIT 14-SecMgmt` are fully esta
 includes strict lifecycle controls governing the storage of critical parameters within the
 `ruuvi.json` manifest file inside the `nvs` flash block, logical isolation of credentials from
 outbound query streams, and the execution of low-level structural formatting block-erasure routines
-across both the `nvs` and `gw_cfg_def` partitions upon a 7-second hardware reset button hold.
+(`ruuvi_nvs_erase()` and `gw_cfg_storage_deinit_erase_init()`) across both the `nvs` and
+`gw_cfg_def` partitions via the boot-held hardware reset sequence initiated by pressing and holding
+the physical `CONFIGURE` button through a reboot cycle until erasure completion is confirmed by the
+status LED blinking red 200 ms on / 200 ms off (typically ~11 seconds elapsed time).
 
 ### **Confirmation of Secure Development**: Yes
 
