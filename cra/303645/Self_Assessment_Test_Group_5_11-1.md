@@ -3,6 +3,24 @@
 Provision 5.11-1 — Status: **M**. Related IXIT: `IXIT 10-SecParam`, `IXIT 21-PersData`,
 `IXIT 25-DelFunc`.
 
+## Evidence status — 2026-09-28 automation follow-up
+
+The PASS verdicts and laboratory/dump statements below are the prior recorded assessment;
+the new standalone Unit A runner does not independently revalidate them. Its latest supplied
+terminal excerpt reported overall **ERROR**, including a remote-config fixture rejection and
+an RW write that changed `mqtt_prefix`. The fixture correction and explicit MQTT preservation
+workaround were subsequently verified offline; a corrected live PASS remains pending.
+See
+the [current task and live-run follow-up](tasks/task_5_11_1_2_a.md#reported-firmware-issue-and-live-run-follow-up).
+
+The supported runner is HYBRID: an operator opens the hotspot, changes the host network, and
+confirms the LED-completed factory reset. A real protected Wi-Fi LAN and authenticated target
+services supply credential-use evidence. Plain HTTP/MQTT checks and certificate storage flags
+do not establish HTTPS/mTLS handshake correctness. Verified default configuration and revoked
+credentials after recovery are functional observations, not a new partition-dump or forensic
+irrecoverability result. The recovered Unit A manifest is historical; Unit C needs a fresh
+verified seed. Do not treat this follow-up as new evidence for the group-wide PASS below.
+
 ---
 
 ## Test case 5.11-1-1 (conceptual)
