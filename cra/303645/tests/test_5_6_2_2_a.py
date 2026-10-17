@@ -16,6 +16,8 @@ import tempfile
 import time
 from dataclasses import dataclass, replace
 from datetime import datetime
+from html.parser import HTMLParser
+from http.cookies import SimpleCookie
 from pathlib import Path
 from typing import Any, BinaryIO, Callable
 from urllib.parse import ParseResult, urljoin, urlparse
@@ -92,8 +94,12 @@ RUNTIME_BACKTRACE_PATTERN: re.Pattern[str] = re.compile(
 COORDINATES_PATTERN: re.Pattern[str] = re.compile(
     r'(?is)["\']coordinates["\']\s*:\s*(["\'])((?:(?!\1).)+)\1'
 )
-DIAGNOSTIC_PATTERN: re.Pattern[str] = re.compile(r"(?i)\b(?:backtrace|stack trace|panic|abort\(\))\b")
+DIAGNOSTIC_PATTERN: re.Pattern[str] = re.compile(r"(?i)\b(?:(?:backtrace|stack trace|panic)\b|abort\(\))")
 BUILD_PATTERN: re.Pattern[str] = re.compile(r"(?i)\b(?:v?\d+\.\d+\.\d+(?:[-+][\w.]+)?|[0-9a-f]{40}|[0-9a-f]{7,}(?=\b)|esp-idf\s*[:/]?\s*v?\d+\.\d+)\b")
+PUBLIC_CACHE_CONTROL_PATTERN: re.Pattern[str] = re.compile(
+    r"(?i)\s*(?:(?:max-age|s-maxage|stale-while-revalidate|stale-if-error)\s*=\s*[0-9]+|"
+    r"public|private|no-cache|no-store|must-revalidate|proxy-revalidate|immutable|no-transform)\s*"
+)
 BEARER_PATTERN: re.Pattern[str] = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/-]{8,}")
 HISTORY_PATTERN: re.Pattern[str] = re.compile(r'(?i)["\'](?:history|sensor_data|ble_mac)["\']\s*:\s*(?:\[\s*\{|\[\s*["\']|\{\s*["\'])')
 WIFI_PASSWORD_PATTERN: re.Pattern[str] = re.compile(
@@ -118,6 +124,7 @@ class Observation:
     status: int
     public_header_fragments: tuple[tuple[str, str], ...] = ()
     challenge_problem: str | None = None
+    public_key_problem: str | None = None
 
 
 @dataclass(frozen=True)
@@ -395,6 +402,27 @@ def probes(static_path: str, unknown_path: str) -> tuple[Probe, ...]:
     return tuple(routes)
 
 
+class PublicHtmlText(HTMLParser):
+    """Collect rendered text without treating public JavaScript expressions as credentials."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.fragments: list[str] = []
+        self.hidden_element: str | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"script", "style"}:
+            self.hidden_element = tag
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == self.hidden_element:
+            self.hidden_element = None
+
+    def handle_data(self, data: str) -> None:
+        if self.hidden_element is None:
+            self.fragments.append(data)
+
+
 def scan_observation(
     observation: Observation, gw_id: str, default_username: str, public_base_url: str = "",
 ) -> tuple[DisclosureFinding, ...]:
@@ -433,6 +461,14 @@ def scan_observation(
             ):
                 # Only the verified redirect authority is public; retain path/query/fragment leaks.
                 scanned_content = content[len(public_base_url):]
+            if category == "build identifier" and (
+                (location.lower() == "header:content-length" and re.fullmatch(r"[0-9]+", content)) or
+                (location.lower() == "header:cache-control" and all(
+                    PUBLIC_CACHE_CONTROL_PATTERN.fullmatch(directive) for directive in content.split(",")
+                ))
+            ):
+                # Exempt only complete standard numeric metadata, never appended build/custom fields.
+                scanned_content = ""
             for hit in pattern.finditer(scanned_content):
                 if category == "bearer token" and location == "body":
                     candidate: str = hit.group(0).split()[-1]
@@ -448,6 +484,16 @@ def scan_observation(
         if location.startswith("header:"):
             bare_match: re.Match[str]
             for bare_match in HEADER_SECRET_FIELD_PATTERN.finditer(content):
+                findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                  location, "credential value", bare_match.group(0)))
+        if location == "body" and any(
+            name.lower() == "content-type" and value.split(";", 1)[0].strip().lower() == "text/html"
+            for name, value in observation.headers
+        ):
+            html_text: PublicHtmlText = PublicHtmlText()
+            html_text.feed(content)
+            html_text.close()
+            for bare_match in HEADER_SECRET_FIELD_PATTERN.finditer("".join(html_text.fragments)):
                 findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                                   location, "credential value", bare_match.group(0)))
         field_match: re.Match[str]
@@ -543,6 +589,7 @@ class FunctionalTest_5_6_2_2_a:
         session: requests.Session = self.gateway.new_session()
         public_fragments: list[tuple[str, str]] = []
         challenge_problem: str | None = None
+        public_key_problem: str | None = None
         try:
             response: requests.Response = self.gateway.request(
                 session, probe.method, probe.path, allow_redirects=False,
@@ -573,23 +620,27 @@ class FunctionalTest_5_6_2_2_a:
                              response.headers.get("Set-Cookie", "")):
                     public_fragments.append(("header:set-cookie", previous_url))
             public_key: str | None = response.headers.get(HttpHeader.RUUVI_ECDH_PUBLIC_KEY)
-            if public_key:
+            if public_key is not None:
                 try:
                     raw_key: bytes = base64.b64decode(public_key, validate=True)
-                    if len(raw_key) == 65 and raw_key[0] == 4:
-                        key: ECC.EccKey = ECC.construct(curve="P-256", point_x=int.from_bytes(raw_key[1:33], "big"),
-                                                       point_y=int.from_bytes(raw_key[33:], "big"))
-                        if not key.pointQ.is_point_at_infinity():
-                            public_fragments.append(("header:ruuvi-ecdh-pub-key", public_key))
+                    if len(raw_key) != 65 or raw_key[0] != 4:
+                        raise ValueError("unexpected uncompressed P-256 key encoding")
+                    key: ECC.EccKey = ECC.construct(curve="P-256", point_x=int.from_bytes(raw_key[1:33], "big"),
+                                                   point_y=int.from_bytes(raw_key[33:], "big"))
+                    if key.pointQ.is_point_at_infinity():
+                        raise ValueError("P-256 point at infinity")
+                    public_fragments.append(("header:ruuvi-ecdh-pub-key", public_key))
                 except (ValueError, TypeError):
-                    pass  # Invalid public-key text remains in the disclosure corpus.
+                    # Keep invalid text in the scan; report ERROR after preserving any disclosure findings.
+                    public_key_problem = "invalid gateway ECDH public key"
         finally:
             session.close()
         raw_version: int | None = getattr(response.raw, "version", None)
         version: str = "1.0" if raw_version == 10 else "1.1" if raw_version == 11 else "unknown"
         self.evidence.write("HTTP STATUS LINE", f"HTTP/{version} {response.status_code} {response.reason}")
         observation: Observation = Observation(probe, tuple(response.headers.items()), response.text,
-                                               response.status_code, tuple(public_fragments), challenge_problem)
+                                               response.status_code, tuple(public_fragments), challenge_problem,
+                                               public_key_problem)
         self.evidence.write("DISCLOSURE PROBE", observation)
         return observation
 
@@ -648,7 +699,14 @@ class FunctionalTest_5_6_2_2_a:
                              f"auth Location on {observation.probe.path}", headers.get("location"))
                 cookie: str = headers.get("set-cookie", "")
                 expected_cookie: bool = bool(observation.probe.previous_cookie)
-                self._assert("redirects and challenge", ("RUUVI_PREV_URL" in cookie.upper()) == expected_cookie,
+                parsed_cookie: SimpleCookie = SimpleCookie()
+                parsed_cookie.load(cookie)
+                previous_cookie: bool = "RUUVI_PREV_URL" in parsed_cookie
+                correct_cookie: bool = (
+                    previous_cookie and parsed_cookie["RUUVI_PREV_URL"].value == observation.probe.path
+                    if expected_cookie else not previous_cookie
+                )
+                self._assert("redirects and challenge", correct_cookie,
                              f"previous URL cookie on {observation.probe.path}", cookie)
                 self._assert("redirects and challenge", not observation.body.strip(),
                              f"empty redirect body on {observation.probe.path}", observation.body)
@@ -697,6 +755,10 @@ class FunctionalTest_5_6_2_2_a:
             self.evidence.write("DISCLOSURE FINDING", finding)
 
     def _public(self) -> None:
+        observation: Observation
+        for observation in self.observations:
+            if observation.public_key_problem is not None:
+                raise GatewayProtocolError(observation.public_key_problem)
         root: Observation = self.observations[0]
         asset: Observation = self.observations[1]
         self._assert("public metadata", root.status == 200 and asset.status == 200,
@@ -784,7 +846,9 @@ class FunctionalTest_5_6_2_2_a:
                 )
                 option_value: str
                 for _, option_value in observed.option_values:
-                    decoded: str = bytes.fromhex(option_value).decode("utf-8", errors="replace")
+                    raw_option: bytes = bytes.fromhex(option_value)
+                    decoded: str = raw_option.decode("utf-8", errors="replace")
+                    suspicious = suspicious or bytes.fromhex(self.config.gw_id.replace(":", "")) in raw_option
                     suspicious = suspicious or self.config.gw_id.casefold() in decoded.casefold()
                     suspicious = suspicious or any(pattern.search(decoded) for pattern in
                                                    (PEM_PATTERN, POINTER_PATTERN, DIAGNOSTIC_PATTERN, SECRET_FIELD_PATTERN,

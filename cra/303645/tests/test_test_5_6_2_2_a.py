@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import os
 import struct
@@ -294,13 +295,17 @@ class RunnerTests(unittest.TestCase):
 
     def test_dhcp_device_id_seed_in_allowed_option_fails(self) -> None:
         option: str
-        for option in ("01" + ETHERNET_MAC.replace(":", ""), CONFIG.gw_id.encode().hex()):
+        for option in ("01" + ETHERNET_MAC.replace(":", ""), CONFIG.gw_mac.replace(":", ""),
+                       CONFIG.gw_id.encode().hex(), CONFIG.gw_id.replace(":", ""),
+                       "01" + CONFIG.gw_id.replace(":", "")):
             with self.subTest(option=option):
                 self.setUp()
                 self.capture = replace(self.capture, hostname=DHCP_HOSTNAME,
                     option_values=((12, DHCP_HOSTNAME.encode().hex()), (61, option)))
                 result: RunResult = self._run()
-                expected: str = "FAIL" if option == CONFIG.gw_id.encode().hex() else "PASS"
+                expected: str = "PASS" if option in {
+                    "01" + ETHERNET_MAC.replace(":", ""), CONFIG.gw_mac.replace(":", ""),
+                } else "FAIL"
                 self.assertEqual(expected, result.verdict, self.messages)
                 self.assertEqual(expected, result.outcomes["DHCP capture"])
 
@@ -310,6 +315,90 @@ class RunnerTests(unittest.TestCase):
         result: RunResult = self._run()
         self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
         self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+
+    def test_unquoted_html_credentials_fail_without_scanning_javascript_expressions(self) -> None:
+        markup: str
+        expected: str
+        for markup, expected in (
+            ("<pre>mqtt_pass=abc</pre>", "FAIL"),
+            ("<pre>http_pass=a&amp;b</pre>", "FAIL"),
+            ("<script>mqtt_pass=config.mqtt_pass;</script>", "PASS"),
+            ("<script>document.form.mqtt_pass=config.mqtt_pass;</script>", "PASS"),
+            ("<style>.mqtt_pass=example</style>", "PASS"),
+        ):
+            with self.subTest(markup=markup):
+                self.setUp()
+                self.fake.changed_path = "/"
+                self.fake.changed_body = '<script src="/app.js"></script>' + markup
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_standalone_abort_diagnostics_fail(self) -> None:
+        diagnostic: str
+        for diagnostic in ("abort()", "abort() called", "panic", "backtrace"):
+            with self.subTest(diagnostic=diagnostic):
+                self.setUp()
+                self.fake.changed_path = GatewayApi.AUTH
+                self.fake.changed_header = ("X-Diagnostic", diagnostic)
+                result: RunResult = self._run()
+                self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+                self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+
+    def test_only_complete_standard_numeric_headers_are_public(self) -> None:
+        header: str
+        value: str
+        expected: str
+        for header, value, expected in (
+            ("Content-Length", "1234567", "PASS"),
+            ("Cache-Control", "max-age=31536000", "PASS"),
+            ("Cache-Control", "public, max-age=31536000, immutable", "PASS"),
+            ("Cache-Control", "max-age=31536000; build=v1.2.3", "FAIL"),
+            ("Cache-Control", "max-age=31536000, build=deadbeef", "FAIL"),
+            ("Content-Length", "1234567; build=deadbeef", "FAIL"),
+            ("X-Build", "31536000", "FAIL"),
+            ("Server", "Ruuvi Gateway 31536000", "FAIL"),
+        ):
+            with self.subTest(header=header, value=value):
+                self.setUp()
+                self.fake.changed_path = "/"
+                self.fake.changed_header = (header, value)
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_previous_url_cookie_requires_exact_name_and_requested_path(self) -> None:
+        cookie: str
+        expected: str
+        for cookie, expected in (
+            ("NOT_RUUVI_PREV_URL=/ruuvi.json", "FAIL"),
+            ("RUUVI_PREV_URL=", "FAIL"),
+            ("RUUVI_PREV_URL=/history", "FAIL"),
+            ("ruuvi_prev_url=/ruuvi.json", "FAIL"),
+            ("RUUVI_PREV_URL=/ruuvi.json; Path=/", "PASS"),
+        ):
+            with self.subTest(cookie=cookie):
+                self.setUp()
+                self.fake.changed_path = GatewayApi.CONFIG
+                self.fake.changed_header = ("Set-Cookie", cookie)
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["redirects and challenge"])
+
+    def test_malformed_optional_ecdh_keys_are_protocol_errors(self) -> None:
+        public_key: str
+        for public_key in ("", "!invalid!", "AAAA",
+                           base64.b64encode(bytes(65)).decode(),
+                           base64.b64encode(b"\x04" + bytes(64)).decode(),
+                           base64.b64encode(b"\x04" + b"\x01" * 64).decode()):
+            with self.subTest(public_key=public_key):
+                self.setUp()
+                self.fake.changed_path = GatewayApi.AUTH
+                self.fake.changed_header = ("Ruuvi-Ecdh-Pub-Key", public_key)
+                result: RunResult = self._run()
+                self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code), self.messages)
+                self.assertEqual("ERROR", result.outcomes["public metadata"])
+                self.assertIn("invalid gateway ECDH public key", self._log())
 
     def test_actual_history_fixture_in_public_asset_is_detected(self) -> None:
         fixture: Path = Path(__file__).resolve().parents[3] / "schemas/examples/history.json"
@@ -379,8 +468,9 @@ class RunnerTests(unittest.TestCase):
         self.fake.changed_path = GatewayApi.AUTH
         self.fake.changed_header = ("Ruuvi-Ecdh-Pub-Key", self.fake.server_public_b64 + "; build=v1.2.3")
         result = self._run()
-        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code), self.messages)
         self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+        self.assertEqual("ERROR", result.outcomes["public metadata"])
 
     def test_allowed_dhcp_options_still_scan_sensitive_contents(self) -> None:
         value: str
