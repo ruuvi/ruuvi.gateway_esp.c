@@ -112,7 +112,7 @@ class EncryptedGateway(DefaultAuthGateway):
             return FakeResponse(401, {})
         if call.path == GatewayApi.CONFIG and call.method == HttpMethod.POST:
             self.posts += 1
-            if not session.authorized:
+            if not self._is_session_authorized(session, {HttpHeader.COOKIE: call.cookie or ""}):
                 return FakeResponse(401, {})
             if self.pending_body is None:
                 raise AssertionError("missing decoded coordinates")
@@ -246,6 +246,37 @@ class UnitCImplementationTests(unittest.TestCase):
         self.assertIn("TLS not claimed", self.log)
         self.assertIn("EXCEPTION TYPE", self.log)
         self.assertEqual("Overall verdict: ERROR", self.output[-1])
+
+    def test_config_writes_reject_missing_and_cross_session_cookies(self) -> None:
+        encrypted: bool
+        cookie_kind: str
+        for encrypted in (True, False):
+            for cookie_kind in ("missing", "cross-session"):
+                with self.subTest(encrypted=encrypted, cookie=cookie_kind):
+                    self.gateway = EncryptedGateway()
+                    test: runner.FunctionalTest_5_5_4_2_c = runner.FunctionalTest_5_5_4_2_c(
+                        CONFIG, EvidenceLog(Path("memory"), io.StringIO(), NOW), self.gateway.session,
+                        lambda size: bytes(range(size)), lambda **kwargs: ECC.construct(curve="P-256", d=1),
+                        output=lambda message: None,
+                    )
+                    auth: runner.InteractiveAuthResult = test._login()
+                    other: runner.InteractiveAuthResult = test._login()
+                    auth.session.cookies.clear()
+                    headers: dict[str, str] = {HttpHeader.RUUVI_ECDH_ENCRYPTED: "true"} if encrypted else {}
+                    cookie: str | None = None
+                    if cookie_kind == "cross-session":
+                        headers[HttpHeader.COOKIE] = f"RUUVISESSION={other.cookie}"
+                        cookie = headers[HttpHeader.COOKIE]
+                    response: requests.Response = test.gateway.request(
+                        auth.session, HttpMethod.POST, GatewayApi.CONFIG, headers=headers,
+                        json_body=MUTATION if encrypted else {"coordinates": "changed"},
+                    )
+                    self.assertEqual(401, response.status_code)
+                    self.assertEqual(cookie, self.gateway.calls[-1].cookie)
+                    self.assertTrue(cast(FakeSession, auth.session).authorized)
+                    self.assertEqual(self.gateway.original, self.gateway.state)
+                    self.assertEqual([], self.gateway.plain_bodies)
+                    self.assertEqual(0, self.gateway.restore_attempts)
 
     def test_baseline_validator_json_value_and_type_matrix(self) -> None:
         defaults: dict[str, Any] = default_config_values(AUTHENTICATION_DEFAULT_FIELDS)
