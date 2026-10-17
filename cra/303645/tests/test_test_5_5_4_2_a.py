@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import requests
 from Crypto.PublicKey import ECC
@@ -255,6 +255,9 @@ class DenialRunnerTests(unittest.TestCase):
         bearers: list[str | None] = [call.bearer_token for call in self.gateway.calls if call.scheme == "Bearer"]
         self.assertEqual(bearers, [RO, RW, RO, RW, RO, RW])
         self.assertEqual(set(result.outcomes.values()), {"PASS"})
+        self.assertEqual(result.outcomes["AuthMech-LAN-WebUI-Default: unauthenticated-denial check"], "PASS")
+        self.assertNotIn("AuthMech-LAN-WebUI-Unauthenticated", result.outcomes)
+        self.assertIn("AuthMech-LAN-WebUI-Default: unauthenticated-denial check", self.log)
         self.assert_keys_cleared()
         self.assertIn("Self-assessment claims 403 for RO-on-write; firmware expects 401; observed 401", self.log)
         status: int
@@ -608,6 +611,61 @@ class DenialRunnerTests(unittest.TestCase):
         self.assert_keys_cleared()
         if security_failure:
             self.assertEqual(result.outcomes[runner.INSUFFICIENT], "FAIL")
+
+    def test_evidence_creation_failure_returns_setup_error_without_dut_access(self) -> None:
+        persistent: bool
+        for persistent in (False, True):
+            with self.subTest(persistent_output_failure=persistent):
+                self.output.clear()
+
+                def output(message: str, fail: bool = persistent) -> None:
+                    if fail:
+                        raise OSError("secret terminal failure")
+                    self.output.append(message)
+
+                finish: MagicMock
+                with patch.object(runner.EvidenceLog, "create", side_effect=OSError("secret log path")), patch.object(
+                    runner.EvidenceLog, "finish",
+                ) as finish:
+                    result: RunResult = runner.execute_test_5_5_4_2_a(
+                        self.work, self.gateway.session, FixedRandom(), fixed_ecc, fixed_now, output,
+                    )
+                self.assertEqual((result.exit_code, result.verdict, result.outcomes[runner.SETUP]), (2, "ERROR", "ERROR"))
+                finish.assert_not_called()
+                self.assertEqual(self.gateway.calls, [])
+                self.assertEqual(set(result.outcomes.values()), {"ERROR", "NOT RUN"})
+                if not persistent:
+                    self.assertIn("Setup ERROR — OSError; evidence log could not be created", self.output)
+                    self.assertEqual(self.output[-1], "Overall verdict: ERROR")
+                    self.assertNotIn("secret log path", "\n".join(self.output))
+
+    def test_terminal_failure_returns_error_and_preserves_error_evidence(self) -> None:
+        checkpoint: str
+        for checkpoint in ("Open log file:", "Overall verdict:"):
+            with self.subTest(checkpoint=checkpoint):
+                self.gateway = DenialGateway()
+                failed: bool = False
+                self.output.clear()
+
+                def output(message: str, prefix: str = checkpoint) -> None:
+                    nonlocal failed
+                    if message.startswith(prefix) and not failed:
+                        failed = True
+                        raise OSError("broken output")
+                    self.output.append(message)
+
+                result: RunResult = runner.execute_test_5_5_4_2_a(
+                    self.work, self.gateway.session, FixedRandom(), fixed_ecc, fixed_now, output,
+                )
+                self.assertEqual((result.exit_code, result.verdict), (2, "ERROR"))
+                self.assertEqual(self.output[-1], "Overall verdict: ERROR")
+                logs: list[Path] = list((self.work / "logs").glob("*.log"))
+                self.assertTrue(logs)
+                self.assertTrue(all("OVERALL VERDICT: ERROR" in path.read_text(encoding="utf-8") for path in logs))
+                if checkpoint == "Open log file:":
+                    self.assertEqual(self.gateway.calls, [])
+                else:
+                    self.assert_keys_cleared()
 
     def test_initial_evidence_write_failure_returns_error_and_attempts_finalization(self) -> None:
         label: str

@@ -39,7 +39,7 @@ from lib.models import DutConfig, ProgressReporter, RunResult
 
 TEST_ID: str = "ETSI EN 303 645 / ETSI TS 103 701 test case 5.5-4-2, Test Unit a"
 SETUP: str = "factory-default setup"
-UNAUTHENTICATED: str = AuthMech.LAN_WEBUI_UNAUTHENTICATED
+UNAUTHENTICATED: str = f"{AuthMech.LAN_WEBUI_DEFAULT}: unauthenticated-denial check"
 INVALID: str = "invalid-credential denial"
 PREPARED: str = "temporary-key setup"
 INSUFFICIENT: str = AuthMech.M2M_API_BEARER_RO
@@ -494,32 +494,39 @@ def execute_test_5_5_4_2_a(
     output: Callable[[str], None] = print,
 ) -> RunResult:
     work_dir = Path.cwd() if work_dir is None else work_dir
-    log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_5_4_2_a", now)
+    log: EvidenceLog | None = None
 
     def progress_output(message: str) -> None:
         output(message)
-        log.write_line(message)
+        if log is not None:
+            log.write_line(message)
 
     progress: ProgressReporter = ProgressReporter(progress_output, TOTAL_STEPS)
     result: RunResult = RunResult(2, "ERROR", {check: "NOT RUN" for check in CHECKS}, set())
     try:
-        output(f"Open log file: {log.path}")
-        log.write("TEST CASE AND UNIT", TEST_ID)
-        log.write("UTC START", log.started_at.isoformat())
+        created_log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_5_4_2_a", now)
+        log = created_log
+        output(f"Open log file: {created_log.path}")
+        created_log.write("TEST CASE AND UNIT", TEST_ID)
+        created_log.write("UTC START", created_log.started_at.isoformat())
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(work_dir / ".env")
         result = FunctionalTest_5_5_4_2_a(
-            config, log, session_factory, random_bytes, ecc_generate, progress.step, output,
+            config, created_log, session_factory, random_bytes, ecc_generate, progress.step, output,
         ).run()
     except Exception as error:  # noqa: BLE001 - Setup failures return ERROR and still finalize evidence.
         error: Exception
         result.outcomes[SETUP] = "ERROR"
-        setup_message: str = f"Setup ERROR — {type(error).__name__}; see evidence for details"
+        detail: str = "see evidence for details" if log is not None else "evidence log could not be created"
+        setup_message: str = f"Setup ERROR — {type(error).__name__}; {detail}"
+        reports: list[Callable[[], None]] = [partial(output, setup_message)]
+        if log is not None:
+            reports.extend((
+                partial(log.exception, error), partial(log.write, "FINAL RESULTS", result.outcomes),
+                partial(log.write_line, setup_message),
+            ))
         report: Callable[[], None]
-        for report in (
-            partial(log.exception, error), partial(log.write, "FINAL RESULTS", result.outcomes),
-            partial(output, setup_message), partial(log.write_line, setup_message),
-        ):
+        for report in reports:
             try:
                 report()
             except Exception:  # noqa: BLE001 - Failed reporting must preserve ERROR and log finalization.
@@ -530,11 +537,22 @@ def execute_test_5_5_4_2_a(
                 progress_output(result.recovery_message)
         except Exception:  # noqa: BLE001 - Failed terminal evidence cannot discard the recovery result.
             result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
+        reported_verdict: str | None = None
         try:
-            log.finish(result.verdict, now)
+            output(f"Overall verdict: {result.verdict}")
+            reported_verdict = result.verdict
+        except Exception:  # noqa: BLE001 - Broken terminal output must retain infrastructure ERROR exit status.
+            result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
+        try:
+            if log is not None:
+                log.finish(result.verdict, now)
         except Exception:  # noqa: BLE001 - Full-disk/flush failures must return ERROR after recovery.
             result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
-    output(f"Overall verdict: {result.verdict}")
+    if reported_verdict != result.verdict:
+        try:
+            output(f"Overall verdict: {result.verdict}")
+        except Exception:  # noqa: BLE001 - Best-effort verdict reporting cannot escape ERROR classification.
+            result.exit_code = 2
     return result
 
 
