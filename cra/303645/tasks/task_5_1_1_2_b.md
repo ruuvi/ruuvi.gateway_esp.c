@@ -1,14 +1,20 @@
 # Task: Automate ETSI Test Case 5.1-1-2, Unit B
 
+**MAC identity for this task:** `.env` `gw_mac` is the nRF52 identity MAC checked against
+authenticated `/ruuvi.json`; it is not the ESP32 Ethernet or Wi-Fi MAC, nor any future ESP32
+Bluetooth MAC. For link-layer observations, obtain the active interface MAC from the verified DUT IP
+and an on-link ARP/neighbor entry or equivalent trusted context; do not filter frames on `.env`
+`gw_mac`. See [DUT configuration](../tests/README.md#dut-configuration).
+
 ## Mandatory factory-default precondition
 
 Before test-specific probes, authenticate and fetch `GET /ruuvi.json`, then use the shared
 `lib.config` helper to compare `lan_auth_type`, `lan_auth_user`, `lan_auth_api_key_use`, and
-`lan_auth_api_key_rw_use` directly with `gw_cfg_default/gw_cfg_default_gen_ui.json`. The generated file
-already matches the public UI/API representation; do not derive it from the raw saved configuration or
-handle hidden passwords or keys. Any missing, wrongly typed, or non-default value is setup ERROR:
-print the shared CONFIGURE-button factory-reset instruction and stop without changing the DUT to
-manufacture a baseline.
+`lan_auth_api_key_rw_use` directly with `gw_cfg_default/gw_cfg_default_gen_ui.json`. The generated
+file already matches the public UI/API representation; do not derive it from the raw saved
+configuration or handle hidden passwords or keys. Any missing, wrongly typed, or non-default value
+is setup ERROR: print the shared CONFIGURE-button factory-reset instruction and stop without
+changing the DUT to manufacture a baseline.
 
 ## Review regression requirements
 
@@ -17,8 +23,8 @@ implementation tests. These requirements qualify the factory-default preconditio
 
 - Catch Basic/Digest `GatewayAuthenticationModeError` and mark failed default login as setup ERROR
   with the shared recovery message in evidence and terminal output. Once configuration is available,
-  validate its MAC before default fields; wrong, malformed, or absent identity must not trigger reset
-  advice for a non-default baseline. Do not manufacture defaults by changing the DUT.
+  validate its MAC before default fields; wrong, malformed, or absent identity must not trigger
+  reset advice for a non-default baseline. Do not manufacture defaults by changing the DUT.
 - Complete safer probes across all schemes before potentially mutating probes within the same
   prepared state; include positive reads where applicable. Abort on unexpected negative success,
   while preserving mandatory restoration. Assert exact ordered method/path/scheme/body/session
@@ -31,9 +37,9 @@ implementation tests. These requirements qualify the factory-default preconditio
   completed mechanisms when a later one fails; never leave a failed mechanism PASS or NOT RUN.
   Provisioning, read-back, and required login controls must all classify setup exceptions as ERROR.
   Retain new and previous recovery credentials across partially applied changes.
-- Use `FACTORY_RESET_MESSAGE`; the reset completion condition is red LED 200 ms on/200 ms off
-  after boot-time erasure. Approximately eleven seconds is observed elapsed time, not a threshold.
-  Verify recovery advice against both restart and erasure paths.
+- Use `FACTORY_RESET_MESSAGE`; the reset completion condition is red LED 200 ms on/200 ms off after
+  boot-time erasure. Approximately eleven seconds is observed elapsed time, not a threshold. Verify
+  recovery advice against both restart and erasure paths.
 - Check referenced documents and predecessor scripts exist before changing links. Shared-library
   tests belong only in `test_lib.py`; case tests cover integration. Run Python 3.8 host discovery,
   required library coverage for shared changes, whole-subtree Ruff before/after, and the mandatory
@@ -41,8 +47,8 @@ implementation tests. These requirements qualify the factory-default preconditio
 
 ## Objective
 
-Create a Python functional test for **ETSI EN 303 645 / ETSI TS 103 701 test case 5.1-1-2,
-Test Unit B: Requirement to Set User-Defined Passwords**.
+Create a Python functional test for **ETSI EN 303 645 / ETSI TS 103 701 test case 5.1-1-2, Test Unit
+B: Requirement to Set User-Defined Passwords**.
 
 The test must run against a physical Ruuvi Gateway over its LAN HTTP interface and verify that all
 user-defined authentication mechanisms remain unusable until the corresponding secret is configured.
@@ -56,12 +62,13 @@ but they do not replace the physical-gateway run or constitute compliance eviden
 
 1. Create `cra/303645/tests/test_5_1_1_2_b.py`, compatible with Python 3.8.
 2. Reuse the existing modules under `cra/303645/tests/lib/`. Extend them only when functionality is
-   genuinely reusable by multiple functional tests; do not copy shared behavior into the test script.
+   genuinely reusable by multiple functional tests; do not copy shared behavior into the test
+   script.
 3. Add dependency declarations or brief usage documentation under `cra/303645/tests/` only when
    required. Reuse `requests~=2.33.0` and `pycryptodome~=3.21.0` from
    `ruuvi.gwui.html/scripts/requirements.txt` where applicable.
-4. Add deterministic host-side unit tests for the Python implementation. They must mock HTTP and must
-   be clearly described as implementation tests, not ETSI functional-test evidence.
+4. Add deterministic host-side unit tests for the Python implementation. They must mock HTTP and
+   must be clearly described as implementation tests, not ETSI functional-test evidence.
 
 Do not modify firmware behavior or the self-assessment source documents.
 
@@ -72,34 +79,33 @@ aggregation. Use the shared modules under [`tests/lib/`](../tests/lib/README.md)
 
 - [`gateway.py`](../tests/lib/gateway.py): `GatewayClient`, `GatewayApi`, `AuthMech`,
   `GatewayCfgDesc`, and `GatewayCfgLanAuthType`;
-- [`http_api.py`](../tests/lib/http_api.py): `API_INVENTORY`, `EXPECTED_API_INVENTORY`,
-  `ApiRoute`, `HttpMethod`, `HttpStatus`, `HttpHeader`, and `HttpAuthScheme`;
+- [`http_api.py`](../tests/lib/http_api.py): `API_INVENTORY`, `EXPECTED_API_INVENTORY`, `ApiRoute`,
+  `HttpMethod`, `HttpStatus`, `HttpHeader`, and `HttpAuthScheme`;
 - [`config.py`](../tests/lib/config.py): strict `.env` loading and validation;
 - [`evidence.py`](../tests/lib/evidence.py): exclusive evidence-log creation, structured records,
   wire request/response logging, exceptions, and final timestamps;
-- [`models.py`](../tests/lib/models.py) and [`errors.py`](../tests/lib/errors.py): DUT/result/progress
-  models and shared error classification.
+- [`models.py`](../tests/lib/models.py) and [`errors.py`](../tests/lib/errors.py):
+  DUT/result/progress models and shared error classification.
 
 Authentication code must use `GatewayClient`. In particular, use `authenticate_interactive()` for a
-complete Ruuvi login, `response_json()` for checked JSON decoding, `authorization_header_basic()` and
-`authorization_header_digest()` for Authorization values, and `new_session()`/`request()` for logged
-HTTP operations. Do not reimplement ECDH exchange, challenge parsing, cookie handling, HA1/password
-response calculation, Basic/Digest formatting, request logging, or transport-error translation in the
-test script.
+complete Ruuvi login, `response_json()` for checked JSON decoding, `authorization_header_basic()`
+and `authorization_header_digest()` for Authorization values, and `new_session()`/`request()` for
+logged HTTP operations. Do not reimplement ECDH exchange, challenge parsing, cookie handling,
+HA1/password response calculation, Basic/Digest formatting, request logging, or transport-error
+translation in the test script.
 
 ## Normative scope
 
-The source is
-[`Self_Assessment_Test_Group_5_1-1.md`](../Self_Assessment_Test_Group_5_1-1.md), lines 51-68.
-Unit B covers these IXIT mechanisms:
+The source is [`Self_Assessment_Test_Group_5_1-1.md`](../Self_Assessment_Test_Group_5_1-1.md), lines
+51-68. Unit B covers these IXIT mechanisms:
 
-| IXIT mechanism | Required unconfigured-state behavior |
-|:---------------|:-------------------------------------|
+| IXIT mechanism                    | Required unconfigured-state behavior                                                                 |
+| :-------------------------------- | :--------------------------------------------------------------------------------------------------- |
 | `AuthMech-LAN-WebUI-User-Defined` | Custom Ruuvi interactive authentication is not active until a custom username/password is committed. |
-| `AuthMech-LAN-WebUI-Basic` | HTTP Basic authentication is not active until explicitly selected and configured. |
-| `AuthMech-LAN-WebUI-Digest` | HTTP Digest authentication is not active until explicitly selected and configured. |
-| `AuthMech-M2M-API-Bearer-RO` | The read-only API key is empty/disabled and cannot authorize any read API. |
-| `AuthMech-M2M-API-Bearer-RW` | The read/write API key is empty/disabled and cannot authorize any read/write API. |
+| `AuthMech-LAN-WebUI-Basic`        | HTTP Basic authentication is not active until explicitly selected and configured.                    |
+| `AuthMech-LAN-WebUI-Digest`       | HTTP Digest authentication is not active until explicitly selected and configured.                   |
+| `AuthMech-M2M-API-Bearer-RO`      | The read-only API key is empty/disabled and cannot authorize any read API.                           |
+| `AuthMech-M2M-API-Bearer-RW`      | The read/write API key is empty/disabled and cannot authorize any read/write API.                    |
 
 See [`ixit_1-AuthMech.md`](../ixit_1-AuthMech.md), lines 119-240 and 321-409.
 
@@ -115,8 +121,8 @@ cd cra/303645/tests
 .venv/bin/python test_5_1_1_2_b.py
 ```
 
-Load the DUT configuration with `load_dut_config()` from `.env` in the current working directory. Any
-missing, malformed, duplicate, or unknown field is an invalid-setup ERROR.
+Load the DUT configuration with `load_dut_config()` from `.env` in the current working directory.
+Any missing, malformed, duplicate, or unknown field is an invalid-setup ERROR.
 
 `.env` format:
 
@@ -129,7 +135,7 @@ gw_hostname=ruuvigateway9c2c.local
 Configuration semantics:
 
 - `gw_id` is the gateway's default password.
-- `gw_mac` is the expected six-octet gateway MAC address.
+- `gw_mac` is the expected six-octet nRF52 identity MAC address.
 - `gw_hostname` is the LAN hostname or IP address, without a URL scheme.
 - The administrative username is always `Admin` and is not configurable.
 
@@ -137,8 +143,8 @@ The configuration files contain credentials and must not be committed.
 
 ## Evidence log
 
-Create the log through `EvidenceLog.create()`. Every invocation, including configuration or connection
-failures, must create:
+Create the log through `EvidenceLog.create()`. Every invocation, including configuration or
+connection failures, must create:
 
 ```text
 logs/test_5_1_1_2_b_<UTC-date-time>.log
@@ -157,9 +163,10 @@ The log must contain:
 - exception type and traceback for errors.
 
 Secrets, cookies, authorization headers, hashes, ECDH material, and full response bodies **may be
-included in this local evidence log**. Do not print those details to the terminal. Print the log path
-once as `Open log file: <path>`, report long-running phases as `[Step N out of M] <description>`, and
-keep terminal results concise. The log directory must remain ignored by Git.
+included in this local evidence log**. Do not print those details to the terminal. Print the log
+path once as `Open log file: <path>`, report long-running phases as
+`[Step N out of M] <description>`, and keep terminal results concise. The log directory must remain
+ignored by Git.
 
 ## DUT preconditions and safety
 
@@ -178,8 +185,9 @@ regression could allow a nominally rejected request to reach a destructive handl
 
 - use a disposable lab configuration and preserve any required backup before running;
 - issue dangerous POST/DELETE routes last;
-- enforce that ordering across all schemes: finish all interactive and bearer reads and fresh-session
-  `/auth` probes before any non-`/auth` POST/DELETE, then authenticate for final verification;
+- enforce that ordering across all schemes: finish all interactive and bearer reads and
+  fresh-session `/auth` probes before any non-`/auth` POST/DELETE, then authenticate for final
+  verification;
 - stop further probes immediately after any unexpected authorization success;
 - use empty or deliberately invalid bodies/parameters where authentication is evaluated first;
 - after the matrix or an aborted probe, authenticate normally and verify the baseline configuration
@@ -193,27 +201,28 @@ ERROR, not PASS, FAIL, or SKIP.
 
 Use `GatewayClient.authenticate_interactive()` for the valid default login and invalid random
 interactive login. Assert the returned challenge response, parsed authentication payload, and login
-response; do not reproduce the underlying P-256 ECDH, `x-ruuvi-interactive`, cookie, HA1, or password
-response implementation.
+response; do not reproduce the underlying P-256 ECDH, `x-ruuvi-interactive`, cookie, HA1, or
+password response implementation.
 
-Use `GatewayClient.authorization_header_basic()` and
-`GatewayClient.authorization_header_digest()` for negative Basic and Digest probes. Use the shared
-gateway/configuration/HTTP descriptor classes at every call site instead of raw paths, field names,
-authentication mechanism IDs, methods, headers, schemes, or status codes.
+Use `GatewayClient.authorization_header_basic()` and `GatewayClient.authorization_header_digest()`
+for negative Basic and Digest probes. Use the shared gateway/configuration/HTTP descriptor classes
+at every call site instead of raw paths, field names, authentication mechanism IDs, methods,
+headers, schemes, or status codes.
 
 ## Canonical HTTP API inventory
 
-Iterate over `API_INVENTORY` from `tests/lib/http_api.py`; do not declare a private copy in the test.
-[`docs/http_api.md`](../../../docs/http_api.md) remains authoritative for behavior. Assert that the
-ordered inventory contains 26 unique routes and equals `EXPECTED_API_INVENTORY`. Static asset
-fallback, captive-portal redirects, unknown-route fallbacks, and simulator-only routes are not APIs.
+Iterate over `API_INVENTORY` from `tests/lib/http_api.py`; do not declare a private copy in the
+test. [`docs/http_api.md`](../../../docs/http_api.md) remains authoritative for behavior. Assert
+that the ordered inventory contains 26 unique routes and equals `EXPECTED_API_INVENTORY`. Static
+asset fallback, captive-portal redirects, unknown-route fallbacks, and simulator-only routes are not
+APIs.
 
 ## Procedure
 
 ### 1. Load configuration and open the evidence log
 
-Load and validate the current-directory environment file, create the log, and record the test identity
-and configuration. A parsing failure is overall ERROR with exit code 2.
+Load and validate the current-directory environment file, create the log, and record the test
+identity and configuration. A parsing failure is overall ERROR with exit code 2.
 
 ### 2. Authenticate and validate the baseline
 
@@ -246,8 +255,9 @@ Use fresh sessions without the authorized baseline cookie:
 4. Expected denial behavior:
    - protected GET APIs: `302`, `401`, or `403`, but never `2xx`; in default mode the firmware
      normally returns `302`, including for `/ap.json` and `/status.json` (those two only omit the
-     previous-URL cookie);
-     allow 404 only for hotspot-only `GET /info.json` on LAN with missing/Basic/Digest credentials;
+     previous-URL cookie). `GET /info.json` also returns `302` before dispatch for
+     missing/Basic/Digest credentials without an authorized cookie. Its hotspot-only `404` on LAN
+     occurs after authorization succeeds and must fail these negative probes;
    - all protected POST and DELETE APIs: `401` or `403`, but never `2xx`.
 5. `GET /auth` must not advertise Basic or Digest. Exercise `POST /auth` through the failed random
    interactive login above. Exercise `DELETE /auth` without an authorized session and require `401`.
@@ -260,14 +270,13 @@ mandatory final verification phase.
 Generate a fresh cryptographically random bearer token for each request. Never use `gw_id` as a
 bearer token.
 
-1. Probe every one of the 26 method/path combinations with
-   `Authorization: Bearer <random-token>`.
+1. Probe every one of the 26 method/path combinations with `Authorization: Bearer <random-token>`.
 2. Use no query string and the least-operative request body:
    - GET and DELETE: no body;
    - POST `/auth`: `{}` with a fresh unauthenticated session;
    - every other POST: empty body or `{}` as appropriate, without valid endpoint parameters.
-3. Require exactly `401` for all routes. An explicitly supplied prohibited bearer token is handled by
-   the authentication layer before redirect, origin restriction, argument validation, or endpoint
+3. Require exactly `401` for all routes. An explicitly supplied prohibited bearer token is handled
+   by the authentication layer before redirect, origin restriction, argument validation, or endpoint
    execution.
 4. Test read-only routes before RW/dangerous routes. Stop immediately on the first non-`401`.
 
@@ -286,13 +295,13 @@ Authenticate again with `Admin`/`gw_id`, fetch `/ruuvi.json`, and compare it wit
 
 Any persistent difference caused by the test is FAIL and must be listed in the evidence log.
 
-Run this phase even after a security assertion or transport/protocol exception aborts probing.
-Skip it only when initial baseline validation never completed. If final login succeeds, attempt
-both configuration comparison and the status read independently, so a failed configuration check
-does not hide status evidence. Keep the original probe failure in its mechanism outcome and log;
-a successful final check cannot turn it into PASS. An incomplete final check is explicitly ERROR
-and makes the overall result ERROR, while retaining any earlier mechanism FAIL. A detected change
-is final-verification FAIL and cannot downgrade an earlier infrastructure ERROR to FAIL.
+Run this phase even after a security assertion or transport/protocol exception aborts probing. Skip
+it only when initial baseline validation never completed. If final login succeeds, attempt both
+configuration comparison and the status read independently, so a failed configuration check does not
+hide status evidence. Keep the original probe failure in its mechanism outcome and log; a successful
+final check cannot turn it into PASS. An incomplete final check is explicitly ERROR and makes the
+overall result ERROR, while retaining any earlier mechanism FAIL. A detected change is
+final-verification FAIL and cannot downgrade an earlier infrastructure ERROR to FAIL.
 
 If the final state changed or cannot be verified, emit a recovery warning in evidence and console
 output. Do not attempt an automatic reset or replay the UI-facing `/ruuvi.json` as a backup: it
@@ -318,13 +327,25 @@ the matrix is ERROR. Never convert an exception into a PASS-shaped default.
 
 Exit codes:
 
-| Exit code | Meaning |
-|:---------:|:--------|
-| `0` | Overall PASS |
-| `1` | At least one security assertion FAIL |
-| `2` | Test ERROR or invalid setup |
+| Exit code | Meaning                              |
+| :-------: | :----------------------------------- |
+|    `0`    | Overall PASS                         |
+|    `1`    | At least one security assertion FAIL |
+|    `2`    | Test ERROR or invalid setup          |
+
+Failed inventory checks and final non-mutation assertions must mark their specific mechanism FAIL in
+`RunResult.outcomes` and final evidence; an incomplete check caused by a setup, transport, or
+protocol exception remains ERROR. Finalize the user-defined mechanism only after its random-login
+denial, unauthenticated reads, session writes, and potentially mutating probes have all passed.
 
 ## Host-side implementation tests
+
+Run the deterministic implementation suite from the repository root with:
+
+```bash
+cd cra/303645/tests
+.venv/bin/python -m unittest --verbose test_test_5_1_1_2_b.py
+```
 
 Mock the HTTP boundary without contacting a gateway and cover at least:
 
@@ -332,6 +353,9 @@ Mock the HTTP boundary without contacting a gateway and cover at least:
 - the exact 26-entry API inventory;
 - complete PASS response sequences;
 - per-route expected statuses for unauthenticated, Basic, Digest, and bearer probes;
+- `GET /info.json` returning `302` for missing/Basic/Digest credentials in default mode; injected
+  `404` responses must fail each scheme and disabled bearer probes, attribute the failed mechanism
+  in final evidence, abort further probes, and retain final non-mutation verification;
 - unexpected `2xx` and wrong bearer status handling;
 - immediate abort after authorization success;
 - non-default auth mode or enabled API-key flags;
@@ -359,9 +383,10 @@ functional-test verdict.
 
 - [`tests/lib/gateway.py`](../tests/lib/gateway.py) — primary authentication and gateway HTTP API;
 - [`tests/lib/http_api.py`](../tests/lib/http_api.py) — canonical API inventory and HTTP vocabulary;
-- [`tests/lib/config.py`](../tests/lib/config.py), [`tests/lib/evidence.py`](../tests/lib/evidence.py),
-  [`tests/lib/errors.py`](../tests/lib/errors.py), and [`tests/lib/models.py`](../tests/lib/models.py)
-  — shared test infrastructure;
+- [`tests/lib/config.py`](../tests/lib/config.py),
+  [`tests/lib/evidence.py`](../tests/lib/evidence.py),
+  [`tests/lib/errors.py`](../tests/lib/errors.py), and
+  [`tests/lib/models.py`](../tests/lib/models.py) — shared test infrastructure;
 - [`docs/http_api.md`](../../../docs/http_api.md) — complete firmware HTTP API and authorization
   reference.
 - `cra/303645/Self_Assessment_Test_Group_5_1-1.md`, lines 29-68.

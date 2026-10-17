@@ -327,9 +327,6 @@ class FunctionalTest_5_1_1_2_b:
                 )
                 if path == GatewayApi.AUTH:
                     expected = {HttpStatus.C_401_UNAUTHORIZED}
-                elif method == HttpMethod.GET and path == GatewayApi.INFO:
-                    # The firmware serves info.json only through the hotspot interface.
-                    expected.add(HttpStatus.C_404_NOT_FOUND)
                 self._require_security(
                     response.status_code in expected,
                     f"{method} {path} rejects {scheme or 'missing'} credentials",
