@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import secrets
 import sys
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ from lib.config import (
     OCTETS_6_RE,
     default_config_values,
     load_dut_config,
+    load_ui_default_config,
 )
 from lib.errors import GatewayAuthenticationModeError, GatewayProtocolError, InvalidSetup
 from lib.evidence import (
@@ -166,6 +168,7 @@ class FunctionalTest_5_1_2a_2_b:
         self.rw_key: str | None = None
         self.mutation_possible: bool = False
         self.factory_reset_required: bool = False
+        self.protected_response_fields: set[str] = set()
 
     def _record_assertion(self, description: str, passed: bool, actual: Any = "") -> None:
         self.evidence.write(
@@ -265,6 +268,16 @@ class FunctionalTest_5_1_2a_2_b:
             if key in payload
         }
         self.evidence.write("DUT VERSION AND IDENTITY", identity)
+        # Identity/version fields can occur in public authentication metadata.
+        # Other configuration fields and the history schema describe protected data.
+        self.protected_response_fields = set(load_ui_default_config()) - {
+            GatewayCfgDesc.GW_MAC, GatewayCfgDesc.FW_VER, GatewayCfgDesc.NRF52_FW_VER,
+        }
+        self.protected_response_fields.update({
+            "tags", "coordinates", "rssi", "ble_phy", "ble_chan",
+            GatewayCfgDesc.LAN_AUTH_PASS, GatewayCfgDesc.LAN_AUTH_API_KEY,
+            GatewayCfgDesc.LAN_AUTH_API_KEY_RW,
+        })
 
     def _provision(self) -> None:
         if self.admin_session is None:
@@ -403,6 +416,36 @@ class FunctionalTest_5_1_2a_2_b:
         )
         return probes
 
+    def _require_no_protected_data(self, response: requests.Response, probe: NegativeProbe) -> None:
+        def contains_protected_fields(node: Any) -> bool:
+            if isinstance(node, dict):
+                if self.protected_response_fields.intersection(node):
+                    return True
+                return any(contains_protected_fields(value) for value in node.values())
+            if isinstance(node, list):
+                return any(contains_protected_fields(value) for value in node)
+            return False
+
+        leaked: bool = False
+        try:
+            payload: Any = json.loads(response.text)
+        except ValueError:
+            # Denials may be empty, plain text, or HTML. Recognizable protected
+            # JSON fields in an HTML wrapper or truncated reply still reveal data.
+            field: str
+            for field in self.protected_response_fields:
+                if re.search(r'"' + re.escape(field) + r'"\s*:', response.text):
+                    leaked = True
+                    break
+        else:
+            leaked = contains_protected_fields(payload)
+        self._require_security(
+            not leaked,
+            f"{probe.name} denial contains no protected data for {probe.method} {probe.path}",
+            "protected data detected" if leaked else "no protected data detected",
+            mechanism=probe.mechanism,
+        )
+
     def _run_negative_matrix(self, realm: str, method: str) -> None:
         self._require_security(
             self.config.gw_id not in {self.ro_key, self.rw_key},
@@ -431,6 +474,8 @@ class FunctionalTest_5_1_2a_2_b:
                     f"{probe.name} returns the exact status for {probe.method} {probe.path}",
                     response.status_code,
                 )
+                if probe.method == HttpMethod.GET:
+                    self._require_no_protected_data(response, probe)
             except SecurityFailure:
                 self.outcomes[probe.mechanism] = "FAIL"
                 raise

@@ -528,6 +528,73 @@ class FunctionalTestCase(unittest.TestCase):
             result.outcomes["final restoration and non-mutation"],
         )
 
+    def test_negative_get_protected_data_is_fail_with_expected_denial_status(self) -> None:
+        scheme: str
+        path: str
+        payload: Any
+        cases: tuple[Any, ...] = (
+            {GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.DEFAULT},
+            {"wrapper": [{"wifi_sta_config": {"ssid": "private-network"}}]},
+            {"data": {"tags": {"01:02:03:04:05:06": {"rssi": -60}}}},
+            {"data": {"coordinates": "private-location", "tags": {}}},
+        )
+        for scheme in (HttpAuthScheme.BASIC, HttpAuthScheme.DIGEST, HttpAuthScheme.BEARER):
+            for path in (GatewayApi.HISTORY, GatewayApi.CONFIG):
+                for payload in cases:
+                    with self.subTest(scheme=scheme, path=path, payload=payload):
+                        self.gateway = BearerGateway(CONFIG)
+                        deterministic_random.calls = 0
+                        status: int = 401 if scheme == HttpAuthScheme.BEARER else 302
+                        authorization: str = f"Bearer {CONFIG.gw_id}" if scheme == HttpAuthScheme.BEARER else scheme
+                        self.gateway.override[(authorization, HttpMethod.GET, path)] = FakeResponse(status, payload)
+                        result: RunResult = self.runner().run()
+                        self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
+                        self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RO])
+                        self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+                        self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
+                        cleanup_index: int = next(
+                            index for index, call in enumerate(self.gateway.calls)
+                            if call.body == {GatewayCfgDesc.LAN_AUTH_API_KEY: "", GatewayCfgDesc.LAN_AUTH_API_KEY_RW: ""}
+                        )
+                        self.assertFalse(any(
+                            call.authorization == f"Bearer {RO_KEY}" for call in self.gateway.calls[:cleanup_index]
+                        ))
+
+    def test_negative_get_embedded_or_truncated_protected_json_is_fail(self) -> None:
+        text: str
+        for text in ('<html>{"lan_auth_type":"lan_auth_default"}</html>', '{"data":{"tags":'):
+            with self.subTest(text=text):
+                self.gateway = BearerGateway(CONFIG)
+                deterministic_random.calls = 0
+                response: FakeResponse = FakeResponse(302)
+                response._content = text.encode("utf-8")
+                self.gateway.override[(HttpAuthScheme.BASIC, HttpMethod.GET, GatewayApi.HISTORY)] = response
+                result: RunResult = self.runner().run()
+                self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
+                self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RO])
+                self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+
+    def test_negative_get_allows_empty_auth_errors_and_public_metadata(self) -> None:
+        payload: Any
+        payloads: tuple[Any, ...] = (
+            None, {}, {"error": "unauthorized"},
+            {"gw_mac": CONFIG.gw_mac, "fw_ver": "public-fw", "nrf52_fw_ver": "public-nrf"},
+            {"status": 401, "auth_type": "x-ruuvi-interactive", "realm": "Ruuvi Gateway"},
+        )
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                self.gateway = BearerGateway(CONFIG)
+                deterministic_random.calls = 0
+                self.gateway.override[(HttpAuthScheme.BASIC, HttpMethod.GET, GatewayApi.CONFIG)] = FakeResponse(302, payload)
+                result: RunResult = self.runner().run()
+                self.assertEqual((0, "PASS"), (result.exit_code, result.verdict))
+        self.gateway = BearerGateway(CONFIG)
+        deterministic_random.calls = 0
+        response: FakeResponse = FakeResponse(302)
+        response._content = b"<html>Please authenticate</html>"
+        self.gateway.override[(HttpAuthScheme.BASIC, HttpMethod.GET, GatewayApi.HISTORY)] = response
+        self.assertEqual(0, self.runner().run().exit_code)
+
     def test_positive_bearer_responses_require_json_objects(self) -> None:
         cases: tuple[tuple[str, str, str], ...] = (
             (RO_KEY, HttpMethod.GET, GatewayApi.HISTORY),
