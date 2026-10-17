@@ -620,3 +620,9 @@ User information, other ports, query strings and other destinations fail the ass
 Progress, restoration-attempt evidence and recovery-error reporting are best effort during
 cleanup: a reporting exception cannot skip key removal, its retry, or independent final checks.
 Any such reporting failure prevents PASS and produces overall ERROR, retaining earlier FAILs.
+
+During recovery, best-effort evidence handling also covers the HTTP client's request/response
+transcripts, authentication calculations and runner assertions. A persistently unwritable log
+must not prevent authentication, clearing requests or final state/revocation checks. Authentication,
+transport and assertion failures still propagate normally; only reporting failures are contained.
+Final evidence flush/close failures return ERROR after cleanup instead of losing the run result.

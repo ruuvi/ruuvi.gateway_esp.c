@@ -69,6 +69,33 @@ def config_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+class RecoveryEvidence(EvidenceLog):
+    """Forward recovery logging best effort without changing protocol or assertion behavior."""
+
+    def __init__(self, evidence: EvidenceLog, report: Callable[[Callable[[], None]], None]) -> None:
+        super().__init__(evidence.path, evidence._stream, evidence.started_at)
+        self.original: EvidenceLog = evidence
+        self.report: Callable[[Callable[[], None]], None] = report
+
+    def write(self, label: str, value: Any = "") -> None:
+        self.report(partial(self.original.write, label, value))
+
+    def write_line(self, message: str) -> None:
+        self.report(partial(self.original.write_line, message))
+
+    def write_http_request(self, request: requests.PreparedRequest) -> None:
+        self.report(partial(self.original.write_http_request, request))
+
+    def write_http_response(self, response: requests.Response) -> None:
+        self.report(partial(self.original.write_http_response, response))
+
+    def exception(self, error: BaseException) -> None:
+        self.report(partial(self.original.exception, error))
+
+    def finish(self, verdict: str, now: Callable[[], datetime] = utc_now) -> None:
+        self.report(partial(self.original.finish, verdict, now))
+
+
 class FunctionalTest_5_5_4_2_a:
     def __init__(
         self,
@@ -370,6 +397,18 @@ class FunctionalTest_5_5_4_2_a:
                     raise
 
     def _finalize(self, baseline: dict[str, Any]) -> bool:
+        original: EvidenceLog = self.evidence
+        client_original: EvidenceLog = self.gateway.evidence
+        recovery: RecoveryEvidence = RecoveryEvidence(original, self._report)
+        self.evidence = recovery
+        self.gateway.evidence = recovery
+        try:
+            return self._finalize_with_recovery_evidence(baseline)
+        finally:
+            self.evidence = original
+            self.gateway.evidence = client_original
+
+    def _finalize_with_recovery_evidence(self, baseline: dict[str, Any]) -> bool:
         self.active = FINAL
         self._report(lambda: self.progress("Restoring keys and verifying complete configuration and token revocation"))
         failed: bool = False
@@ -479,9 +518,15 @@ def execute_test_5_5_4_2_a(
         log.write("FINAL RESULTS", result.outcomes)
         progress_output(f"Setup ERROR — {type(error).__name__}; see evidence for details")
     finally:
-        if result.recovery_message is not None:
-            progress_output(result.recovery_message)
-        log.finish(result.verdict, now)
+        try:
+            if result.recovery_message is not None:
+                progress_output(result.recovery_message)
+        except Exception:  # noqa: BLE001 - Failed terminal evidence cannot discard the recovery result.
+            result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
+        try:
+            log.finish(result.verdict, now)
+        except Exception:  # noqa: BLE001 - Full-disk/flush failures must return ERROR after recovery.
+            result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
     output(f"Overall verdict: {result.verdict}")
     return result
 

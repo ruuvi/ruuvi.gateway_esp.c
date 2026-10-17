@@ -609,6 +609,83 @@ class DenialRunnerTests(unittest.TestCase):
         if security_failure:
             self.assertEqual(result.outcomes[runner.INSUFFICIENT], "FAIL")
 
+    def test_persistent_logging_failure_still_clears_keys_and_verifies_revocation(self) -> None:
+        scenario: str
+        for scenario in ("clear", "lost-clear-response", "denied-login", "unrevoked-key"):
+            with self.subTest(scenario=scenario):
+                self.check_persistent_logging_failure(scenario)
+
+    def check_persistent_logging_failure(self, scenario: str) -> None:
+        self.gateway = DenialGateway()
+        if scenario == "lost-clear-response":
+            self.gateway.faults.append(Fault(FakeRequestKey("none", "POST", "/ruuvi.json"), 3,
+                                            error=requests.Timeout("clearing response lost"), apply_body=True))
+        elif scenario == "denied-login":
+            self.fault("none", "POST", "/auth", 401, 3)
+            self.fault("none", "POST", "/auth", 401, 4)
+        elif scenario == "unrevoked-key":
+            self.fault("Bearer", "GET", "/history", 200, 1)
+
+        original_write: Callable[[runner.EvidenceLog, str, Any], None] = cast(
+            "Callable[[runner.EvidenceLog, str, Any], None]", runner.EvidenceLog.write,
+        )
+        original_line: Callable[[runner.EvidenceLog, str], None] = cast(
+            "Callable[[runner.EvidenceLog, str], None]", runner.EvidenceLog.write_line,
+        )
+        broken: list[bool] = [False]
+        failures: list[str] = []
+
+        def check_disk(label: str) -> None:
+            broken[0] = broken[0] or bool(self.gateway.ro_key or self.gateway.rw_key)
+            if broken[0]:
+                failures.append(label)
+                raise OSError("persistent full disk after provisioning")
+
+        def write(evidence_log: runner.EvidenceLog, label: str, value: Any = "") -> None:
+            check_disk(label)
+            original_write(evidence_log, label, value)
+
+        def write_line(evidence_log: runner.EvidenceLog, message: str) -> None:
+            check_disk("line")
+            original_line(evidence_log, message)
+
+        def finish(_log: runner.EvidenceLog, _verdict: str, _now: Callable[[], datetime]) -> None:
+            check_disk("finish")
+
+        log: runner.EvidenceLog = runner.EvidenceLog.create(self.work / "logs", "persistent", fixed_now)
+        try:
+            with patch.object(runner.EvidenceLog, "create", return_value=log), patch.object(
+                runner.EvidenceLog, "write", write,
+            ), patch.object(runner.EvidenceLog, "write_line", write_line), patch.object(
+                runner.EvidenceLog, "finish", finish,
+            ):
+                result: RunResult = runner.execute_test_5_5_4_2_a(
+                    self.work, self.gateway.session, FixedRandom(), fixed_ecc, fixed_now, self.output.append,
+                )
+        finally:
+            log.finish("ERROR", fixed_now)
+        self.assertTrue(broken[0])
+        self.assertGreater(failures.count("HTTP REQUEST BEGIN"), 4)
+        self.assertIn("ASSERTION", failures)
+        self.assertIn("finish", failures)
+        self.assertEqual((result.exit_code, result.verdict), (2, "ERROR"))
+        self.assertIsNotNone(result.recovery_message)
+        if scenario == "denied-login":
+            self.assertNotIn(CLEAR_BODY, self.gateway.config_bodies)
+            self.assertEqual((self.gateway.ro_key, self.gateway.rw_key), (RO, RW))
+            self.assertEqual(len([call for call in self.gateway.calls
+                                  if call.method == "POST" and call.path == "/auth"]), 5)
+        else:
+            self.assert_keys_cleared()
+            self.assertEqual(len([call for call in self.gateway.calls if call.body == CLEAR_BODY]),
+                             2 if scenario == "lost-clear-response" else 1)
+        if scenario == "unrevoked-key":
+            self.assertEqual(result.outcomes[runner.FINAL], "FAIL")
+        final_reads: list[RecordedRequest] = [call for call in self.gateway.calls
+                                             if call.method == "GET" and call.path == "/ruuvi.json"]
+        self.assertIn(final_reads[-1].session_number,
+                      [session.number for session in self.gateway.authorized_sessions])
+
     def test_timeout_connection_and_malformed_baseline_are_errors(self) -> None:
         fault: Fault
         cases: tuple[Fault, ...] = (
