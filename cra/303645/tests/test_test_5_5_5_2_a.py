@@ -498,6 +498,103 @@ class FunctionalImplementationTests(unittest.TestCase):
         self.assertEqual("ERROR", result.outcomes[AuthMech.M2M_API_BEARER_RW])
         self.assert_restored()
 
+    def test_applied_negative_writes_with_lost_replies_record_fail_and_error(self) -> None:
+        body: dict[str, str]
+        mechanism: str
+        for body, mechanism in ((U_BODY, AuthMech.LAN_WEBUI_DEFAULT), (RO_BODY, AuthMech.M2M_API_BEARER_RO)):
+            with self.subTest(mechanism=mechanism):
+                self.gateway.calls.clear()
+                self.gateway.write_faults = [WriteFault(body, apply=True, error=requests.Timeout("lost denial"))]
+                result: RunResult = self.execute()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual("FAIL", result.outcomes[mechanism])
+                self.assertEqual("NOT RUN", result.outcomes[AuthMech.M2M_API_BEARER_RW])
+                self.assertIn("Negative write post-read", self.evidence)
+                self.assertIn("Rejected write must preserve every configuration field", self.evidence)
+                self.assertIn("lost denial", self.evidence)
+                self.assertIn(f'"mechanism": "{mechanism}", "result": "FAIL"', self.evidence)
+                writes: list[RecordedRequest] = self.config_writes()
+                failed_index: int = self.gateway.calls.index(next(call for call in writes if call.body == body))
+                next_calls: list[RecordedRequest] = self.gateway.calls[failed_index + 1:failed_index + 4]
+                self.assertEqual([("GET", "/auth"), ("POST", "/auth"), ("GET", "/ruuvi.json")],
+                                 [(call.method, call.path) for call in next_calls])
+                self.assertNotIn(RW_BODY, [call.body for call in writes])
+                self.assert_restored()
+
+    def test_pre_restoration_read_error_and_final_mismatch_preserve_both_outcomes(self) -> None:
+        self.gateway.commit_side_effect = True
+        self.gateway.read_overrides[9] = requests.Timeout("pre-restoration read lost")
+        result: RunResult = self.execute()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RW])
+        self.assertEqual("FAIL", result.outcomes[target.RESTORE])
+        self.assertIn("pre-restoration read lost", self.evidence)
+        self.assertIn('"mechanism": "final restoration and non-mutation", "result": "FAIL"', self.evidence)
+        self.assertIn(CLEAR_BODY, [call.body for call in self.config_writes()])
+        self.assert_restored()
+
+    def test_persistent_output_failure_after_provisioning_still_finishes_cleanup_and_evidence(self) -> None:
+        def output(message: str) -> None:
+            if self.gateway.ro_key or self.gateway.rw_key:
+                raise BrokenPipeError("closed output after provisioning")
+            self.output.append(message)
+
+        result: RunResult = target.execute_test_5_5_5_2_a(
+            self.root, self.gateway.session, now=lambda: NOW, random_bytes=UniqueRandom(),
+            ecc_generate=fixed_ecc, output=output,
+        )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("ERROR", result.outcomes[target.SETUP])
+        self.assertEqual("NOT RUN", result.outcomes[AuthMech.M2M_API_BEARER_RO])
+        self.assert_restored()
+        self.assertIn(CLEAR_BODY, [call.body for call in self.config_writes()])
+        logs: list[Path] = list((self.root / "logs").glob("*.log"))
+        evidence: str = logs[0].read_text(encoding="utf-8")
+        self.assertIn("closed output after provisioning", evidence)
+        self.assertIn("ALL CHECK OUTCOMES", evidence)
+        self.assertIn("OVERALL VERDICT: ERROR", evidence)
+
+    def test_direct_progress_callback_failure_cannot_skip_restoration(self) -> None:
+        log: EvidenceLog = EvidenceLog.create(self.root / "direct", "progress", lambda: NOW)
+        self.addCleanup(log.finish, "ERROR", lambda: NOW)
+        broken: bool = False
+
+        def progress(_message: str) -> None:
+            nonlocal broken
+            if self.gateway.ro_key or self.gateway.rw_key:
+                broken = True
+            if broken:
+                raise BrokenPipeError("persistent progress failure")
+
+        runner: target.FunctionalTest_5_5_5_2_a = target.FunctionalTest_5_5_5_2_a(
+            CONFIG, log, self.gateway.session, UniqueRandom(), fixed_ecc, progress, self.output.append,
+        )
+        result: RunResult = runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assert_restored()
+        self.assertIn(CLEAR_BODY, [call.body for call in self.config_writes()])
+
+    def test_persistent_evidence_failure_after_provisioning_cannot_block_recovery_http(self) -> None:
+        log: EvidenceLog = EvidenceLog.create(self.root / "direct", "broken-stream", lambda: NOW)
+        self.addCleanup(log._stream.close)
+
+        def progress(_message: str) -> None:
+            if self.gateway.ro_key or self.gateway.rw_key:
+                log._stream.close()
+
+        runner: target.FunctionalTest_5_5_5_2_a = target.FunctionalTest_5_5_5_2_a(
+            CONFIG, log, self.gateway.session, UniqueRandom(), fixed_ecc, progress, self.output.append,
+        )
+        result: RunResult = runner.run()
+        self.assertTrue(log._stream.closed)
+        self.assertTrue(runner.evidence.failed)
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("ERROR", result.outcomes[target.SETUP])
+        self.assert_restored()
+        self.assertIn(CLEAR_BODY, [call.body for call in self.config_writes()])
+        self.assertEqual([RO, RW], [call.bearer_token for call in self.gateway.calls[-2:]])
+        self.assertIsNotNone(result.recovery_message)
+
     def test_recovery_denial_or_lost_response_falls_back_in_order(self) -> None:
         body: dict[str, str]
         lost: bool

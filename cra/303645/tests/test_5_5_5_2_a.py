@@ -74,6 +74,44 @@ def config_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+class RecoveryEvidence(EvidenceLog):
+    """Keep recovery HTTP usable after evidence or terminal output fails."""
+
+    def __init__(self, delegate: EvidenceLog) -> None:
+        # This proxy delegates every EvidenceLog operation; it does not own a second stream.
+        self.delegate: EvidenceLog = delegate
+        self.path: Path = delegate.path
+        self.started_at: datetime = delegate.started_at
+        self.recovering: bool = False
+        self.failed: bool = False
+
+    def report(self, action: Callable[[], None]) -> None:
+        try:
+            action()
+        except Exception:  # Reporting must not obstruct mandatory DUT recovery.
+            self.failed = True
+            if not self.recovering:
+                raise
+
+    def write(self, label: str, value: Any = "") -> None:
+        self.report(lambda: self.delegate.write(label, value))
+
+    def write_line(self, message: str) -> None:
+        self.report(lambda: self.delegate.write_line(message))
+
+    def write_http_request(self, request: requests.PreparedRequest) -> None:
+        self.report(lambda: self.delegate.write_http_request(request))
+
+    def write_http_response(self, response: requests.Response) -> None:
+        self.report(lambda: self.delegate.write_http_response(response))
+
+    def exception(self, error: BaseException) -> None:
+        self.report(lambda: self.delegate.exception(error))
+
+    def finish(self, verdict: str, now: Callable[[], datetime] = utc_now) -> None:
+        self.report(lambda: self.delegate.finish(verdict, now))
+
+
 class FunctionalTest_5_5_5_2_a:
     def __init__(
         self, config: DutConfig, evidence: EvidenceLog,
@@ -84,9 +122,9 @@ class FunctionalTest_5_5_5_2_a:
         output: Callable[[str], None] = print,
     ) -> None:
         self.config: DutConfig = config
-        self.evidence: EvidenceLog = evidence
+        self.evidence: RecoveryEvidence = evidence if isinstance(evidence, RecoveryEvidence) else RecoveryEvidence(evidence)
         self.gateway: GatewayClient = GatewayClient(
-            config, evidence, session_factory=session_factory, random_bytes=random_bytes,
+            config, self.evidence, session_factory=session_factory, random_bytes=random_bytes,
             ecc_generate=ecc_generate, timeout=(5, 15), user_agent="ruuvi-etsi-test-5.5-5-2-a",
         )
         self.progress: Callable[[str], None] = progress
@@ -201,20 +239,32 @@ class FunctionalTest_5_5_5_2_a:
 
     def _negative_write(self, marker: str, expected: dict[str, Any], token: str | None = None) -> None:
         self.mutation_possible = True
-        response: requests.Response = self._request(
-            HttpMethod.POST, GatewayApi.CONFIG, body={GatewayCfgDesc.COORDINATES: marker}, token=token,
-        )
-        rejected: bool = response.status_code == HttpStatus.C_401_UNAUTHORIZED
-        if token is not None:
-            self.evidence.write("ASSESSMENT DISCREPANCY", f"Self-assessment claims 403; firmware expects 401; "
-                                f"observed status {response.status_code}")
-        if not rejected:
-            self._result(self.active, "FAIL", f"Negative write expected 401; observed {response.status_code}")
-        # This mandatory authenticated read also runs on unexpected 2xx; no further probes follow it.
+        pending: Exception | None = None
+        response: requests.Response | None = None
+        error: Exception
+        try:
+            response = self._request(
+                HttpMethod.POST, GatewayApi.CONFIG, body={GatewayCfgDesc.COORDINATES: marker}, token=token,
+            )
+        except Exception as error:  # noqa: BLE001 - A lost reply must not skip the mandatory mutation check.
+            pending = error
+        rejected: bool = response is not None and response.status_code == HttpStatus.C_401_UNAUTHORIZED
+        if response is not None:
+            if token is not None:
+                self.evidence.write("ASSESSMENT DISCREPANCY", f"Self-assessment claims 403; firmware expects 401; "
+                                    f"observed status {response.status_code}")
+            if not rejected:
+                self._result(self.active, "FAIL", f"Negative write expected 401; observed {response.status_code}")
+        # Also inspect potentially applied writes after lost replies; preserve both FAIL and ERROR.
         after: dict[str, Any] = self._read("Negative write post-read", session=self._login())
         unchanged: bool = self._compare(expected, after, "Rejected write preserves every field")
-        self._require(unchanged, "Rejected write must preserve every configuration field")
-        self._require(rejected, f"Negative write expected 401; observed {response.status_code}")
+        try:
+            self._require(unchanged, "Rejected write must preserve every configuration field")
+        finally:
+            if pending is not None:
+                raise pending
+        status: int | None = response.status_code if response is not None else None
+        self._require(rejected, f"Negative write expected 401; observed {status}")
         self._result(self.active, "PASS", "Read controls and rejected write preserve the complete configuration")
 
     def _scenarios(self) -> None:
@@ -328,6 +378,7 @@ class FunctionalTest_5_5_5_2_a:
             try:
                 before = self._read("Before restoration", session=self._login())
             except Exception as error:  # noqa: BLE001 - A failed read must not prevent either cleanup write.
+                self.had_error = True
                 self.evidence.exception(error)
             try:
                 self._restore_body({GatewayCfgDesc.COORDINATES: self.baseline[GatewayCfgDesc.COORDINATES]})
@@ -383,39 +434,52 @@ class FunctionalTest_5_5_5_2_a:
         try:
             self._scenarios()
         except SecurityFailure as error:
+            self.evidence.recovering = True
             self.evidence.exception(error)
         except Exception as error:  # noqa: BLE001 - Preserve evidence and restore on every runtime failure.
+            self.evidence.recovering = True
             self.evidence.exception(error)
             self.had_error = True
             if not any(item.name == self.active and item.verdict in ("FAIL", "ERROR") for item in self.results):
                 self._result(self.active, "ERROR", f"{type(error).__name__}; see evidence")
         finally:
-            self.progress("Restoring original coordinates and removing temporary keys")
+            self.evidence.recovering = True
             try:
-                self._restore()
-            except Exception as error:  # noqa: BLE001 - Unverified recovery is always ERROR.
-                self.evidence.exception(error)
-                self.had_error = True
-                if not any(item.name == RESTORE and item.verdict == "FAIL" for item in self.results):
-                    self._result(RESTORE, "ERROR", "Restoration could not be verified")
+                self._final_report(self.progress, "Restoring original coordinates and removing temporary keys")
+            finally:
+                try:
+                    self._restore()
+                except Exception as error:  # noqa: BLE001 - Unverified recovery is always ERROR.
+                    self.evidence.exception(error)
+                    self.had_error = True
+                    if not any(item.name == RESTORE and item.verdict == "FAIL" for item in self.results):
+                        self._result(RESTORE, "ERROR", "Restoration could not be verified")
             if self.recovery_message is None and self.had_error and self.mutation_possible and not any(
                 item.name == RESTORE and item.verdict == "PASS" for item in self.results
             ):
                 self.recovery_message = f"USER ACTION REQUIRED: Check DUT recovery and configuration in {self.evidence.path}"
-        self.progress("Recording per-check outcomes and final verdict")
+        self._final_report(self.progress, "Recording per-check outcomes and final verdict")
         item: CheckResult
         for item in self.results:
             self.evidence.write("FINAL RESULT", MechanismResultEvidence(item.name, item.verdict))
-            self.output(f"{item.name}: {item.verdict} — {item.reason}")
+            self._final_report(self.output, f"{item.name}: {item.verdict} — {item.reason}")
         verdict: str = "PASS"
         exit_code: int = 0
-        if self.had_error:
+        if self.had_error or self.evidence.failed:
             verdict, exit_code = "ERROR", 2
         elif any(item.verdict == "FAIL" for item in self.results):
             verdict, exit_code = "FAIL", 1
         elif any(item.verdict != "PASS" for item in self.results):
             verdict, exit_code = "ERROR", 2
         return RunResult(exit_code, verdict, {item.name: item.verdict for item in self.results}, set(), self.recovery_message)
+
+    def _final_report(self, callback: Callable[[str], None], message: str) -> None:
+        try:
+            callback(message)
+        except Exception as error:  # noqa: BLE001 - Reporting failures must not prevent recovery or verdict aggregation.
+            error: Exception
+            self.had_error = True
+            self.evidence.exception(error)
 
 
 def execute_test_5_5_5_2_a(
@@ -424,12 +488,20 @@ def execute_test_5_5_5_2_a(
     ecc_generate: Callable[..., ECC.EccKey] = ECC.generate, output: Callable[[str], None] = print,
 ) -> RunResult:
     work_dir = Path.cwd() if work_dir is None else work_dir
-    log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_5_5_2_a", now)
+    log: RecoveryEvidence = RecoveryEvidence(EvidenceLog.create(work_dir / "logs", "test_5_5_5_2_a", now))
     output(f"Open log file: {log.path}")
 
+    output_failed: bool = False
+
     def report(message: str) -> None:
-        output(message)
+        nonlocal output_failed
         log.write_line(message)
+        if not output_failed:
+            try:
+                output(message)
+            except Exception:
+                output_failed = True
+                raise
 
     progress: ProgressReporter = ProgressReporter(report, TOTAL_STEPS)
     result: RunResult = RunResult(2, "ERROR", {name: "NOT RUN" for name in CHECKS}, set())
@@ -444,15 +516,18 @@ def execute_test_5_5_5_2_a(
         ).run()
     except Exception as error:  # Even initialization failures must finish the evidence log.
         error: Exception
+        log.recovering = True
         log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
         report(f"Setup ERROR: {type(error).__name__}; see evidence log")
         result.outcomes[SETUP] = "ERROR"
     finally:
+        log.recovering = True
         if result.recovery_message is not None:
             report(result.recovery_message)
         log.write("ALL CHECK OUTCOMES", result.outcomes)
         log.finish(result.verdict, now)
-    output(f"Overall verdict: {result.verdict}")
+    if not output_failed:
+        output(f"Overall verdict: {result.verdict}")
     return result
 
 
