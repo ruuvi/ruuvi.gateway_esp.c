@@ -538,6 +538,28 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         self.assertEqual("ERROR", result.verdict)
         self.assertIsNone(result.recovery_message)
 
+    def test_custom_outbound_http_aborts_before_scan_capture_or_mutation(self) -> None:
+        field: str
+        value: str
+        for field, value in (("http_data_format", "ruuvi_decoded"), ("http_auth", "basic")):
+            with self.subTest(field=field):
+                self.setUp()
+                self.gateway.fields[field] = value
+                before: dict[str, Any] = dict(self.gateway.fields)
+                self.assertIs(True, self.gateway.fields["use_http"])
+                self.assertEqual("https://network.ruuvi.com/record", self.gateway.fields["http_url"])
+                result: RunResult = self.execute()
+                self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+                self.assertEqual("ERROR", result.outcomes["factory-default preflight"])
+                self.assertEqual("NOT RUN", result.outcomes["custom telemetry disabled"])
+                self.assertFalse(any("-sT" in call or "-sU" in call for call in self.nmap.calls))
+                self.assertFalse(self.ntp_capture.started)
+                self.assertEqual([
+                    ("GET", "/auth"), ("POST", "/auth"), ("GET", "/ruuvi.json"),
+                ], [(call.method, call.path) for call in self.wire_calls])
+                self.assertEqual(before, self.gateway.fields)
+                self.assertIn(FACTORY_RESET_MESSAGE, result.recovery_message or "")
+
     def test_each_required_default_rejects_missing_and_wrong_typed_values(self) -> None:
         defaults: dict[str, Any] = default_config_values(target.DEFAULT_FIELDS)
         field: str

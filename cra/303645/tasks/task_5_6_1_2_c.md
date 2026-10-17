@@ -227,6 +227,13 @@ IXIT ID heading before scanning or mutation; a missing declaration is setup **ER
 implicit allowlist or inventory-completeness PASS. Offline success fixtures explicitly supply the
 future declaration; they are not evidence that the current IXIT contains it.
 
+Before scanning, capture, or mutation, require public factory-default `http_data_format` and
+`http_auth` along with `use_http` and `http_url`, using the generated defaults. Firmware exposes
+`use_http=true` for the cloud-only default as a compatibility representation; the same URL with
+custom format or authentication can enable outbound custom HTTP telemetry. Inbound listener scans
+cannot establish that this outbound client is disabled. Reject missing, wrongly typed, or unequal
+values as setup **ERROR**, leaving custom-telemetry checks NOT RUN and configuration unchanged.
+
 Before the NTP-only POST, require factory-default `mqtt_data_format` from the generated defaults,
 and require `mqtt_prefix` = `ruuvi/<verified gw_mac>/` and `mqtt_client_id` = `<verified gw_mac>`.
 These last two defaults are device-derived in `gw_cfg_default.c`; derive them from the

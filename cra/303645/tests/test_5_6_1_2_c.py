@@ -64,7 +64,7 @@ NTP_REQUEST_TIMEOUT: float = 25.0
 NTP_CAPTURE_FILTER: str = "udp dst port 123 and udp[4:2] = 56 and (udp[8] & 7) = 3"
 TOTAL_STEPS: int = 12
 DEFAULT_FIELDS: tuple[str, ...] = AUTHENTICATION_DEFAULT_FIELDS + (
-    "use_http", "http_url", "use_mqtt", "mqtt_data_format", "remote_cfg_use",
+    "use_http", "http_url", "http_data_format", "http_auth", "use_mqtt", "mqtt_data_format", "remote_cfg_use",
     "ntp_use", "ntp_use_dhcp", "ntp_server1", "ntp_server2", "ntp_server3", "ntp_server4",
     "scan_default", "scan_coded_phy", "scan_1mbit_phy", "scan_2mbit_phy",
     "scan_channel_37", "scan_channel_38", "scan_channel_39",
