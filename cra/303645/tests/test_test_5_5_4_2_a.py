@@ -609,6 +609,58 @@ class DenialRunnerTests(unittest.TestCase):
         if security_failure:
             self.assertEqual(result.outcomes[runner.INSUFFICIENT], "FAIL")
 
+    def test_initial_evidence_write_failure_returns_error_and_attempts_finalization(self) -> None:
+        label: str
+        persistent: bool
+        for label in ("TEST CASE AND UNIT", "UTC START"):
+            for persistent in (False, True):
+                with self.subTest(label=label, persistent=persistent):
+                    self.check_initial_evidence_write_failure(label, persistent=persistent)
+
+    def check_initial_evidence_write_failure(self, label: str, *, persistent: bool) -> None:
+        original_write: Callable[[runner.EvidenceLog, str, Any], None] = cast(
+            "Callable[[runner.EvidenceLog, str, Any], None]", runner.EvidenceLog.write,
+        )
+        failures: list[str] = []
+
+        def write(evidence_log: runner.EvidenceLog, heading: str, value: Any = "") -> None:
+            if (heading == label and not failures) or (persistent and failures):
+                failures.append(heading)
+                raise OSError("full evidence disk")
+            original_write(evidence_log, heading, value)
+
+        log: runner.EvidenceLog = runner.EvidenceLog.create(self.work / "logs", "initial", fixed_now)
+        finished: list[str] = []
+        original_finish: Callable[[str, Callable[[], datetime]], None] = log.finish
+
+        def finish(verdict: str, now: Callable[[], datetime]) -> None:
+            finished.append(verdict)
+            if persistent:
+                raise OSError("full evidence disk during finalization")
+            original_finish(verdict, now)
+
+        try:
+            with patch.object(runner.EvidenceLog, "create", return_value=log), patch.object(
+                runner.EvidenceLog, "write", write,
+            ), patch.object(log, "finish", side_effect=finish):
+                result: RunResult = runner.execute_test_5_5_4_2_a(
+                    self.work, self.gateway.session, FixedRandom(), fixed_ecc, fixed_now, self.output.append,
+                )
+        finally:
+            if persistent:
+                log.finish("ERROR", fixed_now)
+        self.assertEqual((result.exit_code, result.verdict, result.outcomes[runner.SETUP]), (2, "ERROR", "ERROR"))
+        self.assertEqual(finished, ["ERROR"])
+        self.assertEqual(self.gateway.calls, [])
+        self.assertTrue(any("Setup ERROR — OSError" in line for line in self.output))
+        self.assertEqual(self.output[-1], "Overall verdict: ERROR")
+        self.assertEqual(failures[0], label)
+        if persistent:
+            self.assertIn("EXCEPTION TYPE", failures)
+            self.assertIn("FINAL RESULTS", failures)
+        else:
+            self.assertIn("OVERALL VERDICT: ERROR", log.path.read_text(encoding="utf-8"))
+
     def test_persistent_logging_failure_still_clears_keys_and_verifies_revocation(self) -> None:
         scenario: str
         for scenario in ("clear", "lost-clear-response", "denied-login", "unrevoked-key"):

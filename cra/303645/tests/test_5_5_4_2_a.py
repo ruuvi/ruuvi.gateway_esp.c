@@ -495,7 +495,6 @@ def execute_test_5_5_4_2_a(
 ) -> RunResult:
     work_dir = Path.cwd() if work_dir is None else work_dir
     log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_5_4_2_a", now)
-    output(f"Open log file: {log.path}")
 
     def progress_output(message: str) -> None:
         output(message)
@@ -503,20 +502,28 @@ def execute_test_5_5_4_2_a(
 
     progress: ProgressReporter = ProgressReporter(progress_output, TOTAL_STEPS)
     result: RunResult = RunResult(2, "ERROR", {check: "NOT RUN" for check in CHECKS}, set())
-    log.write("TEST CASE AND UNIT", TEST_ID)
-    log.write("UTC START", log.started_at.isoformat())
     try:
+        output(f"Open log file: {log.path}")
+        log.write("TEST CASE AND UNIT", TEST_ID)
+        log.write("UTC START", log.started_at.isoformat())
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(work_dir / ".env")
         result = FunctionalTest_5_5_4_2_a(
             config, log, session_factory, random_bytes, ecc_generate, progress.step, output,
         ).run()
-    except Exception as error:  # Setup failures still create and finish evidence.
+    except Exception as error:  # noqa: BLE001 - Setup failures return ERROR and still finalize evidence.
         error: Exception
-        log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
         result.outcomes[SETUP] = "ERROR"
-        log.write("FINAL RESULTS", result.outcomes)
-        progress_output(f"Setup ERROR — {type(error).__name__}; see evidence for details")
+        setup_message: str = f"Setup ERROR — {type(error).__name__}; see evidence for details"
+        report: Callable[[], None]
+        for report in (
+            partial(log.exception, error), partial(log.write, "FINAL RESULTS", result.outcomes),
+            partial(output, setup_message), partial(log.write_line, setup_message),
+        ):
+            try:
+                report()
+            except Exception:  # noqa: BLE001 - Failed reporting must preserve ERROR and log finalization.
+                result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
     finally:
         try:
             if result.recovery_message is not None:
