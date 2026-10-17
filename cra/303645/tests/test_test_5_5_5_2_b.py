@@ -9,11 +9,12 @@ import struct
 import subprocess
 import tempfile
 import unittest
+from contextlib import ExitStack
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.parse import urlsplit
 
 import requests
@@ -51,6 +52,127 @@ class SntpProbeTests(unittest.TestCase):
             target.parse_ntp_source_port(line, "192.0.2.11", "192.0.2.20")
         with self.assertRaises(target.ScanError):
             target.parse_ntp_source_port("IP 192.0.2.10.0 > 192.0.2.20.123:", "192.0.2.10", "192.0.2.20")
+
+
+class TcpdumpNtpCaptureTests(unittest.TestCase):
+    """Exercise the production adapter with every operating-system boundary replaced."""
+
+    def setUp(self) -> None:
+        self.patches: ExitStack = ExitStack()
+        self.addCleanup(self.patches.close)
+        self.capture: target.TcpdumpNtpCapture = target.TcpdumpNtpCapture()
+        self.process: MagicMock = MagicMock(spec=subprocess.Popen)
+        self.process.stderr = MagicMock()
+        self.process.stderr.fileno.return_value = 71
+        self.process.returncode = 0
+        self.process.poll.return_value = None
+        self.process.communicate.return_value = (
+            "12:00:00 IP 192.0.2.10.64053 > 192.0.2.20.123: NTPv4, Client\n",
+            "1 packet captured\n",
+        )
+        self.popen: MagicMock = self._patch("subprocess.Popen", return_value=self.process)
+        self._patch("shutil.which", return_value="/usr/sbin/tcpdump")
+        self.clock: MagicMock = self._patch("time.monotonic", return_value=100.0)
+        self.select: MagicMock = self._patch("select.select", return_value=([self.process.stderr], [], []))
+        self.read: MagicMock = self._patch("os.read", return_value=b"tcpdump: listening on any\n")
+
+    def _patch(self, name: str, **kwargs: Any) -> MagicMock:
+        mocked: MagicMock = self.patches.enter_context(patch(f"test_5_5_5_2_b.{name}", **kwargs))
+        return mocked
+
+    def start(self) -> tuple[str, ...]:
+        return self.capture.start("192.0.2.10", "192.0.2.20")
+
+    def test_split_readiness_and_collection_preserve_both_stderr_parts(self) -> None:
+        self.read.side_effect = [b"tcpdump: listen", b"ing on any\n"]
+        command: tuple[str, ...] = self.start()
+        self.assertEqual(
+            ("/usr/sbin/tcpdump", "-i", "any", "-nn", "-l", "-c", "1", "-s", "0",
+             ("src host 192.0.2.10 and dst host 192.0.2.20 and udp dst port 123 "
+              "and udp[4:2] = 56 and (udp[8] & 7) = 3")), command,
+        )
+        self.popen.assert_called_once_with(list(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.assertEqual(2, self.select.call_count)
+        self.read.assert_called_with(71, 4096)
+        result: target.NtpCaptureResult = self.capture.collect(25.0)
+        self.assertEqual(64053, result.source_port)
+        self.assertIn("192.0.2.10.64053", result.stdout)
+        self.assertEqual("tcpdump: listening on any\n1 packet captured\n", result.stderr)
+        self.process.communicate.assert_called_once_with(timeout=25.0)
+        self.capture.stop()
+        self.assertIsNone(self.capture.process)
+        self.process.terminate.assert_called_once_with()
+        self.process.kill.assert_not_called()
+
+    def test_early_exit_during_startup_cleans_up_and_retains_diagnostic(self) -> None:
+        self.read.side_effect = [b"permission denied\n", b""]
+        self.process.poll.return_value = 1
+        with self.assertRaisesRegex(target.ScanError, "exited before listening: permission denied"):
+            self.start()
+        self.assertIsNone(self.capture.process)
+        self.process.terminate.assert_not_called()
+        self.process.communicate.assert_called_once_with(timeout=3)
+
+    def test_startup_readiness_poll_timeout_cleans_up(self) -> None:
+        self.select.return_value = ([], [], [])
+        with self.assertRaisesRegex(target.ScanError, "did not become ready"):
+            self.start()
+        self.read.assert_not_called()
+        self.process.terminate.assert_called_once_with()
+        self.assertIsNone(self.capture.process)
+
+    def test_startup_deadline_expires_without_polling_past_budget(self) -> None:
+        self.clock.side_effect = [100.0, 111.0]
+        with self.assertRaisesRegex(target.ScanError, "did not become ready"):
+            self.start()
+        self.select.assert_not_called()
+        self.process.terminate.assert_called_once_with()
+
+    def test_capture_timeout_is_error_and_stop_escalates_to_kill(self) -> None:
+        self.start()
+        self.process.communicate.side_effect = [
+            subprocess.TimeoutExpired("tcpdump", 25),
+            subprocess.TimeoutExpired("tcpdump", 3), ("", ""),
+        ]
+        with self.assertRaisesRegex(target.ScanError, "no NTP client request.*timeout"):
+            self.capture.collect(25)
+        self.capture.stop()
+        self.process.terminate.assert_called_once_with()
+        self.process.kill.assert_called_once_with()
+        self.assertEqual([unittest.mock.call(timeout=25), unittest.mock.call(timeout=3), unittest.mock.call()],
+                         self.process.communicate.call_args_list)
+        self.capture.stop()
+        self.assertEqual(1, self.process.kill.call_count)
+        self.assertIsNone(self.capture.process)
+
+    def test_nonzero_capture_exit_is_error_with_diagnostic(self) -> None:
+        self.start()
+        self.process.returncode = 1
+        self.process.communicate.return_value = ("", "capture failed")
+        with self.assertRaisesRegex(target.ScanError, "exited 1: capture failed"):
+            self.capture.collect(25)
+        self.capture.stop()
+        self.assertIsNone(self.capture.process)
+
+    def test_malformed_capture_output_cannot_establish_source_port(self) -> None:
+        self.start()
+        self.process.communicate.return_value = ("IP 192.0.2.99.64053 > 192.0.2.20.123:", "")
+        with self.assertRaisesRegex(target.ScanError, "did not report the gateway NTP source port"):
+            self.capture.collect(25)
+        self.capture.stop()
+        self.assertIsNone(self.capture.process)
+
+    def test_collect_without_start_is_error_and_stop_is_safe(self) -> None:
+        with self.assertRaisesRegex(target.ScanError, "was not started"):
+            self.capture.collect(25)
+        self.capture.stop()
+        self.popen.assert_not_called()
+
+    def test_missing_tcpdump_does_not_spawn_process(self) -> None:
+        self._patch("shutil.which", return_value=None)
+        with self.assertRaisesRegex(target.ScanError, "tcpdump is required"):
+            self.start()
+        self.popen.assert_not_called()
 
 
 class ScanGateway(DefaultAuthGateway):
@@ -496,6 +618,43 @@ class NetworkSurfaceRunnerTests(unittest.TestCase):
         self.assertEqual("PASS", result.outcomes["documented mDNS responder"])
         self.assertEqual("PASS", result.outcomes["UDP undocumented listeners"])
         self.assertIn("LogIntf-mDNS-Responder", self.evidence())
+
+    def test_production_capture_readiness_precedes_ntp_write_and_collection(self) -> None:
+        adapter: target.TcpdumpNtpCapture = target.TcpdumpNtpCapture()
+        process: MagicMock = MagicMock(spec=subprocess.Popen)
+        process.stderr = MagicMock()
+        process.stderr.fileno.return_value = 71
+        process.returncode = 0
+        process.poll.return_value = 0
+        observed: list[str] = []
+
+        def read_ready(_descriptor: int, _size: int) -> bytes:
+            self.assertFalse(any(call.method == "POST" and call.path == "/ruuvi.json"
+                                 for call in self.gateway.calls))
+            observed.append("ready")
+            return b"tcpdump: listening on any\n"
+
+        def collect(**_kwargs: Any) -> tuple[str, str]:
+            self.assertEqual(["ready"], observed[:1])
+            self.assertTrue(any(call.method == "POST" and call.path == "/ruuvi.json"
+                                and call.body == {"ntp_server1": "192.0.2.20"}
+                                for call in self.gateway.calls))
+            observed.append("collected")
+            return "IP 192.0.2.10.64053 > 192.0.2.20.123: NTPv4, Client", "1 packet captured\n"
+
+        process.communicate.side_effect = collect
+        with patch.object(self, "ntp_capture", adapter), \
+              patch.object(target.shutil, "which", return_value="/usr/sbin/tcpdump"), \
+              patch.object(target.subprocess, "Popen", return_value=process), \
+              patch.object(target.select, "select", return_value=([process.stderr], [], [])), \
+              patch.object(target.os, "read", side_effect=read_ready):
+            result: RunResult = self.execute()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code))
+        self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
+        self.assertEqual(["ready", "collected", "collected"], observed)
+        self.assertIsNone(adapter.process)
+        process.terminate.assert_not_called()
+        process.kill.assert_not_called()
 
     def test_capture_failure_before_mutation_leaves_configuration_untouched(self) -> None:
         self.ntp_capture.fail_start = True
