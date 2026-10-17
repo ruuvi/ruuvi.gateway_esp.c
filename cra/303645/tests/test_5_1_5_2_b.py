@@ -37,6 +37,7 @@ from lib.gateway import (
     InteractiveChallengeRequest,
     InteractiveLoginChallenge,
     InteractiveLoginRequest,
+    TransportTiming,
 )
 from lib.http_api import (
     HttpAuthScheme,
@@ -467,6 +468,12 @@ class FunctionalTest_5_1_5_2_b:
     def _normalize_mac(value: str) -> str:
         return value.replace(":", "").upper()
 
+    def _transport_bounds(self) -> tuple[int, int]:
+        timing: TransportTiming | None = self.gateway.last_transport_timing
+        if timing is None:
+            raise InvalidSetup("HTTP transport did not provide timing evidence")
+        return timing.start_ns, timing.end_ns
+
     def _random_secret(self, size: int = 32) -> str:
         return base64.b64encode(self.random_bytes(size)).decode("ascii")
 
@@ -675,14 +682,16 @@ class FunctionalTest_5_1_5_2_b:
         try:
             attempt: int
             for attempt in range(1, self.attempt_count + 1):
-                start_ns: int = self.success_monotonic_ns()
+                self.gateway.transport_clock = self.success_monotonic_ns
+                start_ns: int
+                end_ns: int
                 response: requests.Response = self.gateway.request(
                     session,
                     HttpMethod.GET,
                     GatewayApi.STATUS,
                     headers=headers,
                 )
-                end_ns: int = self.success_monotonic_ns()
+                start_ns, end_ns = self._transport_bounds()
                 duration_ns: int = end_ns - start_ns
                 durations_ns.append(duration_ns)
                 self.evidence.write(
@@ -746,11 +755,13 @@ class FunctionalTest_5_1_5_2_b:
             attempt: int
             for attempt in range(1, self.attempt_count + 1):
                 challenge_request: InteractiveChallengeRequest = self.gateway.prepare_interactive_challenge_request()
-                get_start_ns: int = self.monotonic_ns()
+                self.gateway.transport_clock = self.monotonic_ns
+                get_start_ns: int
+                get_end_ns: int
                 challenge_response: requests.Response = self.gateway.send_interactive_challenge_request(
                     challenge_request
                 )
-                get_end_ns: int = self.monotonic_ns()
+                get_start_ns, get_end_ns = self._transport_bounds()
                 challenge: InteractiveAuthChallenge = self.gateway.parse_interactive_challenge_response(
                     challenge_request,
                     challenge_response,
@@ -779,9 +790,11 @@ class FunctionalTest_5_1_5_2_b:
                     username,
                     password,
                 )
-                post_start_ns: int = self.success_monotonic_ns()
+                self.gateway.transport_clock = self.success_monotonic_ns
+                post_start_ns: int
+                post_end_ns: int
                 login_response: requests.Response = self.gateway.send_interactive_login_request(login_request)
-                post_end_ns: int = self.success_monotonic_ns()
+                post_start_ns, post_end_ns = self._transport_bounds()
                 post_duration_ns: int = post_end_ns - post_start_ns
                 post_durations_ns.append(post_duration_ns)
                 self._require_setup(
@@ -916,6 +929,8 @@ class FunctionalTest_5_1_5_2_b:
     ) -> Callable[[], requests.Response]:
         session: requests.Session = self.gateway.new_session()
         challenge_response: requests.Response = self.gateway.request(session, HttpMethod.GET, path)
+        if HttpStatus.C_200_OK <= challenge_response.status_code < HttpStatus.C_300_MULTIPLE_CHOICES:
+            raise UnexpectedAuthorization("Digest challenge accepted a cookie-free request")
         self._require_setup(
             challenge_response.status_code == HttpStatus.C_401_UNAUTHORIZED,
             "Digest challenge returns 401",
@@ -984,14 +999,15 @@ class FunctionalTest_5_1_5_2_b:
                             if prepare_before_timing
                             else cast(Callable[[], requests.Response], operation)
                         )
-                        request_start_ns = clock()
+                        self.gateway.transport_clock = clock
                         response = timed_operation()
-                        successful_start_ns = request_start_ns
-                        successful_end_ns = clock()
+                        successful_start_ns, successful_end_ns = self._transport_bounds()
                         break
                     except GatewayConnectionError as error:
                         error: Exception
-                        request_end_ns: int | None = clock() if request_start_ns is not None else None
+                        request_end_ns: int | None = None
+                        if self.gateway.last_transport_timing is not None:
+                            request_start_ns, request_end_ns = self._transport_bounds()
                         self.evidence.write(
                             "AUTH MODE REQUEST RETRY",
                             AuthModeRequestRetryEvidence(
@@ -1066,7 +1082,7 @@ class FunctionalTest_5_1_5_2_b:
             self._set_outcome(mechanism, "FAIL")
             raise
         except Exception:
-            self._set_outcome(mechanism, "ERROR")
+            self._set_outcome(mechanism, "FAIL" if stats.authorized and not successful else "ERROR")
             raise
 
     def _test_additional_auth_modes(self, realm: str) -> None:
@@ -1116,8 +1132,8 @@ class FunctionalTest_5_1_5_2_b:
                     GatewayApi.STATUS,
                     headers={
                         HttpHeader.AUTHORIZATION: self.gateway.authorization_header_basic(
-                            self._distinct_username(username),
-                            self._random_secret(),
+                            username,
+                            self._random_distinct_secret(basic_password, size=16),
                         )
                     },
                 ),
@@ -1145,8 +1161,8 @@ class FunctionalTest_5_1_5_2_b:
                 False,
                 HttpStatus.C_401_UNAUTHORIZED,
                 lambda: self._prepare_digest_request(
-                    self._distinct_username(username),
-                    self._random_secret(),
+                    username,
+                    self._random_distinct_secret(password),
                 ),
                 True,
                 prepare_before_timing=True,
@@ -1199,9 +1215,13 @@ class FunctionalTest_5_1_5_2_b:
         failed_post_durations_ns: list[int] = timing.failed_post_durations_ns
         try:
             challenge_request: InteractiveChallengeRequest = self.gateway.prepare_interactive_challenge_request()
-            get_start_ns: int = self.monotonic_ns()
+            self.gateway.transport_clock = self.monotonic_ns
+            get_start_ns: int
+            get_end_ns: int
             challenge_response: requests.Response = self.gateway.send_interactive_challenge_request(challenge_request)
-            get_end_ns: int = self.monotonic_ns()
+            get_start_ns, get_end_ns = self._transport_bounds()
+            if HttpStatus.C_200_OK <= challenge_response.status_code < HttpStatus.C_300_MULTIPLE_CHOICES:
+                raise UnexpectedAuthorization(f"{mechanism} accepted cookie-free GET /auth")
             challenge: InteractiveAuthChallenge = self.gateway.parse_interactive_challenge_response(
                 challenge_request,
                 challenge_response,
@@ -1249,14 +1269,15 @@ class FunctionalTest_5_1_5_2_b:
                     password,
                 )
                 stats.attempted += 1
-                start_ns: int = self.monotonic_ns()
-                if stats.first_start_ns is None:
-                    stats.first_start_ns = start_ns
+                self.gateway.transport_clock = self.monotonic_ns
+                start_ns: int = 0
                 authorized: bool = False
                 end_ns: int | None = None
                 try:
                     login_response: requests.Response = self.gateway.send_interactive_login_request(login_request)
-                    end_ns = self.monotonic_ns()
+                    start_ns, end_ns = self._transport_bounds()
+                    if stats.first_start_ns is None:
+                        stats.first_start_ns = start_ns
                     status: int = login_response.status_code
                     if HttpStatus.C_200_OK <= status < HttpStatus.C_300_MULTIPLE_CHOICES:
                         authorized = True
@@ -1289,7 +1310,9 @@ class FunctionalTest_5_1_5_2_b:
                         stats.errored += 1
                     raise
                 finally:
-                    attempt_end_ns: int = self.monotonic_ns() if end_ns is None else end_ns
+                    if end_ns is None and self.gateway.last_transport_timing is not None:
+                        start_ns, end_ns = self._transport_bounds()
+                    attempt_end_ns: int = start_ns if end_ns is None else end_ns
                     stats.last_end_ns = attempt_end_ns
                     duration_ns: int = attempt_end_ns - start_ns
                     stats.durations_ns.append(duration_ns)
@@ -1363,7 +1386,7 @@ class FunctionalTest_5_1_5_2_b:
             self._set_outcome(mechanism, "FAIL")
             raise
         except Exception:
-            self._set_outcome(mechanism, "ERROR")
+            self._set_outcome(mechanism, "FAIL" if stats.authorized else "ERROR")
             raise
         finally:
             self.evidence.write("CAMPAIGN SUMMARY", stats.as_evidence())
@@ -1389,16 +1412,16 @@ class FunctionalTest_5_1_5_2_b:
                     "bearer guess differs from configured temporary keys",
                 )
                 stats.attempted += 1
-                start_ns: int = self.monotonic_ns()
-                if stats.first_start_ns is None:
-                    stats.first_start_ns = start_ns
+                self.gateway.transport_clock = self.monotonic_ns
+                start_ns: int = 0
                 response: requests.Response | None = None
                 response_start_ns: int = start_ns
                 response_end_ns: int | None = None
                 try:
                     request_attempt: int
                     for request_attempt in range(1, BEARER_REQUEST_ATTEMPTS + 1):
-                        request_start_ns: int = self.monotonic_ns()
+                        self.gateway.transport_clock = self.monotonic_ns
+                        request_start_ns: int
                         try:
                             response = self.gateway.request(
                                 session,
@@ -1407,12 +1430,16 @@ class FunctionalTest_5_1_5_2_b:
                                 headers={HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {token}"},
                                 json_body={} if method == HttpMethod.POST else None,
                             )
-                            response_start_ns = request_start_ns
-                            response_end_ns = self.monotonic_ns()
+                            response_start_ns, response_end_ns = self._transport_bounds()
+                            if stats.first_start_ns is None:
+                                stats.first_start_ns = response_start_ns
                             break
                         except GatewayConnectionError as error:
                             error: Exception
-                            request_end_ns: int = self.monotonic_ns()
+                            if self.gateway.last_transport_timing is None:
+                                raise
+                            request_end_ns: int
+                            request_start_ns, request_end_ns = self._transport_bounds()
                             self.evidence.write(
                                 "BEARER REQUEST RETRY",
                                 BearerRequestRetryEvidence(
@@ -1449,7 +1476,7 @@ class FunctionalTest_5_1_5_2_b:
                         stats.errored += 1
                     raise
                 finally:
-                    end_ns: int = response_end_ns if response_end_ns is not None else self.monotonic_ns()
+                    end_ns: int = response_end_ns if response_end_ns is not None else response_start_ns
                     stats.last_end_ns = end_ns
                     stats.durations_ns.append(end_ns - response_start_ns)
                     outcome: str = (
@@ -1480,7 +1507,7 @@ class FunctionalTest_5_1_5_2_b:
             self._set_outcome(mechanism, "FAIL")
             raise
         except Exception:
-            self._set_outcome(mechanism, "ERROR")
+            self._set_outcome(mechanism, "FAIL" if stats.authorized else "ERROR")
             raise
         finally:
             self.evidence.write("CAMPAIGN SUMMARY", stats.as_evidence())

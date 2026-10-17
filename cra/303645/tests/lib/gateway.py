@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import secrets
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, cast
 
@@ -119,6 +120,14 @@ class EcdhEvidence:
 
 
 @dataclass(frozen=True)
+class TransportTiming:
+    """Monotonic boundaries of session.send(), excluding preparation and evidence I/O."""
+
+    start_ns: int
+    end_ns: int
+
+
+@dataclass(frozen=True)
 class CapturedRequest:
     """Immutable snapshot of a prepared request, retained even if sending fails."""
 
@@ -195,6 +204,7 @@ class GatewayClient:
         ecc_generate: Callable[..., ECC.EccKey] = ECC.generate,
         timeout: tuple[int, int] = (5, 15),
         user_agent: str = "ruuvi-cra-functional-test",
+        transport_clock: Callable[[], int] = time.monotonic_ns,
     ) -> None:
         self.config: DutConfig = config
         self.evidence: EvidenceLog = evidence
@@ -204,6 +214,8 @@ class GatewayClient:
         self.timeout: tuple[int, int] = timeout
         self.user_agent: str = user_agent
         self.captured_requests: list[CapturedRequest] = []
+        self.transport_clock: Callable[[], int] = transport_clock
+        self.last_transport_timing: TransportTiming | None = None
 
     def new_session(self) -> requests.Session:
         session: requests.Session = self.session_factory()
@@ -222,6 +234,7 @@ class GatewayClient:
         params: dict[str, Any] | None = None,
         allow_redirects: bool = False,
     ) -> requests.Response:
+        self.last_transport_timing = None
         if json_body is not None and data is not None:
             raise ValueError("json_body and data are mutually exclusive")
         request_headers: dict[str, str] = {HttpHeader.USER_AGENT: self.user_agent}
@@ -248,11 +261,15 @@ class GatewayClient:
                 ),
             ))
             self.evidence.write_http_request(prepared_request)
-            response: requests.Response = session.send(
-                prepared_request,
-                timeout=self.timeout,
-                allow_redirects=allow_redirects,
-            )
+            start_ns: int = self.transport_clock()
+            try:
+                response: requests.Response = session.send(
+                    prepared_request,
+                    timeout=self.timeout,
+                    allow_redirects=allow_redirects,
+                )
+            finally:
+                self.last_transport_timing = TransportTiming(start_ns, self.transport_clock())
         except requests.RequestException as error:
             error: Exception
             raise GatewayConnectionError(f"{method} {url} failed: {error}") from error

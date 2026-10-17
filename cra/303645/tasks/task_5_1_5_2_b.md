@@ -210,7 +210,9 @@ aborts all later probes and transitions**. Run mandatory restoration after that 
 The firmware compares the Base64 token following `Basic ` directly with `lan_auth_pass`.
 `lan_auth_pass` can store at most 64 characters. Generate a dedicated 128-bit Basic password so the
 complete Base64 encoding of `username:password` fits that limit. Do not reuse the longer temporary
-Ruuvi password.
+Ruuvi password. Keep the configured username for every negative Basic probe and use a
+guaranteed-distinct password generated with the same 128-bit size. Unknown-user rejection does
+not prove password validation.
 
 ### Digest authentication
 
@@ -219,6 +221,11 @@ Store HA1 using `GatewayClient.calculate_digest_ha1()`:
 ```text
 MD5(username + ":" + realm + ":" + plaintext_password)
 ```
+
+Negative Digest probes retain the configured username and use guaranteed-distinct 256-bit
+passwords, exercising verification of the password-derived response. A cookie-free Digest
+challenge request or initial negative interactive GET returning any 2xx is security FAIL; abort
+to restoration before parsing its challenge.
 
 Build authenticated requests with `GatewayClient.authorization_header_digest()` rather than
 reimplementing the response calculation from HA1, nonce, nc, cnonce, qop, and HA2. The live
@@ -323,6 +330,11 @@ Non-default mode detection uses `GatewayAuthenticationModeError`; the recovery i
 carried in `RunResult.recovery_message` and must be the final console message.
 
 ## Evidence and verdicts
+
+Measure every latency using `GatewayClient.last_transport_timing`, whose monotonic boundaries
+surround `session.send()` only. Exclude request preparation, evidence writes, and challenge
+preparation from the measured authenticated request. Reporting errors make the overall result
+ERROR while preserving an already observed accepted-guess security FAIL for its mechanism.
 
 Log every HTTP request/response, credential, raw timing sample, retry, transition, restoration
 attempt, exception, per-mechanism result, and overall result. Print each attempt and measured

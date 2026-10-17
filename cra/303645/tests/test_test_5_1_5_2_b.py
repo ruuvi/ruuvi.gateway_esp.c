@@ -95,6 +95,205 @@ class FunctionalTestCase(unittest.TestCase):
             attempt_count=attempt_count,
         )
 
+    def test_legacy_password_bypass_is_detected_for_configured_username(self) -> None:
+        mode: str
+        for mode in (GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST):
+            with self.subTest(mode=mode):
+                self.check_legacy_password_bypass(mode)
+
+    def check_legacy_password_bypass(self, mode: str) -> None:
+        gateway: FakeGateway = FakeGateway(CONFIG)
+        original: Callable[..., FakeResponse] = gateway._credentials_response
+        guessed_passwords: list[str] = []
+
+        def bypass(
+            headers: Any, method: str, path: str,
+        ) -> FakeResponse:
+            response: FakeResponse = original(headers, method, path)
+            authorization: str = headers.get("Authorization", "")
+            if gateway.mode == mode and response.status_code == 401 and authorization:
+                if mode == GatewayCfgLanAuthType.BASIC:
+                    username: str
+                    password: str
+                    username, password = base64.b64decode(authorization.split(" ", 1)[1]).decode().split(":", 1)
+                    self.assertEqual(gateway.custom_username, username)
+                    configured_password: str = base64.b64decode(gateway.custom_ha1).decode().split(":", 1)[1]
+                    self.assertEqual(len(configured_password), len(password))
+                    self.assertNotEqual(configured_password, password)
+                    guessed_passwords.append(password)
+                else:
+                    parameters: dict[str, str | None] = requests.utils.parse_dict_header(authorization[7:])
+                    self.assertEqual(gateway.custom_username, parameters["username"])
+                    guessed_passwords.append(parameters["response"] or "")
+                return FakeResponse(200, {"authenticated": True})
+            return response
+
+        runner: target.FunctionalTest_5_1_5_2_b = target.FunctionalTest_5_1_5_2_b(
+            CONFIG, self.log, session_factory=lambda: FakeSession(gateway),
+            random_bytes=UniqueRandom(), monotonic_ns=AdvancingClock(2_100_000_000),
+            success_monotonic_ns=AdvancingClock(100_000_000), attempt_count=1,
+        )
+        with mock.patch.object(gateway, "_credentials_response", side_effect=bypass):
+            result: RunResult = runner.run()
+        mechanism: str = AuthMech.LAN_WEBUI_BASIC if mode == GatewayCfgLanAuthType.BASIC else AuthMech.LAN_WEBUI_DIGEST
+        self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[mechanism])
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertEqual(1, len(guessed_passwords))
+
+    def test_cookie_free_challenge_success_is_security_failure(self) -> None:
+        mechanism: str
+        for mechanism in (AuthMech.LAN_WEBUI_DEFAULT, AuthMech.LAN_WEBUI_DIGEST):
+            with self.subTest(mechanism=mechanism):
+                runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
+                with mock.patch.object(runner.gateway, "request", return_value=FakeResponse(200, {})):
+                    if mechanism == AuthMech.LAN_WEBUI_DIGEST:
+                        with self.assertRaises(target.UnexpectedAuthorization):
+                            runner._measure_http_auth_campaign(
+                                mechanism, False, 401, lambda active_runner=runner: active_runner._prepare_digest_request("user", "wrong"),
+                                True, prepare_before_timing=True,
+                            )
+                    else:
+                        # This boundary supplies transport observations normally produced by request().
+                        runner.gateway.last_transport_timing = target.TransportTiming(0, 2_000_000_000)
+                        with self.assertRaises(target.UnexpectedAuthorization):
+                            runner._attack_interactive(mechanism, GatewayCfgLanAuthType.DEFAULT)
+                self.assertEqual("FAIL", runner.outcomes[mechanism])
+
+    def test_accepted_attempt_reporting_error_preserves_security_failure(self) -> None:
+        mechanism: str
+        boundary: str
+        for mechanism in (AuthMech.LAN_WEBUI_USER_DEFINED, AuthMech.M2M_API_BEARER_RO):
+            for boundary in ("evidence", "terminal"):
+                with self.subTest(mechanism=mechanism, boundary=boundary):
+                    self.check_accepted_attempt_reporting_error(mechanism, boundary)
+
+    def check_accepted_attempt_reporting_error(self, mechanism: str, boundary: str) -> None:
+        gateway: FakeGateway = FakeGateway(CONFIG)
+        if mechanism == AuthMech.M2M_API_BEARER_RO:
+            gateway.bearer_guess_status = 200
+        runner: target.FunctionalTest_5_1_5_2_b = target.FunctionalTest_5_1_5_2_b(
+            CONFIG, self.log, session_factory=lambda: FakeSession(gateway),
+            random_bytes=UniqueRandom(), monotonic_ns=AdvancingClock(2_100_000_000),
+            success_monotonic_ns=AdvancingClock(100_000_000), attempt_count=1,
+        )
+        original_write: Callable[..., None] = self.log.write
+        original_override: Callable[..., FakeResponse | None] = gateway._response_override
+        bypassed: list[bool] = [False]
+
+        def override(
+            session: FakeSession, call: RecordedRequest,
+        ) -> FakeResponse | None:
+            if (not bypassed[0] and mechanism == AuthMech.LAN_WEBUI_USER_DEFINED and call.method == HttpMethod.POST
+                    and call.path == GatewayApi.AUTH and runner.campaigns.get(mechanism) is not None):
+                bypassed[0] = True
+                return FakeResponse(200, {})
+            return original_override(session, call)
+
+        def write(
+            label: str, value: Any = "",
+        ) -> None:
+            if label == "CAMPAIGN ATTEMPT" and value.campaign == mechanism and value.outcome == "AUTHORIZED":
+                raise OSError("accepted attempt evidence unavailable")
+            original_write(label, value)
+
+        def progress(
+            _message: str,
+        ) -> None:
+            if runner.campaigns.get(mechanism) is not None and runner.campaigns[mechanism].authorized:
+                raise BrokenPipeError("accepted attempt terminal unavailable")
+
+        runner.campaign_progress = progress if boundary == "terminal" else lambda message: None
+        with mock.patch.object(self.log, "write", side_effect=write if boundary == "evidence" else original_write), mock.patch.object(
+            gateway, "_response_override", side_effect=override,
+        ):
+            result: RunResult = runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[mechanism])
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+
+    def test_slow_evidence_does_not_change_transport_timing_verdict(self) -> None:
+        successful: bool
+        for successful in (True, False):
+            with self.subTest(successful=successful):
+                self.check_slow_evidence_timing(successful)
+
+    def check_slow_evidence_timing(self, successful: bool) -> None:
+        elapsed: list[int] = [0]
+        runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
+        runner.monotonic_ns = lambda: elapsed[0]
+        runner.success_monotonic_ns = lambda: elapsed[0]
+        self.gateway.mode = GatewayCfgLanAuthType.ALLOW if successful else GatewayCfgLanAuthType.DENY
+        class TimedSession(FakeSession):
+            def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
+                elapsed[0] += 100_000_000
+                return super().send(request, **kwargs)
+
+        runner.gateway.session_factory = lambda: TimedSession(self.gateway)
+
+        def slow_write(_value: Any) -> None:
+            elapsed[0] += 2_000_000_000
+
+        with mock.patch.object(
+            self.log, "write_http_request", side_effect=slow_write,
+        ), mock.patch.object(self.log, "write_http_response", side_effect=slow_write):
+            operation: Callable[[], requests.Response] = lambda: runner.gateway.request(
+                runner.gateway.new_session(), HttpMethod.GET, GatewayApi.STATUS,
+            )
+            if successful:
+                runner._measure_http_auth_campaign(
+                    AuthMech.LAN_WEBUI_BASIC, True, 200, operation, True,
+                )
+                self.assertEqual("PASS", runner.outcomes[AuthMech.LAN_WEBUI_BASIC])
+                self.assertEqual([100_000_000], runner.success_durations_ns[AuthMech.LAN_WEBUI_BASIC])
+            else:
+                with self.assertRaises(target.SecurityFailure):
+                    runner._measure_http_auth_campaign(
+                        AuthMech.LAN_WEBUI_DISABLED, False, 403, operation, True,
+                    )
+                self.assertEqual("FAIL", runner.outcomes[AuthMech.LAN_WEBUI_DISABLED])
+                self.assertEqual([100_000_000], runner.campaigns[AuthMech.LAN_WEBUI_DISABLED].durations_ns)
+
+    def test_complete_interactive_timing_excludes_slow_evidence(self) -> None:
+        self.check_complete_slow_evidence(fast_denials=False)
+        self.check_complete_slow_evidence(fast_denials=True)
+
+    def check_complete_slow_evidence(self, fast_denials: bool) -> None:
+        elapsed: list[int] = [0]
+        gateway: FakeGateway = FakeGateway(CONFIG)
+
+        class TimedSession(FakeSession):
+            def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
+                response: FakeResponse = super().send(request, **kwargs)
+                elapsed[0] += (
+                    2_100_000_000 if response.status_code in (401, 403) and not fast_denials else 100_000_000
+                )
+                return response
+
+        runner: target.FunctionalTest_5_1_5_2_b = target.FunctionalTest_5_1_5_2_b(
+            CONFIG, self.log, session_factory=lambda: TimedSession(gateway), random_bytes=UniqueRandom(),
+            monotonic_ns=lambda: elapsed[0], success_monotonic_ns=lambda: elapsed[0], attempt_count=2,
+        )
+
+        def slow_write(_value: Any) -> None:
+            elapsed[0] += 5_000_000_000
+
+        with mock.patch.object(self.log, "write_http_request", side_effect=slow_write), mock.patch.object(
+            self.log, "write_http_response", side_effect=slow_write,
+        ):
+            result: RunResult = runner.run()
+        self.assertEqual((1, "FAIL") if fast_denials else (0, "PASS"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        mechanism: str
+        for mechanism in (AuthMech.LAN_WEBUI_DEFAULT, AuthMech.LAN_WEBUI_USER_DEFINED):
+            timing: target.InteractiveTimingStats = runner.interactive_timings[mechanism]
+            self.assertEqual([100_000_000] * 2, timing.successful_post_durations_ns)
+            if not fast_denials:
+                self.assertEqual([2_100_000_000], timing.failed_get_durations_ns)
+                self.assertEqual([2_100_000_000] * 2, timing.failed_post_durations_ns)
+            else:
+                self.assertEqual("FAIL", result.outcomes[mechanism])
+
     def test_production_constants_and_mechanisms_are_exact(self) -> None:
         self.assertEqual(10, target.ATTEMPTS_PER_TARGET)
         self.assertEqual(1.00, target.MIN_FAILED_ATTEMPT_SECONDS)
@@ -533,11 +732,14 @@ class FunctionalTestCase(unittest.TestCase):
     def test_unauthenticated_mode_does_not_enforce_response_timing(self) -> None:
         runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=2)
         runner.success_monotonic_ns = AdvancingClock(600_000_000)
+        self.gateway.mode = GatewayCfgLanAuthType.ALLOW
         runner._measure_http_auth_campaign(
             AuthMech.LAN_WEBUI_UNAUTHENTICATED,
             True,
             HttpStatus.C_200_OK,
-            lambda: FakeResponse(HttpStatus.C_200_OK, {"status": "ok"}),
+            lambda: runner.gateway.request(
+                FakeSession(self.gateway), HttpMethod.GET, GatewayApi.STATUS,
+            ),
             True,
             enforce_timing=False,
         )
@@ -547,35 +749,19 @@ class FunctionalTestCase(unittest.TestCase):
         )
 
     def test_digest_challenge_is_prepared_before_response_timing(self) -> None:
-        events: list[str] = []
-
-        def clock() -> int:
-            events.append("clock")
-            return len(events) * 100_000_000
-
-        def prepare_request() -> Callable[[], requests.Response]:
-            events.append("challenge")
-
-            def send_authenticated_request() -> FakeResponse:
-                events.append("authenticated request")
-                return FakeResponse(HttpStatus.C_200_OK, {"authenticated": True})
-
-            return send_authenticated_request
-
         runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
-        runner.success_monotonic_ns = clock
+        self.gateway.mode = GatewayCfgLanAuthType.DIGEST
+        self.gateway.custom_username = "configured"
+        self.gateway.custom_ha1 = runner.gateway.calculate_digest_ha1("configured", "Ruuvi Gateway", "password")
         runner._measure_http_auth_campaign(
-            AuthMech.LAN_WEBUI_DIGEST,
-            True,
-            HttpStatus.C_200_OK,
-            prepare_request,
-            True,
-            prepare_before_timing=True,
+            AuthMech.LAN_WEBUI_DIGEST, True, HttpStatus.C_200_OK,
+            lambda: runner._prepare_digest_request("configured", "password"),
+            True, prepare_before_timing=True,
         )
-        self.assertEqual(
-            ["challenge", "clock", "authenticated request", "clock"],
-            events,
-        )
+        self.assertEqual([GatewayApi.STATUS, GatewayApi.STATUS], [call.path for call in self.gateway.calls])
+        self.assertEqual("", self.gateway.calls[0].authorization)
+        self.assertTrue(self.gateway.calls[1].authorization.startswith("Digest "))
+        self.assertEqual([100_000_000], runner.success_durations_ns[AuthMech.LAN_WEBUI_DIGEST])
 
     def test_digest_authenticated_request_retries_after_transport_timeout(self) -> None:
         self.gateway.digest_authenticated_timeouts = 1
