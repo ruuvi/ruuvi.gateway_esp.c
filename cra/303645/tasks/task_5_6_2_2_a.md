@@ -146,7 +146,11 @@ Do not modify firmware behavior or any self-assessment/IXIT source document.
 
 Disclosure scanning includes nonempty credential input values identified by a known field's
 `name` or `id`, including hidden inputs, as well as literal assignments in rendered HTML and
-`text/plain` responses. Empty controls and ordinary JavaScript expressions are not credentials.
+`text/plain` responses. Scan decoded rendered text for quoted configuration dumps and runtime
+diagnostics at every HTTP status, excluding script/style text from the rendered scan. Decode JSON
+where possible and preserve quote/escape boundaries in embedded Wi-Fi configuration literals.
+Nonempty headers named for known credentials also fail the scan, independent of their value syntax.
+Empty controls and ordinary JavaScript expressions are not credentials.
 For every captured DHCP packet, inspect BOOTP's fixed `sname` and `file` fields as well as DHCP
 options. These client fields must be zero-filled; any nonempty payload is undeclared information
 and fails the DHCP check, including ASCII or binary DeviceID password seeds in an earlier packet.

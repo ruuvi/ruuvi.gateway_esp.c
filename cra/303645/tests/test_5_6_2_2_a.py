@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import os
 import re
 import secrets
@@ -86,7 +87,7 @@ TAGS_PATTERN: re.Pattern[str] = re.compile(
 PEM_PATTERN: re.Pattern[str] = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 POINTER_PATTERN: re.Pattern[str] = re.compile(r"\b0x[0-9a-fA-F]{6,}\b")
 POINTER_CONTEXT_PATTERN: re.Pattern[str] = re.compile(
-    r"(?i)\b(?:pointer|address|stack|heap|pc|sp)\s*[:=]\s*0x[0-9a-f]{6,}\b"
+    r'(?i)\b(?:pointer|address|stack|heap|pc|sp)["\']?\s*[:=]\s*["\']?0x[0-9a-f]{6,}\b'
 )
 RUNTIME_BACKTRACE_PATTERN: re.Pattern[str] = re.compile(
     r"(?i)\b(?:backtrace|stack trace)\s*:\s*0x[0-9a-f]{6,}\s*:\s*0x[0-9a-f]{6,}\b"
@@ -102,8 +103,11 @@ PUBLIC_CACHE_CONTROL_PATTERN: re.Pattern[str] = re.compile(
 )
 BEARER_PATTERN: re.Pattern[str] = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/-]{8,}")
 HISTORY_PATTERN: re.Pattern[str] = re.compile(r'(?i)["\'](?:history|sensor_data|ble_mac)["\']\s*:\s*(?:\[\s*\{|\[\s*["\']|\{\s*["\'])')
+QUOTED_LITERAL: str = r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
 WIFI_PASSWORD_PATTERN: re.Pattern[str] = re.compile(
-    r'(?is)["\']wifi_sta_config["\']\s*:\s*\{[^}]*["\']password["\']\s*:\s*["\'][^"\']+["\']'
+    r"(?is)[\"']wifi_sta_config[\"']\s*:\s*\{" +
+    r"(?:" + QUOTED_LITERAL + r"|[^{}\"'])*?" +
+    r"[\"']password[\"']\s*:\s*(?:\"(?:\\.|[^\"\\])+\"|'(?:\\.|[^'\\])+')"
 )
 STATIC_REF_PATTERN: re.Pattern[str] = re.compile(r'''(?:src|href)\s*=\s*["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']''', re.IGNORECASE)
 
@@ -439,6 +443,20 @@ def scan_observation(
     findings: list[DisclosureFinding] = []
     parts: list[tuple[str, str]] = [(f"header:{name}", value) for name, value in observation.headers]
     parts.append(("body", observation.body))
+    media_type: str = next((value.split(";", 1)[0].strip().lower()
+                            for name, value in observation.headers if name.lower() == "content-type"), "")
+    rendered_body: bool = media_type in {"text/html", "text/plain"}
+    if media_type == "text/html":
+        html_text: PublicHtmlText = PublicHtmlText()
+        html_text.feed(observation.body)
+        html_text.close()
+        parts.append(("rendered body", "".join(html_text.fragments)))
+        form_value: str
+        for form_value in html_text.credential_values:
+            findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                              "body", "credential form value", form_value))
+    elif media_type == "text/plain":
+        parts.append(("rendered body", observation.body))
     location: str
     content: str
     for location, content in parts:
@@ -447,14 +465,20 @@ def scan_observation(
             ("bearer token", BEARER_PATTERN),
             ("personal telemetry", HISTORY_PATTERN), ("sensor tags", TAGS_PATTERN),
             ("coordinates", COORDINATES_PATTERN),
-            ("Wi-Fi PSK", WIFI_PASSWORD_PATTERN), ("runtime backtrace", RUNTIME_BACKTRACE_PATTERN),
+            ("Wi-Fi PSK", WIFI_PASSWORD_PATTERN),
         )
-        if location == "body" and observation.status == HttpStatus.C_200_OK:
-            patterns += (("memory address", POINTER_CONTEXT_PATTERN),)
-        else:
-            patterns += (("memory address", POINTER_PATTERN),)
-        if location.startswith("header:") or observation.status != HttpStatus.C_200_OK:
-            patterns += (("build identifier", BUILD_PATTERN), ("diagnostic", DIAGNOSTIC_PATTERN))
+        if location != "body" or not rendered_body:
+            patterns += (("runtime backtrace", RUNTIME_BACKTRACE_PATTERN),)
+            if location in {"body", "rendered body"} and observation.status == HttpStatus.C_200_OK:
+                patterns += (("memory address", POINTER_CONTEXT_PATTERN),)
+            else:
+                patterns += (("memory address", POINTER_PATTERN),)
+        if location.startswith("header:") or (location == "body" and observation.status != HttpStatus.C_200_OK):
+            patterns += (("build identifier", BUILD_PATTERN),)
+        if location.startswith("header:") or location == "rendered body" or (
+            location == "body" and not rendered_body and observation.status != HttpStatus.C_200_OK
+        ):
+            patterns += (("diagnostic", DIAGNOSTIC_PATTERN),)
         category: str
         pattern: re.Pattern[str]
         for category, pattern in patterns:
@@ -480,7 +504,7 @@ def scan_observation(
                 # Exempt only complete standard numeric metadata, never appended build/custom fields.
                 scanned_content = ""
             for hit in pattern.finditer(scanned_content):
-                if category == "bearer token" and location == "body":
+                if category == "bearer token" and location in {"body", "rendered body"}:
                     candidate: str = hit.group(0).split()[-1]
                     context: str = content[max(0, hit.start() - 24):hit.start()].lower()
                     if candidate.isalpha() and len(candidate) < 24 and "authorization" not in context:
@@ -492,31 +516,31 @@ def scan_observation(
             findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                               location, "DeviceID password seed", gw_id))
         if location.startswith("header:"):
+            header_name: str = location[len("header:"):].lower().replace("-", "_")
+            if header_name in SECRET_FIELDS and content.strip():
+                findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                  location, "credential value", content))
+        if location.startswith("header:") or location == "rendered body":
             bare_match: re.Match[str]
             for bare_match in HEADER_SECRET_FIELD_PATTERN.finditer(content):
                 findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                                   location, "credential value", bare_match.group(0)))
-        if location == "body" and any(
-            name.lower() == "content-type" and value.split(";", 1)[0].strip().lower() == "text/html"
-            for name, value in observation.headers
-        ):
-            html_text: PublicHtmlText = PublicHtmlText()
-            html_text.feed(content)
-            html_text.close()
-            for bare_match in HEADER_SECRET_FIELD_PATTERN.finditer("".join(html_text.fragments)):
-                findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
-                                                  location, "credential value", bare_match.group(0)))
-            form_value: str
-            for form_value in html_text.credential_values:
-                findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
-                                                  location, "credential form value", form_value))
-        if location == "body" and any(
-            name.lower() == "content-type" and value.split(";", 1)[0].strip().lower() == "text/plain"
-            for name, value in observation.headers
-        ):
-            for bare_match in HEADER_SECRET_FIELD_PATTERN.finditer(content):
-                findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
-                                                  location, "credential value", bare_match.group(0)))
+        # Decode complete JSON objects even when embedded in a public asset or rendered dump.
+        # This handles escaped property names/values without interpreting JavaScript expressions.
+        decoder: json.JSONDecoder = json.JSONDecoder()
+        opening: re.Match[str]
+        for opening in re.finditer(r"\{", content):
+            try:
+                decoded: Any
+                end: int
+                decoded, end = decoder.raw_decode(content, opening.start())
+            except json.JSONDecodeError:
+                continue
+            if isinstance(decoded, dict):
+                wifi: Any = decoded.get("wifi_sta_config")
+                if isinstance(wifi, dict) and isinstance(wifi.get("password"), str) and wifi["password"]:
+                    findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                      location, "Wi-Fi PSK", content[opening.start():end]))
         field_match: re.Match[str]
         for field_match in SECRET_FIELD_PATTERN.finditer(content):
             field: str = field_match.group(1)

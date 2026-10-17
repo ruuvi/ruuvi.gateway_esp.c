@@ -216,6 +216,73 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
                 self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
 
+    def test_successful_rendered_diagnostics_are_detected_without_script_literals(self) -> None:
+        content_type: str
+        text: str
+        expected: str
+        for content_type, text, expected in (
+            ("text/html", '<pre>{"stack":"0x3ffb5678"}</pre>', "FAIL"),
+            ("text/html", '<pre>{&quot;stack&quot;:&quot;0x3ffb5678&quot;}</pre>', "FAIL"),
+            ("text/html", "<pre>abort() called</pre>", "FAIL"),
+            ("text/html", "<pre>abort() was called at PC 0x400d1234 on core 0</pre>", "FAIL"),
+            ("text/plain", "abort() called", "FAIL"),
+            ("text/plain", '{"stack":"0x3ffb5678"}', "FAIL"),
+            ("text/html", '<script>const label="abort() called";</script>', "PASS"),
+            ("text/html", '<script>const label="Backtrace: 0x400d1234:0x3ffb5678";</script>', "PASS"),
+            ("text/html", '<style>p:after{content:"panic"}</style>', "PASS"),
+            ("text/html", "<p>The gateway is ready.</p>", "PASS"),
+        ):
+            with self.subTest(content_type=content_type, text=text):
+                self.setUp()
+                self.fake.changed_path = "/"
+                self.fake.changed_header = ("Content-Type", content_type)
+                if content_type == "text/plain":
+                    self.fake.changed_path = "/app.js"
+                self.fake.changed_body = ('<script src="/app.js"></script>' if content_type == "text/html" else "") + text
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_credential_header_names_are_scanned_with_public_header_controls(self) -> None:
+        name: str
+        value: str
+        expected: str
+        for name, value, expected in (
+            ("mqtt_pass", "leaked-password", "FAIL"),
+            ("lan_auth_api_key", "qrstuvwxyz012345", "FAIL"),
+            ("MQTT-PASS", "leaked-password", "FAIL"),
+            ("mqtt_pass", "", "PASS"),
+            ("X-Public-Nonce", "public-handshake-nonce", "PASS"),
+            ("Set-Cookie", "public_session=example; Path=/", "PASS"),
+        ):
+            with self.subTest(name=name, value=value):
+                self.setUp()
+                self.fake.changed_path = "/"
+                self.fake.changed_header = (name, value)
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_wifi_and_html_escaped_configuration_literals_are_detected(self) -> None:
+        path: str
+        text: str
+        for path, text in (
+            ("/app.js", '{"wifi_sta_config":{"password":"\'secretpass"}}'),
+            ("/app.js", '{"wifi_sta_config":{"ssid":"office}net","password":"ordinarysecret"}}'),
+            ("/app.js", r'{"wifi_sta_config":{"ssid":"office\"}net","password":"\"secret"}}'),
+            ("/app.js", r'{"wifi_sta_config":{"pass\u0077ord":"secret"}}'),
+            ("/app.js", "window.config = {'wifi_sta_config':{'ssid':'office}net','password':'\\\'secret'}};"),
+            ("/", '<pre>{&quot;mqtt_pass&quot;:&quot;leaked-password&quot;}</pre>'),
+            ("/", '<pre>{&quot;wifi_sta_config&quot;:{&quot;password&quot;:&quot;secret&quot;}}</pre>'),
+        ):
+            with self.subTest(path=path, text=text):
+                self.setUp()
+                self.fake.changed_path = path
+                self.fake.changed_body = ('<script src="/app.js"></script>' if path == "/" else "") + text
+                result: RunResult = self._run()
+                self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+                self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+
     def test_empty_defaults_and_coordinate_schema_are_public(self) -> None:
         self.fake.changed_path = "/app.js"
         self.fake.changed_body = (
