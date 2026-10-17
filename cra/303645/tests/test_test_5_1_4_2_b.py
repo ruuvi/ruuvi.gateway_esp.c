@@ -396,6 +396,25 @@ class RotationTests(unittest.TestCase):
         self.assertEqual(GatewayCfgLanAuthType.DEFAULT, self.fake.mode)
         self.assertEqual(("", ""), (self.fake.ro_key, self.fake.rw_key))
 
+    def test_security_failure_survives_failed_assertion_evidence_write(self) -> None:
+        self.fake.session_drop_bug = True
+        original: Callable[[str, Any], None] = self.log.write
+        failed_assertions: list[target.AssertionEvidence] = []
+
+        def write(label: str, value: Any = "") -> None:
+            if label == "ASSERTION" and isinstance(value, target.AssertionEvidence) and value.result == "FAIL":
+                failed_assertions.append(value)
+                raise OSError("unwritable assertion evidence")
+            original(label, value)
+
+        with mock.patch.object(self.log, "write", side_effect=write):
+            result: RunResult = self.run_case("ERROR", AuthMech.LAN_WEBUI_DEFAULT, "FAIL")
+        self.assertEqual(1, len(failed_assertions))
+        self.assertEqual("PASS", result.outcomes[target.RESTORATION])
+        self.assertEqual(target.RESTORE_BODY, self.fake.calls[6].body)
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, self.fake.mode)
+        self.assertEqual(("", ""), (self.fake.ro_key, self.fake.rw_key))
+
     def test_failed_progress_and_persistent_evidence_failure_still_restore(self) -> None:
         original: Callable[[str, Any], None] = self.log.write
         failed: bool = False

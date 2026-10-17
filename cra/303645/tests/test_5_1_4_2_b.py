@@ -134,14 +134,13 @@ class FunctionalTest_5_1_4_2_b:
     def _check(self, condition: bool, description: str, actual: Any = "", *, setup: bool = False) -> None:
         self.last_check = description
         if not condition:
+            self.outcomes[SETUP if setup else self.active] = "ERROR" if setup else "FAIL"
             observed: str = str(actual) if isinstance(actual, (int, bool)) else "value mismatch (details in log)"
             self.diagnostics.append(f"{self.active}: expected {description}; observed {observed}")
         self.evidence.write("ASSERTION", AssertionEvidence(description, "PASS" if condition else "FAIL", actual))
         if not condition:
             if setup:
-                self.outcomes[SETUP] = "ERROR"
                 raise InvalidSetup(description)
-            self.outcomes[self.active] = "FAIL"
             raise SecurityFailure(description)
 
     def _request(
