@@ -12,7 +12,7 @@ from dataclasses import FrozenInstanceError, dataclass, replace
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, TextIO
 from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlsplit
 
@@ -1566,6 +1566,135 @@ class CreationTests(unittest.TestCase):
         self.assertIn("Factory-reset recovery unverified", result.recovery_message or "")
         assert self.gateway.http_fixture is not None
         self.assertTrue(self.gateway.http_fixture.closed)
+
+    def test_recovery_http_interrupt_closes_resources_and_records_unverified_manifest(self) -> None:
+        prior_failure: bool
+        for prior_failure in (False, True):
+            with self.subTest(prior_failure=prior_failure):
+                self._check_recovery_http_interrupt(prior_failure)
+
+    def _check_recovery_http_interrupt(self, prior_failure: bool) -> None:
+        self.setUp()
+        self.gateway.noop_mutates = prior_failure
+        sessions: list[CreationSession] = []
+        streams: list[TextIO] = []
+        gateway: CreationGateway = self.gateway
+        original_create: Callable[..., runner.EvidenceLog] = runner.EvidenceLog.create
+        interrupted: list[requests.PreparedRequest] = []
+
+        class InterruptedRecoverySession(CreationSession):
+            def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
+                if gateway.restoring and urlsplit(request.url or "").path == "/ruuvi.json":
+                    interrupted.append(request)
+                    raise KeyboardInterrupt()
+                return super().send(request, **kwargs)
+
+        def session_factory() -> CreationSession:
+            session: CreationSession = InterruptedRecoverySession(gateway)
+            sessions.append(session)
+            return session
+
+        def create(*args: Any, **kwargs: Any) -> runner.EvidenceLog:
+            log: runner.EvidenceLog = original_create(*args, **kwargs)
+            streams.append(log._stream)
+            return log
+
+        with patch.object(runner.EvidenceLog, "create", create):
+            result: RunResult = runner.execute_test_5_11_1_2_a(
+                self.directory, session_factory, lambda: NOW, self.output.append,
+                DeterministicBytes(), self.fixture_factory, input_fn=self.confirm,
+                monotonic=lambda: self.elapsed, sleep=self.sleep,
+                http_fixture_factory=self.make_http_fixture,
+            )
+        self.assertTrue(interrupted)
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes["factory reset"], "ERROR")
+        if prior_failure:
+            self.assertEqual(result.outcomes[runner.KEYS], "FAIL")
+        self.assertFalse(self.manifest()["restored"]["verified"])
+        self.assertTrue(self.manifest()["restored"]["attempted"])
+        self.assertIn("unverified", result.recovery_message or "")
+        self.assertIn(result.recovery_message, self.output)
+        self.assertTrue(sessions)
+        self.assertTrue(all(session.closed for session in sessions))
+        self.assertTrue(streams)
+        self.assertTrue(all(stream.closed for stream in streams))
+        assert self.gateway.http_fixture is not None
+        self.assertTrue(self.gateway.http_fixture.closed)
+        self.assertIn("KeyboardInterrupt", self.log())
+        self.assertIn("Overall verdict: ERROR", self.output)
+
+    def test_interrupted_applied_configuration_write_stops_work_and_still_recovers(self) -> None:
+        gateway: CreationGateway = self.gateway
+        interrupted: list[requests.PreparedRequest] = []
+
+        class InterruptedWriteSession(CreationSession):
+            def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
+                response: FakeResponse = super().send(request, **kwargs)
+                if not gateway.restoring and gateway.mode == GatewayCfgLanAuthType.RUUVI and request.method == "POST" and urlsplit(request.url or "").path == "/ruuvi.json":
+                    interrupted.append(request)
+                    raise KeyboardInterrupt()
+                return response
+
+        result: RunResult = runner.execute_test_5_11_1_2_a(
+            self.directory, lambda: InterruptedWriteSession(gateway), lambda: NOW,
+            self.output.append, DeterministicBytes(), self.fixture_factory,
+            input_fn=self.confirm, monotonic=lambda: self.elapsed, sleep=self.sleep,
+            http_fixture_factory=self.make_http_fixture,
+        )
+        self.assertEqual(len(interrupted), 1)
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes[runner.ADMIN], "ERROR")
+        self.assertEqual(result.outcomes[runner.CERTS], "NOT RUN")
+        self.assertTrue(self.manifest()["restored"]["verified"])
+        self.assert_restored()
+
+    def test_interrupted_resource_closure_does_not_skip_final_manifest(self) -> None:
+        sessions: list[CreationSession] = []
+
+        class InterruptedSession(CreationSession):
+            def close(self) -> None:
+                super().close()
+                if self is sessions[0]:
+                    raise KeyboardInterrupt()
+
+        def session_factory() -> CreationSession:
+            session: CreationSession = InterruptedSession(self.gateway)
+            sessions.append(session)
+            return session
+
+        with patch.object(FakeHttpFixture, "close", side_effect=KeyboardInterrupt()):
+            result: RunResult = runner.execute_test_5_11_1_2_a(
+                self.directory, session_factory, lambda: NOW, self.output.append,
+                DeterministicBytes(), self.fixture_factory, input_fn=self.confirm,
+                monotonic=lambda: self.elapsed, sleep=self.sleep,
+                http_fixture_factory=self.make_http_fixture,
+            )
+        self.assertEqual(result.exit_code, 2)
+        self.assertTrue(sessions)
+        self.assertTrue(all(session.closed for session in sessions))
+        self.assertTrue(self.manifest()["restored"]["verified"])
+        self.assertIn("Overall verdict: ERROR", self.output)
+
+    def test_interrupted_final_manifest_is_error_and_closes_fixture(self) -> None:
+        def writer(path: Path, manifest: runner.Manifest) -> None:
+            if manifest.restored.verified:
+                raise KeyboardInterrupt()
+            runner.write_manifest(path, manifest)
+
+        result: RunResult = self.execute(writer)
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes["manifest"], "ERROR")
+        assert self.gateway.http_fixture is not None
+        self.assertTrue(self.gateway.http_fixture.closed)
+        self.assertIn("Overall verdict: ERROR", self.output)
+
+    def test_interrupted_preamble_returns_error_without_dut_access(self) -> None:
+        with patch.object(runner.EvidenceLog, "create", side_effect=KeyboardInterrupt()):
+            result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(self.gateway.wire, [])
+        self.assertIn("Overall verdict: ERROR", self.output)
 
     def test_cleanup_failure_does_not_skip_remaining_sessions_or_final_verdict(self) -> None:
         sessions: list[CreationSession] = []

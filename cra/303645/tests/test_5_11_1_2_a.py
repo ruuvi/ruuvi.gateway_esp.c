@@ -121,7 +121,7 @@ class RecoveryEvidenceLog(EvidenceLog):
     def _attempt(self, action: Callable[[], None]) -> None:
         try:
             action()
-        except Exception:  # Only evidence failures are tolerated during recovery.
+        except (Exception, KeyboardInterrupt):  # Evidence interruption must not skip recovery cleanup.
             self.failed = True
             if not self.recovering:
                 raise
@@ -403,8 +403,8 @@ class FunctionalTest_5_11_1_2_a:
     def _cleanup(self, action: Callable[[], None]) -> None:
         try:
             action()
-        except Exception as error:  # noqa: BLE001 - Independent cleanup actions must all be attempted.
-            error: Exception
+        except (Exception, KeyboardInterrupt) as error:  # noqa: BLE001 - Independent cleanup actions must all be attempted.
+            error: Exception | KeyboardInterrupt
             self.had_error = True
             self.evidence.exception(error)
 
@@ -1001,9 +1001,9 @@ class FunctionalTest_5_11_1_2_a:
             if finish and self.outcomes[category] not in ("ERROR", "FAIL"):
                 self.outcomes[category] = "PASS"
             return True
-        except Exception as error:  # Preserve outcomes and mandatory recovery.
-            error: Exception
-            if self.evidence.failed and not self.evidence.recovering:
+        except (Exception, KeyboardInterrupt) as error:  # Preserve outcomes and mandatory recovery.
+            error: Exception | KeyboardInterrupt
+            if not self.evidence.recovering and (self.evidence.failed or isinstance(error, KeyboardInterrupt)):
                 raise  # Stop normal work; the run boundary enables best-effort recovery.
             verdict: str = "FAIL" if isinstance(error, CommitmentFailure) else "ERROR"
             self.had_error = self.had_error or verdict == "ERROR"
@@ -1126,8 +1126,8 @@ class FunctionalTest_5_11_1_2_a:
                     self.had_error = True
                     self.outcomes[KEYS] = "ERROR"
                     self._say(f"{KEYS}: ERROR (RO/RW reads completed; RW no-op POST not run because state preservation failed)")
-        except Exception as error:  # noqa: BLE001 - Run boundary must always restore.
-            error: Exception
+        except (Exception, KeyboardInterrupt) as error:  # noqa: BLE001 - Run boundary must always restore.
+            error: Exception | KeyboardInterrupt
             self.evidence.recovering = True
             self.had_error = True
             self.evidence.exception(error)
@@ -1137,26 +1137,28 @@ class FunctionalTest_5_11_1_2_a:
             self._notice(f"{self.active}: ERROR ({type(error).__name__}: {reason})")
         finally:
             self.evidence.recovering = True
-            self._cleanup(partial(self.progress, "Offer factory reset and verify baseline and credential revocation"))
-            if self.baseline is not None and not self._perform("factory reset", self._factory_reset_recovery):
-                self.restoration = Restoration(True, False, reason="Factory-reset recovery could not be verified; inspect evidence")
-                self.recovery_message = f"Factory-reset recovery unverified. Recover the dedicated DUT using manifest {self.manifest_path} and evidence {self.evidence.path}."
-            if self.http_fixture is not None:
-                self._cleanup(self.http_fixture.close)
-            session: requests.Session
-            for session in self.sessions:
-                self._cleanup(session.close)
-            # A category only passes when every item has independent commitment evidence.
-            for category in CATEGORIES:
-                category_items: list[ManifestItem] = [i for i in self.items if i.category == category]
-                if self.outcomes[category] == "PASS" and (not category_items or not all(i.committed for i in category_items)):
-                    self.outcomes[category] = "ERROR"
-            self._cleanup(partial(self.progress, "Finalize historical manifest and per-category results"))
-            if self.outcomes["manifest"] == "NOT RUN":
-                self.outcomes["manifest"] = "PASS"
-            self._perform("manifest", self._checkpoint)
-            self.evidence.write("FACTORY RESET RECOVERY", self.restoration)
-            self.evidence.write("PER-CHECK OUTCOMES", self.outcomes)
+            try:
+                self._cleanup(partial(self.progress, "Offer factory reset and verify baseline and credential revocation"))
+                if self.baseline is not None and not self._perform("factory reset", self._factory_reset_recovery):
+                    self.restoration = Restoration(True, False, reason="Factory-reset recovery could not be verified; inspect evidence")
+                    self.recovery_message = f"Factory-reset recovery unverified. Recover the dedicated DUT using manifest {self.manifest_path} and evidence {self.evidence.path}."
+            finally:
+                if self.http_fixture is not None:
+                    self._cleanup(self.http_fixture.close)
+                session: requests.Session
+                for session in self.sessions:
+                    self._cleanup(session.close)
+                # A category only passes when every item has independent commitment evidence.
+                for category in CATEGORIES:
+                    category_items: list[ManifestItem] = [i for i in self.items if i.category == category]
+                    if self.outcomes[category] == "PASS" and (not category_items or not all(i.committed for i in category_items)):
+                        self.outcomes[category] = "ERROR"
+                self._cleanup(partial(self.progress, "Finalize historical manifest and per-category results"))
+                if self.outcomes["manifest"] == "NOT RUN":
+                    self.outcomes["manifest"] = "PASS"
+                self._perform("manifest", self._checkpoint)
+                self.evidence.write("FACTORY RESET RECOVERY", self.restoration)
+                self.evidence.write("PER-CHECK OUTCOMES", self.outcomes)
         category: str
         outcome: str
         for category, outcome in self.outcomes.items():
@@ -1198,7 +1200,7 @@ def execute_test_5_11_1_2_a(
         nonlocal output_failed
         try:
             output(message)
-        except Exception:  # noqa: BLE001 - Failed terminal output must not prevent finalization.
+        except (Exception, KeyboardInterrupt):  # noqa: BLE001 - Failed terminal output must not prevent finalization.
             output_failed = True
 
     def report(message: str) -> None:
@@ -1227,8 +1229,8 @@ def execute_test_5_11_1_2_a(
             fixture_factory, manifest_writer, input_fn=input_fn, monotonic=monotonic, sleep=sleep,
             http_fixture_factory=http_fixture_factory,
         ).run()
-    except Exception as error:
-        error: Exception
+    except (Exception, KeyboardInterrupt) as error:
+        error: Exception | KeyboardInterrupt
         if log is not None:
             log.recovering = True
             log.exception(error)  # noqa: TRY401 - EvidenceLog needs the exception object.
