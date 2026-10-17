@@ -11,7 +11,7 @@ import socket
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Protocol, TextIO, cast
@@ -262,8 +262,9 @@ class FunctionalTest_5_6_1_2_c:
         self.ixit_directory: Path = Path(__file__).resolve().parent.parent if ixit_directory is None else ixit_directory
         self.config: DutConfig = config
         self.evidence: EvidenceLog = evidence
-        self.gateway: GatewayClient = GatewayClient(
-            config, evidence, session_factory=session_factory,
+        self.gateway: GatewayClient
+        self.gateway_factory: Callable[[DutConfig], GatewayClient] = lambda endpoint: GatewayClient(
+            endpoint, evidence, session_factory=session_factory,
             random_bytes=random_bytes, ecc_generate=ecc_generate,
         )
         self.runner: Callable[..., subprocess.CompletedProcess[str]] = runner
@@ -333,9 +334,10 @@ class FunctionalTest_5_6_1_2_c:
             self._assert_setup(f"{field} has its public factory-default value", matches, actual)
         # Partial POSTs reset omitted MQTT fields, even when MQTT is disabled.
         self._assert_setup("verified MAC is required before partial configuration writes", verified_identity, "identity presence")
+        verified_mac: str = cast(str, payload[GatewayCfgDesc.GW_MAC]).upper()
         mqtt_defaults: dict[str, str] = {
-            "mqtt_prefix": f"ruuvi/{self.config.gw_mac}/",
-            "mqtt_client_id": self.config.gw_mac,
+            "mqtt_prefix": f"ruuvi/{verified_mac}/",
+            "mqtt_client_id": verified_mac,
         }
         for field, expected in mqtt_defaults.items():
             matches = field in payload and same_public_value(payload[field], expected)
@@ -581,6 +583,12 @@ class FunctionalTest_5_6_1_2_c:
             self.progress("Resolving DUT LAN IPv4 address")
             resolved: ResolvedHost = resolve_host(self.config.gw_hostname, resolver=self.resolver)
             self.evidence.write("RESOLVED HOST", resolved)
+            # Keep HTTP identity, writes and recovery on the exact scanned IPv4 endpoint.
+            endpoint: DutConfig = replace(self.config, gw_hostname=resolved.ip)
+            self.gateway = self.gateway_factory(endpoint)
+            self.evidence.write("PINNED HTTP ENDPOINT", {
+                "configured_hostname": self.config.gw_hostname, "base_url": endpoint.base_url,
+            })
             self.progress("Checking nmap version and UDP privilege")
             info: NmapInfo = check_nmap(
                 NMAP_MIN_VERSION, runner=self._logged_runner, find_executable=self.find_executable,

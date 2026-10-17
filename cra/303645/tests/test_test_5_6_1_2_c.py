@@ -19,7 +19,7 @@ import requests
 
 import test_5_6_1_2_c as target
 from lib.config import FACTORY_RESET_MESSAGE, default_config_values
-from lib.gateway import GatewayCfgDesc, GatewayCfgLanAuthType
+from lib.gateway import GatewayCfgDesc, GatewayCfgLanAuthType, GatewayClient
 from lib.http_api import HttpMethod
 from lib.models import DutConfig, RunResult
 from lib.netscan import DatagramSocket
@@ -224,12 +224,14 @@ class WireRequest:
 
 
 class ScanSession(FakeSession):
-    def __init__(self, gateway: ScanGateway, wire_calls: list[WireRequest]) -> None:
+    def __init__(self, gateway: ScanGateway, wire_calls: list[WireRequest], wire_hosts: list[str]) -> None:
         super().__init__(gateway)
         self.wire_calls: list[WireRequest] = wire_calls
+        self.wire_hosts: list[str] = wire_hosts
 
     def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
         url: str = request.url or ""
+        self.wire_hosts.append(urlsplit(url).hostname or "")
         body: Any = json.loads(request.body) if request.body else None
         self.wire_calls.append(WireRequest(
             urlsplit(url).scheme, request.method or "", urlsplit(url).path, body,
@@ -259,16 +261,17 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         self.ntp_capture: FakeNtpCapture = FakeNtpCapture(self.gateway)
         self.lines: list[str] = []
         self.wire_calls: list[WireRequest] = []
+        self.wire_hosts: list[str] = []
 
     def execute(self, *, privilege: bool = True, executable: bool = True,
-                resolvable: bool = True) -> RunResult:
+                resolvable: bool = True, addresses: tuple[str, ...] = ("192.0.2.10",)) -> RunResult:
         def resolve(_host: str, _port: int | None, **_kwargs: Any) -> list[tuple[int, int, int, str, tuple[str, int]]]:
             if not resolvable:
                 raise OSError("name not found")
-            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.10", 0))]
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 0)) for address in addresses]
 
         return target.execute_test_5_6_1_2_c(
-            self.directory, session_factory=lambda: ScanSession(self.gateway, self.wire_calls),
+            self.directory, session_factory=lambda: ScanSession(self.gateway, self.wire_calls, self.wire_hosts),
             runner=self.nmap, resolver=resolve, socket_factory=lambda family, kind: self.mdns,
             find_executable=lambda name: "/usr/bin/nmap" if executable else None,
             local_ip=lambda dut_ip: "192.0.2.20", capture_factory=lambda: self.ntp_capture,
@@ -337,6 +340,42 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         self.assertIn("OVERALL VERDICT: PASS", evidence)
         self.assertEqual(12, sum(line.startswith("[Step ") for line in self.lines))
         self.assertIn("Overall verdict: PASS", self.lines)
+
+    def test_env_mac_case_does_not_change_device_derived_mqtt_defaults(self) -> None:
+        spelling: str
+        for spelling in (CONFIG.gw_mac.lower(), "Aa:bB:Cc:dD:eE:Ff"):
+            with self.subTest(spelling=spelling):
+                self.setUp()
+                self.directory.joinpath(".env").write_text(
+                    f"gw_id={CONFIG.gw_id}\ngw_mac={spelling}\ngw_hostname={CONFIG.gw_hostname}\n",
+                    encoding="utf-8",
+                )
+                before: dict[str, Any] = dict(self.gateway.fields)
+                result: RunResult = self.execute()
+                self.assertEqual("PASS", result.verdict)
+                self.assertIsNone(result.recovery_message)
+                self.assertEqual(before, self.gateway.fields)
+
+    def test_multiple_dns_addresses_keep_http_and_scans_on_verified_target(self) -> None:
+        # An independently resolved hostname could select the second, unverified device.
+        # The HTTP transport must receive the selected literal and never resolve that name.
+        client_factory: MagicMock
+        with patch.object(target.socket, "getaddrinfo", side_effect=AssertionError("unexpected DNS lookup")), \
+                patch("test_5_6_1_2_c.GatewayClient", wraps=GatewayClient) as client_factory:
+            result: RunResult = self.execute(addresses=("192.0.2.10", "192.0.2.99"))
+        client_factory.assert_called_once()
+        self.assertEqual("http://192.0.2.10", client_factory.call_args[0][0].base_url)
+        self.assertEqual(CONFIG.gw_mac, client_factory.call_args[0][0].gw_mac)
+        self.assertEqual("PASS", result.verdict)
+        self.assertEqual(["192.0.2.10"] * 10, self.wire_hosts)
+        commands: list[tuple[str, ...]] = [call for call in self.nmap.calls if "-p" in call]
+        self.assertEqual(2, len(commands))
+        self.assertEqual(["192.0.2.10"] * 2, [call[-1] for call in commands])
+        self.assertEqual("192.0.2.10", self.ntp_capture.dut_ip)
+        self.assertEqual(("192.0.2.10", 5353), self.mdns.destination)
+        self.assertIn('"configured_hostname": "gateway.local"', self.evidence())
+        self.assertIn('"base_url": "http://192.0.2.10"', self.evidence())
+        self.assertIn("192.0.2.99", self.evidence())
 
     def test_missing_ixit_declaration_aborts_before_scan_or_mutation(self) -> None:
         (self.ixit_directory / "ixit_28-LogIntf.md").write_text("15 declared interfaces\n", encoding="utf-8")

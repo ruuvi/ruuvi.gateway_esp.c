@@ -229,7 +229,8 @@ future declaration; they are not evidence that the current IXIT contains it.
 
 Before the NTP-only POST, require factory-default `mqtt_data_format` from the generated defaults,
 and require `mqtt_prefix` = `ruuvi/<verified gw_mac>/` and `mqtt_client_id` = `<verified gw_mac>`.
-These last two defaults are device-derived in `gw_cfg_default.c`. Missing, wrong-type or custom
+These last two defaults are device-derived in `gw_cfg_default.c`; derive them from the
+verified response MAC in canonical uppercase, independently of valid `.env` MAC letter case. Missing, wrong-type or custom
 values are setup **ERROR** before mutation, even with MQTT disabled: the firmware resets these
 omitted fields on every partial POST. Do not add unrelated MQTT fields to the task's write scope.
 Also gate `scan_default` and its PHY/channel defaults: the scan parser resets those omitted
@@ -241,6 +242,12 @@ custom telemetry or hotspot disablement. Later acquisition failures retain these
 while making the overall verdict ERROR. Test both the open-listener and targeted-hotspot loops.
 Test the actual tcpdump wrapper offline with mocked process, pipe, readiness and clock boundaries,
 including split readiness, early exit, startup/capture timeouts, malformed output and kill cleanup.
+
+Resolve the configured hostname once, record all returned addresses and the selected IPv4, and
+create the HTTP client with that IPv4 literal before authentication. Identity verification, NTP
+writes/restoration, packet capture, mDNS and scans must all use that same endpoint; later DNS
+answers must not redirect HTTP to another device. Preserve the original configured hostname and
+selected HTTP base URL in evidence.
 
 ## Tooling preconditions and privilege model
 
