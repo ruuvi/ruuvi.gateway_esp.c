@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
+from unittest.mock import patch
 from urllib.parse import urlsplit
 
 import requests
@@ -56,7 +57,9 @@ class ScanGateway(DefaultAuthGateway):
     def __init__(self) -> None:
         super().__init__(CONFIG)
         self.fields: dict[str, Any] = default_config_values(target.DEFAULT_FIELDS)
+        self.fields.update(default_config_values(("wifi_sta_config", "use_eth", "eth_dhcp")))
         self.fields.update({"mqtt_prefix": f"ruuvi/{CONFIG.gw_mac}/", "mqtt_client_id": CONFIG.gw_mac})
+        self.urls: list[str] = []
         self.read_count: int = 0
         self.drift_on_read: int = 0
         self.mac: Any = CONFIG.gw_mac
@@ -112,6 +115,7 @@ class FakeNmap:
         self.deny_udp_probe: bool = False
         self.version: str = "Nmap version 7.95 ( https://nmap.org )"
         self.tcp_http_service: str = "http"
+        self.tcp_http_method: str = "probed"
         self.timeouts: list[int] = []
         self.unstable_tcp: bool = False
         self.fail_confirmation_port: int = 0
@@ -150,7 +154,7 @@ class FakeNmap:
         other_state: str = "filtered" if protocol == "udp" and self.udp_filtered else "closed"
         explicit: str = "".join(
             f'<port protocol="{protocol}" portid="{port}"><state state="open" reason="syn-ack"/>'
-            f'<service name="{self.tcp_http_service if protocol == "tcp" and port == 80 else "unknown"}"/>'
+            f'<service name="{self.tcp_http_service if protocol == "tcp" and port == 80 else "unknown"}" method="{self.tcp_http_method}" conf="{10 if self.tcp_http_method == "probed" else 3}"/>'
             "</port>"
             for port in sorted(open_set)
         )
@@ -258,9 +262,11 @@ class ScanSession(FakeSession):
     def __init__(self, gateway: ScanGateway, wire_calls: list[WireRequest]) -> None:
         super().__init__(gateway)
         self.wire_calls: list[WireRequest] = wire_calls
+        self.gateway_urls: list[str] = gateway.urls
 
     def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
         url: str = request.url or ""
+        self.gateway_urls.append(url)
         method: str = request.method or ""
         body: Any = json.loads(request.body) if request.body else None
         self.wire_calls.append(WireRequest(
@@ -691,6 +697,8 @@ class NetworkSurfaceRunnerTests(unittest.TestCase):
         field: str
         value: Any
         for field, value in defaults.items():
+            if field in {"wifi_sta_config", "use_eth", "eth_dhcp"}:
+                continue  # Selected transport is preserved separately from default fields.
             unequal: Any = (
                 {**value, "unexpected": True} if isinstance(value, dict)
                 else not value if isinstance(value, bool) else "different"
@@ -728,6 +736,55 @@ class NetworkSurfaceRunnerTests(unittest.TestCase):
         self.gateway.include_mac = False
         result = self.execute()
         self.assertIsNone(result.recovery_message)
+
+    def test_table_only_http_guess_is_unverified(self) -> None:
+        self.nmap.tcp_http_method = "table"
+        result: RunResult = self.execute()
+        self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+        self.assertEqual("ERROR", result.outcomes["documented HTTP listener"])
+        self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
+
+    def test_wifi_sta_preserves_configured_transport(self) -> None:
+        self.gateway.fields["use_eth"] = False
+        self.gateway.fields["wifi_sta_config"] = {"ssid": "Dedicated bench", "password": ""}
+        baseline: dict[str, Any] = dict(self.gateway.fields)
+        result: RunResult = self.execute()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code))
+        self.assertEqual(baseline, self.gateway.fields)
+        self.assertIsNone(result.recovery_message)
+        self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
+
+    def test_wifi_unsafe_write_baseline_stops_without_reset_advice(self) -> None:
+        self.gateway.fields["use_eth"] = False
+        self.gateway.fields["wifi_sta_config"] = {"ssid": "Dedicated bench", "password": ""}
+        self.gateway.fields["mqtt_prefix"] = "custom/"
+        result: RunResult = self.execute()
+        self.assertEqual("ERROR", result.verdict)
+        self.assertIsNone(result.recovery_message)
+        self.assertFalse(self.ntp_capture.started)
+        self.assertEqual("custom/", self.gateway.fields["mqtt_prefix"])
+
+    def test_unconfigured_wifi_stops_without_connectivity_erasing_reset_advice(self) -> None:
+        self.gateway.fields["use_eth"] = False
+        result: RunResult = self.execute()
+        self.assertEqual("ERROR", result.verdict)
+        self.assertIsNone(result.recovery_message)
+        self.assertFalse(self.ntp_capture.started)
+        self.assertFalse(any(call.method == "POST" and call.path == "/ruuvi.json" for call in self.gateway.calls))
+
+    def test_http_is_pinned_despite_hostname_resolving_elsewhere_later(self) -> None:
+        later_resolution: unittest.mock.MagicMock
+        later_addresses: list[tuple[int, int, int, str, tuple[str, int]]] = [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.99", 80)),
+        ]
+        with patch("socket.getaddrinfo", return_value=later_addresses) as later_resolution:
+            result: RunResult = self.execute()
+            later_resolution.assert_not_called()
+        self.assertEqual("PASS", result.verdict)
+        self.assertEqual(10, len(self.gateway.urls))
+        self.assertEqual({"192.0.2.10"}, {urlsplit(url).hostname for url in self.gateway.urls})
+        self.assertEqual("192.0.2.10", self.ntp_capture.dut_ip)
+        self.assertTrue(all(call[-1] == "192.0.2.10" for call in self.nmap.calls if "-sT" in call or "-sU" in call))
 
     def test_http_fingerprint_rejection(self) -> None:
         self.nmap.tcp_http_service = "unknown"

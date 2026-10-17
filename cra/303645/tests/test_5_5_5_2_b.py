@@ -11,7 +11,7 @@ import socket
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Protocol, TextIO, cast
@@ -71,7 +71,7 @@ RAW_PRIVILEGE_HELP: str = (
 )
 TOTAL_STEPS: int = 8
 DEFAULT_FIELDS: tuple[str, ...] = AUTHENTICATION_DEFAULT_FIELDS + (
-    "wifi_sta_config", "wifi_ap_config", "use_eth", "eth_dhcp", "ntp_use", "ntp_use_dhcp",
+    "wifi_ap_config", "ntp_use", "ntp_use_dhcp",
     "ntp_server1", "ntp_server2", "ntp_server3", "ntp_server4",
     "mqtt_data_format", "scan_default", "scan_coded_phy", "scan_1mbit_phy",
     "scan_2mbit_phy", "scan_channel_37", "scan_channel_38", "scan_channel_39",
@@ -323,17 +323,26 @@ class FunctionalTest_5_5_5_2_b:
                                isinstance(mac, str) and OCTETS_6_RE.fullmatch(mac) is not None, mac)
             self._assert_setup("DUT gw_mac matches .env",
                                mac.replace(":", "").upper() == self.config.gw_mac.replace(":", "").upper(), mac)
-        if auth_type != GatewayCfgLanAuthType.DEFAULT and GatewayCfgDesc.GW_MAC in payload:
+        if (auth_type != GatewayCfgLanAuthType.DEFAULT and GatewayCfgDesc.GW_MAC in payload
+                and payload.get("use_eth") is True):
             self.factory_reset_required = True
         self._assert_setup("interactive challenge reports default authentication",
                            auth_type == GatewayCfgLanAuthType.DEFAULT, auth_type)
+        # Network selection is a configured transport baseline, not an authentication default.
+        use_eth: Any = payload.get("use_eth")
+        self._assert_setup("selected LAN transport is a boolean", type(use_eth) is bool, "transport type")
+        if not use_eth:
+            wifi: Any = payload.get("wifi_sta_config")
+            self._assert_setup("Wi-Fi STA transport has a configured SSID",
+                               isinstance(wifi, dict) and isinstance(wifi.get("ssid"), str)
+                               and bool(wifi["ssid"]), "configured SSID required")
         defaults: dict[str, Any] = default_config_values(DEFAULT_FIELDS)
         expected: Any
         field: str
         for field, expected in defaults.items():
             actual: Any = payload.get(field)
             matches: bool = field in payload and same_public_value(actual, expected)
-            if not matches and GatewayCfgDesc.GW_MAC in payload:
+            if not matches and use_eth and GatewayCfgDesc.GW_MAC in payload:
                 self.factory_reset_required = True
             self._assert_setup(f"{field} has its public factory-default value", matches, actual)
         # The firmware resets these omitted MQTT fields on every partial config POST.
@@ -348,7 +357,7 @@ class FunctionalTest_5_5_5_2_b:
         }
         for field, expected in mqtt_defaults.items():
             matches = field in payload and same_public_value(payload[field], expected)
-            if not matches:
+            if not matches and use_eth:
                 self.factory_reset_required = True
             self._assert_setup(f"{field} must match its device-specific default before a partial POST",
                                matches, "default match" if matches else "unsafe baseline")
@@ -477,9 +486,13 @@ class FunctionalTest_5_5_5_2_b:
         http: PortObservation | None = next(
             (item for item in result.observations if item.port == 80 and item.state == "open"), None,
         )
-        http_ok: bool = declared.issubset(result.open_ports) and http is not None and http.service == "http"
+        http_probed: bool = http is not None and http.service_method == "probed"
+        http_ok: bool = (declared.issubset(result.open_ports) and http_probed
+                         and http is not None and http.service == "http")
         http_state_known: bool = 80 in result.open_ports or 80 in result.closed_ports
-        self.outcomes["documented HTTP listener"] = ("PASS" if http_ok else "FAIL") if http_state_known else "ERROR"
+        self.outcomes["documented HTTP listener"] = (
+            ("PASS" if http_ok else "FAIL") if http_state_known and (http is None or http_probed) else "ERROR"
+        )
         self.evidence.write("ASSERTION", AssertionEvidence("80/tcp is open and fingerprints as HTTP",
                                                             self.outcomes["documented HTTP listener"], http))
         if not http_ok:
@@ -572,6 +585,8 @@ class FunctionalTest_5_5_5_2_b:
             self.progress("Resolving DUT LAN IPv4 address")
             resolved: ResolvedHost = resolve_host(self.config.gw_hostname, resolver=self.resolver)
             self.evidence.write("RESOLVED HOST", resolved)
+            # Keep authentication, NTP mutation, and recovery on the endpoint being scanned.
+            self.gateway.config = replace(self.config, gw_hostname=resolved.ip)
             self.progress("Checking nmap version and UDP raw-socket privilege")
             info: NmapInfo = check_nmap(
                 NMAP_MIN_VERSION, runner=self._logged_runner, find_executable=self.find_executable,

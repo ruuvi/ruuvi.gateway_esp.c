@@ -69,7 +69,15 @@ Once configuration is available, validate any exposed MAC before default fields:
 malformed identity is ERROR without reset advice. If MAC is absent, a non-default baseline is ERROR
 without reset advice for an unverified device. Missing, wrongly typed, or non-default required
 fields stop the run before probes or mutations; only a verified identity permits baseline reset
-advice.
+advice. For an authenticated Wi-Fi STA baseline, report unsuitable settings as setup ERROR
+without factory-reset advice that would erase its configured connection; correct the relevant
+settings manually while preserving connectivity.
+
+Validate transport separately: `use_eth` must be a boolean; `false` requires a configured nonempty
+`wifi_sta_config.ssid`. Do not require empty Wi-Fi settings, `use_eth=true`, or factory-default
+Ethernet addressing. Preserve all transport fields across the NTP-only writes and compare the
+complete saved configuration after recovery. Omitted Ethernet/Wi-Fi fields remain unchanged in
+`gw_cfg_json_parse_eth()` and `gw_cfg_json_parse_wifi_sta_config()`.
 
 Use the shared reset instruction: back up needed settings; local configuration, credentials, tokens,
 and uploaded certificates/private keys are erased and connectivity is interrupted, while cloud
@@ -342,7 +350,9 @@ discovery disabled (`-Pn`) and DNS disabled (`-n`), emitting XML (`-oX`) parsed 
 ## Hostname resolution
 
 - Load `gw_hostname` from `.env` via `lib.config.load_dut_config` and resolve it to an IP with
-  `socket.getaddrinfo` (prefer IPv4). Record the resolved address.
+  `socket.getaddrinfo` (prefer IPv4). Record the resolved address. Before authentication, pin the runner's `GatewayClient` to that
+  selected IPv4 for every HTTP operation, including NTP mutation and restoration; retain the original
+  configured hostname in evidence. Subsequent hostname changes must not redirect those requests.
 - The default `gw_hostname` (e.g. `ruuvigateway9c2c.local`) is an **mDNS** name; resolving it
   requires host mDNS support (e.g. `avahi-daemon` + `libnss-mdns`, or `getaddrinfo` mDNS). If
   resolution fails → **ERROR** with a documented precondition (install/enable mDNS resolution on the
@@ -358,7 +368,9 @@ discovery disabled (`-Pn`) and DNS disabled (`-n`), emitting XML (`-oX`) parsed 
 
 Build the expected model from IXIT 28 (and, for management services, IXIT 13) in code, then compare:
 
-1. **TCP open set == `{80}`** and port 80 fingerprints as an HTTP server (`-sV`). PASS contribution.
+1. **TCP open set == `{80}`** and port 80 fingerprints as an HTTP server (`-sV`, service
+   `name="http" method="probed"`). A table-only guess or missing probe metadata is unverified
+   HTTP **ERROR**, even if the port is open; an actively probed non-HTTP service is FAIL.
 2. **No undeclared confirmed-open TCP port.** Any extra open TCP port → FAIL finding.
 3. **No undeclared confirmed-open UDP port** among scanned ports. Any confirmed-open undeclared UDP
    port → FAIL finding.
@@ -520,6 +532,9 @@ fixtures and must not invoke client code under test to form expected requests. C
   without a direct answer → ERROR/exit 2;
 - definitively closed port 80 or an open port with a non-HTTP fingerprint → FAIL/exit 1;
 - filtered or unknown port 80, including ambiguous compressed port groups → HTTP ERROR/exit 2;
+- table-only HTTP guesses versus actively probed HTTP identification;
+- successful configured Wi-Fi STA baseline preserved across mutation/restoration, with no reset advice;
+- all HTTP URLs pinned to the scanned IPv4 even if later hostname resolution changes;
 - missing `nmap`, too-old version, and missing privilege for UDP → ERROR/exit 2;
 - unresolvable hostname → ERROR/exit 2;
 - UDP scan host-timeout/incomplete → ERROR/exit 2 (not PASS);
