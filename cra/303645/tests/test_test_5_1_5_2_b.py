@@ -1126,6 +1126,96 @@ class FunctionalTestCase(unittest.TestCase):
                 self.assertEqual("", gateway.rw_key)
                 self.assertIsNone(result.recovery_message)
 
+    def test_response_logging_failure_preserves_control_probe_bypasses(self) -> None:
+        boundary: str
+        for boundary in ("Digest challenge", "RO scope"):
+            with self.subTest(boundary=boundary):
+                self.check_control_probe_logging_failure(boundary)
+
+    def check_control_probe_logging_failure(self, boundary: str) -> None:
+        gateway: FakeGateway = FakeGateway(CONFIG)
+        runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
+        runner.gateway.session_factory = lambda fixture=gateway: FakeSession(fixture)
+        accepted: list[requests.Response] = []
+        original: Callable[..., FakeResponse | None] = gateway._response_override
+        original_log: Callable[[requests.Response], None] = self.log.write_http_response
+
+        def override(
+            session: FakeSession, call: RecordedRequest,
+            phase: str = boundary, active: target.FunctionalTest_5_1_5_2_b = runner,
+            delegate: Callable[..., FakeResponse | None] = original,
+        ) -> FakeResponse | None:
+            digest: bool = (
+                phase == "Digest challenge" and gateway.mode == GatewayCfgLanAuthType.DIGEST
+                and call.path == GatewayApi.STATUS and not call.authorization
+                and AuthMech.LAN_WEBUI_DIGEST not in active.campaigns
+            )
+            ro_scope: bool = (
+                phase == "RO scope" and call.method == HttpMethod.POST
+                and call.path == GatewayApi.CONFIG and call.bearer_token == active.temporary_ro_key
+                and bool(active.temporary_ro_key)
+            )
+            if not accepted and (digest or ro_scope):
+                response: FakeResponse = FakeResponse(200, {})
+                accepted.append(response)
+                return response
+            return delegate(session, call)
+
+        def report(
+            response: requests.Response, delegate: Callable[[requests.Response], None] = original_log,
+        ) -> None:
+            if accepted and response is accepted[0]:
+                raise OSError("control response could not be logged")
+            delegate(response)
+
+        with mock.patch.object(gateway, "_response_override", side_effect=override), mock.patch.object(
+            self.log, "write_http_response", side_effect=report,
+        ):
+            result: RunResult = runner.run()
+        mechanism: str = AuthMech.LAN_WEBUI_DIGEST if boundary == "Digest challenge" else AuthMech.M2M_API_BEARER_RO
+        self.assertEqual(1, len(accepted))
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[mechanism])
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, gateway.mode)
+        self.assertNotIn(AuthMech.LAN_WEBUI_DIGEST, runner.campaigns)
+        if boundary == "RO scope":
+            self.assertNotIn(AuthMech.M2M_API_BEARER_RW, runner.campaigns)
+
+    def test_http_mode_aborted_campaign_keeps_completed_latencies_in_summary(self) -> None:
+        mechanism: str
+        fault: str
+        for mechanism in (AuthMech.LAN_WEBUI_BASIC, AuthMech.LAN_WEBUI_DIGEST, AuthMech.LAN_WEBUI_DISABLED):
+            for fault in ("timeout", "accepted"):
+                with self.subTest(mechanism=mechanism, fault=fault):
+                    self.check_aborted_campaign_summary(mechanism, fault)
+
+    def check_aborted_campaign_summary(self, mechanism: str, fault: str) -> None:
+        runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=3)
+        responses: list[FakeResponse | Exception] = [
+            FakeResponse(401, {}),
+            target.GatewayConnectionError("timeout") if fault == "timeout" else FakeResponse(200, {}),
+        ]
+        messages: list[str] = []
+        runner.campaign_progress = messages.append
+
+        def operation() -> requests.Response:
+            response: FakeResponse | Exception = responses.pop(0)
+            if isinstance(response, Exception):
+                raise response
+            runner.gateway.last_transport_timing = target.TransportTiming(0, 2_100_000_000)
+            runner.gateway.last_response = response
+            return response
+
+        with self.assertRaises(target.GatewayConnectionError if fault == "timeout" else target.UnexpectedAuthorization):
+            runner._measure_http_auth_campaign(mechanism, False, 401, operation, True)
+        stats: target.CampaignStats = runner.campaigns[mechanism]
+        self.assertEqual([2_100_000_000] * (1 if fault == "timeout" else 2), stats.durations_ns)
+        runner._print_summary()
+        summary: str = next(message for message in messages if message.startswith(f"{mechanism}: result="))
+        self.assertIn("failed average response time=2.100000000 seconds", summary)
+        self.assertIn("failed minimum response time=2.100000000 seconds", summary)
+
     def test_response_reporting_failure_preserves_bypass_in_every_negative_campaign(self) -> None:
         mechanism: str
         for mechanism in target.AUTH_MECHANISMS:

@@ -451,6 +451,18 @@ class FunctionalTest_5_1_5_2_b:
             stats.authorized = max(1, stats.authorized)
             self._set_outcome(stats.name, "FAIL")
 
+    def _negative_request(
+        self, mechanism: str, operation: Callable[[], requests.Response],
+    ) -> requests.Response:
+        self.gateway.last_response = None
+        try:
+            return operation()
+        except Exception:
+            response: requests.Response | None = self.gateway.last_response
+            if response is not None and HttpStatus.C_200_OK <= response.status_code < HttpStatus.C_300_MULTIPLE_CHOICES:
+                self._set_outcome(mechanism, "FAIL")
+            raise
+
     def _record_assertion(self, description: str, passed: bool, actual: Any = "") -> None:
         self.evidence.write(
             "ASSERTION",
@@ -935,7 +947,10 @@ class FunctionalTest_5_1_5_2_b:
         path: str = GatewayApi.STATUS,
     ) -> Callable[[], requests.Response]:
         session: requests.Session = self.gateway.new_session()
-        challenge_response: requests.Response = self.gateway.request(session, HttpMethod.GET, path)
+        challenge_response: requests.Response = self._negative_request(
+            AuthMech.LAN_WEBUI_DIGEST,
+            lambda: self.gateway.request(session, HttpMethod.GET, path),
+        )
         if HttpStatus.C_200_OK <= challenge_response.status_code < HttpStatus.C_300_MULTIPLE_CHOICES:
             raise UnexpectedAuthorization("Digest challenge accepted a cookie-free request")
         self._require_setup(
@@ -982,7 +997,7 @@ class FunctionalTest_5_1_5_2_b:
         request_attempts: int = 1,
     ) -> None:
         durations_ns: list[int] = []
-        stats: CampaignStats = CampaignStats(mechanism)
+        stats: CampaignStats = CampaignStats(mechanism, durations_ns=durations_ns)
         self.gateway.last_response = None
         if successful:
             self.success_durations_ns[mechanism] = durations_ns
@@ -1077,7 +1092,6 @@ class FunctionalTest_5_1_5_2_b:
                     average_seconds,
                 )
             elif not successful and enforce_timing:
-                stats.durations_ns = durations_ns
                 minimum_ns: int = min(durations_ns)
                 self._require_security(
                     minimum_ns > int(MIN_FAILED_ATTEMPT_SECONDS * 1_000_000_000),
@@ -2058,7 +2072,10 @@ class FunctionalTest_5_1_5_2_b:
             )
             # All prepared-state read probes precede the potentially mutating
             # configuration probes. A 2xx denial bypass aborts to restoration.
-            ro_post: requests.Response = self._post_config(self.gateway.new_session(), {}, self.temporary_ro_key)
+            ro_post: requests.Response = self._negative_request(
+                AuthMech.M2M_API_BEARER_RO,
+                lambda: self._post_config(self.gateway.new_session(), {}, self.temporary_ro_key),
+            )
             if HttpStatus.C_200_OK <= ro_post.status_code < HttpStatus.C_300_MULTIPLE_CHOICES:
                 raise UnexpectedAuthorization("RO key authorized POST /ruuvi.json")
             self._require_security(
