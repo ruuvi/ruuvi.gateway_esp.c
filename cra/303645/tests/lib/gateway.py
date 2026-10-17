@@ -216,6 +216,7 @@ class GatewayClient:
         self.captured_requests: list[CapturedRequest] = []
         self.transport_clock: Callable[[], int] = transport_clock
         self.last_transport_timing: TransportTiming | None = None
+        self.last_response: requests.Response | None = None
 
     def new_session(self) -> requests.Session:
         session: requests.Session = self.session_factory()
@@ -235,6 +236,7 @@ class GatewayClient:
         allow_redirects: bool = False,
     ) -> requests.Response:
         self.last_transport_timing = None
+        self.last_response = None
         if json_body is not None and data is not None:
             raise ValueError("json_body and data are mutually exclusive")
         request_headers: dict[str, str] = {HttpHeader.USER_AGENT: self.user_agent}
@@ -273,6 +275,7 @@ class GatewayClient:
         except requests.RequestException as error:
             error: Exception
             raise GatewayConnectionError(f"{method} {url} failed: {error}") from error
+        self.last_response = response
         self.evidence.write_http_response(response)
         return response
 

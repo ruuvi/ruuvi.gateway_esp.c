@@ -1170,6 +1170,23 @@ class GatewayClientTestCase(unittest.TestCase):
             client.request(TimedSession(), HttpMethod.POST, GatewayApi.CONFIG, json_body={}, data="invalid")
         self.assertIsNone(client.last_transport_timing)
 
+    def test_received_response_survives_reporting_failure_and_is_never_stale(self) -> None:
+        response: requests.Response = FakeResponse(200)
+        with mock.patch.object(self.evidence, "write_http_response", side_effect=OSError("disk full")), self.assertRaises(OSError):
+            self.client.request(FakeSession(response=response), HttpMethod.GET, GatewayApi.STATUS)
+        self.assertIs(response, self.client.last_response)
+        with self.assertRaises(GatewayConnectionError):
+            self.client.request(FakeSession(error=requests.Timeout("lost")), HttpMethod.GET, GatewayApi.STATUS)
+        self.assertIsNone(self.client.last_response)
+        self.client.request(FakeSession(response=response), HttpMethod.GET, GatewayApi.STATUS)
+        with self.assertRaises(ValueError):
+            self.client.request(FakeSession(), HttpMethod.POST, GatewayApi.CONFIG, json_body={}, data="invalid")
+        self.assertIsNone(self.client.last_response)
+        self.client.request(FakeSession(response=response), HttpMethod.GET, GatewayApi.STATUS)
+        with mock.patch.object(self.evidence, "write_http_request", side_effect=OSError("before send")), self.assertRaises(OSError):
+            self.client.request(FakeSession(), HttpMethod.GET, GatewayApi.STATUS)
+        self.assertIsNone(self.client.last_response)
+
     def test_request_prepares_logs_and_sends_expected_http_request(self) -> None:
         response: requests.Response = requests.Response()
         session: FakeSession = FakeSession(response=response)

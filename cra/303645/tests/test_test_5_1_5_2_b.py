@@ -1126,6 +1126,97 @@ class FunctionalTestCase(unittest.TestCase):
                 self.assertEqual("", gateway.rw_key)
                 self.assertIsNone(result.recovery_message)
 
+    def test_response_reporting_failure_preserves_bypass_in_every_negative_campaign(self) -> None:
+        mechanism: str
+        for mechanism in target.AUTH_MECHANISMS:
+            if mechanism == AuthMech.LAN_WEBUI_UNAUTHENTICATED:
+                continue
+            with self.subTest(mechanism=mechanism):
+                self.check_response_reporting_failure(mechanism)
+
+    def test_login_response_reporting_failure_preserves_bypass_after_challenge(self) -> None:
+        mechanism: str
+        for mechanism in (AuthMech.LAN_WEBUI_DEFAULT, AuthMech.LAN_WEBUI_USER_DEFINED, AuthMech.LAN_WEBUI_DIGEST):
+            with self.subTest(mechanism=mechanism):
+                self.check_response_reporting_failure(mechanism, skip_challenge=True)
+
+    def check_response_reporting_failure(self, mechanism: str, skip_challenge: bool = False) -> None:
+        gateway: FakeGateway = FakeGateway(CONFIG)
+        runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=2)
+        runner.gateway.session_factory = lambda fixture=gateway: FakeSession(fixture)
+        original: Callable[..., FakeResponse | None] = gateway._response_override
+        accepted: list[requests.Response] = []
+
+        def override(
+            session: FakeSession, call: RecordedRequest,
+            active: str = mechanism, active_runner: target.FunctionalTest_5_1_5_2_b = runner,
+            delegate: Callable[..., FakeResponse | None] = original,
+        ) -> FakeResponse | None:
+            campaign: target.CampaignStats | None = active_runner.campaigns.get(active)
+            negative_stage: bool = not skip_challenge or (
+                call.method == HttpMethod.POST if active != AuthMech.LAN_WEBUI_DIGEST else bool(call.authorization)
+            )
+            if campaign is not None and not accepted and negative_stage:
+                response: FakeResponse = FakeResponse(200, {})
+                accepted.append(response)
+                return response
+            return delegate(session, call)
+
+        original_log: Callable[[requests.Response], None] = self.log.write_http_response
+
+        def report_response(
+            response: requests.Response,
+            delegate: Callable[[requests.Response], None] = original_log,
+        ) -> None:
+            if accepted and response is accepted[0]:
+                raise OSError("received bypass cannot be logged")
+            delegate(response)
+
+        with mock.patch.object(gateway, "_response_override", side_effect=override), mock.patch.object(
+            self.log, "write_http_response", side_effect=report_response,
+        ):
+            result: RunResult = runner.run()
+        self.assertEqual(1, len(accepted))
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[mechanism])
+        self.assertEqual(1, runner.campaigns[mechanism].authorized)
+        self.assertEqual("NOT RUN" if mechanism == AuthMech.LAN_WEBUI_DEFAULT else "PASS", result.outcomes["final restoration"])
+        self.assertLessEqual(runner.campaigns[mechanism].attempted, 1)
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, gateway.mode)
+
+    def test_completed_security_fail_is_sticky_after_later_transport_error(self) -> None:
+        runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
+        runner.success_monotonic_ns = AdvancingClock(300_000_000)
+        with mock.patch.object(runner, "_attack_interactive", side_effect=target.GatewayConnectionError("later timeout")):
+            result: RunResult = runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[AuthMech.LAN_WEBUI_DEFAULT])
+        self.assertEqual("NOT RUN", result.outcomes["final restoration"])
+
+    def test_exhausted_retries_keep_real_bounds_without_incomplete_latency_samples(self) -> None:
+        runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=2)
+        original: Callable[..., FakeResponse | None] = self.gateway._response_override
+        count: int = 0
+
+        def override(session: FakeSession, call: RecordedRequest) -> FakeResponse | None:
+            nonlocal count
+            if call.bearer_token is not None:
+                count += 1
+                if count > 1:
+                    raise requests.Timeout("retry exhaustion")
+            return original(session, call)
+
+        with mock.patch.object(self.gateway, "_response_override", side_effect=override), self.assertRaises(target.GatewayConnectionError):
+            runner._attack_bearer(AuthMech.M2M_API_BEARER_RO, GatewayApi.HISTORY, set())
+        stats: target.CampaignStats = runner.campaigns[AuthMech.M2M_API_BEARER_RO]
+        self.assertEqual(1, len(stats.durations_ns))
+        self.assertEqual(2_100_000_000, stats.durations_ns[0])
+        self.assertGreater(stats.as_evidence().elapsed_seconds, 0)
+        transport: target.TransportTiming | None = runner.gateway.last_transport_timing
+        if transport is None:
+            self.fail("missing failed transport bounds")
+        self.assertEqual(transport.end_ns, stats.last_end_ns)
+
     def test_reporting_error_preserves_earlier_security_failure(self) -> None:
         self.gateway.bearer_guess_status = HttpStatus.C_200_OK
         runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
@@ -1184,6 +1275,65 @@ class FunctionalTestCase(unittest.TestCase):
 
 
 class ExecutionTestCase(unittest.TestCase):
+    def test_evidence_lifecycle_setup_failures_return_error_without_dut_access(self) -> None:
+        boundary: str
+        for boundary in ("create", "preamble", "initial output"):
+            with self.subTest(boundary=boundary):
+                self.check_evidence_lifecycle_failure(boundary)
+
+    def check_evidence_lifecycle_failure(self, boundary: str) -> None:
+        directory: str
+        with tempfile.TemporaryDirectory() as directory:
+            root: Path = Path(directory)
+            messages: list[str] = []
+            sessions: mock.Mock = mock.Mock(side_effect=AssertionError("DUT must not be contacted"))
+            original_write: Callable[[target.EvidenceLog, str, Any], None] = target.EvidenceLog.write
+
+            def write(log: target.EvidenceLog, label: str, value: Any = "") -> None:
+                if label == "TEST CASE AND UNIT" and boundary == "preamble":
+                    raise OSError("secret detail")
+                original_write(log, label, value)
+
+            def output(message: str) -> None:
+                if message.startswith("Open log file:") and boundary == "initial output":
+                    raise ValueError("secret detail")
+                messages.append(message)
+
+            with mock.patch.object(target.EvidenceLog, "write", autospec=True, side_effect=write):
+                if boundary == "create":
+                    with mock.patch.object(target.EvidenceLog, "create", side_effect=OSError("secret detail")):
+                        result: RunResult = target.execute_test_5_1_5_2_b(root, session_factory=sessions, output=output)
+                else:
+                    result = target.execute_test_5_1_5_2_b(root, session_factory=sessions, output=output)
+            self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+            self.assertTrue(all(value == "NOT RUN" for value in result.outcomes.values()))
+            sessions.assert_not_called()
+            self.assertEqual("Overall verdict: ERROR", messages[-1])
+            self.assertNotIn("secret detail", "\n".join(messages))
+
+    def test_finish_failure_corrects_terminal_verdict_after_passing_run(self) -> None:
+        directory: str
+        with tempfile.TemporaryDirectory() as directory:
+            root: Path = Path(directory)
+            (root / ".env").write_text(env_text(CONFIG), encoding="utf-8")
+            gateway: FakeGateway = FakeGateway(CONFIG)
+            messages: list[str] = []
+            def finish(log: target.EvidenceLog, _verdict: str, _now: Callable[[], datetime]) -> None:
+                log._stream.close()
+                raise OSError("disk full")
+
+            with mock.patch.object(target.EvidenceLog, "finish", autospec=True, side_effect=finish):
+                result: RunResult = target.execute_test_5_1_5_2_b(
+                    root, session_factory=lambda: FakeSession(gateway), now=lambda: FIXED_NOW,
+                    monotonic_ns=AdvancingClock(2_100_000_000),
+                    success_monotonic_ns=AdvancingClock(100_000_000), attempt_count=1,
+                    random_bytes=UniqueRandom(), output=messages.append,
+                )
+            self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+            self.assertIn("Overall verdict: PASS", messages)
+            self.assertEqual("Overall verdict: ERROR", messages[-1])
+            self.assertEqual("PASS", result.outcomes["final restoration"])
+
     def test_output_failures_preserve_restoration_and_return_result(self) -> None:
         trigger: str
         for trigger in ("Restoring the original", "result=", "Overall verdict:"):

@@ -520,3 +520,9 @@ Preparation and synchronous request/response evidence writes are excluded. Calle
 replaces it. This observation does not decide test verdicts or include Digest challenge requests
 in the subsequent authenticated request's elapsed time. Existing request return values and
 transport exception behavior are unchanged.
+
+`last_response` is cleared on every request entry, including invalid arguments or preparation
+failures. It retains the actual received response before response evidence is written, so callers
+can preserve security observations if reporting raises. It is `None` when no response was
+received. Reporting exceptions still propagate; callers must abort and recover rather than
+continue a campaign after an evidence failure. Read it before another request replaces it.

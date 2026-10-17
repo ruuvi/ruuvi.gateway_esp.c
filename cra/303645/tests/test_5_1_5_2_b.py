@@ -440,9 +440,16 @@ class FunctionalTest_5_1_5_2_b:
         self.recovery_credentials: list[RecoveryCredential] = []
 
     def _set_outcome(self, mechanism: str, outcome: str) -> None:
-        priority: dict[str, int] = {"NOT RUN": 0, "PASS": 1, "FAIL": 2, "ERROR": 3}
+        priority: dict[str, int] = {"NOT RUN": 0, "PASS": 1, "ERROR": 2, "FAIL": 3}
         if priority[outcome] >= priority[self.outcomes[mechanism]]:
             self.outcomes[mechanism] = outcome
+
+    def _preserve_negative_response(self, stats: CampaignStats) -> None:
+        response: requests.Response | None = self.gateway.last_response
+        if response is not None and HttpStatus.C_200_OK <= response.status_code < HttpStatus.C_300_MULTIPLE_CHOICES:
+            # A reporting exception must propagate as ERROR without losing the observed bypass.
+            stats.authorized = max(1, stats.authorized)
+            self._set_outcome(stats.name, "FAIL")
 
     def _record_assertion(self, description: str, passed: bool, actual: Any = "") -> None:
         self.evidence.write(
@@ -976,6 +983,7 @@ class FunctionalTest_5_1_5_2_b:
     ) -> None:
         durations_ns: list[int] = []
         stats: CampaignStats = CampaignStats(mechanism)
+        self.gateway.last_response = None
         if successful:
             self.success_durations_ns[mechanism] = durations_ns
             clock: Callable[[], int] = self.success_monotonic_ns
@@ -1082,6 +1090,8 @@ class FunctionalTest_5_1_5_2_b:
             self._set_outcome(mechanism, "FAIL")
             raise
         except Exception:
+            if not successful:
+                self._preserve_negative_response(stats)
             self._set_outcome(mechanism, "FAIL" if stats.authorized and not successful else "ERROR")
             raise
 
@@ -1209,6 +1219,7 @@ class FunctionalTest_5_1_5_2_b:
 
     def _attack_interactive(self, mechanism: str, expected_mode: str) -> None:
         stats: CampaignStats = CampaignStats(mechanism)
+        self.gateway.last_response = None
         self.campaigns[mechanism] = stats
         timing: InteractiveTimingStats = self.interactive_timings.setdefault(mechanism, InteractiveTimingStats())
         failed_get_durations_ns: list[int] = timing.failed_get_durations_ns
@@ -1306,6 +1317,7 @@ class FunctionalTest_5_1_5_2_b:
                     stats.denied += 1
                     stats.completed += 1
                 except Exception:
+                    self._preserve_negative_response(stats)
                     if not authorized:
                         stats.errored += 1
                     raise
@@ -1315,8 +1327,11 @@ class FunctionalTest_5_1_5_2_b:
                     attempt_end_ns: int = start_ns if end_ns is None else end_ns
                     stats.last_end_ns = attempt_end_ns
                     duration_ns: int = attempt_end_ns - start_ns
-                    stats.durations_ns.append(duration_ns)
-                    failed_post_durations_ns.append(duration_ns)
+                    if self.gateway.last_response is not None:
+                        stats.durations_ns.append(duration_ns)
+                        failed_post_durations_ns.append(duration_ns)
+                    if stats.first_start_ns is None and end_ns is not None:
+                        stats.first_start_ns = start_ns
                     outcome: str = (
                         "AUTHORIZED" if stats.authorized else ("DENIED" if stats.completed == attempt else "ERROR")
                     )
@@ -1386,6 +1401,7 @@ class FunctionalTest_5_1_5_2_b:
             self._set_outcome(mechanism, "FAIL")
             raise
         except Exception:
+            self._preserve_negative_response(stats)
             self._set_outcome(mechanism, "FAIL" if stats.authorized else "ERROR")
             raise
         finally:
@@ -1400,6 +1416,7 @@ class FunctionalTest_5_1_5_2_b:
 
     def _attack_bearer(self, mechanism: str, path: str, configured_keys: set[str]) -> None:
         stats: CampaignStats = CampaignStats(mechanism)
+        self.gateway.last_response = None
         self.campaigns[mechanism] = stats
         method: str = HttpMethod.POST if path == GatewayApi.CONFIG else HttpMethod.GET
         try:
@@ -1440,6 +1457,9 @@ class FunctionalTest_5_1_5_2_b:
                                 raise
                             request_end_ns: int
                             request_start_ns, request_end_ns = self._transport_bounds()
+                            response_start_ns, response_end_ns = request_start_ns, request_end_ns
+                            if stats.first_start_ns is None:
+                                stats.first_start_ns = request_start_ns
                             self.evidence.write(
                                 "BEARER REQUEST RETRY",
                                 BearerRequestRetryEvidence(
@@ -1470,15 +1490,22 @@ class FunctionalTest_5_1_5_2_b:
                     stats.denied += 1
                     stats.completed += 1
                 except Exception:
+                    self._preserve_negative_response(stats)
                     if response is None or not (
                         HttpStatus.C_200_OK <= response.status_code < HttpStatus.C_300_MULTIPLE_CHOICES
                     ):
                         stats.errored += 1
                     raise
                 finally:
+                    if self.gateway.last_transport_timing is not None:
+                        response_start_ns, response_end_ns = self._transport_bounds()
+                        if stats.first_start_ns is None:
+                            stats.first_start_ns = response_start_ns
                     end_ns: int = response_end_ns if response_end_ns is not None else response_start_ns
-                    stats.last_end_ns = end_ns
-                    stats.durations_ns.append(end_ns - response_start_ns)
+                    if response_end_ns is not None:
+                        stats.last_end_ns = end_ns
+                    if self.gateway.last_response is not None:
+                        stats.durations_ns.append(end_ns - response_start_ns)
                     outcome: str = (
                         "AUTHORIZED" if stats.authorized else ("DENIED" if stats.completed == attempt else "ERROR")
                     )
@@ -1507,6 +1534,7 @@ class FunctionalTest_5_1_5_2_b:
             self._set_outcome(mechanism, "FAIL")
             raise
         except Exception:
+            self._preserve_negative_response(stats)
             self._set_outcome(mechanism, "FAIL" if stats.authorized else "ERROR")
             raise
         finally:
@@ -2123,24 +2151,33 @@ def execute_test_5_1_5_2_b(
     random_bytes: Callable[[int], bytes] = secrets.token_bytes,
     output: Callable[[str], None] | None = None,
 ) -> RunResult:
-    if work_dir is None:
-        work_dir = Path.cwd()
     if output is None:
         output = print
-    log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_1_5_2_b", now)
+    result: RunResult = RunResult(2, "ERROR", {mechanism: "NOT RUN" for mechanism in MECHANISMS}, set())
+    try:
+        if work_dir is None:
+            work_dir = Path.cwd()
+        log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_1_5_2_b", now)
+    except Exception as creation_error:  # noqa: BLE001 - Filesystem and injected-clock failures are setup ERROR.
+        creation_error: Exception
+        try:
+            output(f"Evidence initialization ERROR: {type(creation_error).__name__}")
+            output("Overall verdict: ERROR")
+        except Exception:  # noqa: BLE001 - A broken terminal must not escape the ERROR result.
+            return result
+        return result
     reporting_log: RecoveryEvidenceLog = RecoveryEvidenceLog(log)
-    reporting_log.attempt(lambda: output(f"Open log file: {log.path}"))
 
     def output_progress(message: str) -> None:
         output(message)
         log.write_line(message)
 
     progress: ProgressReporter = ProgressReporter(output_progress, TOTAL_STEPS)
-    result: RunResult = RunResult(2, "ERROR", {mechanism: "NOT RUN" for mechanism in MECHANISMS}, set())
-    log.write("TEST CASE AND UNIT", TEST_ID)
-    log.write("UTC START", format_utc(log.started_at))
     try:
         try:
+            output(f"Open log file: {log.path}")
+            log.write("TEST CASE AND UNIT", TEST_ID)
+            log.write("UTC START", format_utc(log.started_at))
             progress.step("Loading and validating .env")
             config: DutConfig = load_dut_config(work_dir / ".env")
             log.write(
@@ -2160,6 +2197,8 @@ def execute_test_5_1_5_2_b(
             ).run()
         except Exception as error:  # noqa: BLE001 - Preserve ERROR results after execution failures.
             error: Exception
+            error_name: str = type(error).__name__
+            reporting_log.attempt(lambda: output(f"Execution ERROR: {error_name}"))
             reporting_log.exception(error)
             reporting_log.write("OVERALL RESULT", "ERROR")
     finally:
@@ -2173,6 +2212,9 @@ def execute_test_5_1_5_2_b(
         reporting_log.attempt(lambda: log.finish(result.verdict, now))
     if reporting_log.failed:
         result.exit_code, result.verdict = 2, "ERROR"
+        reporting_log.attempt(lambda: output("Overall verdict: ERROR"))
+        if result.recovery_message is not None:
+            reporting_log.attempt(lambda: output(result.recovery_message or ""))
     return result
 
 
