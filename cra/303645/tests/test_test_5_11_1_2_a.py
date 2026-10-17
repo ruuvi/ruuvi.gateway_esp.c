@@ -74,6 +74,11 @@ class CreationSession(FakeSession):
     def __init__(self, gateway: CreationGateway) -> None:
         super().__init__(gateway)
         self.creation_gateway: CreationGateway = gateway
+        self.closed: bool = False
+
+    def close(self) -> None:
+        self.closed = True
+        super().close()
 
     def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
         url: str = request.url or ""
@@ -1499,6 +1504,216 @@ class CreationTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 2)
         self.assertEqual(result.outcomes[runner.KEYS], "ERROR")
         self.assertFalse([w for w in self.gateway.wire if w.scheme == "Bearer" and w.method == "POST"])
+        self.assert_restored()
+
+    def test_persistent_stream_failure_after_mutation_preserves_recovery_and_cleanup(self) -> None:
+        gateway: CreationGateway = self.gateway
+
+        class FailingStream(io.StringIO):
+            def write(self, text: str) -> int:
+                if gateway.secrets.get("http_pass") or gateway.restoring:
+                    raise OSError("disk full: private fixture secret")
+                return super().write(text)
+
+        (self.directory / "logs").mkdir()
+        stream: FailingStream = FailingStream()
+        log: runner.EvidenceLog = runner.EvidenceLog(self.directory / "logs" / f"{runner.PREFIX}_failed.log", stream, NOW)
+        sessions: list[CreationSession] = []
+
+        def session_factory() -> CreationSession:
+            session: CreationSession = CreationSession(gateway)
+            sessions.append(session)
+            return session
+
+        with patch.object(runner.EvidenceLog, "create", return_value=log):
+            result: RunResult = runner.execute_test_5_11_1_2_a(
+                self.directory, session_factory, lambda: NOW, self.output.append,
+                DeterministicBytes(), self.fixture_factory, input_fn=self.confirm,
+                monotonic=lambda: self.elapsed, sleep=self.sleep,
+                http_fixture_factory=self.make_http_fixture,
+            )
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes["factory reset"], "PASS")
+        self.assertTrue(gateway.restoring)
+        self.assert_restored()
+        self.assertIsNotNone(gateway.http_fixture)
+        assert gateway.http_fixture is not None
+        self.assertTrue(gateway.http_fixture.closed)
+        self.assertTrue(sessions)
+        self.assertTrue(all(session.closed for session in sessions))
+        self.assertTrue(stream.closed)
+        self.assertIn("Overall verdict: ERROR", self.output)
+        self.assertNotIn("private fixture secret", "\n".join(self.output))
+
+    def test_failed_recovery_with_failed_evidence_still_closes_every_resource(self) -> None:
+        self.gateway.reset_completes = False
+        gateway: CreationGateway = self.gateway
+
+        class FailingStream(io.StringIO):
+            def write(self, text: str) -> int:
+                if gateway.restoring:
+                    raise OSError("full evidence volume")
+                return super().write(text)
+
+        (self.directory / "logs").mkdir()
+        stream: FailingStream = FailingStream()
+        log: runner.EvidenceLog = runner.EvidenceLog(self.directory / "logs" / f"{runner.PREFIX}_failed.log", stream, NOW)
+        with patch.object(runner.EvidenceLog, "create", return_value=log):
+            result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes["factory reset"], "ERROR")
+        self.assertFalse(self.manifest()["restored"]["verified"])
+        self.assertIn("Factory-reset recovery unverified", result.recovery_message or "")
+        assert self.gateway.http_fixture is not None
+        self.assertTrue(self.gateway.http_fixture.closed)
+
+    def test_cleanup_failure_does_not_skip_remaining_sessions_or_final_verdict(self) -> None:
+        sessions: list[CreationSession] = []
+
+        class ClosingSession(CreationSession):
+            def close(self) -> None:
+                super().close()
+                if self is sessions[0]:
+                    raise OSError("session shutdown failed")
+
+        def session_factory() -> ClosingSession:
+            session: ClosingSession = ClosingSession(self.gateway)
+            sessions.append(session)
+            return session
+
+        with patch.object(FakeHttpFixture, "close", side_effect=OSError("fixture shutdown failed")):
+            result: RunResult = runner.execute_test_5_11_1_2_a(
+                self.directory, session_factory, lambda: NOW, self.output.append,
+                DeterministicBytes(), self.fixture_factory, input_fn=self.confirm,
+                monotonic=lambda: self.elapsed, sleep=self.sleep,
+                http_fixture_factory=self.make_http_fixture,
+            )
+        self.assertEqual(result.exit_code, 2)
+        self.assertTrue(sessions)
+        self.assertTrue(all(session.closed for session in sessions))
+        self.assertTrue(self.manifest()["restored"]["verified"])
+        self.assertIn("Overall verdict: ERROR", self.output)
+
+    def test_evidence_creation_and_preamble_fail_before_dut_access(self) -> None:
+        target: str
+        for target in ("create", "write"):
+            with self.subTest(target=target), patch.object(runner.EvidenceLog, target, side_effect=OSError("secret path")):
+                result: RunResult = self.execute()
+            self.assertEqual(result.exit_code, 2)
+            self.assertEqual(self.gateway.wire, [])
+            self.assertIn("Overall verdict: ERROR", self.output)
+            self.assertNotIn("secret path", "\n".join(self.output))
+
+    def test_unavailable_recovery_instruction_output_does_not_imply_confirmation(self) -> None:
+        def output(message: str) -> None:
+            if message.startswith("OPERATOR ACTION - factory reset"):
+                raise OSError("terminal closed")
+            self.output.append(message)
+
+        result: RunResult = runner.execute_test_5_11_1_2_a(
+            self.directory, lambda: CreationSession(self.gateway), lambda: NOW, output,
+            DeterministicBytes(), self.fixture_factory, input_fn=self.confirm,
+            monotonic=lambda: self.elapsed, sleep=self.sleep,
+            http_fixture_factory=self.make_http_fixture,
+        )
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes["factory reset"], "ERROR")
+        self.assertFalse(self.gateway.restoring)
+        self.assertIn("unverified", result.recovery_message or "")
+        assert self.gateway.http_fixture is not None
+        self.assertTrue(self.gateway.http_fixture.closed)
+
+    def test_recovery_evidence_failure_preserves_prior_assertion_fail(self) -> None:
+        self.gateway.noop_mutates = True
+
+        class FailingStream(io.StringIO):
+            failed: bool = False
+
+            def write(self, text: str) -> int:
+                if "Offer factory reset" in text:
+                    self.failed = True
+                if self.failed:
+                    raise OSError("disk full")
+                return super().write(text)
+
+        (self.directory / "logs").mkdir()
+        stream: FailingStream = FailingStream()
+        log: runner.EvidenceLog = runner.EvidenceLog(self.directory / "logs" / f"{runner.PREFIX}_failed.log", stream, NOW)
+        with patch.object(runner.EvidenceLog, "create", return_value=log):
+            result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes[runner.KEYS], "FAIL")
+        self.assertEqual(result.outcomes["factory reset"], "PASS")
+        self.assert_restored()
+
+    def test_failed_evidence_does_not_bypass_identity_conflict_reset_gate(self) -> None:
+        self.gateway.hotspot_mac = "00:11:22:33:44:55"
+
+        class FailingStream(io.StringIO):
+            failed: bool = False
+
+            def write(self, text: str) -> int:
+                if "EXCEPTION TYPE" in text:
+                    self.failed = True
+                if self.failed:
+                    raise OSError("disk full")
+                return super().write(text)
+
+        (self.directory / "logs").mkdir()
+        stream: FailingStream = FailingStream()
+        log: runner.EvidenceLog = runner.EvidenceLog(self.directory / "logs" / f"{runner.PREFIX}_failed.log", stream, NOW)
+        with patch.object(runner.EvidenceLog, "create", return_value=log):
+            result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes["factory reset"], "ERROR")
+        self.assertTrue(stream.failed)
+        self.assertFalse(self.gateway.restoring)
+        self.assertFalse(any("factory reset verified Gateway" in text for text, _ in self.confirmations))
+        self.assertFalse([w for w in self.gateway.wire if w.host == "10.10.0.1" and w.method == "POST"])
+        assert self.gateway.http_fixture is not None
+        self.assertTrue(self.gateway.http_fixture.closed)
+
+    def test_finalization_failure_is_error_and_closes_evidence(self) -> None:
+        class FailingFinishStream(io.StringIO):
+            def write(self, text: str) -> int:
+                if "UTC END:" in text:
+                    raise OSError("full log volume")
+                return super().write(text)
+
+        (self.directory / "logs").mkdir()
+        stream: FailingFinishStream = FailingFinishStream()
+        log: runner.EvidenceLog = runner.EvidenceLog(self.directory / "logs" / f"{runner.PREFIX}_failed.log", stream, NOW)
+        with patch.object(runner.EvidenceLog, "create", return_value=log):
+            result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertTrue(stream.closed)
+        self.assertEqual(self.output[-1], "Overall verdict: ERROR")
+        self.assert_restored()
+
+    def test_initial_output_failure_prevents_dut_access(self) -> None:
+        with patch.object(self, "output", Mock()):
+            result: RunResult = runner.execute_test_5_11_1_2_a(
+                self.directory, lambda: CreationSession(self.gateway), lambda: NOW,
+                Mock(side_effect=OSError("terminal private path")),
+            )
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(self.gateway.wire, [])
+        self.assertIn("OVERALL VERDICT: ERROR", self.log())
+
+    def test_final_output_failure_is_recorded_as_error_in_evidence(self) -> None:
+        def output(message: str) -> None:
+            if message.startswith("Overall verdict:"):
+                raise OSError("terminal closed")
+            self.output.append(message)
+
+        result: RunResult = runner.execute_test_5_11_1_2_a(
+            self.directory, lambda: CreationSession(self.gateway), lambda: NOW, output,
+            DeterministicBytes(), self.fixture_factory, input_fn=self.confirm,
+            monotonic=lambda: self.elapsed, sleep=self.sleep,
+            http_fixture_factory=self.make_http_fixture,
+        )
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("OVERALL VERDICT: ERROR", self.log())
         self.assert_restored()
 
     def test_setup_failure_still_creates_evidence(self) -> None:

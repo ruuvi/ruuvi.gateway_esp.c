@@ -106,6 +106,48 @@ REDACTED_FIELDS: tuple[str, ...] = (
 )
 
 
+class RecoveryEvidenceLog(EvidenceLog):
+    """Keep this runner's recovery transport independent of a broken evidence sink.
+
+    Normal work fails closed. Only recovery/finalization permits missing evidence,
+    and any such failure permanently makes the invocation ERROR.
+    """
+
+    def __init__(self, source: EvidenceLog) -> None:
+        super().__init__(source.path, source._stream, source.started_at)
+        self.recovering: bool = False
+        self.failed: bool = False
+
+    def _attempt(self, action: Callable[[], None]) -> None:
+        try:
+            action()
+        except Exception:  # Only evidence failures are tolerated during recovery.
+            self.failed = True
+            if not self.recovering:
+                raise
+
+    def write(self, label: str, value: Any = "") -> None:
+        self._attempt(partial(super().write, label, value))
+
+    def write_line(self, message: str) -> None:
+        self._attempt(partial(super().write_line, message))
+
+    def write_http_request(self, request: requests.PreparedRequest) -> None:
+        self._attempt(partial(super().write_http_request, request))
+
+    def write_http_response(self, response: requests.Response) -> None:
+        self._attempt(partial(super().write_http_response, response))
+
+    def exception(self, error: BaseException) -> None:
+        self._attempt(partial(super().exception, error))
+
+    def finish(self, verdict: str, now: Callable[[], datetime] = utc_now) -> None:
+        try:
+            self._attempt(partial(super().finish, verdict, now))
+        finally:
+            self._attempt(self._stream.close)
+
+
 class CommitmentFailure(Exception):
     """An accepted write has a complete, inconsistent observation."""
 
@@ -302,13 +344,13 @@ class FunctionalTest_5_11_1_2_a:
         http_fixture_factory: Callable[[str, tuple[HttpRoute, ...]], HttpFixture] = LocalHttpFixture,
     ) -> None:
         self.config: DutConfig = config
-        self.evidence: EvidenceLog = evidence
+        self.evidence: RecoveryEvidenceLog = evidence if isinstance(evidence, RecoveryEvidenceLog) else RecoveryEvidenceLog(evidence)
         self.session_factory: Callable[[], requests.Session] = session_factory
         self.sessions: list[requests.Session] = []
         self.had_error: bool = False
-        self.gateway: GatewayClient = GatewayClient(config, evidence, self._new_transport, random_bytes, ecc_generate=self._ecc_generate)
+        self.gateway: GatewayClient = GatewayClient(config, self.evidence, self._new_transport, random_bytes, ecc_generate=self._ecc_generate)
         self.hotspot: GatewayClient = GatewayClient(
-            replace(config, gw_hostname=hotspot_hostname), evidence, self._new_transport, random_bytes, ecc_generate=self._ecc_generate,
+            replace(config, gw_hostname=hotspot_hostname), self.evidence, self._new_transport, random_bytes, ecc_generate=self._ecc_generate,
         )
         self.random_bytes: Callable[[int], bytes] = random_bytes
         self.now: Callable[[], datetime] = now
@@ -353,6 +395,18 @@ class FunctionalTest_5_11_1_2_a:
     def _say(self, message: str) -> None:
         self.output(message)
         self.evidence.write_line(message)
+
+    def _notice(self, message: str) -> None:
+        """Status output may fail, but must never prevent resource cleanup."""
+        self._cleanup(partial(self._say, message))
+
+    def _cleanup(self, action: Callable[[], None]) -> None:
+        try:
+            action()
+        except Exception as error:  # noqa: BLE001 - Independent cleanup actions must all be attempted.
+            error: Exception
+            self.had_error = True
+            self.evidence.exception(error)
 
     def _report_bench_requirements(self) -> None:
         self._say(
@@ -949,13 +1003,15 @@ class FunctionalTest_5_11_1_2_a:
             return True
         except Exception as error:  # Preserve outcomes and mandatory recovery.
             error: Exception
-            self.evidence.exception(error)
+            if self.evidence.failed and not self.evidence.recovering:
+                raise  # Stop normal work; the run boundary enables best-effort recovery.
             verdict: str = "FAIL" if isinstance(error, CommitmentFailure) else "ERROR"
             self.had_error = self.had_error or verdict == "ERROR"
             if self.outcomes[category] != "FAIL":
                 self.outcomes[category] = verdict
+            self.evidence.exception(error)
             reason: str = str(error) if type(error) in (InvalidSetup, CommitmentFailure) else "See evidence for protocol/transport details"
-            self._say(f"{category}: {verdict} ({type(error).__name__}: {reason})")
+            self._notice(f"{category}: {verdict} ({type(error).__name__}: {reason})")
             if self.identity_conflict and category not in ("factory reset", "manifest"):
                 raise
             return False
@@ -1072,39 +1128,42 @@ class FunctionalTest_5_11_1_2_a:
                     self._say(f"{KEYS}: ERROR (RO/RW reads completed; RW no-op POST not run because state preservation failed)")
         except Exception as error:  # noqa: BLE001 - Run boundary must always restore.
             error: Exception
-            self.evidence.exception(error)
+            self.evidence.recovering = True
             self.had_error = True
+            self.evidence.exception(error)
             if self.outcomes[self.active] != "FAIL":
                 self.outcomes[self.active] = "ERROR"
             reason: str = str(error) if type(error) in (InvalidSetup, InvalidConfig) else "See evidence for protocol/transport details"
-            self._say(f"{self.active}: ERROR ({type(error).__name__}: {reason})")
+            self._notice(f"{self.active}: ERROR ({type(error).__name__}: {reason})")
         finally:
-            self.progress("Offer factory reset and verify baseline and credential revocation")
+            self.evidence.recovering = True
+            self._cleanup(partial(self.progress, "Offer factory reset and verify baseline and credential revocation"))
             if self.baseline is not None and not self._perform("factory reset", self._factory_reset_recovery):
                 self.restoration = Restoration(True, False, reason="Factory-reset recovery could not be verified; inspect evidence")
                 self.recovery_message = f"Factory-reset recovery unverified. Recover the dedicated DUT using manifest {self.manifest_path} and evidence {self.evidence.path}."
             if self.http_fixture is not None:
-                try:
-                    self.http_fixture.close()
-                except Exception as error:  # noqa: BLE001 - Final evidence must survive fixture shutdown failure.
-                    error: Exception
-                    self.evidence.exception(error)
-                    self.had_error = True
-                    self._say("Local HTTP fixture shutdown failed; see evidence")
+                self._cleanup(self.http_fixture.close)
+            session: requests.Session
+            for session in self.sessions:
+                self._cleanup(session.close)
             # A category only passes when every item has independent commitment evidence.
             for category in CATEGORIES:
                 category_items: list[ManifestItem] = [i for i in self.items if i.category == category]
                 if self.outcomes[category] == "PASS" and (not category_items or not all(i.committed for i in category_items)):
                     self.outcomes[category] = "ERROR"
-            self.progress("Finalize historical manifest and per-category results")
+            self._cleanup(partial(self.progress, "Finalize historical manifest and per-category results"))
             if self.outcomes["manifest"] == "NOT RUN":
                 self.outcomes["manifest"] = "PASS"
             self._perform("manifest", self._checkpoint)
             self.evidence.write("FACTORY RESET RECOVERY", self.restoration)
             self.evidence.write("PER-CHECK OUTCOMES", self.outcomes)
-            session: requests.Session
-            for session in self.sessions:
-                session.close()
+        category: str
+        outcome: str
+        for category, outcome in self.outcomes.items():
+            self._notice(f"{category}: {outcome}")
+        if self.evidence.failed:
+            self.had_error = True
+            self._notice("Evidence: ERROR (logging failed; recovery was attempted without complete evidence)")
         verdict: str
         if self.had_error or "ERROR" in self.outcomes.values():
             verdict = "ERROR"
@@ -1114,10 +1173,6 @@ class FunctionalTest_5_11_1_2_a:
             verdict = "ERROR"
         else:
             verdict = "PASS"
-        category: str
-        outcome: str
-        for category, outcome in self.outcomes.items():
-            self._say(f"{category}: {outcome}")
         return RunResult({"PASS": 0, "FAIL": 1, "ERROR": 2}[verdict], verdict, dict(self.outcomes), set(), self.recovery_message)
 
 
@@ -1135,18 +1190,29 @@ def execute_test_5_11_1_2_a(
     http_fixture_factory: Callable[[str, tuple[HttpRoute, ...]], HttpFixture] = LocalHttpFixture,
 ) -> RunResult:
     directory: Path = work_dir if work_dir is not None else Path.cwd()
-    log: EvidenceLog = EvidenceLog.create(directory / "logs", PREFIX, now)
-    output(f"Open log file: {log.path}")
+    log: RecoveryEvidenceLog | None = None
+    result: RunResult = RunResult(2, "ERROR", dict.fromkeys(CHECKS, "NOT RUN"), set())
+    output_failed: bool = False
+
+    def notify(message: str) -> None:
+        nonlocal output_failed
+        try:
+            output(message)
+        except Exception:  # noqa: BLE001 - Failed terminal output must not prevent finalization.
+            output_failed = True
 
     def report(message: str) -> None:
         output(message)
+        assert log is not None
         log.write_line(message)
 
     progress: ProgressReporter = ProgressReporter(report, 9)
-    result: RunResult = RunResult(2, "ERROR", dict.fromkeys(CHECKS, "NOT RUN"), set())
-    log.write("TEST CASE AND UNIT", f"{TEST_CASE} A: creation plus operator-confirmed reset recovery, not forensic erasure")
-    log.write("UTC START", format_utc(log.started_at))
     try:
+        active_log: RecoveryEvidenceLog = RecoveryEvidenceLog(EvidenceLog.create(directory / "logs", PREFIX, now))
+        log = active_log
+        report(f"Open log file: {active_log.path}")
+        active_log.write("TEST CASE AND UNIT", f"{TEST_CASE} A: creation plus operator-confirmed reset recovery, not forensic erasure")
+        active_log.write("UTC START", format_utc(active_log.started_at))
         progress.step("Load and validate .env")
         model_fields: set[str] = {field.name for field in fields(DutConfig)}
         if not {"gw_fw", "wifi_ssid", "wifi_password"}.issubset(model_fields):
@@ -1155,24 +1221,41 @@ def execute_test_5_11_1_2_a(
                 "into a clean directory and copy your .env there. Do not mix runner/library versions."
             )
         config: DutConfig = load_dut_config(directory / ".env")
-        log.write("DUT CONFIGURATION", config)
+        active_log.write("DUT CONFIGURATION", config)
         result = FunctionalTest_5_11_1_2_a(
-            config, log, session_factory, random_bytes, now, progress.step, output,
+            config, active_log, session_factory, random_bytes, now, progress.step, output,
             fixture_factory, manifest_writer, input_fn=input_fn, monotonic=monotonic, sleep=sleep,
             http_fixture_factory=http_fixture_factory,
         ).run()
     except Exception as error:
         error: Exception
-        log.exception(error)  # noqa: TRY401 - EvidenceLog needs the exception object.
-        result.outcomes["baseline"] = "ERROR"
-        reason: str = str(error) if isinstance(error, InvalidConfig) else "see evidence for details"
-        report(f"Setup: ERROR ({type(error).__name__}: {reason})")
+        if log is not None:
+            log.recovering = True
+            log.exception(error)  # noqa: TRY401 - EvidenceLog needs the exception object.
+        result.exit_code, result.verdict = 2, "ERROR"
+        if result.outcomes["baseline"] != "FAIL":
+            result.outcomes["baseline"] = "ERROR"
+        reason: str = str(error) if isinstance(error, InvalidConfig) else "detailed evidence unavailable or incomplete"
+        notify(f"Setup: ERROR ({type(error).__name__}: {reason})")
     finally:
-        if result.recovery_message:
-            report(result.recovery_message)
-        log.write("FINAL PER-CHECK OUTCOMES", result.outcomes)
-        log.finish(result.verdict, now)
-    output(f"Overall verdict: {result.verdict}")
+        if log is not None:
+            log.recovering = True
+            if result.recovery_message:
+                notify(result.recovery_message)
+                log.write_line(result.recovery_message)
+            log.write("FINAL PER-CHECK OUTCOMES", result.outcomes)
+            if log.failed or output_failed:
+                result.exit_code, result.verdict = 2, "ERROR"
+            notify(f"Overall verdict: {result.verdict}")
+            if output_failed:
+                result.exit_code, result.verdict = 2, "ERROR"
+            log.finish(result.verdict, now)
+            if log.failed:
+                result.exit_code, result.verdict = 2, "ERROR"
+                notify("Evidence: ERROR (log could not be completed)")
+                notify("Overall verdict: ERROR")
+        else:
+            notify("Overall verdict: ERROR")
     return result
 
 
