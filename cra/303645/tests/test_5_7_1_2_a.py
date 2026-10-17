@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -185,10 +186,12 @@ class FirmwareInstaller:
         command: tuple[str, ...] = (sys.executable, str(self.repository / "ruuvi_gw_flash.py"),
                                      *options, version)
         self.evidence.write("FIRMWARE INSTALL COMMAND", command)
+        environment: dict[str, str] = os.environ.copy()
+        environment["PATH"] = str(Path(sys.executable).parent) + os.pathsep + environment.get("PATH", "")
         try:
             completed: subprocess.CompletedProcess[str] = self.run_command(
                 list(command), cwd=str(self.repository), capture_output=True, text=True,
-                timeout=timeout, check=False,
+                timeout=timeout, check=False, env=environment,
             )
         except (OSError, subprocess.SubprocessError) as error:
             error: OSError | subprocess.SubprocessError
@@ -481,6 +484,22 @@ def match_console(scenario: Scenario, console: str, active: Partition, alternate
     clean = clean[:clean.rfind("\n") + 1]
     complete: bool = bool(clean)
     normal: bool = GATEWAY_INIT.search(clean) is not None
+    unsafe_initialization: bool = False
+    loaded_offset: int | None = None
+    line: str
+    for line in clean.splitlines():
+        if BOOT_BANNER.search(line) is not None:
+            loaded_offset = None
+        loaded: re.Match[str] | None = LOADED_APP.search(line)
+        running: re.Match[str] | None = RUNNING_APP.search(line)
+        if loaded is not None:
+            loaded_offset = int(loaded.group(1), 16)
+        if running is not None:
+            loaded_offset = int(running.group(2), 16)
+            if running.group(1) != alternate.name:
+                loaded_offset = active.offset
+        if GATEWAY_INIT.search(line) is not None and (scenario.both or loaded_offset != alternate.offset):
+            unsafe_initialization = True
     banners: int = len(BOOT_BANNER.findall(clean))
     if scenario.component == "app":
         pattern: re.Pattern[str] = (APP_CHECKSUM_FAILURE if scenario.method == "damage"
@@ -567,8 +586,10 @@ def match_console(scenario: Scenario, console: str, active: Partition, alternate
         elif scenario.component != "app" and failure is not None:
             control = (control and "Firmware rollback is possible, so try to do it" in tail
                        and "Signature of the running partition is valid." in clean[:failure.start()])
-    if complete and detected and control:
-        verdict: str = "PASS"
+    if complete and unsafe_initialization:
+        verdict: str = "FAIL"
+    elif complete and detected and control:
+        verdict = "PASS"
     elif complete and normal and (scenario.both or not alternate_running):
         verdict = "FAIL"
     else:
@@ -613,7 +634,7 @@ class FunctionalTest_5_7_1_2_a:
             self.repository, evidence,
         )
 
-    def _baseline(self) -> None:
+    def _baseline(self) -> str:
         self.progress("Authenticating and validating factory-default identity")
         self.session = None
         auth: InteractiveAuthResult | None = None
@@ -660,6 +681,7 @@ class FunctionalTest_5_7_1_2_a:
         if config_digest(first) != config_digest(second):
             raise InvalidSetup("two authenticated configuration reads are unstable")
         self.evidence.write("BASELINE CONFIG SHA256", config_digest(first))
+        return config_digest(first)
 
     def _configuration(self) -> dict[str, Any]:
         if self.session is None:
@@ -789,7 +811,8 @@ class FunctionalTest_5_7_1_2_a:
         self.evidence.write("RESET METHOD", "esptool default_reset / hard_reset, CH340 DTR/RTS")
         console: str = self.serial.capture(
             self.port, self.evidence, CAPTURE_SECONDS,
-            stop_when=lambda captured: match_console(scenario, captured, active, alternate).result == "PASS",
+            stop_when=(None if scenario.both else
+                       lambda captured: match_console(scenario, captured, active, alternate).result == "PASS"),
         )
         match: ConsoleMatch = match_console(scenario, console, active, alternate)
         self.evidence.write("BOOT MATCH", match)
@@ -860,6 +883,7 @@ class FunctionalTest_5_7_1_2_a:
         recovery_error: BaseException | None = None
         recovered: bool = False
         images: ReleaseImages | None = None
+        baseline_digest: str | None = None
         try:
             if FIRMWARE_VERSION_RE.fullmatch(version) is None:
                 raise InvalidSetup("firmware version must look like v1.17.5-dev")
@@ -883,7 +907,7 @@ class FunctionalTest_5_7_1_2_a:
             parts, active, _alternate, _boot_console = self._preflight(partition_csv)
             if active.name != f"ota_{selected}":
                 raise InvalidSetup(f"prepared OTA metadata did not boot slot {selected}")
-            self._baseline()
+            baseline_digest = self._baseline()
             restores: tuple[RestoreRegion, ...] = ()
             case: Scenario
             for case in self.scenarios:
@@ -939,7 +963,9 @@ class FunctionalTest_5_7_1_2_a:
                     recovered_parts, recovered_active, _alternate, _console = self._preflight(partition_csv)
                     if recovered_active != recovered_parts["ota_0"]:
                         raise InvalidSetup("recovered gateway did not boot slot 0")
-                    self._baseline()
+                    recovered_digest: str = self._baseline()
+                    if baseline_digest is not None and recovered_digest != baseline_digest:
+                        raise InvalidSetup("recovered full configuration differs from the pre-corruption baseline")
                     recovered = True
                     self.evidence.write("AUTOMATIC RECOVERY", "both slots reflashed; slot 0 signed boot and LAN baseline verified")
                 except (Exception, KeyboardInterrupt) as caught_recovery_error:  # noqa: BLE001 - Final recovery must preserve evidence and report ERROR.
@@ -952,7 +978,8 @@ class FunctionalTest_5_7_1_2_a:
             recovery = f"Setup error: {error}. See {self.evidence.path} for details."
         if self.touched:
             if error is not None:
-                recovery = f"{type(error).__name__}: {error}. See {self.evidence.path} for details."
+                diagnostic: str = f"{type(error).__name__}: {error}. See {self.evidence.path} for details."
+                recovery = f"{recovery}\n{diagnostic}" if recovery else diagnostic
             if self.failure_details:
                 failures: str = "\n".join(self.failure_details)
                 recovery = f"{failures}\n{recovery}" if recovery else failures

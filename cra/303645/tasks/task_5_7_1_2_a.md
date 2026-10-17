@@ -318,6 +318,9 @@ result, followed by `Step N finished: OK`, `FAIL` or `ERROR` with observed UART 
 messages are separate from the numbered setup/recovery progress. A single-slot rollback confirms
 startup only after the opposite slot verifies its app and paired FATFS signatures and prints
 `### Init gw_cfg:`. The detailed signal rules and recovery procedure follow below.
+Initialization by a damaged slot is FAIL even if a later signed fallback boots successfully.
+Both-slot cases 9-12 observe the entire bounded 30-second capture window before declaring PASS,
+so initialization after an initially sufficient rejection prefix remains visible.
 
 ## Firmware installation and scenario sequence
 
@@ -384,6 +387,10 @@ validated OTA metadata selecting slot 0, and verify signed UART boot plus authen
 baseline. Recovery failure or incomplete verification makes the overall verdict ERROR and prints
 manual flashing instructions. After a case FAIL or ERROR, print `python test_5_7_1_2_a.py --case N`
 for each failed case.
+Retain the original stable full-configuration digest and require the recovered configuration to
+match it; stable changes to non-authentication settings also make recovery ERROR. Preserve any
+factory-reset advice when appending installation or recovery diagnostics. Firmware-helper child
+processes prepend the running interpreter's directory to PATH, supporting an unactivated virtualenv.
 
 ## Evidence log
 

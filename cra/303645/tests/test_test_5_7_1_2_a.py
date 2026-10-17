@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -12,12 +14,14 @@ from typing import Any, Callable
 from unittest import mock
 
 import test_5_7_1_2_a as target
+from lib.config import FACTORY_RESET_MESSAGE
 from lib.errors import InvalidSetup
 from lib.evidence import EvidenceLog
 from lib.flash_dut import OTADATA_OFFSET, OTADATA_SIZE, OtaSelection, Partition, decode_otadata
+from lib.gateway import GatewayCfgLanAuthType
 from lib.models import DutConfig, RunResult
 from lib.serial_dut import SerialPort, SerialVersions
-from test_support.fake_gateway import DefaultAuthGateway, FakeSession, env_text
+from test_support.fake_gateway import DefaultAuthGateway, FakeResponse, FakeSession, env_text
 
 NOW: datetime = datetime(2026, 9, 26, 7, 0, tzinfo=timezone.utc)
 CONFIG: DutConfig = DutConfig("00:11:22:33:44:55:66:77", "AA:BB:CC:DD:EE:FF", "gateway.local")
@@ -199,7 +203,7 @@ class FakeFlash:
 
 class FakeSerial:
     def __init__(self, captures: tuple[str, ...]) -> None:
-        self.captures: list[str] = list(captures)
+        self.captures: list[str | tuple[str, ...]] = list(captures)
         self.calls: int = 0
 
     def preflight(self) -> SerialVersions:
@@ -217,10 +221,15 @@ class FakeSerial:
             raise AssertionError("wrong capture parameters")
         if not self.captures:
             raise InvalidSetup("no more fake UART captures")
-        result: str = self.captures.pop(0)
+        capture: str | tuple[str, ...] = self.captures.pop(0)
+        chunks: tuple[str, ...] = (capture,) if isinstance(capture, str) else capture
+        result: str = ""
+        chunk: str
+        for chunk in chunks:
+            result += chunk
+            if stop_when is not None and stop_when(result):
+                break
         evidence.write("RAW BOOT CONSOLE", result)
-        if stop_when is not None:
-            stop_when(result)
         return result
 
     def observe(
@@ -598,6 +607,79 @@ class RunnerTests(unittest.TestCase):
         with mock.patch.object(target, "execute_test_5_7_1_2_a", return_value=expected) as execute:
             self.assertEqual(0, target.main(["--case", "5"]))
         execute.assert_called_once_with(case_number=5)
+
+    def test_installer_finds_tool_in_unactivated_virtualenv(self) -> None:
+        scripts: Path = self.work_dir / "venv" / "bin"
+        scripts.mkdir(parents=True)
+        tool: Path = scripts / "esptool.py"
+        tool.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        tool.chmod(0o755)
+        environments: list[dict[str, str]] = []
+        def run(command: list[str], *, env: dict[str, str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+            environments.append(env)
+            self.assertEqual(str(tool), shutil.which("esptool.py", path=env["PATH"]))
+            return subprocess.CompletedProcess(command, 0, "flashed", "")
+        evidence: EvidenceLog = EvidenceLog.create(self.work_dir / "logs", "path", lambda: NOW)
+        installer: target.FirmwareInstaller = target.FirmwareInstaller(self.work_dir, evidence, run)
+        with mock.patch.object(target.sys, "executable", str(scripts / "python")), mock.patch.dict(
+            os.environ, {"PATH": "/missing-tools", "PRESERVED_ENV": "present"}, clear=True,
+        ):
+            installer.flash_both("v1.17.5-dev", self.serial.discover())
+            self.assertEqual("/missing-tools", os.environ["PATH"])
+        evidence.finish("PASS", lambda: NOW)
+        self.assertEqual("present", environments[0]["PRESERVED_ENV"])
+
+    def test_damaged_slot_init_fails_despite_later_signed_rollback(self) -> None:
+        case: target.Scenario
+        for case in (target.SCENARIOS[3], target.SCENARIOS[7]):
+            console: str = observation(case).replace(
+                "E (2674)", "I (2500) ruuvi_gateway: [main/1] ### Init gw_cfg: unsafe\nE (2674)", 1,
+            )
+            self.serial = FakeSerial((baseline(case.slot), baseline(case.slot), console, baseline(0)))
+            result: RunResult = self.execute(case_number=case.number)
+            self.assertEqual(1, result.exit_code, result.recovery_message)
+            self.assertEqual("FAIL", result.outcomes[case.name])
+
+    def test_both_slot_capture_observes_late_initialization_after_passing_prefix(self) -> None:
+        case: target.Scenario
+        for case in target.SCENARIOS[8:]:
+            self.serial = FakeSerial((baseline(0), baseline(0), observation(case), baseline(0)))
+            self.serial.captures[2] = (
+                observation(case), "I (25000) ruuvi_gateway: [main/1] ### Init gw_cfg: unsafe\n",
+            )
+            result: RunResult = self.execute(case_number=case.number)
+            self.assertEqual(1, result.exit_code, (case.number, result.recovery_message))
+            self.assertEqual("FAIL", result.outcomes[case.name])
+
+    def test_recovery_rejects_stable_non_authentication_configuration_drift(self) -> None:
+        class DriftGateway(DefaultAuthGateway):
+            def __init__(self) -> None:
+                super().__init__(CONFIG)
+                self.reads: int = 0
+
+            def _config_response(self) -> FakeResponse:
+                self.reads += 1
+                payload: dict[str, Any] = dict(super()._config_response().json())
+                payload["mqtt_use"] = self.reads > 2
+                return FakeResponse(200, payload)
+
+        gateway: DriftGateway = DriftGateway()
+        self.gateway = gateway
+        result: RunResult = self.execute(case_number=1)
+        self.assertEqual(2, result.exit_code)
+        self.assertEqual(4, gateway.reads)
+        self.assertIn("differs from the pre-corruption baseline", result.recovery_message or "")
+        self.assertNotIn("Gateway recovery verified", result.recovery_message or "")
+
+    def test_baseline_failure_after_installation_keeps_factory_reset_advice(self) -> None:
+        self.gateway.mode = GatewayCfgLanAuthType.BASIC
+        self.serial = FakeSerial((baseline(0), baseline(0)))
+        result: RunResult = self.execute(case_number=1)
+        self.assertEqual(2, result.exit_code)
+        self.assertEqual("NOT RUN", result.outcomes[target.SCENARIOS[0].name])
+        self.assertIn(FACTORY_RESET_MESSAGE, result.recovery_message or "")
+        self.assertTrue(any(FACTORY_RESET_MESSAGE in line for line in self.output))
+        self.assertEqual(2, sum(action == "flash_both" for action, _version in self.installer.calls))
 
     def test_wrong_app_failure_mechanism_cannot_pass_signature_case(self) -> None:
         active: Partition = Partition("ota_0", 0, 0x10, 0x100000, 0x400000)
