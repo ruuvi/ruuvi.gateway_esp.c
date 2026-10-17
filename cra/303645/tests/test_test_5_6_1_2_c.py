@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
+from unittest.mock import MagicMock, patch
 from urllib.parse import urlsplit
 
 import requests
@@ -32,6 +33,7 @@ class ScanGateway(DefaultAuthGateway):
     def __init__(self) -> None:
         super().__init__(CONFIG)
         self.fields: dict[str, Any] = json.loads(json.dumps(default_config_values(target.DEFAULT_FIELDS)))
+        self.fields.update({"mqtt_prefix": f"ruuvi/{CONFIG.gw_mac}/", "mqtt_client_id": CONFIG.gw_mac})
         self.mac: Any = CONFIG.gw_mac
         self.include_mac: bool = True
         self.login_status: int | None = None
@@ -54,6 +56,17 @@ class ScanGateway(DefaultAuthGateway):
 
     def _apply_config(self, body: dict[str, str]) -> None:
         super()._apply_config(body)
+        # gw_cfg_json_parse_mqtt resets these on every partial POST.
+        self.fields.update({
+            "mqtt_data_format": body.get("mqtt_data_format", "ruuvi_raw"),
+            "mqtt_prefix": body.get("mqtt_prefix") or f"ruuvi/{CONFIG.gw_mac}/",
+            "mqtt_client_id": body.get("mqtt_client_id") or CONFIG.gw_mac,
+        })
+        if self.fields["scan_default"]:
+            self.fields.update(default_config_values((
+                "scan_default", "scan_coded_phy", "scan_1mbit_phy", "scan_2mbit_phy",
+                "scan_channel_37", "scan_channel_38", "scan_channel_39",
+            )))
         value: str | None = body.get("ntp_server1")
         if value is not None and not (self.fail_restore and value == "time.google.com"):
             self.fields["ntp_server1"] = value
@@ -83,6 +96,7 @@ class FakeNmap:
         self.version: str = "Nmap version 7.95 ( https://nmap.org )"
         self.http_service: str = "http"
         self.unstable_tcp: bool = False
+        self.failed_confirmation: tuple[str, int] | None = None
 
     def __call__(self, command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
         self.calls.append(tuple(command))
@@ -95,6 +109,8 @@ class FakeNmap:
             raise subprocess.TimeoutExpired(command, kwargs["timeout"])
         specification: str = command[command.index("-p") + 1]
         full: bool = specification == target.PORTS
+        if not full and self.failed_confirmation == (protocol, int(specification)):
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
         ports: set[int] = set(range(1, 65536)) if full else {int(specification)}
         open_ports: set[int] = (self.tcp_open if protocol == "tcp" else self.udp_open) & ports
         if protocol == "tcp" and not full and self.unstable_tcp:
@@ -217,7 +233,7 @@ class ScanSession(FakeSession):
         body: Any = json.loads(request.body) if request.body else None
         self.wire_calls.append(WireRequest(
             urlsplit(url).scheme, request.method or "", urlsplit(url).path, body,
-            self.number, kwargs.get("allow_redirects"), request.headers.get("Cookie"),
+            self.number, bool(kwargs["allow_redirects"]), request.headers.get("Cookie"),
         ))
         return super().send(request, **kwargs)
 
@@ -230,6 +246,11 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         self.directory.joinpath(".env").write_text(
             f"gw_id={CONFIG.gw_id}\ngw_mac={CONFIG.gw_mac}\ngw_hostname={CONFIG.gw_hostname}\n",
             encoding="utf-8",
+        )
+        self.ixit_directory: Path = self.directory / "ixit"
+        self.ixit_directory.mkdir()
+        (self.ixit_directory / "ixit_28-LogIntf.md").write_text(
+            "### **ID**: LogIntf-mDNS-Responder\n", encoding="utf-8",
         )
         self.gateway: ScanGateway = ScanGateway()
         self.nmap: FakeNmap = FakeNmap()
@@ -251,7 +272,8 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
             runner=self.nmap, resolver=resolve, socket_factory=lambda family, kind: self.mdns,
             find_executable=lambda name: "/usr/bin/nmap" if executable else None,
             local_ip=lambda dut_ip: "192.0.2.20", capture_factory=lambda: self.ntp_capture,
-            privilege=lambda: privilege, clock=lambda: 1.0, now=lambda: NOW, output=self.lines.append,
+            privilege=lambda: privilege, clock=lambda: 1.0, ixit_directory=self.ixit_directory,
+            now=lambda: NOW, output=self.lines.append,
         )
 
     def evidence(self) -> str:
@@ -266,7 +288,9 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         self.assertEqual(1, target.MAX_RETRIES)
         self.assertEqual(16, len(target.EXPECTED_INTERFACES))
         self.assertEqual(16, len({entry.ixit_28 for entry in target.EXPECTED_INTERFACES}))
+        before: dict[str, Any] = dict(self.gateway.fields)
         result: RunResult = self.execute()
+        self.assertEqual(before, self.gateway.fields)
         self.assertEqual(("PASS", 0), (result.verdict, result.exit_code))
         self.assertEqual({"PASS"}, set(result.outcomes.values()))
         ha1: str = hashlib.md5(f"Admin:Ruuvi Gateway:{CONFIG.gw_id}".encode()).hexdigest()
@@ -313,6 +337,64 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         self.assertIn("OVERALL VERDICT: PASS", evidence)
         self.assertEqual(12, sum(line.startswith("[Step ") for line in self.lines))
         self.assertIn("Overall verdict: PASS", self.lines)
+
+    def test_missing_ixit_declaration_aborts_before_scan_or_mutation(self) -> None:
+        (self.ixit_directory / "ixit_28-LogIntf.md").write_text("15 declared interfaces\n", encoding="utf-8")
+        result: RunResult = self.execute()
+        self.assertEqual("ERROR", result.verdict)
+        self.assertEqual("ERROR", result.outcomes["IXIT declaration prerequisite"])
+        self.assertFalse(any("-sT" in call for call in self.nmap.calls))
+        self.assertFalse(self.gateway.config_bodies)
+        self.assertFalse(self.ntp_capture.started)
+        self.assertIn("IXIT documentation gap", self.evidence())
+
+    def test_unsafe_mqtt_baselines_are_rejected_before_mutation(self) -> None:
+        field: str
+        variant: str
+        for field in ("mqtt_data_format", "mqtt_prefix", "mqtt_client_id"):
+            for variant in ("missing", "custom", "wrong_type"):
+                with self.subTest(field=field, variant=variant):
+                    self.setUp()
+                    if variant == "missing":
+                        del self.gateway.fields[field]
+                    else:
+                        self.gateway.fields[field] = "custom" if variant == "custom" else True
+                    before: dict[str, Any] = dict(self.gateway.fields)
+                    result: RunResult = self.execute()
+                    self.assertEqual("ERROR", result.verdict)
+                    self.assertEqual(before, self.gateway.fields)
+                    self.assertFalse(self.gateway.config_bodies)
+                    self.assertFalse(self.ntp_capture.started)
+                    self.assertIn(FACTORY_RESET_MESSAGE, result.recovery_message or "")
+
+    def test_confirmed_failures_survive_later_confirmation_errors(self) -> None:
+        scenario: str
+        for scenario in ("tcp", "udp", "targeted_hotspot"):
+            with self.subTest(scenario=scenario):
+                self.setUp()
+                checks: tuple[str, str]
+                if scenario == "tcp":
+                    self.nmap.tcp_open.update({22, 23})
+                    self.nmap.failed_confirmation = ("tcp", 23)
+                    checks = ("TCP undocumented listeners", "custom telemetry disabled")
+                elif scenario == "udp":
+                    self.nmap.udp_open.update({53, 9999})
+                    self.nmap.failed_confirmation = ("udp", 9999)
+                    checks = ("UDP undocumented listeners", "hotspot servers disabled")
+                else:
+                    self.nmap.udp_ambiguous.update({53: "open|filtered", 67: "open|filtered"})
+                    self.nmap.targeted_states[53] = "open"
+                    self.nmap.failed_confirmation = ("udp", 67)
+                    checks = ("UDP undocumented listeners", "hotspot servers disabled")
+                result: RunResult = self.execute()
+                self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+                check: str
+                for check in checks:
+                    self.assertEqual("FAIL", result.outcomes[check])
+                    self.assertIn(f"{check} FAIL", self.lines)
+                self.assertIn('"result": "FAIL"', self.evidence())
+                if scenario != "tcp":
+                    self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
 
     def test_unexpected_tcp_listener_requires_confirmation(self) -> None:
         self.nmap.tcp_open.add(22)
@@ -511,6 +593,118 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
                 result: RunResult = self.execute()
                 self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
                 self.assertIn("EXCEPTION TYPE", self.evidence())
+
+
+class TcpdumpCaptureTests(unittest.TestCase):
+    """Exercise the real observer without spawning tcpdump or accessing host pipes."""
+
+    def setUp(self) -> None:
+        self.capture: target.TcpdumpNtpCapture = target.TcpdumpNtpCapture()
+        self.process: MagicMock = MagicMock(spec=subprocess.Popen)
+        self.process.stderr = MagicMock()
+        self.process.stderr.fileno.return_value = 17
+        self.process.returncode = 0
+        self.process.poll.return_value = None
+        self.process.communicate.return_value = (
+            "IP 192.0.2.10.62922 > 192.0.2.20.123: NTPv4, Client", "1 packet captured\n",
+        )
+
+    def start(self, *, chunks: tuple[bytes, ...] = (b"tcpdump: listening on any\n",),
+              ready: bool = True, times: tuple[float, ...] = (0.0, 1.0, 2.0)) -> tuple[str, ...]:
+        spawn: MagicMock
+        with patch.object(target.shutil, "which", return_value="/usr/bin/tcpdump"), \
+                patch.object(target.subprocess, "Popen", return_value=self.process) as spawn, \
+                patch.object(target.select, "select", return_value=([self.process.stderr] if ready else [], [], [])), \
+                patch.object(target.os, "read", side_effect=chunks), \
+                patch.object(target.time, "monotonic", side_effect=times):
+            command: tuple[str, ...] = self.capture.start("192.0.2.10", "192.0.2.20")
+            spawn.assert_called_once_with(list(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            return command
+
+    def test_split_readiness_and_successful_capture(self) -> None:
+        command: tuple[str, ...] = self.start(chunks=(b"tcpdump: listen", b"ing on any\n"))
+        self.assertEqual(("/usr/bin/tcpdump", "-i", "any", "-nn", "-l", "-c", "1", "-s", "0"), command[:-1])
+        self.assertEqual(
+            "src host 192.0.2.10 and dst host 192.0.2.20 and udp dst port 123 "
+            "and udp[4:2] = 56 and (udp[8] & 7) = 3", command[-1],
+        )
+        result: target.NtpCaptureResult = self.capture.collect(25.0)
+        self.assertEqual(62922, result.source_port)
+        self.assertIn("listening on any", result.stderr)
+        self.assertIn("1 packet captured", result.stderr)
+        self.process.communicate.assert_called_once_with(timeout=25.0)
+        self.process.poll.return_value = 0
+        self.capture.stop()
+        self.process.terminate.assert_not_called()
+        self.process.kill.assert_not_called()
+        self.assertIsNone(self.capture.process)
+
+    def test_startup_early_exit_and_both_timeout_paths_cleanup(self) -> None:
+        scenario: str
+        for scenario in ("early_exit", "select_timeout", "deadline"):
+            with self.subTest(scenario=scenario):
+                self.setUp()
+                with self.assertRaises(target.ScanError):
+                    self.start(chunks=(b"permission denied\n", b""), ready=scenario != "select_timeout",
+                               times=(0.0, 11.0) if scenario == "deadline" else (0.0, 1.0, 2.0))
+                self.process.terminate.assert_called_once_with()
+                self.process.communicate.assert_called_once_with(timeout=3)
+                self.assertIsNone(self.capture.process)
+
+    def test_missing_tool_and_missing_stderr(self) -> None:
+        spawn: MagicMock
+        with patch.object(target.shutil, "which", return_value=None), \
+                patch.object(target.subprocess, "Popen") as spawn:
+            with self.assertRaisesRegex(target.ScanError, "tcpdump is required"):
+                self.capture.start("192.0.2.10", "192.0.2.20")
+            spawn.assert_not_called()
+        self.process.stderr = None
+        with self.assertRaisesRegex(target.ScanError, "stderr is unavailable"):
+            self.start()
+        self.process.terminate.assert_called_once_with()
+        self.assertIsNone(self.capture.process)
+
+    def test_capture_timeout_then_kill_cleanup(self) -> None:
+        self.start()
+        self.process.communicate.side_effect = [
+            subprocess.TimeoutExpired("tcpdump", 25), subprocess.TimeoutExpired("tcpdump", 3), ("", ""),
+        ]
+        with self.assertRaisesRegex(target.ScanError, "before timeout"):
+            self.capture.collect(25)
+        self.capture.stop()
+        self.process.terminate.assert_called_once_with()
+        self.process.kill.assert_called_once_with()
+        self.assertEqual(3, self.process.communicate.call_count)
+        self.assertIsNone(self.capture.process)
+        self.capture.stop()
+        self.assertEqual(3, self.process.communicate.call_count)
+
+    def test_capture_rejects_bad_process_status_and_packet_output(self) -> None:
+        scenario: str
+        for scenario in ("status", "malformed", "wrong_dut", "wrong_host", "bad_port"):
+            with self.subTest(scenario=scenario):
+                self.setUp()
+                self.start()
+                output: str = "IP 192.0.2.10.62922 > 192.0.2.20.123: NTPv4, Client"
+                if scenario == "status":
+                    self.process.returncode = 1
+                elif scenario == "malformed":
+                    output = "no packets captured"
+                elif scenario == "wrong_dut":
+                    output = output.replace("192.0.2.10", "192.0.2.11")
+                elif scenario == "wrong_host":
+                    output = output.replace("192.0.2.20", "192.0.2.21")
+                else:
+                    output = output.replace("62922", "123")
+                self.process.communicate.return_value = (output, "capture diagnostic")
+                with self.assertRaises(target.ScanError):
+                    self.capture.collect(25)
+                self.capture.stop()
+                self.process.terminate.assert_called_once_with()
+
+    def test_collect_requires_started_capture(self) -> None:
+        with self.assertRaisesRegex(target.ScanError, "not started"):
+            self.capture.collect(25)
 
 
 if __name__ == "__main__":

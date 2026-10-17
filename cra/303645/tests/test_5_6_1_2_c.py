@@ -64,12 +64,14 @@ NTP_REQUEST_TIMEOUT: float = 25.0
 NTP_CAPTURE_FILTER: str = "udp dst port 123 and udp[4:2] = 56 and (udp[8] & 7) = 3"
 TOTAL_STEPS: int = 12
 DEFAULT_FIELDS: tuple[str, ...] = AUTHENTICATION_DEFAULT_FIELDS + (
-    "use_http", "http_url", "use_mqtt", "remote_cfg_use",
+    "use_http", "http_url", "use_mqtt", "mqtt_data_format", "remote_cfg_use",
     "ntp_use", "ntp_use_dhcp", "ntp_server1", "ntp_server2", "ntp_server3", "ntp_server4",
+    "scan_default", "scan_coded_phy", "scan_1mbit_phy", "scan_2mbit_phy",
+    "scan_channel_37", "scan_channel_38", "scan_channel_39",
 )
 HOTSPOT_PORTS: frozenset[int] = frozenset({53, 67, 68})
 CHECKS: tuple[str, ...] = (
-    "factory-default preflight", "documented HTTP listener", "TCP undocumented listeners",
+    "factory-default preflight", "IXIT declaration prerequisite", "documented HTTP listener", "TCP undocumented listeners",
     "TCP coverage", "UDP undocumented listeners", "hotspot servers disabled",
     "custom telemetry disabled", "NTP source identification", "documented mDNS responder",
     "UDP coverage", "NTP configuration restoration",
@@ -107,6 +109,13 @@ EXPECTED_INTERFACES: tuple[ExpectedInterface, ...] = (
     ExpectedInterface("LogIntf-USB-Boot-Flasher", "rom", (), "Enabled", "physical"),
     ExpectedInterface("LogIntf-Internal-SWD-Bus", "swd", (), "Enabled", "internal"),
 )
+
+
+def validate_interface_declarations(directory: Path) -> None:
+    """Reject the pending mDNS model until the authoritative IXIT declares it."""
+    text: str = (directory / "ixit_28-LogIntf.md").read_text(encoding="utf-8")
+    if re.search(r"^### \*\*ID\*\*: LogIntf-mDNS-Responder\s*$", text, re.MULTILINE) is None:
+        raise InvalidSetup("IXIT documentation gap: ixit_28-LogIntf.md must declare LogIntf-mDNS-Responder")
 
 
 @dataclass(frozen=True)
@@ -246,9 +255,11 @@ class FunctionalTest_5_6_1_2_c:
         capture_factory: Callable[[], NtpCapture] = TcpdumpNtpCapture,
         privilege: Callable[[], bool] | None = None,
         clock: Callable[[], float] | None = None,
+        ixit_directory: Path | None = None,
         progress: Callable[[str], None] | None = None,
         output: Callable[[str], None] | None = None,
     ) -> None:
+        self.ixit_directory: Path = Path(__file__).resolve().parent.parent if ixit_directory is None else ixit_directory
         self.config: DutConfig = config
         self.evidence: EvidenceLog = evidence
         self.gateway: GatewayClient = GatewayClient(
@@ -320,6 +331,18 @@ class FunctionalTest_5_6_1_2_c:
             if not matches and verified_identity:
                 self.factory_reset_required = True
             self._assert_setup(f"{field} has its public factory-default value", matches, actual)
+        # Partial POSTs reset omitted MQTT fields, even when MQTT is disabled.
+        self._assert_setup("verified MAC is required before partial configuration writes", verified_identity, "identity presence")
+        mqtt_defaults: dict[str, str] = {
+            "mqtt_prefix": f"ruuvi/{self.config.gw_mac}/",
+            "mqtt_client_id": self.config.gw_mac,
+        }
+        for field, expected in mqtt_defaults.items():
+            matches = field in payload and same_public_value(payload[field], expected)
+            if not matches:
+                self.factory_reset_required = True
+            self._assert_setup(f"{field} matches the device-specific default before a partial POST",
+                               matches, "default match" if matches else "unsafe baseline")
         second: dict[str, Any] = self._read_config(login.session)
         self._assert_setup("two stable authenticated configuration reads",
                            same_public_value(second, payload), "equal" if same_public_value(second, payload) else "different")
@@ -447,6 +470,8 @@ class FunctionalTest_5_6_1_2_c:
             if port not in confirmation.open_ports:
                 raise ScanError(f"unstable TCP finding on {port}: independent probe did not confirm open")
             self.findings.append(Finding("tcp", port, "no enabled IXIT 28 inbound entry", "open", "open"))
+            self.outcomes["TCP undocumented listeners"] = "FAIL"
+            self.outcomes["custom telemetry disabled"] = "FAIL"
         self.outcomes["TCP undocumented listeners"] = "FAIL" if extra else "PASS"
         self.outcomes["TCP coverage"] = "ERROR" if result.filtered_count else "PASS"
         self.outcomes["custom telemetry disabled"] = "FAIL" if extra else "PASS"
@@ -459,6 +484,7 @@ class FunctionalTest_5_6_1_2_c:
             and entry.status == "Enabled" and entry.role == "inbound" for port in entry.ports
         )
         self.outcomes["UDP undocumented listeners"] = "ERROR"
+        self.outcomes["hotspot servers disabled"] = "ERROR"
         extra: list[int] = sorted(result.open_ports - declared)
         port: int
         for port in extra:
@@ -467,8 +493,10 @@ class FunctionalTest_5_6_1_2_c:
                 raise ScanError(f"unstable UDP finding on {port}: independent probe did not confirm open")
             detail: str = "transient hotspot server active" if port in HOTSPOT_PORTS else "no enabled IXIT 28 server entry"
             self.findings.append(Finding("udp", port, detail, "open", "open"))
+            self.outcomes["UDP undocumented listeners"] = "FAIL"
+            if port in HOTSPOT_PORTS:
+                self.outcomes["hotspot servers disabled"] = "FAIL"
         self.outcomes["UDP undocumented listeners"] = "FAIL" if extra else "PASS"
-        self.outcomes["hotspot servers disabled"] = "ERROR"
         hotspot_states: list[tuple[int, str]] = []
         independently_resolved: set[int] = {5353} if self.mdns_confirmed else set()
         for port in sorted(HOTSPOT_PORTS):
@@ -484,6 +512,7 @@ class FunctionalTest_5_6_1_2_c:
                 self.findings.append(Finding("udp", port, "transient hotspot server active", "indeterminate", "open"))
                 hotspot_states.append((port, "open"))
                 self.outcomes["UDP undocumented listeners"] = "FAIL"
+                self.outcomes["hotspot servers disabled"] = "FAIL"
             elif port in targeted.closed_ports:
                 independently_resolved.add(port)
                 hotspot_states.append((port, "closed"))
@@ -563,6 +592,9 @@ class FunctionalTest_5_6_1_2_c:
                 raise ScanError(f"{RAW_PRIVILEGE_HELP} {info.privilege_error}")
             self.progress("Authenticating and checking factory-default identity and configuration")
             self._preflight_gateway()
+            self.outcomes["IXIT declaration prerequisite"] = "ERROR"
+            validate_interface_declarations(self.ixit_directory)
+            self.outcomes["IXIT declaration prerequisite"] = "PASS"
             self.evidence.write("EXPECTED IXIT 28 / IXIT 15 INTERFACE MODEL", EXPECTED_INTERFACES)
             self.evidence.write("PHYSICAL CONTEXT", "IXIT 15: Ethernet or Wi-Fi STA LAN; hotspot inactive")
             self.progress("Scanning full TCP range and confirming unexpected listeners")
@@ -681,6 +713,7 @@ def execute_test_5_6_1_2_c(
     capture_factory: Callable[[], NtpCapture] = TcpdumpNtpCapture,
     privilege: Callable[[], bool] | None = None,
     clock: Callable[[], float] | None = None,
+    ixit_directory: Path | None = None,
     now: Callable[[], datetime] = utc_now,
     output: Callable[[str], None] = print,
 ) -> RunResult:
@@ -710,7 +743,7 @@ def execute_test_5_6_1_2_c(
             ecc_generate=ecc_generate, runner=runner, resolver=resolver,
             socket_factory=socket_factory, find_executable=find_executable,
             local_ip=local_ip, capture_factory=capture_factory,
-            privilege=privilege, clock=clock, progress=progress.step, output=output,
+            privilege=privilege, clock=clock, ixit_directory=ixit_directory, progress=progress.step, output=output,
         ).run()
     except Exception as error:
         error: Exception

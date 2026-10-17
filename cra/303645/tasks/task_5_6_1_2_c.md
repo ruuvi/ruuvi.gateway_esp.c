@@ -117,8 +117,8 @@ c: Undocumented Logical Interfaces (Network Scanning)**.
 
 The test must run against a physical Ruuvi Gateway and prove, by active network discovery, that in
 the **initialized operational state** the DUT exposes **only the logical network interfaces declared
-as enabled in [`IXIT 28-LogIntf`](../ixit_28-LogIntf.md)** — the Port 80 HTTP server and Port 5353
-mDNS responder — and that **every interface declared _Disabled_ or _Transient_ is genuinely not
+as enabled in [`IXIT 28-LogIntf`](../ixit_28-LogIntf.md)** — the Port 80 HTTP server and,
+after the required separate IXIT declaration update, the Port 5353 mDNS responder — and that **every interface declared _Disabled_ or _Transient_ is genuinely not
 listening**. Every open socket found by the scan must map to an _enabled_ IXIT 28 entry; every open
 socket without such an entry, and any transient/disabled interface that is unexpectedly active, must
 be reported as a finding.
@@ -217,6 +217,30 @@ that responder. The test must:
   **PASS contribution**. Explicitly closed 5353/udp with no direct answer is a **FAIL** for a
   missing enabled interface; an open scan result without a confirming answer, or indeterminate UDP
   state without an answer, is **ERROR**.
+
+## IXIT declaration prerequisite and safe partial writes
+
+The checked-in IXIT 28 currently lists 15 interfaces and does **not** declare
+`LogIntf-mDNS-Responder`. The model and mDNS PASS contributions described above are conditional
+on a separately reviewed IXIT update declaring that interface. The runner checks the authoritative
+IXIT ID heading before scanning or mutation; a missing declaration is setup **ERROR**, never an
+implicit allowlist or inventory-completeness PASS. Offline success fixtures explicitly supply the
+future declaration; they are not evidence that the current IXIT contains it.
+
+Before the NTP-only POST, require factory-default `mqtt_data_format` from the generated defaults,
+and require `mqtt_prefix` = `ruuvi/<verified gw_mac>/` and `mqtt_client_id` = `<verified gw_mac>`.
+These last two defaults are device-derived in `gw_cfg_default.c`. Missing, wrong-type or custom
+values are setup **ERROR** before mutation, even with MQTT disabled: the firmware resets these
+omitted fields on every partial POST. Do not add unrelated MQTT fields to the task's write scope.
+Also gate `scan_default` and its PHY/channel defaults: the scan parser resets those omitted
+fields when default scanning is enabled. Keep full baseline comparisons after the change and restoration. The fake gateway models these
+parser resets and success tests verify preservation of the unrelated fields.
+
+Record each confirmed TCP or UDP finding immediately as FAIL for its affected checks, including
+custom telemetry or hotspot disablement. Later acquisition failures retain these FAIL outcomes
+while making the overall verdict ERROR. Test both the open-listener and targeted-hotspot loops.
+Test the actual tcpdump wrapper offline with mocked process, pipe, readiness and clock boundaries,
+including split readiness, early exit, startup/capture timeouts, malformed output and kill cleanup.
 
 ## Tooling preconditions and privilege model
 
