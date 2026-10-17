@@ -596,6 +596,8 @@ class FunctionalTest_5_1_5_2_b:
         end_ns: int,
         outcome: str,
         credential: AttemptCredential,
+        method: str,
+        path: str,
     ) -> None:
         self.evidence.write(
             "CAMPAIGN ATTEMPT",
@@ -603,8 +605,8 @@ class FunctionalTest_5_1_5_2_b:
                 campaign=stats.name,
                 attempt=attempt,
                 credential=credential,
-                method=HttpMethod.POST,
-                path=GatewayApi.AUTH,
+                method=method,
+                path=path,
                 monotonic_start_ns=start_ns,
                 monotonic_end_ns=end_ns,
                 elapsed_ns=end_ns - start_ns,
@@ -1253,7 +1255,9 @@ class FunctionalTest_5_1_5_2_b:
                     outcome: str = (
                         "AUTHORIZED" if stats.authorized else ("DENIED" if stats.completed == attempt else "ERROR")
                     )
-                    self._log_attempt(stats, attempt, start_ns, attempt_end_ns, outcome, credential)
+                    self._log_attempt(
+                        stats, attempt, start_ns, attempt_end_ns, outcome, credential, HttpMethod.POST, GatewayApi.AUTH
+                    )
 
             evidence: CampaignSummaryEvidence = stats.as_evidence()
             self._require_security(
@@ -1416,6 +1420,8 @@ class FunctionalTest_5_1_5_2_b:
                         end_ns,
                         outcome,
                         BearerAttemptCredential(token),
+                        method,
+                        path,
                     )
             self._require_security(
                 stats.completed == self.attempt_count and stats.denied == self.attempt_count and stats.authorized == 0,

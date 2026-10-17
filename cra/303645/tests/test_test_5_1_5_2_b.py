@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import sys
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -15,10 +14,6 @@ from unittest import mock
 
 import requests
 
-from lib.models import RunResult
-from test_support.fake_gateway import FakeGateway, FakeResponse, FakeSession, RecordedRequest, UniqueRandom, env_text
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 import test_5_1_5_2_b as target
 from lib.gateway import (
     AuthMech,
@@ -30,6 +25,8 @@ from lib.http_api import (
     HttpMethod,
     HttpStatus,
 )
+from lib.models import RunResult
+from test_support.fake_gateway import FakeGateway, FakeResponse, FakeSession, RecordedRequest, UniqueRandom, env_text
 
 FIXED_NOW: datetime = datetime(2026, 8, 31, 9, 0, 0, tzinfo=timezone.utc)
 CONFIG: target.DutConfig = target.DutConfig(
@@ -647,6 +644,27 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertTrue(all(size in {8, 12, 16, 32} for size in self.random.calls))
         self.assertGreaterEqual(self.random.calls.count(32), 4)
 
+    def test_campaign_evidence_records_actual_request_routes(self) -> None:
+        self.assertEqual(0, self.make_runner(attempt_count=2).run().exit_code)
+        lines: list[str] = self.log.path.read_text(encoding="utf-8").splitlines()
+        attempts: list[dict[str, Any]] = [
+            json.loads(line.split("CAMPAIGN ATTEMPT: ", 1)[1])
+            for line in lines if "CAMPAIGN ATTEMPT: " in line
+        ]
+        expected: dict[str, tuple[str, str]] = {
+            AuthMech.LAN_WEBUI_DEFAULT: (HttpMethod.POST, GatewayApi.AUTH),
+            AuthMech.LAN_WEBUI_USER_DEFINED: (HttpMethod.POST, GatewayApi.AUTH),
+            AuthMech.M2M_API_BEARER_RO: (HttpMethod.GET, GatewayApi.HISTORY),
+            AuthMech.M2M_API_BEARER_RW: (HttpMethod.POST, GatewayApi.CONFIG),
+        }
+        self.assertEqual(8, len(attempts))
+        entry: dict[str, Any]
+        for entry in attempts:
+            self.assertEqual(expected[entry["campaign"]], (entry["method"], entry["path"]))
+        campaign: str
+        for campaign in expected:
+            self.assertEqual([1, 2], [entry["attempt"] for entry in attempts if entry["campaign"] == campaign])
+
     def test_bearer_campaign_fails_when_response_is_faster_than_one_second(self) -> None:
         runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=2)
         runner.monotonic_ns = AdvancingClock(1_000)
@@ -789,6 +807,37 @@ class FunctionalTestCase(unittest.TestCase):
         )
         self.assertEqual(0, runner.run().exit_code)
         self.assertEqual(["bearer", "default"], gateway.restoration_attempts)
+
+    def test_restoration_evidence_retains_error_and_successful_fallback(self) -> None:
+        original: Callable[..., FakeResponse] = self.gateway.response_for
+
+        def response(
+            session: FakeSession, method: str, path: str, headers: dict[str, str], body: Any
+        ) -> FakeResponse:
+            if (
+                method == HttpMethod.POST and path == GatewayApi.CONFIG
+                and isinstance(body, dict)
+                and body.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DEFAULT
+                and headers.get("Authorization", "").startswith("Bearer ")
+            ):
+                raise requests.Timeout("restoration reply lost")
+            return original(session, method, path, headers, body)
+
+        with mock.patch.object(self.gateway, "response_for", side_effect=response):
+            result: RunResult = self.make_runner(attempt_count=1).run()
+        self.assertEqual((0, "PASS"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        lines: list[str] = self.log.path.read_text(encoding="utf-8").splitlines()
+        records: list[list[dict[str, Any]]] = [
+            json.loads(line.split("RESTORATION ATTEMPTS: ", 1)[1])
+            for line in lines if "RESTORATION ATTEMPTS: " in line
+        ]
+        self.assertEqual(1, len(records))
+        self.assertEqual(2, len(records[0]))
+        self.assertEqual("temporary RW bearer", records[0][0]["method"])
+        self.assertEqual("GatewayConnectionError", records[0][0]["error"])
+        self.assertIn("restoration reply lost", records[0][0]["message"])
+        self.assertEqual({"method": "temporary custom interactive", "status": 200}, records[0][1])
 
     def test_restoration_failure_or_verification_mismatch_prevents_pass(self) -> None:
         attribute: str
