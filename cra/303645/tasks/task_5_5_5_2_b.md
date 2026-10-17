@@ -41,6 +41,15 @@ verdict. The runner and paired implementation suite named below are future deliv
   evidence when a later ERROR prevents completion. Offline tests verify implementation, not ETSI
   compliance; only execution against the specified real target supplies functional evidence.
 
+## Authoritative mDNS documentation prerequisite
+
+The source IXIT documents in this branch do not yet declare `LogIntf-mDNS-Responder` or
+`SoftServ-Local-mDNS-Discovery`. Updating those authoritative documents is a separate task.
+Before mutation or scanning, require actual ID declaration headings in `ixit_28-LogIntf.md` and
+`ixit_13-SoftServ.md`, respectively. Missing declarations are a documentation-gap setup ERROR;
+the expected model alone must never allowlist UDP/5353. A live PASS requires those updates first.
+Offline success fixtures supply independently authored declarations to exercise the later checks.
+
 ## Mandatory factory-default precondition and recovery
 
 Before test-specific probes, scans, resets, or mutations, load `.env` through
@@ -68,6 +77,21 @@ accounts and forwarded data remain. Hold CONFIGURE through the initial restart u
 200 ms on/200 ms off signals boot-time erase completion, then release. Release triggers another
 restart, after which the configuration hotspot opens. About eleven seconds is observed elapsed time,
 not a fixed threshold; the five-second restart timer alone does not prove erasure.
+
+## Safe partial NTP configuration writes
+
+Obtain two identical, type-sensitive full authenticated configuration reads before mutation.
+Save that complete baseline in local evidence. Require a verified nRF52 MAC and the default
+`mqtt_data_format`, scan-default/PHY/channel fields, plus device-specific `mqtt_prefix` equal to
+`ruuvi/<nRF52 MAC>/` and `mqtt_client_id` equal to the nRF52 MAC (firmware `gw_cfg_default.c`).
+The partial NTP POST resets omitted MQTT fields through `gw_cfg_json_parse_mqtt()`; reject
+customized or missing values before starting capture or writing, rather than broadening this task
+into an unrelated configuration restore. Model these resets independently in offline gateway fixtures.
+
+Restore `ntp_server1` even after a lost write response or scan failure, then compare the entire
+configuration by type and value with the saved baseline. Any drift, including unrelated fields,
+is restoration ERROR with recovery advice to restore drifted settings from local baseline evidence
+and confirm the full configuration. Matching only the NTP server cannot establish restoration.
 
 ## DUT regression and state-preservation requirements
 
@@ -206,8 +230,8 @@ state (not the transient provisioning hotspot)**, the reachable network surface 
 
 ### mDNS handling
 
-The `.local` hostname resolution used throughout this test suite depends on the DUT's documented
-mDNS responder on **UDP 5353**. Treat it as an objective part of the comparison:
+After the authoritative declaration prerequisite passes, the `.local` hostname resolution used
+throughout this test suite depends on the DUT's documented mDNS responder on **UDP 5353**. Treat it as an objective part of the comparison:
 
 - Confirm the responder deterministically (a direct mDNS query to UDP 5353 that returns an answer is
   a definitive positive, immune to the UDP `open|filtered` ambiguity described below).
@@ -350,7 +374,7 @@ Build the expected model from IXIT 28 (and, for management services, IXIT 13) in
 Emit a per-finding table and an overall verdict. This unit's PASS requires: TCP/80 is the only open
 TCP socket, the documented UDP/5353 responder is confirmed, no undocumented open socket exists
 relative to IXIT 28, no scanned port remains unresolved after the SNTP and mDNS observations, and
-the original NTP setting is restored.
+the complete baseline configuration is restored.
 
 ### Exit codes
 
@@ -469,7 +493,8 @@ dedicated test gateway and verify the restoration result.
    independently identified as the SNTP client or mDNS responder, or on incomplete/timeout).
 7. Deterministic mDNS probe to UDP 5353; record the answer.
 8. Build the expected model from IXIT 28 (+ IXIT 13 for management services) and compare.
-9. Restore the saved `ntp_server1` even after a prior error, verify it by GET, then aggregate
+9. Restore the saved `ntp_server1` even after a prior error, verify the entire saved configuration
+   baseline by GET, then aggregate
    findings into PASS/FAIL/ERROR; write the verdict; print `Overall verdict: ...`.
 
 ## Host-side implementation tests
@@ -493,7 +518,8 @@ fixtures and must not invoke client code under test to form expected requests. C
 - an mDNS responder confirmed on 5353 (declared in IXIT 28) → PASS contribution;
 - mDNS absent with 5353/udp explicitly closed → FAIL/exit 1; indeterminate or contradictory evidence
   without a direct answer → ERROR/exit 2;
-- absence of port 80 → FAIL/exit 1;
+- definitively closed port 80 or an open port with a non-HTTP fingerprint → FAIL/exit 1;
+- filtered or unknown port 80, including ambiguous compressed port groups → HTTP ERROR/exit 2;
 - missing `nmap`, too-old version, and missing privilege for UDP → ERROR/exit 2;
 - unresolvable hostname → ERROR/exit 2;
 - UDP scan host-timeout/incomplete → ERROR/exit 2 (not PASS);

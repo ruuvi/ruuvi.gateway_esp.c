@@ -56,6 +56,9 @@ class ScanGateway(DefaultAuthGateway):
     def __init__(self) -> None:
         super().__init__(CONFIG)
         self.fields: dict[str, Any] = default_config_values(target.DEFAULT_FIELDS)
+        self.fields.update({"mqtt_prefix": f"ruuvi/{CONFIG.gw_mac}/", "mqtt_client_id": CONFIG.gw_mac})
+        self.read_count: int = 0
+        self.drift_on_read: int = 0
         self.mac: Any = CONFIG.gw_mac
         self.include_mac: bool = True
         self.login_status: int | None = None
@@ -63,6 +66,9 @@ class ScanGateway(DefaultAuthGateway):
         self.lose_initial_ntp_response: bool = False
 
     def _config_response(self) -> FakeResponse:
+        self.read_count += 1
+        if self.read_count == self.drift_on_read:
+            self.fields["unrelated_setting"] = "changed"
         payload: dict[str, Any] = dict(self.fields)
         if self.include_mac:
             payload[GatewayCfgDesc.GW_MAC] = self.mac
@@ -77,6 +83,10 @@ class ScanGateway(DefaultAuthGateway):
 
     def _apply_config(self, body: dict[str, str]) -> None:
         super()._apply_config(body)
+        # Independent model of the unconditional omitted-field resets in the firmware parser.
+        self.fields["mqtt_data_format"] = body.get("mqtt_data_format", "ruuvi_raw")
+        self.fields["mqtt_prefix"] = body.get("mqtt_prefix") or f"ruuvi/{CONFIG.gw_mac}/"
+        self.fields["mqtt_client_id"] = body.get("mqtt_client_id") or CONFIG.gw_mac
         if "ntp_server1" in body and not (self.fail_ntp_restore and body["ntp_server1"] == "time.google.com"):
             self.fields["ntp_server1"] = body["ntp_server1"]
 
@@ -95,6 +105,7 @@ class FakeNmap:
         self.tcp_open: set[int] = {80}
         self.udp_open: set[int] = {5353}
         self.udp_ambiguous: dict[int, str] = {}
+        self.tcp_ambiguous: dict[int, str] = {}
         self.tcp_filtered: bool = False
         self.udp_filtered: bool = False
         self.fail_udp: bool = False
@@ -103,6 +114,7 @@ class FakeNmap:
         self.tcp_http_service: str = "http"
         self.timeouts: list[int] = []
         self.unstable_tcp: bool = False
+        self.fail_confirmation_port: int = 0
         self.incomplete_udp: bool = False
         self.reject_mdns_nmap_confirmation: bool = False
 
@@ -121,6 +133,8 @@ class FakeNmap:
         specification: str = command[command.index("-p") + 1]
         if protocol == "udp" and specification == "5353" and self.reject_mdns_nmap_confirmation:
             raise AssertionError("5353/udp must be confirmed by direct DNS-SD query")
+        if specification == str(self.fail_confirmation_port):
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
         full_scan: bool = specification == "1-65535"
         ports: set[int] = set(range(1, 65536)) if full_scan else {int(token) for token in specification.split(",")}
         open_set: set[int] = (
@@ -128,10 +142,10 @@ class FakeNmap:
         ) & ports
         if protocol == "tcp" and not full_scan and self.unstable_tcp:
             open_set.clear()
-        ambiguous: dict[int, str] = {}
-        if protocol == "udp":
-            ambiguous = {port: state for port, state in self.udp_ambiguous.items()
-                         if port in ports and port not in open_set}
+        ambiguous: dict[int, str]
+        source_states: dict[int, str] = self.udp_ambiguous if protocol == "udp" else self.tcp_ambiguous
+        ambiguous = {port: state for port, state in source_states.items()
+                     if port in ports and port not in open_set}
         other: set[int] = ports - open_set - ambiguous.keys()
         other_state: str = "filtered" if protocol == "udp" and self.udp_filtered else "closed"
         explicit: str = "".join(
@@ -141,7 +155,7 @@ class FakeNmap:
             for port in sorted(open_set)
         )
         explicit += "".join(
-            f'<port protocol="udp" portid="{port}"><state state="{state}" reason="no-response"/></port>'
+            f'<port protocol="{protocol}" portid="{port}"><state state="{state}" reason="no-response"/></port>'
             for port, state in sorted(ambiguous.items())
         )
         if protocol == "tcp" and full_scan and self.tcp_filtered:
@@ -251,7 +265,7 @@ class ScanSession(FakeSession):
         body: Any = json.loads(request.body) if request.body else None
         self.wire_calls.append(WireRequest(
             urlsplit(url).scheme, method, urlsplit(url).path, body, self.number,
-            kwargs.get("allow_redirects"), request.headers.get("Cookie"),
+            bool(kwargs.get("allow_redirects")), request.headers.get("Cookie"),
         ))
         return super().send(request, **kwargs)
 
@@ -264,6 +278,14 @@ class NetworkSurfaceRunnerTests(unittest.TestCase):
         self.directory.joinpath(".env").write_text(
             f"gw_id={CONFIG.gw_id}\ngw_mac={CONFIG.gw_mac}\ngw_hostname={CONFIG.gw_hostname}\n",
             encoding="utf-8",
+        )
+        self.ixit_directory: Path = self.directory / "ixit"
+        self.ixit_directory.mkdir()
+        self.ixit_directory.joinpath("ixit_28-LogIntf.md").write_text(
+            "### **ID**: LogIntf-mDNS-Responder\n\nUDP 5353 inbound responder.\n", encoding="utf-8",
+        )
+        self.ixit_directory.joinpath("ixit_13-SoftServ.md").write_text(
+            "### **ID**: SoftServ-Local-mDNS-Discovery\n\nLAN DNS-SD discovery service.\n", encoding="utf-8",
         )
         self.gateway: ScanGateway = ScanGateway()
         self.nmap: FakeNmap = FakeNmap()
@@ -281,7 +303,7 @@ class NetworkSurfaceRunnerTests(unittest.TestCase):
                 raise OSError("name not found")
             return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.10", 0))]
         return target.execute_test_5_5_5_2_b(
-            self.directory, session_factory=lambda: ScanSession(self.gateway, self.wire_calls), runner=self.nmap,
+            self.directory, ixit_directory=self.ixit_directory, session_factory=lambda: ScanSession(self.gateway, self.wire_calls), runner=self.nmap,
             resolver=resolve,
             socket_factory=lambda family, kind: self.mdns,
             find_executable=lambda name: "/usr/bin/nmap" if find_executable else None,
@@ -309,13 +331,14 @@ class NetworkSurfaceRunnerTests(unittest.TestCase):
         self.assertEqual("PASS", result.outcomes["documented mDNS responder"])
         self.assertEqual(
             [(HttpMethod.GET, GatewayApi.AUTH), (HttpMethod.POST, GatewayApi.AUTH),
-             (HttpMethod.GET, GatewayApi.CONFIG), (HttpMethod.POST, GatewayApi.CONFIG),
+             (HttpMethod.GET, GatewayApi.CONFIG), (HttpMethod.GET, GatewayApi.CONFIG),
+             (HttpMethod.POST, GatewayApi.CONFIG),
              (HttpMethod.GET, GatewayApi.CONFIG), (HttpMethod.GET, GatewayApi.AUTH),
              (HttpMethod.POST, GatewayApi.AUTH), (HttpMethod.POST, GatewayApi.CONFIG),
              (HttpMethod.GET, GatewayApi.CONFIG)],
             [(call.method, call.path) for call in self.gateway.calls],
         )
-        self.assertEqual([None, "Admin", None, None, None, None, "Admin", None, None], [
+        self.assertEqual([None, "Admin", None, None, None, None, None, "Admin", None, None], [
             None if call.body is None else call.body.get("login")
             for call in self.gateway.calls
         ])
@@ -328,11 +351,12 @@ class NetworkSurfaceRunnerTests(unittest.TestCase):
         restore_response: str = hashlib.sha256(f"challenge-2-1:{ha1}".encode()).hexdigest()
         self.assertEqual({"login": "Admin", "password": expected_response}, login)
         self.assertEqual("RUUVISESSION=session-1", self.gateway.calls[1].cookie)
-        self.assertEqual([1, 1, 1, 1, 1, 2, 2, 2, 2],
+        self.assertEqual([1, 1, 1, 1, 1, 1, 2, 2, 2, 2],
                          [call.session_number for call in self.gateway.calls])
         self.assertEqual([
             WireRequest("http", "GET", "/auth", None, 1, False, None),
             WireRequest("http", "POST", "/auth", login, 1, False, "RUUVISESSION=session-1"),
+            WireRequest("http", "GET", "/ruuvi.json", None, 1, False, "RUUVISESSION=session-1"),
             WireRequest("http", "GET", "/ruuvi.json", None, 1, False, "RUUVISESSION=session-1"),
             WireRequest("http", "POST", "/ruuvi.json", {"ntp_server1": "192.0.2.20"},
                         1, False, "RUUVISESSION=session-1"),
@@ -364,6 +388,78 @@ class NetworkSurfaceRunnerTests(unittest.TestCase):
         self.assertEqual("Overall verdict: PASS", self.lines[-1])
         self.assertEqual(8, sum(line.startswith("[Step ") for line in self.lines))
         self.assertIn("[Step 8 out of 8]", self.lines[-2])
+
+    def test_missing_authoritative_mdns_declaration_stops_before_mutation(self) -> None:
+        self.ixit_directory.joinpath("ixit_28-LogIntf.md").write_text(
+            "Summary mentions LogIntf-mDNS-Responder but has no declaration.\n", encoding="utf-8",
+        )
+        result: RunResult = self.execute()
+        self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+        self.assertEqual("ERROR", result.outcomes["IXIT declaration prerequisite"])
+        self.assertFalse(self.ntp_capture.started)
+        self.assertEqual(1, len(self.nmap.calls))
+        self.assertFalse(any(call.method == "POST" and call.path == "/ruuvi.json"
+                             for call in self.gateway.calls))
+        self.assertIn("IXIT documentation gap", self.evidence())
+
+    def test_unstable_full_baseline_rejected_before_mutation(self) -> None:
+        self.gateway.drift_on_read = 2
+        result: RunResult = self.execute()
+        self.assertEqual("ERROR", result.verdict)
+        self.assertFalse(self.ntp_capture.started)
+        self.assertFalse(any(call.method == "POST" and call.path == "/ruuvi.json"
+                             for call in self.gateway.calls))
+        self.assertIn("two full configuration reads are stable", self.evidence())
+
+    def test_custom_mqtt_baseline_rejected_before_parser_can_reset_it(self) -> None:
+        field: str
+        for field in ("mqtt_data_format", "mqtt_prefix", "mqtt_client_id"):
+            with self.subTest(field=field):
+                self.gateway.fields = ScanGateway().fields
+                self.gateway.fields[field] = "custom"
+                self.gateway.calls.clear()
+                result: RunResult = self.execute()
+                self.assertEqual("ERROR", result.verdict)
+                self.assertEqual("custom", self.gateway.fields[field])
+                self.assertFalse(any(call.method == "POST" and call.path == "/ruuvi.json"
+                                     for call in self.gateway.calls))
+
+    def test_unrelated_restoration_drift_is_error_with_full_recovery_advice(self) -> None:
+        self.gateway.drift_on_read = 4
+        result: RunResult = self.execute()
+        self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+        self.assertEqual("ERROR", result.outcomes["NTP configuration restoration"])
+        self.assertEqual("time.google.com", self.gateway.fields["ntp_server1"])
+        self.assertIn("all drifted settings", result.recovery_message or "")
+        self.assertIn("full configuration differs", self.evidence())
+
+    def test_unknown_http_state_is_error_not_absence_failure(self) -> None:
+        compressed: bool
+        for compressed in (False, True):
+            with self.subTest(compressed=compressed):
+                self.nmap.tcp_open.clear()
+                self.nmap.tcp_filtered = compressed
+                self.nmap.tcp_ambiguous = {} if compressed else {80: "filtered"}
+                result: RunResult = self.execute()
+                self.assertEqual("ERROR", result.verdict)
+                self.assertEqual("ERROR", result.outcomes["documented HTTP listener"])
+
+    def test_confirmed_listener_failure_survives_later_confirmation_error(self) -> None:
+        protocol: str
+        for protocol in ("tcp", "udp"):
+            with self.subTest(protocol=protocol):
+                self.nmap.tcp_open = {80}
+                self.nmap.udp_open = {5353}
+                if protocol == "tcp":
+                    self.nmap.tcp_open.update({2323, 2324})
+                else:
+                    self.nmap.udp_open.update({2323, 2324})
+                self.nmap.fail_confirmation_port = 2324
+                result: RunResult = self.execute()
+                self.assertEqual("ERROR", result.verdict)
+                self.assertEqual("FAIL", result.outcomes[f"{protocol.upper()} undocumented listeners"])
+                self.assertIn(f"2323/{protocol}", "\n".join(self.lines))
+                self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
 
     def test_confirmed_mdns_matches_documented_interface(self) -> None:
         self.nmap.udp_open.clear()
@@ -569,7 +665,7 @@ class NetworkSurfaceRunnerTests(unittest.TestCase):
                 self.nmap.version = "Nmap version 7.95"
 
     def test_each_default_field_uses_type_and_value_and_rejects_missing(self) -> None:
-        defaults: dict[str, Any] = default_config_values(target.DEFAULT_FIELDS)
+        defaults: dict[str, Any] = ScanGateway().fields
         field: str
         value: Any
         for field, value in defaults.items():

@@ -51,6 +51,7 @@ from lib.netscan import (
 )
 
 TEST_ID: str = "ETSI EN 303 645 / ETSI TS 103 701 test case 5.5-5-2, Test Unit B"
+IXIT_DIRECTORY: Path = Path(__file__).resolve().parents[1]
 PORTS: str = "1-65535"
 NMAP_MIN_VERSION: tuple[int, int] = (7, 40)
 TCP_HOST_TIMEOUT: int = 600
@@ -72,9 +73,11 @@ TOTAL_STEPS: int = 8
 DEFAULT_FIELDS: tuple[str, ...] = AUTHENTICATION_DEFAULT_FIELDS + (
     "wifi_sta_config", "wifi_ap_config", "use_eth", "eth_dhcp", "ntp_use", "ntp_use_dhcp",
     "ntp_server1", "ntp_server2", "ntp_server3", "ntp_server4",
+    "mqtt_data_format", "scan_default", "scan_coded_phy", "scan_1mbit_phy",
+    "scan_2mbit_phy", "scan_channel_37", "scan_channel_38", "scan_channel_39",
 )
 CHECKS: tuple[str, ...] = (
-    "factory-default preflight", "NTP source identification", "documented HTTP listener",
+    "factory-default preflight", "IXIT declaration prerequisite", "NTP source identification", "documented HTTP listener",
     "TCP undocumented listeners", "TCP coverage", "UDP undocumented listeners",
     "documented mDNS responder", "UDP coverage", "NTP configuration restoration",
 )
@@ -106,6 +109,20 @@ EXPECTED_INTERFACES: tuple[ExpectedInterface, ...] = (
     ExpectedInterface("udp", (5353,), "LogIntf-mDNS-Responder",
                       ("SoftServ-Local-mDNS-Discovery",), "inbound", True),
 )
+
+
+def validate_interface_declarations(directory: Path) -> None:
+    """Require authoritative ID headings before applying the expected listener model."""
+    declarations: tuple[tuple[str, str], ...] = (
+        ("ixit_28-LogIntf.md", "LogIntf-mDNS-Responder"),
+        ("ixit_13-SoftServ.md", "SoftServ-Local-mDNS-Discovery"),
+    )
+    filename: str
+    identifier: str
+    for filename, identifier in declarations:
+        text: str = (directory / filename).read_text(encoding="utf-8")
+        if re.search(rf"^### \*\*ID\*\*: {re.escape(identifier)}\s*$", text, re.MULTILINE) is None:
+            raise InvalidSetup(f"IXIT documentation gap: {filename} must declare {identifier} before this test runs")
 
 
 @dataclass(frozen=True)
@@ -235,7 +252,8 @@ def same_public_value(actual: Any, expected: Any) -> bool:
 class FunctionalTest_5_5_5_2_b:
     def __init__(
         self, config: DutConfig, evidence: EvidenceLog,
-        *, session_factory: Callable[[], requests.Session] = requests.Session,
+        *, ixit_directory: Path = IXIT_DIRECTORY,
+        session_factory: Callable[[], requests.Session] = requests.Session,
         random_bytes: Callable[[int], bytes] = secrets.token_bytes,
         ecc_generate: Callable[..., ECC.EccKey] = ECC.generate,
         runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
@@ -249,6 +267,7 @@ class FunctionalTest_5_5_5_2_b:
         progress: Callable[[str], None] | None = None,
         output: Callable[[str], None] | None = None,
     ) -> None:
+        self.ixit_directory: Path = ixit_directory
         self.config: DutConfig = config
         self.evidence: EvidenceLog = evidence
         self.gateway: GatewayClient = GatewayClient(
@@ -269,6 +288,7 @@ class FunctionalTest_5_5_5_2_b:
         self.findings: list[Finding] = []
         self.factory_reset_required: bool = False
         self.original_ntp_server1: str | None = None
+        self.baseline: dict[str, Any] | None = None
         self.auth_session: requests.Session | None = None
 
     def _say(self, message: str) -> None:
@@ -316,6 +336,24 @@ class FunctionalTest_5_5_5_2_b:
             if not matches and GatewayCfgDesc.GW_MAC in payload:
                 self.factory_reset_required = True
             self._assert_setup(f"{field} has its public factory-default value", matches, actual)
+        # The firmware resets these omitted MQTT fields on every partial config POST.
+        # Prefix/client ID defaults are initialized from the nRF52 MAC (gw_cfg_default.c).
+        self._assert_setup("verified MAC is required for safe partial configuration writes",
+                           GatewayCfgDesc.GW_MAC in payload, "identity presence")
+        mqtt_defaults: dict[str, str] = {
+            "mqtt_prefix": f"ruuvi/{self.config.gw_mac}/",
+            "mqtt_client_id": self.config.gw_mac,
+        }
+        for field, expected in mqtt_defaults.items():
+            matches = field in payload and same_public_value(payload[field], expected)
+            if not matches:
+                self.factory_reset_required = True
+            self._assert_setup(f"{field} must match its device-specific default before a partial POST",
+                               matches, "default match" if matches else "unsafe baseline")
+        second: dict[str, Any] = self._read_configuration(login.session)
+        self._assert_setup("two full configuration reads are stable",
+                           same_public_value(payload, second), "full configuration comparison")
+        self.baseline = payload
         self.original_ntp_server1 = payload["ntp_server1"]
         self.auth_session = login.session
         self.outcomes["factory-default preflight"] = "PASS"
@@ -327,12 +365,14 @@ class FunctionalTest_5_5_5_2_b:
         if response.status_code != HttpStatus.C_200_OK:
             raise ScanError(f"POST /ruuvi.json ntp_server1 returned {response.status_code}")
 
-    def _read_ntp_server(self, session: requests.Session) -> str:
+    def _read_configuration(self, session: requests.Session) -> dict[str, Any]:
         response: requests.Response = self.gateway.request(session, HttpMethod.GET, GatewayApi.CONFIG)
         if response.status_code != HttpStatus.C_200_OK:
             raise ScanError(f"GET /ruuvi.json after NTP change returned {response.status_code}")
-        payload: dict[str, Any] = self.gateway.response_json(response, GatewayApi.CONFIG, dict)
-        value: Any = payload.get("ntp_server1")
+        return self.gateway.response_json(response, GatewayApi.CONFIG, dict)
+
+    def _read_ntp_server(self, session: requests.Session) -> str:
+        value: Any = self._read_configuration(session).get("ntp_server1")
         if not isinstance(value, str):
             raise ScanError(f"GET /ruuvi.json ntp_server1 has invalid value {value!r}")
         return value
@@ -350,9 +390,9 @@ class FunctionalTest_5_5_5_2_b:
         except Exception as error:  # noqa: BLE001 - Read back even after a lost POST response.
             post_error = error
             self.evidence.exception(error)
-        actual: str = self._read_ntp_server(login.session)
-        if actual != original:
-            raise ScanError(f"ntp_server1 restoration failed: expected {original}, got {actual}") from post_error
+        actual: dict[str, Any] = self._read_configuration(login.session)
+        if self.baseline is None or not same_public_value(actual, self.baseline):
+            raise ScanError("full configuration differs from the saved baseline after ntp_server1 restoration") from post_error
         if post_error is not None:
             self.evidence.write("NTP RESTORATION", "POST reported an error, but GET confirms original value")
 
@@ -436,17 +476,20 @@ class FunctionalTest_5_5_5_2_b:
             (item for item in result.observations if item.port == 80 and item.state == "open"), None,
         )
         http_ok: bool = declared.issubset(result.open_ports) and http is not None and http.service == "http"
-        self.outcomes["documented HTTP listener"] = "PASS" if http_ok else "FAIL"
+        http_state_known: bool = 80 in result.open_ports or 80 in result.closed_ports
+        self.outcomes["documented HTTP listener"] = ("PASS" if http_ok else "FAIL") if http_state_known else "ERROR"
         self.evidence.write("ASSERTION", AssertionEvidence("80/tcp is open and fingerprints as HTTP",
                                                             self.outcomes["documented HTTP listener"], http))
         if not http_ok:
-            self._say(f"documented HTTP listener FAIL: 80/tcp missing or fingerprint is {http!r}")
+            self._say(f"documented HTTP listener {self.outcomes['documented HTTP listener']}: "
+                      f"80/tcp state or HTTP fingerprint is unverified or incorrect: {http!r}")
         extra: list[int] = sorted(result.open_ports - declared)
         self.outcomes["TCP undocumented listeners"] = "ERROR"
         port: int
         for port in extra:
             confirmation: ScanResult = self._tcp_confirmation(ip, port, info)
             if port in confirmation.open_ports:
+                self.outcomes["TCP undocumented listeners"] = "FAIL"
                 self.findings.append(Finding("tcp", port, "no enabled IXIT 28 entry", "open", "open"))
             else:
                 raise ScanError(f"unstable TCP finding on {port}: confirmation did not reproduce open state")
@@ -477,6 +520,7 @@ class FunctionalTest_5_5_5_2_b:
         for port in sorted(result.open_ports - declared):
             confirmation: ScanResult = self._udp_confirmation(ip, port, info)
             if port in confirmation.open_ports:
+                self.outcomes["UDP undocumented listeners"] = "FAIL"
                 self.findings.append(Finding("udp", port, "no enabled IXIT 28 server entry", "open", "open"))
             else:
                 raise ScanError(f"unstable UDP finding on {port}: confirmation did not reproduce open state")
@@ -539,6 +583,9 @@ class FunctionalTest_5_5_5_2_b:
                 ))
             self.progress("Authenticating and verifying factory-default DUT identity and configuration")
             self._preflight_gateway()
+            self.outcomes["IXIT declaration prerequisite"] = "ERROR"
+            validate_interface_declarations(self.ixit_directory)
+            self.outcomes["IXIT declaration prerequisite"] = "PASS"
             self.evidence.write("EXPECTED IXIT 28 / IXIT 13 INTERFACE MODEL", EXPECTED_INTERFACES)
             self.outcomes["NTP source identification"] = "ERROR"
             host_ip: str = self.local_ip(resolved.ip)
@@ -624,7 +671,9 @@ class FunctionalTest_5_5_5_2_b:
                     self.evidence.exception(error)
                     self._say(f"ntp_server1 restoration ERROR: {type(error).__name__}: {error}")
                     original: str | None = self.original_ntp_server1
-                    recovery = f"Restore ntp_server1 to {original} on the verified gateway and confirm GET /ruuvi.json."
+                    recovery = (f"Restore ntp_server1 to {original} on the verified gateway; "
+                                "restore all drifted settings using the saved baseline in the local evidence log "
+                                "and confirm the full GET /ruuvi.json configuration.")
                     verdict = "ERROR"
                 else:
                     self.outcomes["NTP configuration restoration"] = "PASS"
@@ -655,7 +704,8 @@ class FunctionalTest_5_5_5_2_b:
 
 def execute_test_5_5_5_2_b(
     work_dir: Path | None = None,
-    *, session_factory: Callable[[], requests.Session] = requests.Session,
+    *, ixit_directory: Path = IXIT_DIRECTORY,
+    session_factory: Callable[[], requests.Session] = requests.Session,
     random_bytes: Callable[[int], bytes] = secrets.token_bytes,
     ecc_generate: Callable[..., ECC.EccKey] = ECC.generate,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
@@ -691,7 +741,7 @@ def execute_test_5_5_5_2_b(
         config: DutConfig = load_dut_config(directory / ".env")
         log.write("DUT CONFIGURATION", config)
         result = FunctionalTest_5_5_5_2_b(
-            config, log, session_factory=session_factory, random_bytes=random_bytes,
+            config, log, ixit_directory=ixit_directory, session_factory=session_factory, random_bytes=random_bytes,
             ecc_generate=ecc_generate, runner=runner, resolver=resolver,
             socket_factory=socket_factory, find_executable=find_executable,
             local_ip=local_ip, capture_factory=capture_factory,
