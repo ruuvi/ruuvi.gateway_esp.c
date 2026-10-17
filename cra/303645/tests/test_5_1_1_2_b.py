@@ -21,7 +21,7 @@ from lib.config import (
     default_config_values,
     load_dut_config,
 )
-from lib.errors import GatewayAuthenticationModeError, InvalidSetup
+from lib.errors import GatewayAuthenticationModeError, GatewayProtocolError, InvalidSetup
 from lib.evidence import (
     AssertionEvidence,
     EvidenceLog,
@@ -37,7 +37,9 @@ from lib.gateway import (
     GatewayCfgDesc,
     GatewayCfgLanAuthType,
     GatewayClient,
+    InteractiveAuthChallenge,
     InteractiveAuthResult,
+    InteractiveChallengeRequest,
 )
 from lib.http_api import (
     API_INVENTORY,
@@ -97,6 +99,7 @@ class FunctionalTest_5_1_1_2_b:
         random_bytes: Callable[[int], bytes] = secrets.token_bytes,
         ecc_generate: Callable[..., ECC.EccKey] = ECC.generate,
         progress: Callable[[str], None] | None = None,
+        output: Callable[[str], None] | None = None,
     ) -> None:
         self.config: DutConfig = config
         self.evidence: EvidenceLog = evidence
@@ -111,6 +114,10 @@ class FunctionalTest_5_1_1_2_b:
         )
         self.progress: Callable[[str], None] = progress if progress is not None else lambda description: None
         self.outcomes: dict[str, str] = {mechanism: "NOT RUN" for mechanism in MECHANISMS}
+        self.output: Callable[[str], None] = output if output is not None else lambda message: None
+        self.diagnostics: list[str] = []
+        self.active_mechanism: str | None = None
+        self.active_check: str = "initial setup"
         self.coverage: set[ApiRoute] = set()
         self.factory_reset_required: bool = False
         self._probe_routes: dict[str, list[ApiRoute]] = {
@@ -130,6 +137,25 @@ class FunctionalTest_5_1_1_2_b:
                 phase = DANGEROUS_WRITE
             self._probe_routes[phase].append(route)
 
+    def _diagnostic(self, message: str) -> None:
+        self.diagnostics.append(message)
+        self.output(message)
+        self.evidence.write("RESULT DIAGNOSTIC", message)
+
+    def _report_error(self, error: Exception) -> None:
+        # Exception messages can contain HTTP bodies, credentials or arbitrary DUT data.
+        cause: BaseException = error.__cause__ if error.__cause__ is not None else error
+        reason: str = "setup operation could not complete"
+        if isinstance(cause, requests.Timeout):
+            reason = "HTTP request timed out"
+        elif isinstance(cause, requests.ConnectionError):
+            reason = "HTTP connection failed"
+        elif isinstance(error, GatewayProtocolError):
+            reason = "malformed or incompatible authentication/HTTP response"
+        self._diagnostic(
+            f"ERROR: {self.active_check}: {type(error).__name__} ({type(cause).__name__}; {reason})"
+        )
+
     def _record_assertion(self, description: str, passed: bool, actual: Any = "") -> None:
         self.evidence.write(
             "ASSERTION",
@@ -143,6 +169,7 @@ class FunctionalTest_5_1_1_2_b:
     def _require_setup(self, condition: bool, description: str, actual: Any = "") -> None:
         self._record_assertion(description, condition, actual)
         if not condition:
+            self._diagnostic(f"ERROR: {description}; observed {actual if type(actual) in (int, bool) else '[redacted]'}")
             raise InvalidSetup(f"{description} (actual: {actual!r})")
 
     def _require_security(
@@ -154,6 +181,7 @@ class FunctionalTest_5_1_1_2_b:
     ) -> None:
         self._record_assertion(description, condition, actual)
         if not condition:
+            self._diagnostic(f"FAIL: {description}; observed {actual if type(actual) in (int, bool) else '[redacted]'}")
             if mechanism is not None:
                 self.outcomes[mechanism] = "FAIL"
             raise SecurityFailure(f"{description} (actual: {actual!r})")
@@ -164,12 +192,41 @@ class FunctionalTest_5_1_1_2_b:
         password: str,
         expect_success: bool,
     ) -> requests.Session:
+        self.active_check = "default administrative login" if expect_success else "random-credential GET /auth"
         try:
-            result: InteractiveAuthResult = self.gateway.authenticate_interactive(username, password)
+            if expect_success:
+                result: InteractiveAuthResult = self.gateway.authenticate_interactive(username, password)
+            else:
+                request: InteractiveChallengeRequest = self.gateway.prepare_interactive_challenge_request()
+                response: requests.Response = self.gateway.send_interactive_challenge_request(request)
+                self._require_security(
+                    response.status_code == HttpStatus.C_401_UNAUTHORIZED,
+                    "random-credential GET /auth returns 401 challenge",
+                    response.status_code,
+                    mechanism=AuthMech.LAN_WEBUI_USER_DEFINED,
+                )
+                challenge: InteractiveAuthChallenge = self.gateway.parse_interactive_challenge_response(request, response)
+                self.active_check = "random-credential POST /auth"
+                login_response: requests.Response = self.gateway.submit_interactive_authentication(
+                    challenge, username, password
+                )
+                result = InteractiveAuthResult(
+                    session=challenge.session,
+                    challenge_response=challenge.challenge_response,
+                    auth_payload=challenge.auth_payload,
+                    challenge=challenge.challenge,
+                    auth_header=challenge.auth_header,
+                    cookie=challenge.cookie,
+                    gateway_public_key_raw=challenge.gateway_public_key_raw,
+                    aes_key=challenge.aes_key,
+                    ecdh=challenge.ecdh,
+                    login_response=login_response,
+                    calculation=self.gateway.calculate_interactive_response(username, password, challenge.challenge),
+                )
         except GatewayAuthenticationModeError:
             self.factory_reset_required = True
             raise
-        response: requests.Response = result.challenge_response
+        response = result.challenge_response
         self._require_setup(
             response.status_code == HttpStatus.C_401_UNAUTHORIZED,
             "GET /auth returns 401 challenge",
@@ -207,6 +264,7 @@ class FunctionalTest_5_1_1_2_b:
                 "random user-defined credentials are denied",
                 result.login_response.status_code,
             )
+            self.active_check = "failed-login GET /auth confirmation"
             confirmation: requests.Response = self.gateway.request(
                 result.session,
                 HttpMethod.GET,
@@ -280,6 +338,7 @@ class FunctionalTest_5_1_1_2_b:
             if scheme is None
             else (AuthMech.LAN_WEBUI_BASIC if scheme == HttpAuthScheme.BASIC else AuthMech.LAN_WEBUI_DIGEST)
         )
+        self.active_mechanism = mechanism
         try:
             route: ApiRoute
             for route in self._probe_routes[method_group]:
@@ -306,6 +365,7 @@ class FunctionalTest_5_1_1_2_b:
                             "opaque": self.gateway.random_text(12),
                         },
                     )
+                self.active_check = f"{mechanism}: {method} {path}"
                 response: requests.Response = self.gateway.request(
                     self.gateway.new_session(),
                     method,
@@ -361,6 +421,8 @@ class FunctionalTest_5_1_1_2_b:
             method: str = route.method
             path: str = route.path
             mechanism: str = AuthMech.M2M_API_BEARER_RO if method == HttpMethod.GET else AuthMech.M2M_API_BEARER_RW
+            self.active_mechanism = mechanism
+            self.active_check = f"{mechanism}: {method} {path}"
             token: str = self.gateway.random_text(32)
             self._require_security(token != self.config.gw_id, "random bearer differs from gw_id")
             response: requests.Response = self.gateway.request(
@@ -476,15 +538,18 @@ class FunctionalTest_5_1_1_2_b:
         except Exception as error:  # noqa: BLE001 - Report inability to verify the DUT after probing.
             error: Exception
             self.evidence.exception(error)
+            self._report_error(error)
             return "ERROR"
 
         result: str = "PASS"
-        checks: tuple[Callable[[], None], ...] = (
-            lambda: self._verify_final_config(final_session, baseline_fields, baseline_hash),
-            lambda: self._verify_final_status(final_session),
+        checks: tuple[tuple[str, Callable[[], None]], ...] = (
+            ("final GET /ruuvi.json", lambda: self._verify_final_config(final_session, baseline_fields, baseline_hash)),
+            ("final GET /status.json", lambda: self._verify_final_status(final_session)),
         )
         check: Callable[[], None]
-        for check in checks:
+        description: str
+        for description, check in checks:
+            self.active_check = description
             try:
                 check()
             except SecurityFailure as error:
@@ -493,6 +558,7 @@ class FunctionalTest_5_1_1_2_b:
                     result = "FAIL"
             except Exception as error:  # noqa: BLE001 - Continue independent final checks and retain both errors.
                 self.evidence.exception(error)
+                self._report_error(error)
                 result = "ERROR"
         return result
 
@@ -515,6 +581,7 @@ class FunctionalTest_5_1_1_2_b:
                 True,
             )
             self.progress("Reading and validating the baseline gateway configuration")
+            self.active_check = "baseline GET /ruuvi.json"
             baseline_response: requests.Response = self.gateway.request(
                 baseline_session,
                 HttpMethod.GET,
@@ -542,6 +609,7 @@ class FunctionalTest_5_1_1_2_b:
             random_username: str = f"test-{self.gateway.random_text(9)}"
             random_password: str = self.gateway.random_text(24)
             self.progress("Testing rejection of unconfigured user-defined credentials")
+            self.active_mechanism = AuthMech.LAN_WEBUI_USER_DEFINED
             try:
                 self._assert_interactive_authentication(
                     random_username,
@@ -580,16 +648,23 @@ class FunctionalTest_5_1_1_2_b:
             exit_code = 1
         except (InvalidSetup, OSError) as error:
             self.evidence.exception(error)
+            self._report_error(error)
+            if self.active_mechanism is not None and self.outcomes[self.active_mechanism] != "FAIL":
+                self.outcomes[self.active_mechanism] = "ERROR"
             verdict = "ERROR"
             exit_code = 2
         except Exception as error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
             self.evidence.exception(error)
+            self._report_error(error)
+            if self.active_mechanism is not None and self.outcomes[self.active_mechanism] != "FAIL":
+                self.outcomes[self.active_mechanism] = "ERROR"
             verdict = "ERROR"
             exit_code = 2
         finally:
             # Abort additional probes, not the read-only checks of a validated baseline.
             if baseline_hash is not None:
                 self.progress("Verifying the gateway configuration was not changed")
+                self.active_mechanism = "final non-mutation verification"
                 final_result: str = self._verify_non_mutation(baseline_fields, baseline_hash)
                 self.outcomes["final non-mutation verification"] = final_result
                 if final_result == "ERROR":
@@ -667,15 +742,23 @@ def execute_test_5_1_1_2_b(
                 log,
                 session_factory=session_factory,
                 progress=progress.step,
+                output=output,
             ).run()
         except Exception as error:
             error: Exception
             log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
+            summary: str = f"ERROR: loading .env: {type(error).__name__} (configuration could not be loaded)"
+            output(summary)
+            log.write("RESULT DIAGNOSTIC", summary)
             log.write("OVERALL RESULT", "ERROR")
     finally:
         if result.recovery_message is not None:
             log.write("USER ACTION REQUIRED", result.recovery_message)
         log.finish(result.verdict, now)
+    mechanism: str
+    outcome: str
+    for mechanism, outcome in result.outcomes.items():
+        output(f"{mechanism}: {outcome}")
     output(f"Overall verdict: {result.verdict}")
     if result.recovery_message is not None:
         output(result.recovery_message)

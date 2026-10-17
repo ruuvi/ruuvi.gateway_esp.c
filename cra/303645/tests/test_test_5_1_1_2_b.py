@@ -225,6 +225,103 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual("Admin", calls[1].body["login"])
         self.assertTrue(all(call.body is None for call in (calls[0], calls[2], calls[3])))
 
+    def test_negative_challenge_success_fails_before_parsing_or_login(self) -> None:
+        malformed: bool
+        for malformed in (False, True):
+            with self.subTest(malformed=malformed):
+                self.gateway = UnconfiguredGateway(CONFIG)
+                original: Callable[[FakeSession, RecordedRequest], FakeResponse | None] = self.gateway._response_override
+
+                def override(
+                    session: FakeSession, call: RecordedRequest,
+                    *, corrupt: bool = malformed,
+                    base: Callable[[FakeSession, RecordedRequest], FakeResponse | None] = original,
+                ) -> FakeResponse | None:
+                    if len(self.gateway.calls) == 4:
+                        if corrupt:
+                            return FakeResponse(HttpStatus.C_200_OK)
+                        response: FakeResponse = self.gateway._interactive_challenge_response(session, True)
+                        response.status_code = HttpStatus.C_200_OK
+                        return response
+                    return base(session, call)
+
+                self.gateway._response_override = override
+                runner: target.FunctionalTest_5_1_1_2_b = self.make_runner()
+                result: RunResult = runner.run()
+                self.assert_failed_mechanism(result, AuthMech.LAN_WEBUI_USER_DEFINED)
+                self.assertEqual("PASS", result.outcomes["final non-mutation verification"])
+                self.assert_final_verification_requests(self.gateway.calls[4:])
+                self.assertEqual(("GET", "/auth"), (self.gateway.calls[3].method, self.gateway.calls[3].path))
+                self.assertIn("observed 200", "\n".join(runner.diagnostics))
+
+    def test_default_challenge_success_remains_setup_error(self) -> None:
+        malformed: bool
+        for malformed in (False, True):
+            with self.subTest(malformed=malformed):
+                self.gateway = UnconfiguredGateway(CONFIG)
+
+                def override(
+                    session: FakeSession, _call: RecordedRequest, *, corrupt: bool = malformed,
+                ) -> FakeResponse | None:
+                    if corrupt:
+                        return FakeResponse(HttpStatus.C_200_OK)
+                    response: FakeResponse = self.gateway._interactive_challenge_response(session, True)
+                    response.status_code = HttpStatus.C_200_OK
+                    return response
+
+                self.gateway._response_override = override
+                runner: target.FunctionalTest_5_1_1_2_b = self.make_runner()
+                result: RunResult = runner.run()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertTrue(all(value == "NOT RUN" for value in result.outcomes.values()))
+                self.assertTrue(any(text.startswith("ERROR:") for text in runner.diagnostics))
+                self.assertFalse(any(text.startswith("FAIL:") for text in runner.diagnostics))
+                self.assertEqual(0, self.gateway.config_reads)
+
+    def test_probe_errors_are_attributed_to_the_active_mechanism(self) -> None:
+        scheme: str
+        method: str
+        mechanism: str
+        for scheme, method, mechanism in (
+            (HttpAuthScheme.BASIC, HttpMethod.POST, AuthMech.LAN_WEBUI_BASIC),
+            (HttpAuthScheme.DIGEST, HttpMethod.GET, AuthMech.LAN_WEBUI_DIGEST),
+            (HttpAuthScheme.BEARER, HttpMethod.GET, AuthMech.M2M_API_BEARER_RO),
+            (HttpAuthScheme.BEARER, HttpMethod.POST, AuthMech.M2M_API_BEARER_RW),
+        ):
+            with self.subTest(mechanism=mechanism):
+                self.gateway = UnconfiguredGateway(CONFIG)
+                self.gateway.override[FakeRequestKey(scheme, method, GatewayApi.CONFIG)] = requests.Timeout(
+                    "secret-credential-must-not-appear"
+                )
+                runner: target.FunctionalTest_5_1_1_2_b = self.make_runner()
+                result: RunResult = runner.run()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual("ERROR", result.outcomes[mechanism])
+                self.assertEqual("PASS", result.outcomes["final non-mutation verification"])
+                self.assertIn(mechanism, "\n".join(runner.diagnostics))
+                self.assertIn("Timeout", "\n".join(runner.diagnostics))
+                self.assertNotIn("secret-credential", "\n".join(runner.diagnostics))
+                if mechanism == AuthMech.M2M_API_BEARER_RW:
+                    self.assertEqual("PASS", result.outcomes[AuthMech.M2M_API_BEARER_RO])
+
+    def test_random_login_protocol_error_is_attributed_and_does_not_leak_body(self) -> None:
+        original: Callable[[FakeSession, RecordedRequest], FakeResponse | None] = self.gateway._response_override
+
+        def override(session: FakeSession, call: RecordedRequest) -> FakeResponse | None:
+            if len(self.gateway.calls) == 4:
+                return FakeResponse(HttpStatus.C_401_UNAUTHORIZED, {"secret": "do-not-print"})
+            return original(session, call)
+
+        self.gateway._response_override = override
+        runner: target.FunctionalTest_5_1_1_2_b = self.make_runner()
+        result: RunResult = runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("ERROR", result.outcomes[AuthMech.LAN_WEBUI_USER_DEFINED])
+        self.assertEqual("NOT RUN", result.outcomes[AuthMech.LAN_WEBUI_BASIC])
+        self.assertEqual("PASS", result.outcomes["final non-mutation verification"])
+        self.assertIn("GatewayProtocolError", "\n".join(runner.diagnostics))
+        self.assertNotIn("do-not-print", "\n".join(runner.diagnostics))
+
     def test_rejected_default_login_requires_reset_and_aborts(self) -> None:
         status: int
         for status in (HttpStatus.C_401_UNAUTHORIZED, HttpStatus.C_403_FORBIDDEN):
@@ -273,12 +370,13 @@ class FunctionalTestCase(unittest.TestCase):
                         injected_fault: str = fault,
                         **kwargs: Any,
                     ) -> FakeResponse:
-                        if request.method == HttpMethod.POST and urlsplit(request.url).path == GatewayApi.AUTH:
+                        if request.method == HttpMethod.POST and urlsplit(request.url or "").path == GatewayApi.AUTH:
                             if injected_fault == "missing-cookie":
                                 request.headers.pop(HttpHeader.COOKIE, None)
                             elif injected_fault == "wrong-cookie":
                                 request.headers[HttpHeader.COOKIE] = "RUUVISESSION=another-session"
                             else:
+                                assert isinstance(request.body, (str, bytes))
                                 body: dict[str, str] = json.loads(request.body)
                                 body["extra"] = "unexpected"
                                 request.body = json.dumps(body)
@@ -603,6 +701,8 @@ class FunctionalTestCase(unittest.TestCase):
         result: RunResult = self.make_runner().run()
         self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
         self.assertEqual("FAIL", result.outcomes["final non-mutation verification"])
+        self.assertEqual("ERROR", result.outcomes[AuthMech.LAN_WEBUI_BASIC])
+        self.assertEqual("PASS", result.outcomes[AuthMech.LAN_WEBUI_USER_DEFINED])
         self.assertEqual(failing_key, self.gateway.calls[-5].key)
         self.assert_final_verification_requests(self.gateway.calls[-4:])
         self.assertEqual(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, result.recovery_message)
@@ -807,6 +907,7 @@ class ConfigurationAndLoggingTestCase(unittest.TestCase):
             self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
             self.assertEqual(target.FACTORY_RESET_MESSAGE, result.recovery_message)
             self.assertEqual(target.FACTORY_RESET_MESSAGE, messages[-1])
+            self.assertIn("ERROR: default credentials authenticate; observed 401", "\n".join(messages))
             content: str = next((root / "logs").iterdir()).read_text(encoding="utf-8")
             self.assertIn("USER ACTION REQUIRED", content)
             self.assertIn(target.FACTORY_RESET_MESSAGE, content)
@@ -817,8 +918,9 @@ class ConfigurationAndLoggingTestCase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root: Path = Path(directory)
             logs: Path = root / "logs"
-            with mock.patch("builtins.print"):
-                result: RunResult = target.execute_test_5_1_1_2_b(root, now=lambda: FIXED_NOW)
+            messages: list[str] = []
+            result: RunResult = target.execute_test_5_1_1_2_b(root, now=lambda: FIXED_NOW, output=messages.append)
+            self.assertIn("ERROR: loading .env: InvalidConfig", "\n".join(messages))
             self.assertEqual(2, result.exit_code)
             content: str = next(logs.iterdir()).read_text(encoding="utf-8")
             self.assertIn("InvalidConfig", content)
@@ -840,12 +942,37 @@ class ConfigurationAndLoggingTestCase(unittest.TestCase):
             )
             self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
             self.assertEqual(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, messages[-1])
+            self.assertTrue(any("FAIL: POST /ruuvi.json rejects Basic credentials; observed 200" in text for text in messages))
             content: str = next((root / "logs").iterdir()).read_text(encoding="utf-8")
             self.assertIn("USER ACTION REQUIRED", content)
             self.assertIn(target.FINAL_VERIFICATION_RECOVERY_MESSAGE, content)
             self.assertIn(json.dumps({"mechanism": AuthMech.LAN_WEBUI_BASIC, "result": "FAIL"}), content)
             self.assertIn(json.dumps({"mechanism": "final non-mutation verification", "result": "FAIL"}), content)
             self.assertIn("OVERALL VERDICT: FAIL", content)
+
+    def test_execute_preserves_failure_diagnostics_after_final_error(self) -> None:
+        directory: str
+        with tempfile.TemporaryDirectory() as directory:
+            root: Path = Path(directory)
+            self.write_env(root, env_text())
+            gateway: UnconfiguredGateway = UnconfiguredGateway(CONFIG)
+            gateway.override[FakeRequestKey(HttpAuthScheme.BASIC, HttpMethod.POST, GatewayApi.CONFIG)] = FakeResponse(200)
+            gateway.final_override[GatewayApi.CONFIG] = requests.Timeout("credential-secret")
+            messages: list[str] = []
+            result: RunResult = target.execute_test_5_1_1_2_b(
+                root, session_factory=lambda: FakeSession(gateway), now=lambda: FIXED_NOW, output=messages.append
+            )
+            self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+            text: str = "\n".join(messages)
+            self.assertIn("FAIL: POST /ruuvi.json rejects Basic credentials; observed 200", text)
+            self.assertIn("ERROR: final GET /ruuvi.json: GatewayConnectionError (Timeout", text)
+            self.assertIn("NOT RUN", text)
+            self.assertNotIn("credential-secret", text)
+            content: str = next((root / "logs").iterdir()).read_text(encoding="utf-8")
+            message: str
+            for message in messages:
+                if message.startswith(("FAIL:", "ERROR:")):
+                    self.assertIn(message, content)
 
     def test_execute_uses_current_directory_by_default(self) -> None:
         directory: str
