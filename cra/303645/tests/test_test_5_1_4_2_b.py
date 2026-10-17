@@ -117,19 +117,22 @@ def expected_calls() -> list[ExpectedCall]:
     config("RW config", 5)
     bearer("unaffected RO read", 13, generated(7))
     bearer("new RW read", 14, generated(8))
-    bearer("old RW write", 15, generated(6), write=True)
-    bearer("new RW write", 16, generated(8), write=True)
-    bearer("RO scope", 17, generated(7), write=True)
+    bearer("old RW read", 15, generated(6))
+    bearer("old RW write", 16, generated(6), write=True)
+    bearer("new RW write", 17, generated(8), write=True)
+    bearer("RO scope", 18, generated(7), write=True)
     add("restore", HttpMethod.POST, GatewayApi.CONFIG, 5,
         {"lan_auth_type": "lan_auth_default", "lan_auth_api_key": "", "lan_auth_api_key_rw": ""})
-    login("restored default", 18, "Admin", CONFIG.gw_id)
-    config("restored config", 18)
-    login("revoked custom1", 19, user1, password1)
-    login("revoked custom2", 20, user2, password2)
-    bearer("revoked RO1", 21, generated(5))
-    bearer("revoked RO2", 22, generated(7))
-    bearer("revoked RW1", 23, generated(6), write=True, admin=18)
-    bearer("revoked RW2", 24, generated(8), write=True, admin=18)
+    login("restored default", 19, "Admin", CONFIG.gw_id)
+    config("restored config", 19)
+    login("revoked custom1", 20, user1, password1)
+    login("revoked custom2", 21, user2, password2)
+    bearer("revoked RO1", 22, generated(5))
+    bearer("revoked RO2", 23, generated(7))
+    bearer("revoked RW1 read", 24, generated(6))
+    bearer("revoked RW2 read", 25, generated(8))
+    bearer("revoked RW1", 26, generated(6), write=True, admin=19)
+    bearer("revoked RW2", 27, generated(8), write=True, admin=19)
     return calls
 
 
@@ -150,6 +153,7 @@ class RotationGateway(FakeGateway):
         self.cross_key_bug: str | None = None
         self.config_override: dict[str, Any] | None = None
         self.bad_baseline_password: bool = False
+        self.retired_rw_read_phase: str | None = None
 
     def _default_credentials(self) -> tuple[str, str]:
         password: str = "wrong-password" if self.bad_baseline_password else CONFIG.gw_id
@@ -174,6 +178,11 @@ class RotationGateway(FakeGateway):
                 if fault.error is not None:
                     raise fault.error
                 return fault.response
+        if call.method == HttpMethod.GET and call.path == GatewayApi.HISTORY:
+            rotated: bool = self.retired_rw_read_phase == "rotation" and self.rw_key == generated(8)
+            restored: bool = self.retired_rw_read_phase == "restoration" and self.restore_attempt_count > 0
+            if call.bearer_token == generated(6) and (rotated or restored):
+                return FakeResponse(HttpStatus.C_200_OK, {})
         if call.method == HttpMethod.POST and call.path == GatewayApi.CONFIG:
             if call.body.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DEFAULT:
                 self.restore_attempt_count += 1
@@ -270,7 +279,7 @@ class RotationTests(unittest.TestCase):
 
     def test_complete_real_client_wire_sequence(self) -> None:
         result: RunResult = self.run_case("PASS")
-        self.assertEqual(58, len(self.plan))
+        self.assertEqual(61, len(self.plan))
         self.assertEqual([item.request for item in self.plan], self.fake.calls)
         self.assertEqual({"PASS"}, set(result.outcomes.values()))
         self.assertEqual({target.ApiRoute("GET", "/auth"), target.ApiRoute("POST", "/auth"),
@@ -278,6 +287,21 @@ class RotationTests(unittest.TestCase):
                           target.ApiRoute("GET", "/history")}, result.coverage)
         self.assertEqual(GatewayCfgLanAuthType.DEFAULT, self.fake.mode)
         self.assertEqual(("", ""), (self.fake.ro_key, self.fake.rw_key))
+
+    def test_retired_rw_read_access_after_rotation_aborts_before_write_probes(self) -> None:
+        self.fake.retired_rw_read_phase = "rotation"
+        result: RunResult = self.run_case("FAIL", AuthMech.M2M_API_BEARER_RW)
+        index: int = next(index for index, item in enumerate(self.plan) if item.label == "old RW read")
+        self.assertEqual(self.plan[index].request, self.fake.calls[index])
+        self.assertEqual(target.RESTORE_BODY, self.fake.calls[index + 1].body)
+        self.assertEqual("PASS", result.outcomes[target.RESTORATION])
+
+    def test_retired_rw_read_access_after_restoration_prevents_pass_before_writes(self) -> None:
+        self.fake.retired_rw_read_phase = "restoration"
+        result: RunResult = self.run_case("ERROR", AuthMech.M2M_API_BEARER_RW, "FAIL")
+        index: int = next(index for index, item in enumerate(self.plan) if item.label == "revoked RW1 read")
+        self.assertEqual([item.request for item in self.plan[:index + 1]], self.fake.calls)
+        self.assertEqual("ERROR", result.outcomes[target.RESTORATION])
 
     def test_session_drop_bug_aborts_and_restores(self) -> None:
         self.fake.session_drop_bug = True
@@ -313,6 +337,7 @@ class RotationTests(unittest.TestCase):
             ("new RO", 401, AuthMech.M2M_API_BEARER_RO),
             ("unaffected RW read", 401, AuthMech.M2M_API_BEARER_RO),
             ("new RW read", 401, AuthMech.M2M_API_BEARER_RW),
+            ("old RW read", 200, AuthMech.M2M_API_BEARER_RW),
             ("old RW write", 200, AuthMech.M2M_API_BEARER_RW),
             ("new RW write", 401, AuthMech.M2M_API_BEARER_RW),
             ("RO scope", 200, AuthMech.M2M_API_BEARER_RW),
@@ -358,7 +383,7 @@ class RotationTests(unittest.TestCase):
         }
         self.fault("old RW write hash", FakeResponse(200, payload))
         self.run_case("FAIL", AuthMech.M2M_API_BEARER_RW)
-        self.assertEqual(target.RESTORE_BODY, self.fake.calls[40].body)
+        self.assertEqual(target.RESTORE_BODY, self.fake.calls[41].body)
 
     def test_security_fail_survives_later_hash_transport_error(self) -> None:
         self.fault("old RW write", FakeResponse(200, {}))
@@ -460,6 +485,70 @@ class RotationTests(unittest.TestCase):
         self.assertIn("NOT RUN", "\n".join(messages))
         self.assertNotIn("secret=leak", "\n".join(messages))
 
+    def test_initial_output_failure_finalizes_without_dut_requests(self) -> None:
+        messages: list[str] = []
+        logs: list[target.EvidenceLog] = []
+        create: Callable[..., target.EvidenceLog] = target.EvidenceLog.create
+
+        def create_log(*args: Any, **kwargs: Any) -> target.EvidenceLog:
+            log: target.EvidenceLog = create(*args, **kwargs)
+            logs.append(log)
+            return log
+
+        def output(message: str) -> None:
+            if message.startswith("Open log file:"):
+                raise BrokenPipeError("secret=leak")
+            messages.append(message)
+
+        with mock.patch.object(target.EvidenceLog, "create", side_effect=create_log):
+            result: RunResult = target.execute_test_5_1_4_2_b(
+                self.directory, lambda: CookieSession(self.fake), now=lambda: NOW, output=output
+            )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual([], self.fake.calls)
+        self.assertTrue(logs[0]._stream.closed)
+        self.assertIn("DURATION", logs[0].path.read_text())
+        self.assertIn("BrokenPipeError", "\n".join(messages))
+        self.assertNotIn("secret=leak", "\n".join(messages))
+
+    def test_header_write_failure_finalizes_without_dut_requests(self) -> None:
+        messages: list[str] = []
+        log: target.EvidenceLog = target.EvidenceLog.create(self.directory, "failed_header", lambda: NOW)
+        write: Callable[[str, Any], None] = log.write
+
+        def write_header(label: str, value: Any = "") -> None:
+            if label == "TEST CASE AND UNIT":
+                raise OSError("secret=leak")
+            write(label, value)
+
+        with mock.patch.object(target.EvidenceLog, "create", return_value=log), \
+                mock.patch.object(log, "write", side_effect=write_header):
+            result: RunResult = target.execute_test_5_1_4_2_b(
+                self.directory, lambda: CookieSession(self.fake), now=lambda: NOW, output=messages.append
+            )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual([], self.fake.calls)
+        self.assertTrue(log._stream.closed)
+        self.assertIn("DURATION", log.path.read_text())
+        self.assertIn("OSError", "\n".join(messages))
+        self.assertNotIn("secret=leak", "\n".join(messages))
+
+    def test_log_creation_failure_returns_sanitized_error_without_dut_requests(self) -> None:
+        messages: list[str] = []
+        (self.directory / "logs").write_text("blocked", encoding="utf-8")
+        result: RunResult = target.execute_test_5_1_4_2_b(
+            self.directory, lambda: CookieSession(self.fake), now=lambda: NOW, output=messages.append
+        )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual([], self.fake.calls)
+        self.assertIn("Evidence creation: ERROR: FileExistsError", "\n".join(messages))
+        self.assertEqual("Overall verdict: ERROR", messages[-1])
+        with mock.patch.object(target.EvidenceLog, "create", side_effect=OSError("secret=leak")):
+            result = target.execute_test_5_1_4_2_b(
+                self.directory, output=mock.Mock(side_effect=BrokenPipeError("closed"))
+            )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+
     def test_partial_change_retains_candidate_for_recovery(self) -> None:
         self.fault("custom change", error=requests.Timeout("applied but response lost"), apply=True)
         result: RunResult = self.run_case("ERROR", AuthMech.LAN_WEBUI_USER_DEFINED)
@@ -477,18 +566,18 @@ class RotationTests(unittest.TestCase):
     def test_last_custom_credential_restoration_fallback(self) -> None:
         self.fake.restore_failures = 1
         self.run_case("PASS")
-        self.assertEqual([5, 18], self.fake.restore_session_numbers)
+        self.assertEqual([5, 19], self.fake.restore_session_numbers)
 
     def test_default_restoration_fallback_after_partially_applied_restore(self) -> None:
         self.fake.restore_failures = 1
         self.fake.apply_failed_restore = True
         self.run_case("PASS")
-        self.assertEqual([5, 20], self.fake.restore_session_numbers)
+        self.assertEqual([5, 21], self.fake.restore_session_numbers)
 
     def test_restoration_transport_exception_uses_custom_fallback(self) -> None:
         self.fault("restore", error=requests.Timeout("lost restoration response"))
         self.run_case("PASS")
-        self.assertEqual([18], self.fake.restore_session_numbers)
+        self.assertEqual([19], self.fake.restore_session_numbers)
         self.assertIn("GatewayConnectionError", self.log.path.read_text())
 
     def test_prepared_readback_unexpected_exception_marks_setup_error(self) -> None:
@@ -528,6 +617,8 @@ class RotationTests(unittest.TestCase):
             ("revoked custom2 login", AuthMech.LAN_WEBUI_USER_DEFINED),
             ("revoked RO1", AuthMech.M2M_API_BEARER_RO),
             ("revoked RO2", AuthMech.M2M_API_BEARER_RO),
+            ("revoked RW1 read", AuthMech.M2M_API_BEARER_RW),
+            ("revoked RW2 read", AuthMech.M2M_API_BEARER_RW),
             ("revoked RW1", AuthMech.M2M_API_BEARER_RW),
             ("revoked RW2", AuthMech.M2M_API_BEARER_RW),
         ):

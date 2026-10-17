@@ -320,7 +320,9 @@ live `realm`.
 1. **Rotate RW only:** `POST /ruuvi.json` with `{"lan_auth_api_key_rw":"<RW2>"}` (leave RO unset);
    require `200`; fetch `/ruuvi.json` and snapshot its canonical hash.
 2. **Other key still reads:** `Bearer <RO2>` → `200` on `/history`, before write probes.
-3. **Old rejected:** `Bearer <RW1>` → `POST /ruuvi.json` with `{}` returns `401`.
+3. **Old rejected:** `Bearer <RW1>` → `GET /history` returns `401` before any write probes;
+   then `POST /ruuvi.json` with `{}` returns `401`. A write rejection alone could indicate
+   downgraded read-only access and does not prove invalidation.
 4. **New accepted:** `Bearer <RW2>` → `POST /ruuvi.json` with `{}` returns `200` without changing
    the configuration hash.
 5. **Other key remains scope-confined:** `Bearer <RO2>` → `POST /ruuvi.json` with `{}` returns
@@ -344,7 +346,8 @@ In a `finally` path, once any credential may have changed:
 2. **Verify restoration:** authenticate `Admin`/`gw_id`; fetch `/ruuvi.json`; require
    `lan_auth_type == "lan_auth_default"`, both `*_use` flags `False`, the canonical hash equal to
    the step-1 baseline, and that the surviving temporary credentials/keys no longer authorize
-   (custom login `401`; `Bearer <RO2>` non-`2xx` on `/history`; `Bearer <RW2>` → `401` on
+   (every temporary custom login `401`; every retained RO and RW token `401` on
+   `GET /history` before any bearer write probes; then every retained RW token `401` on
    `POST /ruuvi.json` with `{}`).
 
 Restoration must reject every possibly applied temporary credential and key, including values from

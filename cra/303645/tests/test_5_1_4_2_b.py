@@ -369,6 +369,7 @@ class FunctionalTest_5_1_4_2_b:
         self._key_change(login, {GatewayCfgDesc.LAN_AUTH_API_KEY_RW: rw2})
         self._bearer_read(ro2, HttpStatus.C_200_OK, "other RO key unaffected by RW rotation")
         self._bearer_read(rw2, HttpStatus.C_200_OK, "new RW key read accepted")
+        self._bearer_read(rw1, HttpStatus.C_401_UNAUTHORIZED, "old RW key read rejected")
         self._bearer_write(login, rw1, HttpStatus.C_401_UNAUTHORIZED, "old RW key rejected")
         self._bearer_write(login, rw2, HttpStatus.C_200_OK, "new RW key accepted")
         self._bearer_write(login, ro2, HttpStatus.C_401_UNAUTHORIZED, "other RO key remains scope-confined")
@@ -430,6 +431,9 @@ class FunctionalTest_5_1_4_2_b:
         for token in ro_keys:
             self.active = AuthMech.M2M_API_BEARER_RO
             self._bearer_read(token, HttpStatus.C_401_UNAUTHORIZED, "temporary RO key revoked")
+        for token in rw_keys:
+            self.active = AuthMech.M2M_API_BEARER_RW
+            self._bearer_read(token, HttpStatus.C_401_UNAUTHORIZED, "temporary RW key read revoked")
         for token in rw_keys:
             self.active = AuthMech.M2M_API_BEARER_RW
             self._bearer_write(login, token, HttpStatus.C_401_UNAUTHORIZED, "temporary RW key revoked")
@@ -515,10 +519,6 @@ def execute_test_5_1_4_2_b(
     output: Callable[[str], None] | None = None,
 ) -> RunResult:
     work_dir, output = work_dir or Path.cwd(), output or print
-    log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_1_4_2_b", now)
-    output(f"Open log file: {log.path}")
-    log.write("TEST CASE AND UNIT", TEST_ID)
-    log.write("OUT OF SCOPE", OUT_OF_SCOPE)
 
     def output_progress(message: str) -> None:
         output(message)
@@ -528,8 +528,21 @@ def execute_test_5_1_4_2_b(
     initial_outcomes: dict[str, str] = {name: "NOT RUN" for name in (*MECHANISMS, RESTORATION)}
     initial_outcomes[SETUP] = "ERROR"
     result: RunResult = RunResult(2, "ERROR", initial_outcomes, set())
+    try:
+        log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_1_4_2_b", now)
+    except Exception as error:  # noqa: BLE001 - Log creation failure must stop before any DUT request.
+        error: Exception
+        try:
+            output(f"Evidence creation: ERROR: {type(error).__name__} (log unavailable)")
+            output("Overall verdict: ERROR")
+        except Exception:  # noqa: BLE001 - A failed output sink must not escape the execution wrapper.
+            return result
+        return result
     final_evidence: RecoveryEvidence = RecoveryEvidence(log)
     try:
+        output(f"Open log file: {log.path}")
+        log.write("TEST CASE AND UNIT", TEST_ID)
+        log.write("OUT OF SCOPE", OUT_OF_SCOPE)
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(work_dir / ".env")
         log.write("DUT CONFIGURATION", config)
