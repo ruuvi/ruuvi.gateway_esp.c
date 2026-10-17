@@ -20,7 +20,7 @@ from lib.config import (
     default_config_values,
     load_dut_config,
 )
-from lib.errors import GatewayAuthenticationModeError, InvalidSetup
+from lib.errors import GatewayAuthenticationModeError, GatewayProtocolError, InvalidSetup
 from lib.evidence import (
     AssertionEvidence,
     EvidenceLog,
@@ -63,6 +63,33 @@ MECHANISMS: tuple[str, ...] = (
 
 class SecurityFailure(Exception):
     """A security assertion failed."""
+
+
+class RecoveryEvidence(EvidenceLog):
+    """Best-effort evidence only during mandatory recovery and final reporting."""
+
+    def __init__(self, source: EvidenceLog) -> None:
+        super().__init__(source.path, source._stream, source.started_at)
+        self.source: EvidenceLog = source
+        self.failed: bool = False
+
+    def attempt(self, operation: Callable[[], None]) -> None:
+        try:
+            operation()
+        except Exception:  # noqa: BLE001 - Evidence/output failures must never block recovery.
+            self.failed = True
+
+    def write(self, label: str, value: Any = "") -> None:
+        self.attempt(lambda: self.source.write(label, value))
+
+    def exception(self, error: BaseException) -> None:
+        self.attempt(lambda: self.source.exception(error))
+
+    def write_http_request(self, request: requests.PreparedRequest) -> None:
+        self.attempt(lambda: self.source.write_http_request(request))
+
+    def write_http_response(self, response: requests.Response) -> None:
+        self.attempt(lambda: self.source.write_http_response(response))
 
 
 @dataclass(frozen=True)
@@ -509,6 +536,12 @@ class FunctionalTest_5_1_2a_2_b:
             except SecurityFailure:
                 self.outcomes[probe.mechanism] = "FAIL"
                 raise
+            if response.status_code == HttpStatus.C_200_OK:
+                payload: dict[str, Any] = self.gateway.response_json(
+                    response, f"{probe.name} {probe.method} {probe.path}", dict
+                )
+                if probe.method == HttpMethod.POST and payload != {}:
+                    raise GatewayProtocolError("successful RW POST /ruuvi.json must return an empty JSON object")
             self.evidence.write(
                 "PER-PROBE RESULT",
                 RouteResultEvidence(
@@ -665,6 +698,7 @@ class FunctionalTest_5_1_2a_2_b:
         verdict: str = "ERROR"
         exit_code: int = 2
         failure: BaseException | None = None
+        recovery_evidence: RecoveryEvidence = RecoveryEvidence(self.evidence)
         try:
             self.progress("Authenticating with the default administrative credentials")
             login: InteractiveAuthResult = self._authenticate_admin()
@@ -693,18 +727,28 @@ class FunctionalTest_5_1_2a_2_b:
         except SecurityFailure as error:
             error: Exception
             failure = error
-            self.evidence.exception(error)
+            recovery_evidence.exception(error)
             verdict = "FAIL"
             exit_code = 1
         except Exception as error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
             failure = error
-            self.evidence.exception(error)
+            recovery_evidence.exception(error)
             verdict = "ERROR"
             exit_code = 2
         finally:
-            self.progress("Restoring the original API-key configuration")
-            restoration_ok: bool = self._restore()
-            self.progress("Verifying restoration and aggregating the verdict")
+            # GatewayClient also logs before transmission. Replace both evidence
+            # references so a broken sink cannot prevent cleanup requests.
+            self.evidence = recovery_evidence
+            self.gateway.evidence = recovery_evidence
+            recovery_evidence.attempt(lambda: self.progress("Restoring the original API-key configuration"))
+            try:
+                restoration_ok: bool = self._restore()
+            except Exception as restoration_error:  # noqa: BLE001 - Retain manual recovery on unexpected failures.
+                restoration_error: Exception
+                recovery_evidence.exception(restoration_error)
+                self.outcomes["final restoration and non-mutation"] = "ERROR"
+                restoration_ok = False
+            recovery_evidence.attempt(lambda: self.progress("Verifying restoration and aggregating the verdict"))
             if not restoration_ok:
                 self.factory_reset_required = True
                 verdict = "ERROR"
@@ -712,6 +756,9 @@ class FunctionalTest_5_1_2a_2_b:
             elif failure is None:
                 verdict = "PASS"
                 exit_code = 0
+        if recovery_evidence.failed:
+            verdict = "ERROR"
+            exit_code = 2
         outcome: str
         mechanism: str
         for mechanism, outcome in self.outcomes.items():
@@ -720,6 +767,9 @@ class FunctionalTest_5_1_2a_2_b:
                 MechanismResultEvidence(mechanism=mechanism, result=outcome),
             )
         self.evidence.write("OVERALL RESULT", verdict)
+        if recovery_evidence.failed:
+            verdict = "ERROR"
+            exit_code = 2
         recovery_message: str | None = FACTORY_RESET_MESSAGE if self.factory_reset_required else None
         return RunResult(exit_code, verdict, dict(self.outcomes), set(self.coverage), recovery_message)
 
@@ -744,10 +794,11 @@ def execute_test_5_1_2a_2_b(
 
     progress: ProgressReporter = ProgressReporter(output_progress, TOTAL_STEPS)
     result: RunResult = RunResult(2, "ERROR", {mechanism: "NOT RUN" for mechanism in MECHANISMS}, set())
-    log.write("TEST CASE AND UNIT", TEST_ID)
-    log.write("UTC START", format_utc(log.started_at))
+    final_evidence: RecoveryEvidence = RecoveryEvidence(log)
     try:
         try:
+            log.write("TEST CASE AND UNIT", TEST_ID)
+            log.write("UTC START", format_utc(log.started_at))
             progress.step("Loading and validating .env")
             config: DutConfig = load_dut_config(work_dir / ".env")
             log.write("DUT CONFIGURATION", config)
@@ -758,14 +809,19 @@ def execute_test_5_1_2a_2_b(
                 random_bytes=random_bytes,
                 progress=progress.step,
             ).run()
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - Preserve the terminal ERROR even when evidence fails.
             error: Exception
-            log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
-            log.write("OVERALL RESULT", "ERROR")
+            final_evidence.exception(error)
+            final_evidence.write("OVERALL RESULT", "ERROR")
     finally:
         if result.recovery_message is not None:
-            log.write("USER ACTION REQUIRED", result.recovery_message)
-        log.finish(result.verdict, now)
+            final_evidence.write("USER ACTION REQUIRED", result.recovery_message)
+        final_evidence.attempt(lambda: log.finish(result.verdict, now))
+        if not log._stream.closed:
+            final_evidence.attempt(log._stream.close)
+        if final_evidence.failed:
+            result.exit_code = 2
+            result.verdict = "ERROR"
     output(f"Overall verdict: {result.verdict}")
     if result.recovery_message is not None:
         output(result.recovery_message)

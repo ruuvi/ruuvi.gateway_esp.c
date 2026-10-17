@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 from unittest import mock
 from urllib.parse import urlsplit
 
@@ -327,7 +327,7 @@ class FunctionalTestCase(unittest.TestCase):
                         injected_fault: str = fault,
                         **kwargs: Any,
                     ) -> FakeResponse:
-                        if request.method == "POST" and urlsplit(request.url).path == "/auth":
+                        if request.method == "POST" and urlsplit(request.url or "").path == "/auth":
                             if injected_fault == "missing-cookie":
                                 request.headers.pop(HttpHeader.COOKIE, None)
                             elif injected_fault == "cookie":
@@ -335,6 +335,7 @@ class FunctionalTestCase(unittest.TestCase):
                             elif injected_fault == "challenge":
                                 self.challenge = ""
                             else:
+                                assert isinstance(request.body, (str, bytes))
                                 body: dict[str, str] = json.loads(request.body)
                                 body["extra"] = "unexpected"
                                 request.body = json.dumps(body)
@@ -527,6 +528,94 @@ class FunctionalTestCase(unittest.TestCase):
             result.outcomes["final restoration and non-mutation"],
         )
 
+    def test_positive_bearer_responses_require_json_objects(self) -> None:
+        cases: tuple[tuple[str, str, str], ...] = (
+            (RO_KEY, HttpMethod.GET, GatewayApi.HISTORY),
+            (RO_KEY, HttpMethod.GET, GatewayApi.CONFIG),
+            (RW_KEY, HttpMethod.GET, GatewayApi.HISTORY),
+            (RW_KEY, HttpMethod.GET, GatewayApi.CONFIG),
+            (RW_KEY, HttpMethod.POST, GatewayApi.CONFIG),
+        )
+        key: str
+        method: str
+        path: str
+        fault: str
+        for key, method, path in cases:
+            for fault in ("malformed", "wrong-type", "nonempty"):
+                if fault == "nonempty" and method != HttpMethod.POST:
+                    continue
+                with self.subTest(key=key, method=method, path=path, fault=fault):
+                    self.gateway = BearerGateway(CONFIG)
+                    deterministic_random.calls = 0
+                    response: FakeResponse = FakeResponse(
+                        200, [] if fault == "wrong-type" else {"unexpected": True},
+                        malformed_json=fault == "malformed",
+                    )
+                    self.gateway.override[(f"Bearer {key}", method, path)] = response
+                    runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
+
+                    def end_positive_fault(description: str) -> None:
+                        if description.startswith("Restoring"):
+                            # Fault only the positive reply, not subsequent revoked-token controls.
+                            self.gateway.override.clear()
+
+                    runner.progress = end_positive_fault
+                    result: RunResult = runner.run()
+                    self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                    self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+                    self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
+                    self.assertNotEqual("PASS", result.outcomes[
+                        AuthMech.M2M_API_BEARER_RO if key == RO_KEY else AuthMech.M2M_API_BEARER_RW
+                    ])
+
+    def test_evidence_failure_after_provisioning_cannot_block_recovery(self) -> None:
+        unverified: bool
+        for unverified in (False, True):
+            with self.subTest(unverified=unverified):
+                self.gateway = BearerGateway(CONFIG)
+                if unverified:
+                    self.gateway.restore_admin_failures = 100
+                    self.gateway.restore_rw_failure = True
+                runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
+                original_write: Callable[[str, Any], None] = self.log.write
+                broken: bool = False
+
+                def fail_after_provisioning(
+                    label: str, value: Any = "", write: Callable[[str, Any], None] = original_write
+                ) -> None:
+                    nonlocal broken
+                    broken = broken or bool(self.gateway.ro_key)
+                    if broken:
+                        raise OSError("evidence disk unavailable")
+                    write(label, value)
+
+                with mock.patch.object(self.log, "write", side_effect=fail_after_provisioning):
+                    result: RunResult = runner.run()
+                self.assertTrue(broken)
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                cleanup: list[RecordedRequest] = [
+                    call for call in self.gateway.calls
+                    if call.body == {GatewayCfgDesc.LAN_AUTH_API_KEY: "", GatewayCfgDesc.LAN_AUTH_API_KEY_RW: ""}
+                ]
+                self.assertEqual(3 if unverified else 1, len(cleanup))
+                self.assertEqual("ERROR" if unverified else "PASS", result.outcomes["final restoration and non-mutation"])
+                self.assertEqual(target.FACTORY_RESET_MESSAGE if unverified else None, result.recovery_message)
+                if not unverified:
+                    self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
+
+    def test_progress_failure_during_cleanup_preserves_verified_recovery(self) -> None:
+        runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
+
+        def fail_progress(description: str) -> None:
+            if description.startswith(("Restoring", "Verifying restoration")):
+                raise OSError("progress output unavailable")
+
+        runner.progress = fail_progress
+        result: RunResult = runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+        self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
+
     def test_each_restoration_fallback_is_exercised(self) -> None:
         self.gateway.restore_admin_failures = 1
         result: RunResult = self.runner().run()
@@ -700,6 +789,45 @@ class ConfigurationAndLoggingTestCase(unittest.TestCase):
             log_text: str = next((root / "logs").iterdir()).read_text(encoding="utf-8")
             self.assertIn("TEMPORARY RO KEY", log_text)
             self.assertIn("OVERALL VERDICT: PASS", log_text)
+
+    def test_execute_reports_error_and_manual_recovery_when_evidence_fails(self) -> None:
+        directory: str
+        with tempfile.TemporaryDirectory() as directory:
+            root: Path = Path(directory)
+            self.write_env(root)
+            gateway: BearerGateway = BearerGateway(CONFIG)
+            gateway.restore_admin_failures = 100
+            gateway.restore_rw_failure = True
+            messages: list[str] = []
+            original_write: Callable[[target.EvidenceLog, str, Any], None] = cast(
+                Callable[[target.EvidenceLog, str, Any], None], target.EvidenceLog.write
+            )
+            broken: bool = False
+
+            def fail_write(log: target.EvidenceLog, label: str, value: Any = "") -> None:
+                nonlocal broken
+                broken = broken or bool(gateway.ro_key)
+                if broken:
+                    raise OSError("evidence unavailable")
+                original_write(log, label, value)
+
+            def fail_progress(_message: str) -> None:
+                if broken:
+                    raise OSError("progress evidence unavailable")
+
+            with mock.patch.object(target.EvidenceLog, "write", new=fail_write), mock.patch.object(
+                target.EvidenceLog, "write_line", side_effect=fail_progress
+            ):
+                result: RunResult = target.execute_test_5_1_2a_2_b(
+                    root, session_factory=lambda: FakeSession(gateway),
+                    random_bytes=deterministic_random, output=messages.append,
+                )
+            self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+            self.assertEqual(target.FACTORY_RESET_MESSAGE, result.recovery_message)
+            self.assertEqual(["Overall verdict: ERROR", target.FACTORY_RESET_MESSAGE], messages[-2:])
+            self.assertEqual(3, sum(call.body == {
+                GatewayCfgDesc.LAN_AUTH_API_KEY: "", GatewayCfgDesc.LAN_AUTH_API_KEY_RW: ""
+            } for call in gateway.calls))
 
     def test_basic_and_digest_setup_errors_report_recovery_and_stop(self) -> None:
         mode: str
