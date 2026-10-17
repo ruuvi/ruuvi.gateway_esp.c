@@ -223,6 +223,13 @@ Authenticate `Admin`/`gw_id`; fetch `GET /ruuvi.json`; require
 Snapshot the canonical sorted-JSON SHA-256 hash for the final restoration comparison. Capture
 `realm` from the login challenge.
 
+Partial configuration writes, including `{}`, reset omitted `mqtt_data_format`, `mqtt_prefix`,
+and `mqtt_client_id` in `main/gw_cfg_json_parse_mqtt.c`. Before any write, also require a verified
+matching nRF52 MAC, `mqtt_data_format` equal to the generated default, and the device-derived
+defaults `mqtt_prefix = "ruuvi/<UPPERCASE-nRF52-MAC>/"` and
+`mqtt_client_id = "<UPPERCASE-nRF52-MAC>"` (`main/gw_cfg_default.c`). Missing, wrongly typed, or
+customized values are setup ERROR without mutation. Reset advice requires confirmed identity.
+
 ### 2. Change `AuthMech-LAN-WebUI-Default` → user-defined and verify commit + active
 
 1. Generate a distinct custom username and high-entropy plaintext password through the client's

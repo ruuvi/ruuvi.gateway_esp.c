@@ -264,6 +264,21 @@ class FunctionalTest_5_1_4_2_a:
                 f"{field} has its factory-default value",
                 actual,
             )
+        # Even an empty authorized POST resets these omitted MQTT fields. Require
+        # their reset values before any write, including the mandated {} RW probe.
+        self._require_setup(GatewayCfgDesc.GW_MAC in payload, "MQTT baseline has a verified DUT identity")
+        mqtt_defaults: dict[str, Any] = default_config_values((GatewayCfgDesc.MQTT_DATA_FORMAT,))
+        mqtt_defaults[GatewayCfgDesc.MQTT_PREFIX] = f"ruuvi/{self.config.gw_mac.upper()}/"
+        mqtt_defaults[GatewayCfgDesc.MQTT_CLIENT_ID] = self.config.gw_mac.upper()
+        for field, expected in mqtt_defaults.items():
+            actual = payload.get(field)
+            if type(actual) is not type(expected) or actual != expected:
+                self.factory_reset_required = True
+            self._require_setup(
+                type(actual) is type(expected) and actual == expected,
+                f"{field} has its safe factory-default value before partial configuration writes",
+                actual,
+            )
         self.evidence.write(
             "DUT IDENTITY",
             {field: payload[field] for field in (GatewayCfgDesc.GW_MAC, GatewayCfgDesc.FW_VER) if field in payload},
@@ -479,8 +494,8 @@ class FunctionalTest_5_1_4_2_a:
             )
             self.outcomes[AuthMech.LAN_WEBUI_USER_DEFINED] = "PASS"
 
-            self._step("Generating and committing RO and RW bearer values")
             self.active_mechanisms = (AuthMech.M2M_API_BEARER_RO, AuthMech.M2M_API_BEARER_RW)
+            self._step("Generating and committing RO and RW bearer values")
             rw1: str
             ro1: str
             ro1 = self._secret(self.config.gw_id)
@@ -506,8 +521,8 @@ class FunctionalTest_5_1_4_2_a:
                 bearer1.get(GatewayCfgDesc.LAN_AUTH_API_KEY_RW_USE),
             )
             self._verify_bearer(ro1, rw1, canonical_json_hash(bearer1))
-            self._step("Regenerating and verifying RO and RW bearer values")
             self.active_mechanisms = (AuthMech.M2M_API_BEARER_RO, AuthMech.M2M_API_BEARER_RW)
+            self._step("Regenerating and verifying RO and RW bearer values")
             rw2: str
             ro2: str
             ro2 = self._secret(ro1, rw1, self.config.gw_id)
@@ -607,7 +622,6 @@ def execute_test_5_1_4_2_a(
 ) -> RunResult:
     work_dir, output = work_dir or Path.cwd(), output or print
     log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_1_4_2_a", now)
-    output(f"Open log file: {log.path}")
 
     def output_progress(message: str) -> None:
         output(message)
@@ -617,6 +631,7 @@ def execute_test_5_1_4_2_a(
     result: RunResult = RunResult(2, "ERROR", {mechanism: "NOT RUN" for mechanism in MECHANISMS}, set())
     final_evidence: RecoveryEvidence = RecoveryEvidence(log)
     try:
+        output(f"Open log file: {log.path}")
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(work_dir / ".env")
         log.write("DUT CONFIGURATION", config)
@@ -653,6 +668,8 @@ def execute_test_5_1_4_2_a(
             final_evidence.attempt(log._stream.close)
         if final_evidence.failed:
             result.exit_code, result.verdict = 2, "ERROR"
+            final_evidence.attempt(lambda: output("Reporting: ERROR; output/evidence sink failed"))
+            final_evidence.attempt(lambda: output("Overall verdict: ERROR"))
     return result
 
 

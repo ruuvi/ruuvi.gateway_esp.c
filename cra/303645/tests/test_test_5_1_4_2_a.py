@@ -26,6 +26,32 @@ CONFIG: target.DutConfig = target.DutConfig("00:11:22:33:44:55:66:77", "AA:BB:CC
 NOW: datetime = datetime(2026, 9, 6, tzinfo=timezone.utc)
 
 
+class FirmwareGateway(wire.FakeGateway):
+    """Case-local MQTT parser model, including resets on empty authorized POSTs."""
+
+    def __init__(self, config: target.DutConfig) -> None:
+        super().__init__(config)
+        self.mqtt: dict[str, str] = {
+            "mqtt_data_format": "ruuvi_raw",
+            "mqtt_prefix": f"ruuvi/{config.gw_mac.upper()}/",
+            "mqtt_client_id": config.gw_mac.upper(),
+        }
+
+    def _config_response(self) -> wire.FakeResponse:
+        response: wire.FakeResponse = super()._config_response()
+        payload: dict[str, Any] = response.json()
+        payload.update(self.mqtt)
+        return wire.FakeResponse(response.status_code, payload)
+
+    def _apply_config(self, body: dict[str, str]) -> None:
+        self.mqtt = {
+            "mqtt_data_format": body.get("mqtt_data_format", "ruuvi_raw"),
+            "mqtt_prefix": body.get("mqtt_prefix") or f"ruuvi/{self.dut_config.gw_mac.upper()}/",
+            "mqtt_client_id": body.get("mqtt_client_id") or self.dut_config.gw_mac.upper(),
+        }
+        super()._apply_config(body)
+
+
 class FakeSession(requests.Session):
     def __init__(self, username: str | None = None) -> None:
         super().__init__()
@@ -118,6 +144,9 @@ class FakeGatewayClient:
                     GatewayCfgDesc.LAN_AUTH_API_KEY_RW_USE: bool(self.rw_key),
                     GatewayCfgDesc.GW_MAC: CONFIG.gw_mac,
                     GatewayCfgDesc.FW_VER: "fixture",
+                    GatewayCfgDesc.MQTT_DATA_FORMAT: "ruuvi_raw",
+                    GatewayCfgDesc.MQTT_PREFIX: f"ruuvi/{CONFIG.gw_mac}/",
+                    GatewayCfgDesc.MQTT_CLIENT_ID: CONFIG.gw_mac,
                 },
             )
         if self.fail_post:
@@ -186,6 +215,87 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
         self.assertEqual("PASS", result.outcomes["final restoration"])
 
+    def test_customized_or_missing_mqtt_baseline_is_rejected_without_mutation(self) -> None:
+        field: str
+        value: Any
+        for field in ("mqtt_data_format", "mqtt_prefix", "mqtt_client_id"):
+            for value in ("custom-value", None, 42):
+                with self.subTest(field=field, value=value):
+                    gateway: FirmwareGateway = FirmwareGateway(CONFIG)
+                    if value is None:
+                        gateway.mqtt.pop(field)
+                    else:
+                        gateway.mqtt[field] = value
+                    before: dict[str, str] = dict(gateway.mqtt)
+                    runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(
+                        CONFIG, self.log, session_factory=lambda fixture=gateway: wire.FakeSession(fixture),
+                    )
+                    result: RunResult = runner.run()
+                    self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                    self.assertEqual(target.FACTORY_RESET_MESSAGE, result.recovery_message)
+                    self.assertEqual([], gateway.config_bodies)
+                    self.assertEqual(before, gateway.mqtt)
+                    self.assertEqual([("GET", "/auth"), ("POST", "/auth"), ("GET", "/ruuvi.json")],
+                                     [(call.method, call.path) for call in gateway.calls])
+
+    def test_lowercase_identity_uses_uppercase_device_derived_mqtt_defaults(self) -> None:
+        config: target.DutConfig = target.DutConfig(CONFIG.gw_id, CONFIG.gw_mac.lower(), CONFIG.gw_hostname)
+        gateway: FirmwareGateway = FirmwareGateway(config)
+        runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(
+            config, self.log, session_factory=lambda: wire.FakeSession(gateway), random_bytes=wire.UniqueRandom(),
+        )
+        result: RunResult = runner.run()
+        self.assertEqual((0, "PASS"), (result.exit_code, result.verdict))
+        self.assertEqual({"mqtt_data_format": "ruuvi_raw", "mqtt_prefix": f"ruuvi/{CONFIG.gw_mac}/",
+                          "mqtt_client_id": CONFIG.gw_mac}, gateway.mqtt)
+
+    def test_bearer_transition_reporting_failure_preserves_completed_administrative_results(self) -> None:
+        def progress(description: str) -> None:
+            if description == "Generating and committing RO and RW bearer values":
+                raise BrokenPipeError("bearer phase announcement failed")
+
+        self.runner.progress = progress
+        result: RunResult = self.runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes[target.AuthMech.LAN_WEBUI_DEFAULT])
+        self.assertEqual("PASS", result.outcomes[target.AuthMech.LAN_WEBUI_USER_DEFINED])
+        self.assertEqual("ERROR", result.outcomes[target.AuthMech.M2M_API_BEARER_RO])
+        self.assertEqual("ERROR", result.outcomes[target.AuthMech.M2M_API_BEARER_RW])
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+
+    def test_first_output_failure_returns_error_and_finalizes_evidence_without_http(self) -> None:
+        root: Path = Path(self.temp_dir.name)
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
+
+        def output(_message: str) -> None:
+            raise BrokenPipeError("closed terminal before setup")
+
+        result: RunResult = target.execute_test_5_1_4_2_a(
+            root, session_factory=lambda: wire.FakeSession(gateway), output=output,
+        )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        evidence_paths: list[Path] = list((root / "logs").glob("test_5_1_4_2_a_*.log"))
+        self.assertEqual(1, len(evidence_paths))
+        evidence: str = evidence_paths[0].read_text(encoding="utf-8")
+        self.assertIn("BrokenPipeError", evidence)
+        self.assertIn("OVERALL VERDICT: ERROR", evidence)
+        self.assertEqual([], gateway.calls)
+
+    def test_failed_evidence_finalization_corrects_visible_pass(self) -> None:
+        root: Path = Path(self.temp_dir.name)
+        (root / ".env").write_text(wire.env_text(CONFIG), encoding="utf-8")
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
+        messages: list[str] = []
+        with mock.patch.object(target.EvidenceLog, "finish", side_effect=OSError("final write failed")):
+            result: RunResult = target.execute_test_5_1_4_2_a(
+                root, session_factory=lambda: wire.FakeSession(gateway),
+                random_bytes=wire.UniqueRandom(), output=messages.append,
+            )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertIn("Overall verdict: PASS", messages)
+        self.assertEqual(["Reporting: ERROR; output/evidence sink failed", "Overall verdict: ERROR"], messages[-2:])
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+
     def test_failed_restoration_prevents_pass(self) -> None:
         self.fake.fail_restore = True
         result: RunResult = self.runner.run()
@@ -194,7 +304,7 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual(target.FACTORY_RESET_MESSAGE, result.recovery_message)
 
     def test_full_run_uses_real_client_and_independent_wire_login_validation(self) -> None:
-        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
         runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(
             CONFIG,
             self.log,
@@ -231,7 +341,7 @@ class FunctionalTestCase(unittest.TestCase):
         mac: Any
         for mac in (None, 42, "bad", "11:22:33:44:55:66", CONFIG.gw_mac):
             with self.subTest(mac=mac):
-                gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+                gateway: FirmwareGateway = FirmwareGateway(CONFIG)
                 original: Callable[..., wire.FakeResponse] = gateway.response_for
 
                 def response(
@@ -298,7 +408,7 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual("PASS", result.outcomes["final restoration"])
 
     def test_corrupt_default_login_stops_before_mutation(self) -> None:
-        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
         runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(
             CONFIG,
             self.log,
@@ -316,7 +426,7 @@ class FunctionalTestCase(unittest.TestCase):
             with self.subTest(mode=mode):
                 root: Path = Path(self.temp_dir.name)
                 (root / ".env").write_text(wire.env_text(CONFIG), encoding="utf-8")
-                gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+                gateway: FirmwareGateway = FirmwareGateway(CONFIG)
                 gateway.mode = mode
                 messages: list[str] = []
                 result: RunResult = target.execute_test_5_1_4_2_a(
@@ -404,7 +514,7 @@ class FunctionalTestCase(unittest.TestCase):
     def test_execute_progress_has_nine_steps_and_no_overflow(self) -> None:
         root: Path = Path(self.temp_dir.name)
         (root / ".env").write_text(wire.env_text(CONFIG), encoding="utf-8")
-        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
         messages: list[str] = []
         result: RunResult = target.execute_test_5_1_4_2_a(
             root, session_factory=lambda: wire.FakeSession(gateway),
@@ -485,7 +595,7 @@ class FunctionalTestCase(unittest.TestCase):
     def test_final_verdict_output_failure_is_recorded_in_healthy_log(self) -> None:
         root: Path = Path(self.temp_dir.name)
         (root / ".env").write_text(wire.env_text(CONFIG), encoding="utf-8")
-        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
         messages: list[str] = []
 
         def output(message: str) -> None:
@@ -510,7 +620,7 @@ class FunctionalTestCase(unittest.TestCase):
     def test_closed_output_at_cleanup_does_not_block_real_client_restoration(self) -> None:
         root: Path = Path(self.temp_dir.name)
         (root / ".env").write_text(wire.env_text(CONFIG), encoding="utf-8")
-        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
         failed: bool = False
 
         def output(message: str) -> None:
@@ -530,7 +640,7 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual(("GET", "/ruuvi.json"), (gateway.calls[-1].method, gateway.calls[-1].path))
 
     def test_closed_output_after_first_mutation_preserves_recovery(self) -> None:
-        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
         runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(
             CONFIG, self.log, session_factory=lambda: wire.FakeSession(gateway), random_bytes=wire.UniqueRandom(),
         )
@@ -547,7 +657,7 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual(("GET", "/ruuvi.json"), (gateway.calls[-1].method, gateway.calls[-1].path))
 
     def test_failed_evidence_after_mutation_does_not_block_recovery_request_logging(self) -> None:
-        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
         runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(
             CONFIG, self.log, session_factory=lambda: wire.FakeSession(gateway), random_bytes=wire.UniqueRandom(),
         )
