@@ -461,6 +461,28 @@ class NetworkSurfaceRunnerTests(unittest.TestCase):
                 self.assertIn(f"2323/{protocol}", "\n".join(self.lines))
                 self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
 
+    def test_lowercase_and_mixed_case_env_mac_preserve_default_gateway(self) -> None:
+        spelling: str
+        for spelling in ("aa:bb:cc:dd:ee:ff", "Aa:bB:Cc:dD:Ee:fF"):
+            with self.subTest(spelling=spelling):
+                self.directory.joinpath(".env").write_text(
+                    f"gw_id={CONFIG.gw_id}\ngw_mac={spelling}\ngw_hostname={CONFIG.gw_hostname}\n",
+                    encoding="utf-8",
+                )
+                baseline: dict[str, Any] = dict(self.gateway.fields)
+                self.gateway.calls.clear()
+                result: RunResult = self.execute()
+                self.assertEqual(("PASS", 0), (result.verdict, result.exit_code))
+                self.assertEqual("PASS", result.outcomes["factory-default preflight"])
+                self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
+                self.assertIsNone(result.recovery_message)
+                self.assertEqual(baseline, self.gateway.fields)
+                self.assertEqual([{"ntp_server1": "192.0.2.20"}, {"ntp_server1": "time.google.com"}],
+                                 [call.body for call in self.gateway.calls if call.method == "POST"
+                                  and call.path == "/ruuvi.json"])
+                self.assertEqual(["GET", "POST", "GET", "GET", "POST"],
+                                 [call.method for call in self.gateway.calls[:5]])
+
     def test_confirmed_mdns_matches_documented_interface(self) -> None:
         self.nmap.udp_open.clear()
         result: RunResult = self.execute()

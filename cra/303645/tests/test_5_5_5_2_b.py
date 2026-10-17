@@ -340,9 +340,11 @@ class FunctionalTest_5_5_5_2_b:
         # Prefix/client ID defaults are initialized from the nRF52 MAC (gw_cfg_default.c).
         self._assert_setup("verified MAC is required for safe partial configuration writes",
                            GatewayCfgDesc.GW_MAC in payload, "identity presence")
+        # Firmware formats its MAC-derived defaults in uppercase, independently of .env spelling.
+        verified_mac: str = cast(str, payload[GatewayCfgDesc.GW_MAC]).upper()
         mqtt_defaults: dict[str, str] = {
-            "mqtt_prefix": f"ruuvi/{self.config.gw_mac}/",
-            "mqtt_client_id": self.config.gw_mac,
+            "mqtt_prefix": f"ruuvi/{verified_mac}/",
+            "mqtt_client_id": verified_mac,
         }
         for field, expected in mqtt_defaults.items():
             matches = field in payload and same_public_value(payload[field], expected)
