@@ -370,17 +370,23 @@ unrelated lint cleanup, report the remaining findings explicitly instead of clai
 run. A Ruff pass does not replace the behavioral regression tests below.
 
 IDE inspection through the MCP server is mandatory for every task in this subtree, including
-documentation-only changes. Use the `get_file_problems` MCP API (exposed by CLion as
-`mcp__clion__get_file_problems`) for each file you create or modify. Inspect existing files before
-editing and inspect every changed file again after its final edit. For shared-library changes,
-also inspect affected callers and their implementation tests.
+documentation-only changes. Use the connected JetBrains IDE's `get_file_problems` operation for
+each file you create or modify. Inspect existing files before editing and inspect every changed
+file again after its final edit. For shared-library changes, also inspect affected callers and
+their implementation tests.
 
 Pass the repository-relative `filePath` and explicitly set `errorsOnly: false` so warnings are
-included. For example:
+included. The current integration exposes `mcp__jetbrains_air_ide__execute_tool`.
+For example, call that MCP tool with:
 
 ```json
-{"filePath": "cra/303645/tests/lib/evidence.py", "errorsOnly": false, "timeout": 20000}
+{"command": "get_file_problems --filePath cra/303645/tests/lib/evidence.py --errorsOnly false --timeout 20000"}
 ```
+
+Discover the available IDE tools in the current session before declaring inspections unavailable.
+Do not rely on an older server/tool name: the generic IDE executor can expose the same operation
+without a separately listed `get_file_problems` tool. If a direct tool is exposed instead, use its
+declared schema with `filePath`, `errorsOnly: false`, and `timeout: 20000`.
 
 Review every returned error, warning, and weak warning. Fix actionable findings and rerun
 `get_file_problems` on the affected files until the fixes are verified. Do not substitute Ruff,
