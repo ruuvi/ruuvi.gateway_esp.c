@@ -328,6 +328,7 @@ class FunctionalTest_5_11_1_2_a:
         self.wifi_attempted: bool = False
         self.wifi_unchanged_verified: bool = False
         self.wifi_connection_verified: bool = False
+        self.wifi_creation_verified: bool = False
         self.attempted_files: list[str] = []
         self.accepted_files: set[str] = set()
         self.session: requests.Session | None = None
@@ -430,6 +431,8 @@ class FunctionalTest_5_11_1_2_a:
             except Exception as error:  # Bounded reconnect retries after network changes.
                 error: Exception
                 self.evidence.exception(error)
+                if self.identity_conflict:
+                    raise
                 if self.monotonic() >= deadline:
                     raise InvalidSetup("LAN did not recover; check host network, Ethernet cable and .env gw_hostname") from error
                 self.sleep(2.0)
@@ -487,6 +490,8 @@ class FunctionalTest_5_11_1_2_a:
             except Exception as error:  # Reconnect can temporarily interrupt hotspot traffic.
                 error: Exception
                 self.evidence.exception(error)
+                if self.identity_conflict:
+                    raise
                 if self.monotonic() >= deadline:
                     raise InvalidSetup("Hotspot readback did not recover after Wi-Fi provisioning") from error
             else:
@@ -534,9 +539,14 @@ class FunctionalTest_5_11_1_2_a:
             raise InvalidSetup(f"{description}: HTTP {response.status_code}")
 
     def _read(self, client: GatewayClient, session: requests.Session) -> dict[str, Any]:
+        if self.identity_conflict:
+            raise InvalidSetup("DUT identity is unverified or mismatched; stopping configuration access")
         response: requests.Response = client.request(session, HttpMethod.GET, GatewayApi.CONFIG)
         self._ok(response, "Configuration read")
-        return client.response_json(response, "configuration", dict)
+        payload: dict[str, Any] = client.response_json(response, "configuration", dict)
+        if not self._identity(payload):
+            raise InvalidSetup("Missing nRF52 identity; stopping configuration access")
+        return payload
 
     def _identity(self, payload: dict[str, Any]) -> bool:
         mac: Any = payload.get(Cfg.GW_MAC)
@@ -711,6 +721,8 @@ class FunctionalTest_5_11_1_2_a:
         else:
             self._field(wifi, Cfg.PASSWORD, self.fixtures.wifi_password, secret=True, item_field=f"{Cfg.WIFI_STA_CONFIG}.{Cfg.PASSWORD}")
 
+        self.wifi_creation_verified = True
+
     def _provision_scalars(self) -> None:
         assert self.fixtures is not None and self.baseline is not None and self.session is not None
         baseline: dict[str, Any] = json.loads(self.baseline.payload_json)
@@ -828,7 +840,11 @@ class FunctionalTest_5_11_1_2_a:
                 raise CommitmentFailure(f"Accepted API key not enabled: {field}")
         self._ok(self._bearer(self.fixtures.ro_key, HttpMethod.GET, GatewayApi.HISTORY), "RO bearer read")
         self._mark(Cfg.LAN_AUTH_API_KEY, True, "indirect", "RO bearer GET /history")
-        self._ok(self._bearer(self.fixtures.rw_key, HttpMethod.GET, GatewayApi.CONFIG), "RW bearer read")
+        response: requests.Response = self._bearer(self.fixtures.rw_key, HttpMethod.GET, GatewayApi.CONFIG)
+        self._ok(response, "RW bearer read")
+        created: dict[str, Any] = self.gateway.response_json(response, "RW bearer configuration", dict)
+        if not self._identity(created):
+            raise InvalidSetup("Missing nRF52 identity during RW bearer read")
 
     def _keys_write(self) -> None:
         assert self.fixtures is not None and self.session is not None
@@ -893,6 +909,11 @@ class FunctionalTest_5_11_1_2_a:
                 expected[fixture.field] = fixture.value
         expected[Cfg.LAN_AUTH_API_KEY_USE] = True
         expected[Cfg.LAN_AUTH_API_KEY_RW_USE] = True
+        if (self.wifi_attempted and not self.wifi_creation_verified and not self.wifi_connection_verified
+                and typed_equal(payload.get(Cfg.WIFI_STA_CONFIG), expected[Cfg.WIFI_STA_CONFIG])):
+            # Rejected or lost Wi-Fi replies leave the category ERROR. Readback may
+            # independently prove that its baseline station settings survived.
+            self.wifi_unchanged_verified = True
         if self.wifi_attempted and not self.wifi_unchanged_verified:
             expected[Cfg.WIFI_STA_CONFIG] = {Cfg.SSID: self.fixtures.ssid}
             if Cfg.PASSWORD in payload.get(Cfg.WIFI_STA_CONFIG, {}):
@@ -926,7 +947,7 @@ class FunctionalTest_5_11_1_2_a:
             if finish and self.outcomes[category] not in ("ERROR", "FAIL"):
                 self.outcomes[category] = "PASS"
             return True
-        except Exception as error:  # noqa: BLE001 - Preserve outcomes and mandatory recovery.
+        except Exception as error:  # Preserve outcomes and mandatory recovery.
             error: Exception
             self.evidence.exception(error)
             verdict: str = "FAIL" if isinstance(error, CommitmentFailure) else "ERROR"
@@ -935,6 +956,8 @@ class FunctionalTest_5_11_1_2_a:
                 self.outcomes[category] = verdict
             reason: str = str(error) if type(error) in (InvalidSetup, CommitmentFailure) else "See evidence for protocol/transport details"
             self._say(f"{category}: {verdict} ({type(error).__name__}: {reason})")
+            if self.identity_conflict and category not in ("factory reset", "manifest"):
+                raise
             return False
 
     def _restore_session(self) -> requests.Session:

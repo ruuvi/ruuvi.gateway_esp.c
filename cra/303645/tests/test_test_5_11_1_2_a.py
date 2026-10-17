@@ -151,6 +151,9 @@ class CreationGateway(FakeGateway):
         self.lose_finish_reply: bool = False
         self.lan_failures: int = 0
         self.lose_wifi_reply: bool = False
+        self.reject_wifi_write: bool = False
+        self.identity_after_config_read: int | None = None
+        self.changed_identity: str | None = None
         self.lose_eth_reply: bool = False
         self.delayed_wifi_reads: int = 0
         self.wifi_association_succeeds: bool = True
@@ -213,6 +216,11 @@ class CreationGateway(FakeGateway):
             result.update(self.alter_fields)
             if self.omit_unconfirmed_storage and self.fail_file is not None:
                 result["storage"].pop(self.fail_file, None)
+        if self.identity_after_config_read is not None and self.config_reads >= self.identity_after_config_read:
+            if self.changed_identity is None:
+                result.pop("gw_mac", None)
+            else:
+                result["gw_mac"] = self.changed_identity
         if self.unstable_baseline and self.config_reads == 2:
             result["coordinates"] = "unstable"
         if self.restoring and self.final_mismatch:
@@ -317,6 +325,8 @@ class CreationGateway(FakeGateway):
                     payload["wifi_sta_config"] = {"ssid": ""}
                 return FakeResponse(200, payload)
             if call.path == "/connect.json":
+                if self.reject_wifi_write and call.body["ssid"]:
+                    return FakeResponse(500, {})
                 # Current firmware clears runtime credentials but does not save an empty STA config.
                 if call.body["ssid"] == "" and self.retain_saved_wifi_on_clear:
                     return FakeResponse(200, {})
@@ -789,6 +799,8 @@ class CreationTests(unittest.TestCase):
                 self.assertEqual(result.exit_code, 2)
                 self.assertEqual(result.outcomes[runner.WIFI], "ERROR")
                 self.assertEqual(result.outcomes[runner.ADMIN], "PASS")
+                self.assertEqual(result.outcomes["state preservation"], "PASS")
+                self.assertEqual(result.outcomes[runner.KEYS], "PASS")
                 self.assertEqual(len(self.confirmations), 4)
                 self.assert_restored()
 
@@ -1141,6 +1153,70 @@ class CreationTests(unittest.TestCase):
         items: list[dict[str, Any]] = [i for i in self.manifest()["items"] if i["category"] == runner.WIFI]
         self.assertEqual(len(items), 2)
         self.assertTrue(all(not i["committed"] and i["verification"] == "unverified" for i in items))
+        self.assert_restored()
+
+    def test_rejected_hotspot_wifi_write_preserves_baseline_and_runs_rw(self) -> None:
+        self.gateway.reject_wifi_write = True
+        result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes[runner.WIFI], "ERROR")
+        self.assertEqual(result.outcomes["state preservation"], "PASS")
+        self.assertEqual(result.outcomes[runner.KEYS], "PASS")
+        self.assertTrue(any(w.method == "POST" and w.scheme == "Bearer" for w in self.gateway.wire))
+        self.assert_restored()
+
+    def test_identity_loss_during_created_reads_stops_writes_and_reset(self) -> None:
+        # Capture the successful read positions independently at the HTTP boundary.
+        self.execute()
+        reads: list[int] = [index for index, wire in enumerate(self.gateway.wire)
+                            if wire.method == "GET" and wire.path == "/ruuvi.json"]
+        first_upload: int = next(index for index, wire in enumerate(self.gateway.wire)
+                                 if wire.method == "POST" and wire.path == "/ssl_cert")
+        rw_write: int = next(index for index, wire in enumerate(self.gateway.wire)
+                             if wire.method == "POST" and wire.scheme == "Bearer")
+        scalar_write: int = next(index for index, wire in enumerate(self.gateway.wire)
+                                 if wire.method == "POST" and wire.path == "/ruuvi.json"
+                                 and wire.body.get("lan_auth_type") == "lan_auth_ruuvi")
+        first_created_read: int = next(index for index in reads if index > scalar_write)
+        phases: tuple[int, ...] = (sum(index <= first_created_read for index in reads),
+                                  sum(index < first_upload for index in reads),
+                                  sum(index < rw_write for index in reads))
+        read_number: int
+        identity: str | None
+        for read_number in phases:
+            for identity in (None, "malformed", "00:11:22:33:44:55"):
+                with self.subTest(read_number=read_number, identity=identity):
+                    self.gateway = CreationGateway()
+                    self.gateway.identity_after_config_read = read_number
+                    self.gateway.changed_identity = identity
+                    self.output.clear()
+                    self.confirmations.clear()
+                    result: RunResult = self.execute()
+                    self.assertEqual(result.exit_code, 2)
+                    self.assertEqual(result.outcomes["factory reset"], "ERROR")
+                    config_reads: list[int] = [index for index, wire in enumerate(self.gateway.wire)
+                                               if wire.method == "GET" and wire.path == "/ruuvi.json"]
+                    self.assertEqual(len(config_reads), read_number)
+                    self.assertFalse(any(w.method in ("POST", "DELETE")
+                                         for w in self.gateway.wire[config_reads[-1] + 1:]))
+                    self.assertFalse(any("factory reset verified Gateway" in text for text, _ in self.confirmations))
+                    self.assertNotIn(runner.FACTORY_RESET_MESSAGE, "\n".join(self.output))
+
+    def test_verified_wifi_loss_cannot_be_reconciled_as_baseline(self) -> None:
+        original: Callable[[], FakeResponse] = self.gateway._config_response
+
+        def read_with_lost_wifi() -> FakeResponse:
+            if self.gateway.mode == GatewayCfgLanAuthType.RUUVI:
+                self.gateway.public["wifi_sta_config"] = {"ssid": ""}
+                self.gateway.secrets.pop("wifi_password", None)
+            return original()
+
+        with patch.object(self.gateway, "_config_response", side_effect=read_with_lost_wifi):
+            result: RunResult = self.execute()
+        self.assertEqual(result.outcomes[runner.WIFI], "PASS")
+        self.assertEqual(result.outcomes["state preservation"], "FAIL")
+        self.assertEqual(result.outcomes[runner.KEYS], "ERROR")
+        self.assertFalse(any(w.method == "POST" and w.scheme == "Bearer" for w in self.gateway.wire))
         self.assert_restored()
 
     def test_reported_live_scenario_preserves_hidden_errors_and_exposes_rw_failure(self) -> None:
