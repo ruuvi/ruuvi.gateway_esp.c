@@ -59,6 +59,7 @@ class EncryptedGateway(DefaultAuthGateway):
         self.sessions: list[EncryptedSession] = []
         self.plain_bodies: list[dict[str, Any]] = []
         self.pending_body: dict[str, Any] | None = None
+        self.invalid_envelope: bool = False
         self.posts: int = 0
         self.reads: int = 0
         self.reject_mutation: bool = False
@@ -93,20 +94,43 @@ class EncryptedGateway(DefaultAuthGateway):
                 and headers.get(HttpHeader.RUUVI_ECDH_PUBLIC_KEY) != CLIENT_PUBLIC):
             raise AssertionError("client public key differs from independent P-256 vector")
         self.pending_body = None
-        if path == GatewayApi.CONFIG and method == HttpMethod.POST:
+        self.invalid_envelope = False
+        if (path == GatewayApi.CONFIG and method == HttpMethod.POST
+                and self._is_session_authorized(session, headers)):
             if headers.get(HttpHeader.RUUVI_ECDH_ENCRYPTED) == "true":
                 if set(body) != {"encrypted", "iv", "hash"}:
                     raise AssertionError("incorrect encrypted envelope fields")
-                plaintext: bytes = unpad(AES.new(AES_KEY, AES.MODE_CBC, base64.b64decode(body["iv"])).decrypt(
-                    base64.b64decode(body["encrypted"])), 16)
-                if base64.b64encode(hashlib.sha256(plaintext).digest()).decode() != body["hash"]:
-                    raise AssertionError("invalid plaintext SHA-256")
-                self.pending_body = json.loads(plaintext)
+                try:
+                    plaintext: bytes = unpad(AES.new(AES_KEY, AES.MODE_CBC, base64.b64decode(body["iv"])).decrypt(
+                        base64.b64decode(body["encrypted"])), 16)
+                    self.invalid_envelope = base64.b64encode(hashlib.sha256(plaintext).digest()).decode() != body["hash"]
+                    if not self.invalid_envelope:
+                        self.pending_body = json.loads(plaintext)
+                except ValueError:
+                    self.invalid_envelope = True
             else:
                 self.pending_body = body
-            if self.pending_body is None or set(self.pending_body) != {"coordinates"}:
+            if not self.invalid_envelope and (self.pending_body is None or set(self.pending_body) != {"coordinates"}):
                 raise AssertionError("write escaped coordinates scope")
         return super().response_for(session, method, path, headers, body, allow_redirects)
+
+    def _cookie_session(self, headers: Mapping[str, str]) -> FakeSession | None:
+        candidate: EncryptedSession
+        for candidate in self.sessions:
+            if self._has_session_cookie(candidate, headers):
+                return candidate
+        return None
+
+    def _is_session_authorized(self, session: FakeSession, headers: Mapping[str, str]) -> bool:
+        owner: FakeSession | None = self._cookie_session(headers)
+        return super()._is_session_authorized(session if owner is None else owner, headers)
+
+    def _auth_response(
+        self, session: FakeSession, method: str, headers: Mapping[str, str], body: Any,
+    ) -> FakeResponse:
+        # Server sessions belong to cookies, regardless of the HTTP transport sending them.
+        owner: FakeSession | None = self._cookie_session(headers)
+        return super()._auth_response(session if owner is None else owner, method, headers, body)
 
     def _response_override(self, session: FakeSession, call: RecordedRequest) -> FakeResponse | None:
         if (call.path == GatewayApi.AUTH and call.method == HttpMethod.POST
@@ -116,6 +140,8 @@ class EncryptedGateway(DefaultAuthGateway):
             self.posts += 1
             if not self._is_session_authorized(session, {HttpHeader.COOKIE: call.cookie or ""}):
                 return FakeResponse(401, {})
+            if self.invalid_envelope:
+                return FakeResponse(400, {})
             if self.pending_body is None:
                 raise AssertionError("missing decoded coordinates")
             self.plain_bodies.append(self.pending_body)
@@ -461,11 +487,11 @@ class UnitCImplementationTests(unittest.TestCase):
                 self.assertEqual(("GET", "/ruuvi.json"),
                                  (self.gateway.calls[-1].method, self.gateway.calls[-1].path))
 
-    def test_config_writes_reject_missing_and_cross_session_cookies(self) -> None:
+    def test_config_writes_reject_missing_invalid_and_unauthenticated_cookies(self) -> None:
         encrypted: bool
         cookie_kind: str
         for encrypted in (True, False):
-            for cookie_kind in ("missing", "cross-session"):
+            for cookie_kind in ("missing", "invalid", "unauthenticated"):
                 with self.subTest(encrypted=encrypted, cookie=cookie_kind):
                     self.gateway = EncryptedGateway()
                     test: runner.FunctionalTest_5_5_4_2_c = runner.FunctionalTest_5_5_4_2_c(
@@ -474,12 +500,15 @@ class UnitCImplementationTests(unittest.TestCase):
                         output=lambda message: None,
                     )
                     auth: runner.InteractiveAuthResult = test._login()
-                    other: runner.InteractiveAuthResult = test._login()
+                    other: requests.Session = test.gateway.new_session()
+                    test.gateway.request(other, HttpMethod.GET, GatewayApi.AUTH,
+                                         headers={HttpHeader.RUUVI_ECDH_PUBLIC_KEY: CLIENT_PUBLIC})
                     auth.session.cookies.clear()
                     headers: dict[str, str] = {HttpHeader.RUUVI_ECDH_ENCRYPTED: "true"} if encrypted else {}
                     cookie: str | None = None
-                    if cookie_kind == "cross-session":
-                        headers[HttpHeader.COOKIE] = f"RUUVISESSION={other.cookie}"
+                    if cookie_kind != "missing":
+                        value: str = "invalid" if cookie_kind == "invalid" else cast(FakeSession, other).cookie
+                        headers[HttpHeader.COOKIE] = f"RUUVISESSION={value}"
                         cookie = headers[HttpHeader.COOKIE]
                     response: requests.Response = test.gateway.request(
                         auth.session, HttpMethod.POST, GatewayApi.CONFIG, headers=headers,
@@ -491,6 +520,58 @@ class UnitCImplementationTests(unittest.TestCase):
                     self.assertEqual(self.gateway.original, self.gateway.state)
                     self.assertEqual([], self.gateway.plain_bodies)
                     self.assertEqual(0, self.gateway.restore_attempts)
+
+    def test_authorized_cookie_can_be_forwarded_by_another_transport(self) -> None:
+        test: runner.FunctionalTest_5_5_4_2_c = runner.FunctionalTest_5_5_4_2_c(
+            CONFIG, EvidenceLog(Path("memory"), io.StringIO(), NOW), self.gateway.session,
+            lambda size: bytes(range(size)), lambda **kwargs: ECC.construct(curve="P-256", d=1),
+        )
+        auth: runner.InteractiveAuthResult = test._login()
+        transport: requests.Session = test.gateway.new_session()
+        response: requests.Response = test.gateway.request(
+            transport, HttpMethod.POST, GatewayApi.CONFIG,
+            headers={HttpHeader.COOKIE: f"RUUVISESSION={auth.cookie}"}, json_body={"coordinates": "forwarded"},
+        )
+        self.assertEqual(200, response.status_code)
+        self.assertFalse(cast(FakeSession, transport).authorized)
+        self.assertEqual("forwarded", self.gateway.state["coordinates"])
+        self.assertEqual(f"RUUVISESSION={auth.cookie}", self.gateway.calls[-1].cookie)
+
+    def test_authorized_cookie_does_not_accept_an_envelope_with_the_wrong_key(self) -> None:
+        test: runner.FunctionalTest_5_5_4_2_c = runner.FunctionalTest_5_5_4_2_c(
+            CONFIG, EvidenceLog(Path("memory"), io.StringIO(), NOW), self.gateway.session,
+            lambda size: bytes(range(size)), lambda **kwargs: ECC.construct(curve="P-256", d=1),
+        )
+        auth: runner.InteractiveAuthResult = test._login()
+        envelope: runner.EncryptedJsonEnvelope = test.gateway.build_encrypted_json(
+            bytes(32), {"coordinates": "changed"}, lambda size: bytes(range(size)),
+        )
+        response: requests.Response = test.gateway.post_encrypted_json(auth.session, GatewayApi.CONFIG, envelope)
+        self.assertEqual(400, response.status_code)
+        self.assertEqual(self.gateway.original, self.gateway.state)
+        self.assertFalse(self.gateway.plain_bodies)
+
+    def test_login_rejects_a_response_calculated_for_another_cookies_challenge(self) -> None:
+        test: runner.FunctionalTest_5_5_4_2_c = runner.FunctionalTest_5_5_4_2_c(
+            CONFIG, EvidenceLog(Path("memory"), io.StringIO(), NOW), self.gateway.session,
+            lambda size: bytes(range(size)), lambda **kwargs: ECC.construct(curve="P-256", d=1),
+        )
+        first: requests.Session = test.gateway.new_session()
+        second: requests.Session = test.gateway.new_session()
+        test.gateway.request(first, HttpMethod.GET, GatewayApi.AUTH,
+                             headers={HttpHeader.RUUVI_ECDH_PUBLIC_KEY: CLIENT_PUBLIC})
+        test.gateway.request(second, HttpMethod.GET, GatewayApi.AUTH,
+                             headers={HttpHeader.RUUVI_ECDH_PUBLIC_KEY: CLIENT_PUBLIC})
+        ha1: str = hashlib.md5(f"Admin:Ruuvi Gateway:{CONFIG.gw_id}".encode()).hexdigest()
+        password: str = hashlib.sha256(f"{cast(FakeSession, first).challenge}:{ha1}".encode()).hexdigest()
+        response: requests.Response = test.gateway.request(
+            first, HttpMethod.POST, GatewayApi.AUTH,
+            headers={HttpHeader.COOKIE: f"RUUVISESSION={cast(FakeSession, second).cookie}"},
+            json_body={"login": "Admin", "password": password},
+        )
+        self.assertEqual(401, response.status_code)
+        self.assertFalse(cast(FakeSession, first).authorized)
+        self.assertFalse(cast(FakeSession, second).authorized)
 
     def test_baseline_validator_json_value_and_type_matrix(self) -> None:
         defaults: dict[str, Any] = default_config_values(AUTHENTICATION_DEFAULT_FIELDS)
@@ -591,6 +672,27 @@ class UnitCImplementationTests(unittest.TestCase):
                 self.assertEqual(RESTORATION, self.gateway.calls[-2].body)
                 self.assertEqual(self.gateway.original, self.gateway.state)
                 self.assertIn('"result": "FAIL"', self.log)
+
+    def test_rejected_envelope_remains_fail_when_failure_reporting_raises(self) -> None:
+        self.gateway.reject_mutation = True
+
+        def output(message: str) -> None:
+            if message.startswith(f"{runner.ENVELOPE}: FAIL —"):
+                raise BrokenPipeError("closed terminal")
+            self.output.append(message)
+
+        result: RunResult = runner.execute_test_5_5_4_2_c(
+            self.work_dir, self.gateway.session, lambda size: bytes(range(size)),
+            lambda **kwargs: ECC.construct(curve="P-256", d=1), lambda size: bytes(range(size)),
+            lambda: NOW, output,
+        )
+        log: str = next((self.work_dir / "logs").glob("*.log")).read_text(encoding="utf-8")
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[runner.ENVELOPE])
+        self.assertEqual("PASS", result.outcomes[runner.RESTORE])
+        self.assertIn(f'"mechanism": "{runner.ENVELOPE}", "result": "FAIL"', log)
+        self.assertIn("OVERALL VERDICT: ERROR", log)
+        self.assertEqual(self.gateway.original, self.gateway.state)
 
     def test_partial_mutation_and_read_errors_always_restore(self) -> None:
         fault: str

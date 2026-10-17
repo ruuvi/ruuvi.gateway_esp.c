@@ -369,7 +369,8 @@ class FunctionalTest_5_5_4_2_c:
         except Exception as error:  # noqa: BLE001 - Unexpected errors must still trigger mandatory restoration.
             self.evidence.recovering = True
             self.evidence.exception(error)
-            self.outcomes[self.active] = "ERROR"
+            if self.outcomes[self.active] != "FAIL":
+                self.outcomes[self.active] = "ERROR"
             self._say(f"{self.active}: ERROR — {type(error).__name__}; see local evidence")
         finally:
             self.evidence.recovering = True
