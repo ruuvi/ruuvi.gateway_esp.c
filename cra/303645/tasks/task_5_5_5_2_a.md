@@ -175,8 +175,10 @@ firmware returns **HTTP 401** for a prohibited bearer token (RO key on an RW-sco
 
 The test **must** expect **`401`** for the RO-key-on-write scenario, record that the self-assessment
 `403` claim is a documented discrepancy (observed status `401`), and **not** FAIL the DUT for
-returning `401`. The critical functional evidence is that the write is **rejected** and **flash is
-untouched** (proven by exact pre/post reads), not the specific 401-vs-403 code.
+returning `401`. The critical functional evidence is that the write is **rejected** and the
+**running configuration is preserved** (verified by exact pre/post reads), not the specific
+401-vs-403 code. Flash contents remain unverified by these HTTP reads; the persistence limitation
+below still applies.
 
 ### Operational-state note
 

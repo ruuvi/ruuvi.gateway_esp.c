@@ -554,6 +554,122 @@ class FunctionalImplementationTests(unittest.TestCase):
         self.assertIn("ALL CHECK OUTCOMES", evidence)
         self.assertIn("OVERALL VERDICT: ERROR", evidence)
 
+    def test_output_failure_only_at_recovery_notice_keeps_fail_outcomes_and_finalizes(self) -> None:
+        self.gateway.commit_side_effect = True
+
+        def output(message: str) -> None:
+            if message.startswith("USER ACTION REQUIRED:"):
+                raise BrokenPipeError("recovery notice output lost")
+            self.output.append(message)
+
+        result: RunResult = target.execute_test_5_5_5_2_a(
+            self.root, self.gateway.session, now=lambda: NOW, random_bytes=UniqueRandom(),
+            ecc_generate=fixed_ecc, output=output,
+        )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RW])
+        self.assertEqual("FAIL", result.outcomes[target.RESTORE])
+        evidence: str = next((self.root / "logs").glob("*.log")).read_text(encoding="utf-8")
+        self.assertIn("recovery notice output lost", evidence)
+        self.assertIn("ALL CHECK OUTCOMES", evidence)
+        self.assertIn("OVERALL VERDICT: ERROR", evidence)
+        self.assert_restored()
+
+    def test_final_evidence_write_failure_promotes_fail_without_erasing_check_outcomes(self) -> None:
+        phase: str
+        for phase in ("outcomes", "finish"):
+            with self.subTest(phase=phase):
+                self.gateway.bad_redirect = True
+                original_write: Callable[..., None] = EvidenceLog.write
+                original_finish: Callable[..., None] = EvidenceLog.finish
+                failed: bool = False
+
+                def write(log: EvidenceLog, label: str, value: Any = "", *,
+                          selected: str = phase, delegate: Callable[..., None] = original_write) -> None:
+                    nonlocal failed
+                    if selected == "outcomes" and label == "ALL CHECK OUTCOMES" and not failed:
+                        failed = True
+                        raise OSError("final outcomes write lost")
+                    delegate(log, label, value)
+
+                def finish(log: EvidenceLog, verdict: str, now: Callable[[], datetime], *,
+                           selected: str = phase, delegate: Callable[..., None] = original_finish) -> None:
+                    nonlocal failed
+                    if selected == "finish" and not failed:
+                        failed = True
+                        raise OSError("final footer lost")
+                    delegate(log, verdict, now)
+
+                with mock.patch.object(EvidenceLog, "write", write), mock.patch.object(EvidenceLog, "finish", finish):
+                    result: RunResult = self.execute()
+                self.assertTrue(failed)
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual("FAIL", result.outcomes[AuthMech.LAN_WEBUI_DEFAULT])
+                self.assertIn("OVERALL VERDICT: ERROR", self.evidence)
+                self.assertTrue(self.output[-1].startswith("Overall verdict: ERROR"))
+                self.assertEqual([], self.config_writes())
+
+    def test_initial_reporting_failure_finishes_evidence_without_dut_activity(self) -> None:
+        def output(_message: str) -> None:
+            raise BrokenPipeError("initial output lost")
+
+        result: RunResult = target.execute_test_5_5_5_2_a(
+            self.root, self.gateway.session, now=lambda: NOW, output=output,
+        )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("ERROR", result.outcomes[target.SETUP])
+        self.assertEqual([], self.gateway.calls)
+        evidence: str = next((self.root / "logs").glob("*.log")).read_text(encoding="utf-8")
+        self.assertIn("ALL CHECK OUTCOMES", evidence)
+        self.assertIn("OVERALL VERDICT: ERROR", evidence)
+
+    def test_initial_evidence_header_failure_finishes_without_dut_activity(self) -> None:
+        original_write: Callable[..., None] = EvidenceLog.write
+
+        def write(log: EvidenceLog, label: str, value: Any = "") -> None:
+            if label == "TEST CASE AND UNIT":
+                raise OSError("initial header lost")
+            original_write(log, label, value)
+
+        with mock.patch.object(EvidenceLog, "write", write):
+            result: RunResult = self.execute()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("ERROR", result.outcomes[target.SETUP])
+        self.assertEqual([], self.gateway.calls)
+        self.assertIn("initial header lost", self.evidence)
+        self.assertIn("OVERALL VERDICT: ERROR", self.evidence)
+
+    def test_terminal_verdict_output_failure_is_error_in_final_evidence(self) -> None:
+        self.gateway.bad_redirect = True
+
+        def output(message: str) -> None:
+            if message.startswith("Overall verdict:"):
+                raise BrokenPipeError("verdict output lost")
+            self.output.append(message)
+
+        result: RunResult = target.execute_test_5_5_5_2_a(
+            self.root, self.gateway.session, now=lambda: NOW, output=output,
+        )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[AuthMech.LAN_WEBUI_DEFAULT])
+        evidence: str = next((self.root / "logs").glob("*.log")).read_text(encoding="utf-8")
+        self.assertIn("verdict output lost", evidence)
+        self.assertIn("OVERALL VERDICT: ERROR", evidence)
+        self.assertEqual([], self.config_writes())
+
+    def test_evidence_creation_failure_returns_error_without_dut_activity(self) -> None:
+        with mock.patch.object(EvidenceLog, "create", side_effect=OSError("cannot create log")):
+            result: RunResult = self.execute_without_log()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("ERROR", result.outcomes[target.SETUP])
+        self.assertEqual([], self.gateway.calls)
+        self.assertEqual("Overall verdict: ERROR", self.output[-1])
+
+    def execute_without_log(self) -> RunResult:
+        return target.execute_test_5_5_5_2_a(
+            self.root, self.gateway.session, now=lambda: NOW, output=self.output.append,
+        )
+
     def test_direct_progress_callback_failure_cannot_skip_restoration(self) -> None:
         log: EvidenceLog = EvidenceLog.create(self.root / "direct", "progress", lambda: NOW)
         self.addCleanup(log.finish, "ERROR", lambda: NOW)

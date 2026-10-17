@@ -84,6 +84,7 @@ class RecoveryEvidence(EvidenceLog):
         self.started_at: datetime = delegate.started_at
         self.recovering: bool = False
         self.failed: bool = False
+        self.finished: bool = False
 
     def report(self, action: Callable[[], None]) -> None:
         try:
@@ -109,7 +110,11 @@ class RecoveryEvidence(EvidenceLog):
         self.report(lambda: self.delegate.exception(error))
 
     def finish(self, verdict: str, now: Callable[[], datetime] = utc_now) -> None:
-        self.report(lambda: self.delegate.finish(verdict, now))
+        def finalize() -> None:
+            self.delegate.finish(verdict, now)
+            self.finished = True
+
+        self.report(finalize)
 
 
 class FunctionalTest_5_5_5_2_a:
@@ -488,9 +493,17 @@ def execute_test_5_5_5_2_a(
     ecc_generate: Callable[..., ECC.EccKey] = ECC.generate, output: Callable[[str], None] = print,
 ) -> RunResult:
     work_dir = Path.cwd() if work_dir is None else work_dir
-    log: RecoveryEvidence = RecoveryEvidence(EvidenceLog.create(work_dir / "logs", "test_5_5_5_2_a", now))
-    output(f"Open log file: {log.path}")
-
+    log: RecoveryEvidence
+    try:
+        log = RecoveryEvidence(EvidenceLog.create(work_dir / "logs", "test_5_5_5_2_a", now))
+    except Exception as error:  # noqa: BLE001 - No DUT activity is safe without an evidence log.
+        error: Exception
+        try:
+            output(f"Setup ERROR: {type(error).__name__}; evidence log unavailable")
+            output("Overall verdict: ERROR")
+        except Exception:  # noqa: BLE001, S110 - No stream exists; terminal reporting is best effort.
+            pass
+        return RunResult(2, "ERROR", {name: "ERROR" if name == SETUP else "NOT RUN" for name in CHECKS}, set())
     output_failed: bool = False
 
     def report(message: str) -> None:
@@ -505,9 +518,10 @@ def execute_test_5_5_5_2_a(
 
     progress: ProgressReporter = ProgressReporter(report, TOTAL_STEPS)
     result: RunResult = RunResult(2, "ERROR", {name: "NOT RUN" for name in CHECKS}, set())
-    log.write("TEST CASE AND UNIT", TEST_ID)
-    log.write("UTC START", format_utc(log.started_at))
     try:
+        output(f"Open log file: {log.path}")
+        log.write("TEST CASE AND UNIT", TEST_ID)
+        log.write("UTC START", format_utc(log.started_at))
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(work_dir / ".env")
         log.write("DUT IDENTITY", config)
@@ -518,16 +532,40 @@ def execute_test_5_5_5_2_a(
         error: Exception
         log.recovering = True
         log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
-        report(f"Setup ERROR: {type(error).__name__}; see evidence log")
         result.outcomes[SETUP] = "ERROR"
+        try:
+            report(f"Setup ERROR: {type(error).__name__}; see evidence log")
+        except Exception as reporting_error:  # Finalization must survive a broken output callback.
+            reporting_error: Exception
+            log.exception(reporting_error)  # noqa: TRY401 - EvidenceLog requires the exception object.
     finally:
         log.recovering = True
         if result.recovery_message is not None:
-            report(result.recovery_message)
+            try:
+                report(result.recovery_message)
+            except Exception as reporting_error:  # Advice must not skip outcomes or finalization.
+                log.exception(reporting_error)  # noqa: TRY401 - EvidenceLog requires the exception object.
         log.write("ALL CHECK OUTCOMES", result.outcomes)
+        if output_failed or log.failed:
+            result.exit_code, result.verdict = 2, "ERROR"
+        if not output_failed:
+            try:
+                output(f"Overall verdict: {result.verdict}")
+            except Exception as reporting_error:  # Preserve outcomes and finalize after terminal failure.
+                output_failed = True
+                log.exception(reporting_error)  # noqa: TRY401 - EvidenceLog requires the exception object.
+                result.exit_code, result.verdict = 2, "ERROR"
         log.finish(result.verdict, now)
-    if not output_failed:
-        output(f"Overall verdict: {result.verdict}")
+        if log.failed:
+            result.exit_code, result.verdict = 2, "ERROR"
+            # A transient finish failure may still permit an ERROR footer and stream closure.
+            if not log.finished:
+                log.finish("ERROR", now)
+            if not output_failed:
+                try:
+                    output("Overall verdict: ERROR (evidence finalization failed)")
+                except Exception:  # noqa: BLE001, S110 - Both reporting channels failed; preserve the ERROR result.
+                    pass
     return result
 
 
