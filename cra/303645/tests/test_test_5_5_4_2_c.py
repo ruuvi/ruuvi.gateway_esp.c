@@ -8,6 +8,7 @@ import io
 import json
 import tempfile
 import unittest
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
@@ -74,6 +75,7 @@ class EncryptedGateway(DefaultAuthGateway):
         self.baseline_unstable: bool = False
         self.corrupt_login: bool = False
         self.restore_error: bool = False
+        self.restore_reply_lost: bool = False
         self.mutation_status: int = 200
 
     def session(self) -> requests.Session:
@@ -82,7 +84,7 @@ class EncryptedGateway(DefaultAuthGateway):
         return session
 
     def response_for(
-        self, session: FakeSession, method: str, path: str, headers: dict[str, str],
+        self, session: FakeSession, method: str, path: str, headers: Mapping[str, str],
         body: Any, allow_redirects: bool = False,
     ) -> FakeResponse:
         if (path == GatewayApi.AUTH and method == HttpMethod.GET
@@ -133,6 +135,8 @@ class EncryptedGateway(DefaultAuthGateway):
                 if self.restore_attempts < self.restore_from_attempt:
                     return FakeResponse(400, {})
                 self.state.update(self.pending_body)
+                if self.restore_reply_lost:
+                    raise requests.Timeout("restoration applied, response lost")
             return FakeResponse(200, {})
         return None
 
@@ -160,7 +164,6 @@ class EncryptedSession(FakeSession):
         if len(gateway.prepared) + 1 == gateway.leak_at:
             if gateway.leak_location == "url":
                 request.params = {"leaked": CONFIG.gw_id}
-                # A literal URL occurrence is injected after preparation below.
             elif gateway.leak_location == "body":
                 request.json = {"leaked": CONFIG.gw_id}
             else:
@@ -168,8 +171,6 @@ class EncryptedSession(FakeSession):
         if gateway.corrupt_login and request.method == "POST" and request.url.endswith("/auth"):
             request.json = {"login": "Admin", "password": "0" * 64}
         prepared: requests.PreparedRequest = super().prepare_request(request)
-        if len(gateway.prepared) + 1 == gateway.leak_at and gateway.leak_location == "url":
-            prepared.url = f"{prepared.url}&literal={CONFIG.gw_id}"
         return prepared
 
     def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
@@ -216,7 +217,7 @@ class UnitCImplementationTests(unittest.TestCase):
         self.assertEqual([("none", 1, False)] * 8,
                          [(call.scheme, call.session_number, call.allow_redirects) for call in self.gateway.calls])
         self.assertEqual([None] + ["RUUVISESSION=session-1"] * 7, [call.cookie for call in self.gateway.calls])
-        self.assertEqual(["http"] * 8, [urlsplit(request.url).scheme for request in self.gateway.prepared])
+        self.assertEqual(["http"] * 8, [urlsplit(request.url or "").scheme for request in self.gateway.prepared])
         self.assertEqual(CLIENT_PUBLIC, self.gateway.prepared[0].headers[HttpHeader.RUUVI_ECDH_PUBLIC_KEY])
         self.assertEqual("true", self.gateway.prepared[4].headers[HttpHeader.RUUVI_ECDH_ENCRYPTED])
         self.assertEqual(self.gateway.original, self.gateway.state)
@@ -377,6 +378,31 @@ class UnitCImplementationTests(unittest.TestCase):
         self.assertEqual(2, len(self.gateway.sessions))
         self.assertEqual(self.gateway.original, self.gateway.state)
 
+    def test_mixed_case_hostname_uses_prepared_url_for_login(self) -> None:
+        config: DutConfig = DutConfig(CONFIG.gw_id, CONFIG.gw_mac, "Gateway.LOCAL")
+        (self.work_dir / ".env").write_text(env_text(config), encoding="utf-8")
+        result: RunResult = self.execute()
+        self.assertEqual((0, "PASS"), (result.exit_code, result.outcomes[runner.LOGIN]))
+        self.assertEqual("PASS", result.outcomes[runner.ENVELOPE])
+        self.assertEqual("http://gateway.local/auth", self.gateway.prepared[1].url)
+
+    def test_applied_restoration_lost_reply_is_verified_before_retry(self) -> None:
+        attempt: int
+        for attempt in (1, 2, 3):
+            with self.subTest(attempt=attempt):
+                self.gateway = EncryptedGateway()
+                self.gateway.restore_from_attempt = attempt
+                self.gateway.restore_reply_lost = True
+                result: RunResult = self.execute()
+                self.assertEqual((0, "PASS"), (result.exit_code, result.outcomes[runner.RESTORE]))
+                self.assertEqual(attempt, self.gateway.restore_attempts)
+                self.assertEqual(self.gateway.original, self.gateway.state)
+                self.assertEqual(("GET", "/ruuvi.json"),
+                                 (self.gateway.calls[-1].method, self.gateway.calls[-1].path))
+                self.assertEqual(1 if attempt == 1 else 2, len(self.gateway.sessions))
+                self.assertIsNone(result.recovery_message)
+                self.assertIn("restoration applied, response lost", self.log)
+
     def test_failed_restore_and_unrelated_side_effect_preserve_earlier_fail(self) -> None:
         side_effect: bool
         for side_effect in (True, False):
@@ -406,6 +432,9 @@ class UnitCImplementationTests(unittest.TestCase):
                 self.assertEqual("FAIL", result.outcomes[runner.PLAINTEXT])
                 self.assertEqual("PASS", result.outcomes[runner.RESTORE])
                 self.assertNotIn(CONFIG.gw_id, "\n".join(self.output))
+                if location == "url":
+                    self.assertNotIn(CONFIG.gw_id, self.gateway.prepared[-1].url or "")
+                    self.assertIn("00%3A11%3A22%3A33%3A44%3A55%3A66%3A77", self.gateway.prepared[-1].url or "")
 
     def test_corrupt_login_response_is_rejected_by_independent_fake(self) -> None:
         self.gateway.corrupt_login = True
@@ -416,15 +445,15 @@ class UnitCImplementationTests(unittest.TestCase):
                          [(call.method, call.path) for call in self.gateway.calls])
         self.assertFalse(self.gateway.sessions[0].authorized)
 
-    def test_prior_envelope_fail_survives_recovery_transport_error(self) -> None:
+    def test_prior_envelope_fail_survives_recovery_write_error_with_baseline_verified(self) -> None:
         self.gateway.reject_mutation = True
         self.gateway.restore_error = True
         result: RunResult = self.execute()
-        self.assertEqual(2, result.exit_code)
+        self.assertEqual(1, result.exit_code)
         self.assertEqual("FAIL", result.outcomes[runner.ENVELOPE])
-        self.assertEqual("ERROR", result.outcomes[runner.RESTORE])
+        self.assertEqual("PASS", result.outcomes[runner.RESTORE])
         self.assertEqual("PASS", result.outcomes[runner.LOGIN])
-        self.assertEqual(3, self.gateway.restore_attempts)
+        self.assertEqual(1, self.gateway.restore_attempts)
         self.assertIn('"mechanism": "AES-CBC envelope acceptance and effect", "result": "FAIL"', self.log)
         self.assertIn("EXCEPTION TYPE: GatewayConnectionError", self.log)
 

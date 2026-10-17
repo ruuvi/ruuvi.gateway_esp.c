@@ -10,6 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import unquote
 
 import requests
 from Crypto.PublicKey import ECC
@@ -191,7 +192,8 @@ class FunctionalTest_5_5_4_2_c:
             raise GatewayProtocolError("authentication calculation unavailable")
         self.evidence.write("AUTH CALCULATION INPUTS AND OUTPUTS", auth.calculation)
         request: CapturedRequest = self.gateway.captured_requests[1]
-        self._require(request.method == HttpMethod.POST and request.url == f"{self.config.base_url}{GatewayApi.AUTH}"
+        expected_url: str | None = requests.Request(HttpMethod.POST, f"{self.config.base_url}{GatewayApi.AUTH}").prepare().url
+        self._require(request.method == HttpMethod.POST and request.url == expected_url
                       and request.body is not None and json.loads(request.body)
                       == {"login": "Admin", "password": auth.calculation.response},
                       "captured POST /auth must contain only Admin and the calculated response")
@@ -237,16 +239,20 @@ class FunctionalTest_5_5_4_2_c:
                     if candidate == 1:
                         auth = self._login()
                     body: dict[str, str] = {GatewayCfgDesc.COORDINATES: baseline[GatewayCfgDesc.COORDINATES]}
-                    if candidate < 2:
-                        envelope: EncryptedJsonEnvelope = self.gateway.build_encrypted_json(
-                            auth.aes_key, body, self.iv_generate,
-                        )
-                        response: requests.Response = self.gateway.post_encrypted_json(
-                            auth.session, GatewayApi.CONFIG, envelope,
-                        )
-                    else:
-                        response = self.gateway.request(auth.session, HttpMethod.POST, GatewayApi.CONFIG, json_body=body)
-                    self.evidence.write("RESTORATION HTTP STATUS", response.status_code)
+                    try:
+                        if candidate < 2:
+                            envelope: EncryptedJsonEnvelope = self.gateway.build_encrypted_json(
+                                auth.aes_key, body, self.iv_generate,
+                            )
+                            response: requests.Response = self.gateway.post_encrypted_json(
+                                auth.session, GatewayApi.CONFIG, envelope,
+                            )
+                        else:
+                            response = self.gateway.request(auth.session, HttpMethod.POST, GatewayApi.CONFIG, json_body=body)
+                        self.evidence.write("RESTORATION HTTP STATUS", response.status_code)
+                    except Exception as error:  # noqa: BLE001 - A lost write reply must not skip recovery read-back.
+                        self.evidence.exception(error)
+                        self._say(f"Restoration write {candidate + 1}: {type(error).__name__}; verifying read-back")
                     # A response can be lost/rejected after application: always read back.
                 final: dict[str, Any] = self._read(auth)
                 if candidate < 2 and config_hash(final) != config_hash(baseline):
@@ -274,7 +280,8 @@ class FunctionalTest_5_5_4_2_c:
             raise GatewayProtocolError("a streaming request could not be captured")
         header_text: str = "\n".join(f"{name}: {value}" for name, value in request.headers)
         self._require(self.config.gw_id.encode() not in request.body
-                      and self.config.gw_id not in request.url and self.config.gw_id not in header_text,
+                      and self.config.gw_id not in request.url and self.config.gw_id not in unquote(request.url)
+                      and self.config.gw_id not in header_text,
                       "plaintext admin password must be absent from every captured URL, header, and body")
         self.active = previous
 
