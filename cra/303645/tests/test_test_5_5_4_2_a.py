@@ -7,10 +7,11 @@ import hashlib
 import json
 import tempfile
 import unittest
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 from unittest.mock import patch
 
 import requests
@@ -106,7 +107,7 @@ class DenialGateway(DefaultAuthGateway):
         return FakeResponse(response.status_code, json.loads(json.dumps(payload)))
 
     def _auth_response(
-        self, session: FakeSession, method: str, headers: dict[str, str], body: Any,
+        self, session: FakeSession, method: str, headers: Mapping[str, str], body: Any,
     ) -> FakeResponse:
         response: FakeResponse = super()._auth_response(session, method, headers, body)
         if method == HttpMethod.GET and self.auth_edit is not None:
@@ -116,7 +117,7 @@ class DenialGateway(DefaultAuthGateway):
                                 response.headers, response.cookies.get_dict())
         return response
 
-    def _unauthorized_response(self, method: str, path: str, headers: dict[str, str]) -> FakeResponse:
+    def _unauthorized_response(self, method: str, path: str, headers: Mapping[str, str]) -> FakeResponse:
         response: FakeResponse = super()._unauthorized_response(method, path, headers)
         if response.status_code == 302:
             response.headers[HttpHeader.LOCATION] = "http://gateway.local/#auth"
@@ -507,6 +508,106 @@ class DenialRunnerTests(unittest.TestCase):
                 result: RunResult = self.execute()
                 self.assertEqual((result.exit_code, result.outcomes[runner.UNAUTHENTICATED]), (1, "FAIL"))
                 self.assertEqual(self.gateway.config_bodies, [])
+
+    def test_auth_redirect_authority_is_bound_to_verified_gateway(self) -> None:
+        location: str
+        accepted: bool
+        for location, accepted in (
+            ("/#auth", True), ("http://gateway.local:80/#auth", True),
+            ("//gateway.local/#auth", True), ("http://RuuviGatewayEEFF.local/#auth", True),
+            ("http://ruuvigatewayeeff/#auth", True),
+            ("http://unrelated.example/#auth", False), ("//unrelated.example/#auth", False),
+            ("http://gateway.local:81/#auth", False), ("http://gateway.local:0/#auth", False),
+            ("http://other@gateway.local/#auth", False), ("http://gateway.local:bad/#auth", False),
+            ("http://ruuvigateway0000.local/#auth", False), ("http:/#auth", False),
+        ):
+            with self.subTest(location=location):
+                self.gateway = DenialGateway()
+                self.gateway.faults = [Fault(FakeRequestKey("none", "GET", "/ruuvi.json"), 3,
+                                            FakeResponse(302, headers={"Location": location}))]
+                result: RunResult = self.execute()
+                self.assertEqual(result.exit_code, 0 if accepted else 1)
+                if not accepted:
+                    self.assertEqual(self.gateway.config_bodies, [])
+
+    def test_ip_target_accepts_only_its_mac_derived_canonical_alias(self) -> None:
+        config: DutConfig = DutConfig(CONFIG.gw_id, CONFIG.gw_mac, "192.0.2.7")
+        (self.work / ".env").write_text(env_text(config), encoding="utf-8")
+        location: str
+        accepted: bool
+        for location, accepted in (("http://192.0.2.7/#auth", True),
+                                   ("http://RuuviGatewayEEFF.local/#auth", True),
+                                   ("http://192.0.2.8/#auth", False)):
+            with self.subTest(location=location):
+                self.gateway = DenialGateway()
+                self.gateway.faults = [Fault(FakeRequestKey("none", "GET", "/ruuvi.json"), 3,
+                                            FakeResponse(302, headers={"Location": location}))]
+                self.assertEqual(self.execute().exit_code, 0 if accepted else 1)
+
+    def test_reporting_failures_do_not_skip_key_removal_or_retry(self) -> None:
+        checkpoint: str
+        for checkpoint in ("progress", "attempt", "exception", "say"):
+            with self.subTest(checkpoint=checkpoint):
+                self.check_reporting_failure(checkpoint)
+
+    def test_cleanup_reporting_error_preserves_prior_security_failure(self) -> None:
+        self.check_reporting_failure("attempt", security_failure=True)
+
+    def check_reporting_failure(self, checkpoint: str, *, security_failure: bool = False) -> None:
+        self.gateway = DenialGateway()
+        original_write: Callable[[runner.EvidenceLog, str, Any], None] = cast(
+            "Callable[[runner.EvidenceLog, str, Any], None]", runner.EvidenceLog.write,
+        )
+        original_exception: Callable[[runner.EvidenceLog, BaseException], None] = cast(
+            "Callable[[runner.EvidenceLog, BaseException], None]", runner.EvidenceLog.exception,
+        )
+        original_say: Callable[[runner.FunctionalTest_5_5_4_2_a, str], None] = cast(
+            "Callable[[runner.FunctionalTest_5_5_4_2_a, str], None]", runner.FunctionalTest_5_5_4_2_a._say,
+        )
+        original_progress: Callable[[runner.ProgressReporter, str], None] = cast(
+            "Callable[[runner.ProgressReporter, str], None]", runner.ProgressReporter.step,
+        )
+        failures: list[str] = []
+
+        def fail_once(label: str) -> None:
+            if label == checkpoint and not failures:
+                failures.append(label)
+                raise OSError("injected reporting failure")
+
+        def write(log: runner.EvidenceLog, label: str, data: Any = "") -> None:
+            if label == "KEY RESTORATION ATTEMPT":
+                fail_once("attempt")
+            original_write(log, label, data)
+
+        def report_exception(log: runner.EvidenceLog, error: BaseException) -> None:
+            fail_once("exception")
+            original_exception(log, error)
+
+        def say(test: runner.FunctionalTest_5_5_4_2_a, message: str) -> None:
+            if message.startswith("Restoration attempt"):
+                fail_once("say")
+            original_say(test, message)
+
+        def progress(reporter: runner.ProgressReporter, message: str) -> None:
+            if message.startswith("Restoring keys"):
+                fail_once("progress")
+            original_progress(reporter, message)
+
+        self.fault("none", "POST", "/ruuvi.json", 401, 3)
+        if security_failure:
+            self.fault("Bearer", "POST", "/ruuvi.json", 200)
+        with patch.object(runner.EvidenceLog, "write", write), patch.object(
+            runner.EvidenceLog, "exception", report_exception,
+        ), patch.object(runner.FunctionalTest_5_5_4_2_a, "_say", say), patch.object(
+            runner.ProgressReporter, "step", progress,
+        ):
+            result: RunResult = self.execute()
+        self.assertEqual(failures, [checkpoint])
+        self.assertEqual((result.exit_code, result.outcomes[runner.FINAL]), (2, "ERROR"))
+        self.assertEqual(len([call for call in self.gateway.calls if call.body == CLEAR_BODY]), 2)
+        self.assert_keys_cleared()
+        if security_failure:
+            self.assertEqual(result.outcomes[runner.INSUFFICIENT], "FAIL")
 
     def test_timeout_connection_and_malformed_baseline_are_errors(self) -> None:
         fault: Fault

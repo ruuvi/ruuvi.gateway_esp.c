@@ -608,3 +608,15 @@ actionable findings and recheck; report unavailable or timed-out inspections as 
 with `git diff --check` and a clean whole-subtree Ruff run. Guidance-only changes require Ruff, IDE
 inspection, and path/command checks, not rerunning unchanged Python suites. Keep local `.env`, logs,
 backups, manifests, and coverage output out of commits.
+
+### Review safeguards
+
+The auth-entry redirect accepts relative `/#auth` or HTTP absolute/scheme-relative URLs only
+for the configured DUT host or its identity-derived `RuuviGateway<last-four-nRF52-MAC-hex>`
+hostname (with optional `.local`), on the configured HTTP port. This permits IP-addressed
+runs to recognize the canonical alias without trusting arbitrary hostnames or other gateways.
+User information, other ports, query strings and other destinations fail the assertion.
+
+Progress, restoration-attempt evidence and recovery-error reporting are best effort during
+cleanup: a reporting exception cannot skip key removal, its retry, or independent final checks.
+Any such reporting failure prevents PASS and produces overall ERROR, retaining earlier FAILs.

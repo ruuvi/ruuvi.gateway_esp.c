@@ -8,6 +8,7 @@ import secrets
 import sys
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import SplitResult, urlsplit
@@ -95,6 +96,7 @@ class FunctionalTest_5_5_4_2_a:
         self.ro_key: str = ""
         self.rw_key: str = ""
         self.recovery_message: str | None = None
+        self.reporting_failed: bool = False
 
     def _say(self, message: str) -> None:
         self.output(message)
@@ -203,6 +205,30 @@ class FunctionalTest_5_5_4_2_a:
         self._require(type(mode) is str and mode == GatewayCfgLanAuthType.DEFAULT,
                       "denied GET /auth must report default interactive authentication", mode)
 
+    def _auth_location_valid(self, value: str) -> bool:
+        try:
+            location: SplitResult = urlsplit(value)
+            target: SplitResult = urlsplit(self.config.base_url)
+            # generate_hostname() derives this alias from the verified nRF52 identity MAC.
+            canonical: str = f"ruuvigateway{self.config.gw_mac.replace(':', '')[-4:]}".lower()
+            trusted: set[str | None] = {target.hostname, canonical, f"{canonical}.local"}
+            authority_valid: bool = not location.netloc or (
+                location.hostname in trusted and (80 if location.port is None else location.port) == (target.port or 80)
+                and location.username is None and location.password is None
+            )
+            return (location.path == "/" and location.fragment == "auth" and not location.query
+                    and location.scheme in ("", "http") and authority_valid
+                    and (not location.scheme or bool(location.netloc)))
+        except ValueError:
+            return False
+
+    def _report(self, callback: Callable[[], None]) -> None:
+        """Reporting must never interrupt recovery; incomplete evidence remains an ERROR."""
+        try:
+            callback()
+        except Exception:  # noqa: BLE001 - Reporting failure must not prevent key removal or its retry.
+            self.reporting_failed = True
+
     def _missing_reads(self) -> None:
         self.active = UNAUTHENTICATED
         self.progress("Checking unauthenticated reads and session denial")
@@ -210,9 +236,8 @@ class FunctionalTest_5_5_4_2_a:
         for path in (GatewayApi.CONFIG, GatewayApi.HISTORY, GatewayApi.STATUS):
             response: requests.Response = self._probe(HttpMethod.GET, path, HttpStatus.C_302_FOUND)
             if path == GatewayApi.CONFIG:
-                location: SplitResult = urlsplit(response.headers.get(HttpHeader.LOCATION, ""))
-                self._require(location.path == "/" and location.fragment == "auth" and not location.query
-                              and location.scheme in ("", "http"), "302 Location must point to /#auth")
+                self._require(self._auth_location_valid(response.headers.get(HttpHeader.LOCATION, "")),
+                              "302 Location must point to the gateway /#auth entry point")
             if path == GatewayApi.STATUS:
                 self._require("RUUVI_PREV_URL" not in response.cookies
                               and "RUUVI_PREV_URL=" not in response.headers.get("Set-Cookie", ""),
@@ -327,7 +352,7 @@ class FunctionalTest_5_5_4_2_a:
     def _restore_keys(self) -> None:
         attempt: int
         for attempt in (1, 2):
-            self.evidence.write("KEY RESTORATION ATTEMPT", attempt)
+            self._report(partial(self.evidence.write, "KEY RESTORATION ATTEMPT", attempt))
             try:
                 auth: InteractiveAuthResult = self._login()
                 response: requests.Response = self.gateway.request(
@@ -339,27 +364,27 @@ class FunctionalTest_5_5_4_2_a:
                 return
             except Exception as error:  # Retry recovery even after a partially applied write.
                 error: Exception
-                self.evidence.exception(error)
-                self._say(f"Restoration attempt {attempt}: {type(error).__name__}; see evidence")
+                self._report(partial(self.evidence.exception, error))
+                self._report(partial(self._say, f"Restoration attempt {attempt}: {type(error).__name__}; see evidence"))
                 if attempt == 2:
                     raise
 
     def _finalize(self, baseline: dict[str, Any]) -> bool:
         self.active = FINAL
-        self.progress("Restoring keys and verifying complete configuration and token revocation")
+        self._report(lambda: self.progress("Restoring keys and verifying complete configuration and token revocation"))
         failed: bool = False
         error: Exception
         if self.mutation_possible:
             try:
                 self._restore_keys()
             except Exception as error:  # noqa: BLE001 - Still try independent final reads and revocation checks.
-                self.evidence.exception(error)
+                self._report(partial(self.evidence.exception, error))
                 failed = True
         try:
             auth: InteractiveAuthResult = self._login()
             self._compare_config(self._read_config(auth.session), baseline)
         except Exception as error:  # noqa: BLE001 - Preserve proven FAIL and continue independent revocation checks.
-            self.evidence.exception(error)
+            self._report(partial(self.evidence.exception, error))
             failed = True
         if self.mutation_possible:
             key: str
@@ -368,9 +393,9 @@ class FunctionalTest_5_5_4_2_a:
                     self._probe(HttpMethod.GET, GatewayApi.HISTORY, HttpStatus.C_401_UNAUTHORIZED,
                                 f"{HttpAuthScheme.BEARER} {key}")
                 except Exception as error:  # noqa: BLE001 - Verify both saved candidates even when one fails.
-                    self.evidence.exception(error)
+                    self._report(partial(self.evidence.exception, error))
                     failed = True
-        if failed:
+        if failed or self.reporting_failed:
             if self.outcomes[FINAL] != "FAIL":
                 self.outcomes[FINAL] = "ERROR"
             self.recovery_message = (
@@ -379,7 +404,7 @@ class FunctionalTest_5_5_4_2_a:
             )
         else:
             self.outcomes[FINAL] = "PASS"
-        return not failed
+        return not (failed or self.reporting_failed)
 
     def run(self) -> RunResult:
         verdict: str = "ERROR"
@@ -398,13 +423,13 @@ class FunctionalTest_5_5_4_2_a:
             verdict = "PASS"
         except SecurityFailure as error:
             error: Exception
-            self.evidence.exception(error)
+            self._report(partial(self.evidence.exception, error))
             verdict = "FAIL"
         except Exception as error:  # noqa: BLE001 - Convert unexpected failures to ERROR and always recover.
-            self.evidence.exception(error)
+            self._report(partial(self.evidence.exception, error))
             if self.outcomes[self.active] != "FAIL":
                 self.outcomes[self.active] = "ERROR"
-            self._say(f"{self.active}: ERROR — {type(error).__name__}; see evidence for details")
+            self._report(partial(self._say, f"{self.active}: ERROR — {type(error).__name__}; see evidence for details"))
         finally:
             if self.baseline is not None and not self._finalize(self.baseline):
                 verdict = "ERROR"
@@ -413,8 +438,10 @@ class FunctionalTest_5_5_4_2_a:
         check: str
         outcome: str
         for check, outcome in self.outcomes.items():
-            self.evidence.write("FINAL RESULT", MechanismResultEvidence(check, outcome))
-            self._say(f"{check}: {outcome}")
+            self._report(partial(self.evidence.write, "FINAL RESULT", MechanismResultEvidence(check, outcome)))
+            self._report(partial(self._say, f"{check}: {outcome}"))
+        if self.reporting_failed:
+            verdict = "ERROR"
         return RunResult(0 if verdict == "PASS" else 1 if verdict == "FAIL" else 2,
                          verdict, dict(self.outcomes), set(self.coverage), self.recovery_message)
 
