@@ -220,12 +220,28 @@ class IdentificationTests(unittest.TestCase):
             "\x1b[0;32mI (961) cpu_start: ESP-IDF:          V4.2.5\x1b[0m\r\n",
         ).normalized_version)
         for raw in ("noise", "application ESP-IDF v4.2.5", "ESP-IDF v4.2.5junk 2nd stage bootloader",
-                    "I (42) boot: ESP-IDF v4.2.5 2nd stage bootloader\n",
-                    "I (961) cpu_start: ESP-IDF: v4.2.5junk\n"):
+                    "I (42) boot: ESP-IDF v4.2.5 2nd stage bootloader\n"):
             with self.subTest(raw=raw), self.assertRaises(InvalidSetup):
                 target.extract_boot_banner(raw)
         with self.assertRaises(target.GatewayProtocolError):
             target.extract_boot_banner(f"{BANNER}\nI (962) cpu_start: ESP-IDF: v4.2.4\n")
+
+    def test_complete_malformed_framework_record_is_not_discarded(self) -> None:
+        raw: str
+        console: str
+        for raw in ("v4.2.5junk", "", "v4.2", "v4.2.5/invalid"):
+            malformed: str = f"I (962) cpu_start: ESP-IDF: {raw}\n"
+            for console in (malformed, BANNER + malformed, malformed + BANNER):
+                with self.subTest(raw=raw, console=console):
+                    with self.assertRaisesRegex(target.GatewayProtocolError, "invalid semantic version"):
+                        target.extract_boot_banner(console)
+                    self.gateway = StatusGateway()
+                    self.serial.capture.side_effect = None
+                    self.serial.capture.return_value = console
+                    result: RunResult = self.runner().run()
+                    self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                    self.assertEqual("ERROR", result.outcomes[target.FRAMEWORK])
+                    self.assertEqual([], self.release_calls)
 
     def test_unterminated_framework_record_is_acquisition_error(self) -> None:
         suffix: str
