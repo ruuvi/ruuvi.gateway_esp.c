@@ -10,7 +10,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import SplitResult, urljoin, urlsplit
 
 import requests
 from Crypto.PublicKey import ECC
@@ -171,8 +171,15 @@ class FunctionalTest_5_5_5_2_a:
         if GatewayCfgDesc.GW_MAC in payload:
             self._require(isinstance(mac, str) and OCTETS_6_RE.fullmatch(mac) is not None
                           and mac.upper() == self.config.gw_mac.upper(), "DUT MAC must match .env", setup=True)
-        defaults: dict[str, Any] = default_config_values((*AUTHENTICATION_DEFAULT_FIELDS, GatewayCfgDesc.COORDINATES))
+        defaults: dict[str, Any] = default_config_values((
+            *AUTHENTICATION_DEFAULT_FIELDS, GatewayCfgDesc.COORDINATES,
+            GatewayCfgDesc.MQTT_DATA_FORMAT, GatewayCfgDesc.MQTT_PREFIX, GatewayCfgDesc.MQTT_CLIENT_ID,
+        ))
+        # gw_cfg_default_init() substitutes the nRF52 MAC into these generated defaults.
+        # Partial POSTs reset all three omitted MQTT fields, even with use_mqtt disabled.
         name: str
+        for name in (GatewayCfgDesc.MQTT_PREFIX, GatewayCfgDesc.MQTT_CLIENT_ID):
+            defaults[name] = defaults[name].replace("00:00:00:00:00:00", self.config.gw_mac.upper())
         value: Any
         for name, value in defaults.items():
             actual: Any = payload.get(name)
@@ -231,8 +238,19 @@ class FunctionalTest_5_5_5_2_a:
         self._require(response.status_code == HttpStatus.C_302_FOUND, "Unauthenticated config GET must return 302")
         location: str = response.headers.get(HttpHeader.LOCATION, "")
         destination: str = urljoin(self.config.base_url, location)
-        self._require(bool(location) and urlsplit(destination).path == "/" and urlsplit(destination).fragment == "auth"
-                      and urlsplit(destination).query == "", "Unauthenticated GET must redirect to /#auth")
+        target: SplitResult = urlsplit(destination)
+        origin: SplitResult = urlsplit(self.config.base_url)
+        target_port: int | None = target.port
+        origin_port: int | None = origin.port
+        if target_port is None:
+            target_port = 80
+        if origin_port is None:
+            origin_port = 80
+        self._require(bool(location) and target.path == "/" and target.fragment == "auth"
+                      and target.query == "" and target.scheme == origin.scheme
+                      and target.hostname == origin.hostname and target_port == origin_port
+                      and target.username is None and target.password is None,
+                      "Unauthenticated GET must redirect to /#auth on the configured DUT HTTP origin")
         response = self._request(HttpMethod.GET, GatewayApi.AUTH)
         self._require(response.status_code == HttpStatus.C_401_UNAUTHORIZED, "Unauthenticated GET /auth must return 401")
         self.gateway.parse_interactive_challenge(response.headers.get(HttpHeader.WWW_AUTHENTICATE, ""))

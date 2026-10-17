@@ -7,6 +7,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -67,6 +68,10 @@ class ConfigGateway(DefaultAuthGateway):
         self.commit_side_effect: bool = False
         self.partial_keys: bool = False
         self.bad_redirect: bool = False
+        self.redirect_location: str = "http://gateway.local/#auth"
+        self.mqtt_data_format: str = "ruuvi_raw"
+        self.mqtt_prefix: str = "ruuvi/AA:BB:CC:DD:EE:FF/"
+        self.mqtt_client_id: str = "AA:BB:CC:DD:EE:FF"
         self.bypass_get: bool = False
         self.reject_login: bool = False
         self.restore_started: bool = False
@@ -78,6 +83,8 @@ class ConfigGateway(DefaultAuthGateway):
             "lan_auth_type": self.mode, "lan_auth_user": "Admin",
             "lan_auth_api_key_use": bool(self.ro_key), "lan_auth_api_key_rw_use": bool(self.rw_key),
             "coordinates": self.coordinates, "gw_mac": CONFIG.gw_mac,
+            "mqtt_data_format": self.mqtt_data_format, "mqtt_prefix": self.mqtt_prefix,
+            "mqtt_client_id": self.mqtt_client_id,
             "fw_ver": "test-fw", "nrf52_fw_ver": "test-nrf", "stable": self.stable,
         }))
 
@@ -96,6 +103,10 @@ class ConfigGateway(DefaultAuthGateway):
     def _apply_config(self, body: dict[str, str]) -> None:
         super()._apply_config(body)
         self.coordinates = body.get("coordinates", self.coordinates)
+        # Independent model of gw_cfg_json_parse_mqtt(): missing fields reset on every POST.
+        self.mqtt_data_format = body.get("mqtt_data_format", "ruuvi_raw")
+        self.mqtt_prefix = body.get("mqtt_prefix") or "ruuvi/AA:BB:CC:DD:EE:FF/"
+        self.mqtt_client_id = body.get("mqtt_client_id") or "AA:BB:CC:DD:EE:FF"
         if body == KEYS_BODY and self.provision_side_effect:
             self.stable = "collateral provisioning"
         if body == RW_BODY and self.commit_side_effect:
@@ -121,10 +132,10 @@ class ConfigGateway(DefaultAuthGateway):
             return FakeResponse(401, {"authenticated": False})
         return None
 
-    def _unauthorized_response(self, method: str, path: str, headers: dict[str, str]) -> FakeResponse:
+    def _unauthorized_response(self, method: str, path: str, headers: Mapping[str, str]) -> FakeResponse:
         if method == "GET" and path == "/ruuvi.json" and not headers.get("Authorization"):
             return FakeResponse(200 if self.bypass_get else 302, {}, headers={
-                "Location": "/other" if self.bad_redirect else "http://gateway.local/#auth",
+                "Location": "/other" if self.bad_redirect else self.redirect_location,
             })
         return super()._unauthorized_response(method, path, headers)
 
@@ -274,6 +285,8 @@ class FunctionalImplementationTests(unittest.TestCase):
             ("lan_auth_type", "lan_auth_ruuvi"), ("lan_auth_user", "Other"),
             ("lan_auth_api_key_use", 0), ("lan_auth_api_key_rw_use", True),
             ("coordinates", 0), ("coordinates", "nondefault"), ("coordinates", None),
+            ("mqtt_data_format", None), ("mqtt_prefix", None), ("mqtt_client_id", None),
+            ("mqtt_data_format", 0), ("mqtt_prefix", 0), ("mqtt_client_id", 0),
         ):
             with self.subTest(field=field, value=value):
                 self.gateway.calls.clear()
@@ -328,6 +341,56 @@ class FunctionalImplementationTests(unittest.TestCase):
                 self.assertEqual("PASS", result.outcomes[target.RESTORE])
                 self.assertEqual([], self.config_writes())
                 setattr(self.gateway, mode, False)
+
+    def test_custom_mqtt_baselines_stop_before_any_configuration_post(self) -> None:
+        field: str
+        value: str
+        for field, value in (("mqtt_data_format", "ruuvi_decoded"), ("mqtt_prefix", "custom/"),
+                             ("mqtt_client_id", "custom-client")):
+            with self.subTest(field=field):
+                self.gateway.calls.clear()
+                before: dict[str, Any] = self.gateway.config()
+                setattr(self.gateway, field, value)
+                custom: dict[str, Any] = self.gateway.config()
+                result: RunResult = self.execute()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual("ERROR", result.outcomes[target.SETUP])
+                self.assertEqual([], self.config_writes())
+                self.assertEqual(3, len(self.gateway.calls))
+                self.assertEqual(custom, self.gateway.config())
+                setattr(self.gateway, field, before[field])
+
+    def test_partial_post_model_resets_omitted_custom_mqtt_settings(self) -> None:
+        self.gateway.mqtt_data_format = "ruuvi_decoded"
+        self.gateway.mqtt_prefix = "custom/"
+        self.gateway.mqtt_client_id = "custom-client"
+        self.gateway._apply_config(KEYS_BODY)
+        self.assertEqual("ruuvi_raw", self.gateway.mqtt_data_format)
+        self.assertEqual("ruuvi/AA:BB:CC:DD:EE:FF/", self.gateway.mqtt_prefix)
+        self.assertEqual("AA:BB:CC:DD:EE:FF", self.gateway.mqtt_client_id)
+
+    def test_redirect_rejects_external_origin_scheme_and_port_before_writes(self) -> None:
+        location: str
+        for location in ("http://another-host.example/#auth", "https://gateway.local/#auth",
+                         "http://gateway.local:8080/#auth", "http://gateway.local:0/#auth",
+                         "//another-host.example/#auth"):
+            with self.subTest(location=location):
+                self.gateway.calls.clear()
+                self.gateway.redirect_location = location
+                result: RunResult = self.execute()
+                self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
+                self.assertEqual("FAIL", result.outcomes[AuthMech.LAN_WEBUI_DEFAULT])
+                self.assertEqual("PASS", result.outcomes[target.RESTORE])
+                self.assertEqual([], self.config_writes())
+
+    def test_relative_and_explicit_default_port_redirects_retain_dut_origin(self) -> None:
+        location: str
+        for location in ("/#auth", "http://gateway.local:80/#auth"):
+            with self.subTest(location=location):
+                self.gateway.redirect_location = location
+                result: RunResult = self.execute()
+                self.assertEqual((0, "PASS"), (result.exit_code, result.verdict), self.evidence)
+                self.assert_restored()
 
     def test_negative_write_success_aborts_even_without_applied_mutation(self) -> None:
         body: dict[str, str]

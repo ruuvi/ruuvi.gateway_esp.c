@@ -256,7 +256,18 @@ this local log only. Keep terminal output concise.
 Run only on a dedicated test gateway:
 
 - reachable over its LAN interface on HTTP port 80;
+- `.env` `gw_hostname` set to the DUT's canonical hostname used by firmware auth redirects.
+  This task enforces the configured HTTP origin; an IP address or alternate alias that redirects
+  to another hostname does not satisfy its redirect assertion. Configure the canonical hostname
+  before running, rather than accepting an arbitrary redirect host;
 - in `lan_auth_default` mode with both M2M keys disabled/empty;
+- `mqtt_data_format` equals the generated default (`ruuvi_raw`), and `mqtt_prefix` and
+  `mqtt_client_id` equal the device-derived defaults (`ruuvi/<nRF52-MAC>/` and `<nRF52-MAC>`,
+  with uppercase MAC octets). Require these fields and their string types even if MQTT is
+  disabled: partial POSTs reset omitted MQTT fields. Reject custom values before any
+  configuration POST; do not overwrite settings to manufacture this precondition
+  ([MQTT parser](../../../main/gw_cfg_json_parse_mqtt.c),
+  [device defaults](../../../main/gw_cfg_default.c));
 - configuration SoftAP inactive; no firmware-update or remote-config operation in progress;
 - not concurrently modified; a backup available if restoration fails.
 
@@ -318,7 +329,9 @@ Missing/mistyped fields, failed login, or incorrect baseline is ERROR.
 
 Using fresh sessions with no authorization and redirects disabled:
 
-1. `GET /ruuvi.json` -> require `302` with `Location` pointing at `/#auth`.
+1. `GET /ruuvi.json` -> require `302` with `Location` resolving to `/#auth` on the configured DUT HTTP
+   origin (same hostname, scheme, and effective port). Relative redirects and explicit port 80
+   are valid; external hosts, HTTPS, and other ports fail before configuration writes.
 2. `GET /auth` -> require `401` advertising `x-ruuvi-interactive` and reporting `lan_auth_default`.
 3. `POST /ruuvi.json` with no Authorization header and a benign body
    `{"coordinates": "<probe-value-U>"}` -> require `401`.
@@ -433,6 +446,10 @@ at least:
   raised exceptions;
 - restoration failure or final-config mismatch prevents PASS;
 - timeout, connection failure, malformed JSON, and missing baseline fields produce ERROR;
+- custom MQTT format/prefix/client-ID baselines stop before writes, using fixtures that model
+  omitted-field resets on partial POSTs;
+- off-origin redirects (external host, changed scheme or port) fail without writes; relative
+  and explicit-default-port redirects remain accepted;
 - PASS/FAIL/ERROR exit-code aggregation.
 
 After implementation, run the complete offline discovery command in **Required implementation
