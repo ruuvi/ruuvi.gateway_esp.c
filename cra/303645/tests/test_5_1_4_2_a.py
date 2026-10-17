@@ -44,7 +44,7 @@ TEST_ID: str = "ETSI EN 303 645 / ETSI TS 103 701 test case 5.1-4-2, Test Unit A
 ADMIN_USERNAME: str = "Admin"
 HTTP_TIMEOUT: tuple[int, int] = (5, 15)
 USER_AGENT: str = "ruuvi-etsi-test-5.1-4-2-a"
-TOTAL_STEPS: int = 8
+TOTAL_STEPS: int = 9
 MECHANISMS: tuple[str, ...] = (
     AuthMech.LAN_WEBUI_DEFAULT,
     AuthMech.LAN_WEBUI_USER_DEFINED,
@@ -56,6 +56,33 @@ MECHANISMS: tuple[str, ...] = (
 
 class SecurityFailure(Exception):
     """A functional security assertion failed."""
+
+
+class RecoveryEvidence(EvidenceLog):
+    """Best-effort evidence only during mandatory recovery and final reporting."""
+
+    def __init__(self, source: EvidenceLog) -> None:
+        super().__init__(source.path, source._stream, source.started_at)
+        self.source: EvidenceLog = source
+        self.failed: bool = False
+
+    def attempt(self, operation: Callable[[], None]) -> None:
+        try:
+            operation()
+        except Exception:  # noqa: BLE001 - Evidence/output failures must never block recovery.
+            self.failed = True
+
+    def write(self, label: str, value: Any = "") -> None:
+        self.attempt(lambda: self.source.write(label, value))
+
+    def exception(self, error: BaseException) -> None:
+        self.attempt(lambda: self.source.exception(error))
+
+    def write_http_request(self, request: requests.PreparedRequest) -> None:
+        self.attempt(lambda: self.source.write_http_request(request))
+
+    def write_http_response(self, response: requests.Response) -> None:
+        self.attempt(lambda: self.source.write_http_response(response))
 
 
 def canonical_json_hash(value: Any) -> str:
@@ -73,6 +100,7 @@ class FunctionalTest_5_1_4_2_a:
         random_bytes: Callable[[int], bytes] = secrets.token_bytes,
         ecc_generate: Callable[..., ECC.EccKey] = ECC.generate,
         progress: Callable[[str], None] | None = None,
+        output: Callable[[str], None] | None = None,
     ) -> None:
         self.config: DutConfig = config
         self.evidence: EvidenceLog = evidence
@@ -80,6 +108,9 @@ class FunctionalTest_5_1_4_2_a:
             config, evidence, session_factory, random_bytes, ecc_generate, HTTP_TIMEOUT, USER_AGENT
         )
         self.progress: Callable[[str], None] = progress if progress is not None else lambda description: None
+        self.output: Callable[[str], None] = output if output is not None else lambda message: None
+        self.diagnostics: list[str] = []
+        self.last_check: str = "initial setup"
         self.outcomes: dict[str, str] = {mechanism: "NOT RUN" for mechanism in MECHANISMS}
         self.coverage: set[ApiRoute] = set()
         self.baseline_hash: str | None = None
@@ -91,7 +122,18 @@ class FunctionalTest_5_1_4_2_a:
         self.active_mechanisms: tuple[str, ...] = ()
         self.recovery_credentials: list[tuple[str, str]] = []
 
+    def _step(self, description: str) -> None:
+        self.last_check = description
+        self.progress(description)
+
     def _record_assertion(self, description: str, passed: bool, actual: Any = "") -> None:
+        self.last_check = description
+        if not passed:
+            observed: str = str(actual) if isinstance(actual, (int, bool)) else "value mismatch (details in log)"
+            self.diagnostics.append(
+                f"{', '.join(self.active_mechanisms) or 'baseline setup'}: "
+                f"expected {description}; observed {observed}"
+            )
         self.evidence.write(
             "ASSERTION",
             AssertionEvidence(description, "PASS" if passed else "FAIL", actual),
@@ -160,7 +202,7 @@ class FunctionalTest_5_1_4_2_a:
             )
         self._require(
             result.login_response.status_code == HttpStatus.C_200_OK,
-            f"{username} authenticates successfully",
+            "administrative credential authenticates successfully",
             result.login_response.status_code,
             setup=setup,
         )
@@ -335,15 +377,16 @@ class FunctionalTest_5_1_4_2_a:
         exit_code: int
         verdict: str
         verdict, exit_code, failure = "ERROR", 2, None
+        recovery_evidence: RecoveryEvidence = RecoveryEvidence(self.evidence)
         self.evidence.write("TEST CASE AND UNIT", TEST_ID)
         self.evidence.write("UTC START", format_utc(self.evidence.started_at))
         try:
-            self.progress("Authenticating with the factory-default administrative credential")
+            self._step("Authenticating with the factory-default administrative credential")
             default: InteractiveAuthResult = self._login(
                 ADMIN_USERNAME, self.config.gw_id, GatewayCfgLanAuthType.DEFAULT, True, check_mode=False
             )
             realm: str = default.challenge["realm"]
-            self.progress("Reading and validating the factory-default configuration")
+            self._step("Reading and validating the factory-default configuration")
             baseline: dict[str, Any] = self._read_config(default.session, "baseline GET /ruuvi.json", True)
             self._validate_baseline(baseline, default.auth_payload)
             self.last_session = default.session
@@ -357,7 +400,7 @@ class FunctionalTest_5_1_4_2_a:
             self.evidence.write(
                 "CUSTOM INTERACTIVE CREDENTIAL", {"username": user1, "plaintext": password1, "ha1": ha1, "realm": realm}
             )
-            self.progress("Changing the default interactive credential")
+            self._step("Changing the default interactive credential")
             self.active_mechanisms = (AuthMech.LAN_WEBUI_DEFAULT,)
             self.last_username, self.last_password = user1, password1
             self.recovery_credentials.append((user1, password1))
@@ -405,7 +448,7 @@ class FunctionalTest_5_1_4_2_a:
             self.evidence.write(
                 "REPLACEMENT INTERACTIVE CREDENTIAL", {"username": user2, "plaintext": password2, "ha1": ha2}
             )
-            self.progress("Changing the user-defined interactive credential")
+            self._step("Changing the user-defined interactive credential")
             self.last_username, self.last_password = user2, password2
             self.recovery_credentials.append((user2, password2))
             response = self._post_config(
@@ -436,7 +479,7 @@ class FunctionalTest_5_1_4_2_a:
             )
             self.outcomes[AuthMech.LAN_WEBUI_USER_DEFINED] = "PASS"
 
-            self.progress("Generating and committing RO and RW bearer values")
+            self._step("Generating and committing RO and RW bearer values")
             self.active_mechanisms = (AuthMech.M2M_API_BEARER_RO, AuthMech.M2M_API_BEARER_RW)
             rw1: str
             ro1: str
@@ -463,7 +506,7 @@ class FunctionalTest_5_1_4_2_a:
                 bearer1.get(GatewayCfgDesc.LAN_AUTH_API_KEY_RW_USE),
             )
             self._verify_bearer(ro1, rw1, canonical_json_hash(bearer1))
-            self.progress("Regenerating and verifying RO and RW bearer values")
+            self._step("Regenerating and verifying RO and RW bearer values")
             self.active_mechanisms = (AuthMech.M2M_API_BEARER_RO, AuthMech.M2M_API_BEARER_RW)
             rw2: str
             ro2: str
@@ -496,20 +539,35 @@ class FunctionalTest_5_1_4_2_a:
         except SecurityFailure as error:
             error: Exception
             failure, verdict, exit_code = error, "FAIL", 1
-            self.evidence.exception(error)
+            recovery_evidence.exception(error)
             for mechanism in self.active_mechanisms:
                 self.outcomes[mechanism] = "FAIL"
         except Exception as error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
             failure, verdict, exit_code = error, "ERROR", 2
-            self.evidence.exception(error)
+            self.diagnostics.append(
+                f"{', '.join(self.active_mechanisms) or 'baseline setup'}: ERROR during "
+                f"{self.last_check}: {type(error).__name__} (details in log)"
+            )
+            recovery_evidence.exception(error)
             for mechanism in self.active_mechanisms:
                 self.outcomes[mechanism] = "ERROR"
         finally:
-            self.progress("Restoring the factory-default authentication configuration")
-            restored: bool = self._restore()
-            self.progress("Verifying restoration and aggregating the verdict")
+            # Request logging must also be best-effort before recovery transmission.
+            self.evidence = recovery_evidence
+            self.gateway.evidence = recovery_evidence
+            recovery_evidence.attempt(lambda: self._step("Restoring the factory-default authentication configuration"))
+            self.active_mechanisms = ("final restoration",)
+            try:
+                restored: bool = self._restore()
+            except Exception as restoration_error:  # noqa: BLE001 - Always retain ERROR and recovery advice.
+                restoration_error: Exception
+                recovery_evidence.exception(restoration_error)
+                self.outcomes["final restoration"] = "ERROR"
+                restored = False
+            recovery_evidence.attempt(lambda: self._step("Verifying restoration and aggregating the verdict"))
             if not restored:
                 self.factory_reset_required = True
+                self.diagnostics.append("final restoration: ERROR; default credentials/configuration could not be verified")
                 verdict, exit_code = "ERROR", 2
             elif failure is None:
                 if all(self.outcomes[mechanism] == "PASS" for mechanism in MECHANISMS):
@@ -520,6 +578,17 @@ class FunctionalTest_5_1_4_2_a:
         outcome: str
         for mechanism, outcome in self.outcomes.items():
             self.evidence.write("FINAL RESULT", MechanismResultEvidence(mechanism, outcome))
+        diagnostic: str
+        for diagnostic in self.diagnostics:
+            self.evidence.write("RESULT EXPLANATION", diagnostic)
+            recovery_evidence.attempt(lambda message=diagnostic: self.output(message))
+        for mechanism, outcome in self.outcomes.items():
+            if outcome == "NOT RUN":
+                recovery_evidence.attempt(lambda name=mechanism: self.output(f"{name}: NOT RUN"))
+        if recovery_evidence.failed:
+            verdict, exit_code = "ERROR", 2
+            self.evidence.write("RESULT EXPLANATION", "Reporting: ERROR; output/evidence sink failed")
+            recovery_evidence.attempt(lambda: self.output("Reporting: ERROR; output/evidence sink failed"))
         return RunResult(
             exit_code,
             verdict,
@@ -546,6 +615,7 @@ def execute_test_5_1_4_2_a(
 
     progress: ProgressReporter = ProgressReporter(output_progress, TOTAL_STEPS)
     result: RunResult = RunResult(2, "ERROR", {mechanism: "NOT RUN" for mechanism in MECHANISMS}, set())
+    final_evidence: RecoveryEvidence = RecoveryEvidence(log)
     try:
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(work_dir / ".env")
@@ -556,17 +626,28 @@ def execute_test_5_1_4_2_a(
             session_factory,
             random_bytes,
             progress=progress.step,
+            output=output,
         ).run()
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - Preserve ERROR even if reporting is unavailable.
         error: Exception
-        log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
+        final_evidence.exception(error)
+        summary: str = f"Setup/execution: ERROR: {type(error).__name__} (details in log)"
+        final_evidence.write("RESULT EXPLANATION", summary)
+        final_evidence.attempt(lambda: output(summary))
     finally:
         if result.recovery_message is not None:
-            log.write("USER ACTION REQUIRED", result.recovery_message)
-        log.finish(result.verdict, now)
-    output(f"Overall verdict: {result.verdict}")
-    if result.recovery_message:
-        output(result.recovery_message)
+            final_evidence.write("USER ACTION REQUIRED", result.recovery_message)
+        final_evidence.attempt(lambda: log.finish(result.verdict, now))
+        if not log._stream.closed:
+            final_evidence.attempt(log._stream.close)
+        if final_evidence.failed:
+            result.exit_code, result.verdict = 2, "ERROR"
+    final_evidence.attempt(lambda: output(f"Overall verdict: {result.verdict}"))
+    recovery_message: str | None = result.recovery_message
+    if recovery_message is not None:
+        final_evidence.attempt(lambda: output(str(recovery_message)))
+    if final_evidence.failed:
+        result.exit_code, result.verdict = 2, "ERROR"
     return result
 
 

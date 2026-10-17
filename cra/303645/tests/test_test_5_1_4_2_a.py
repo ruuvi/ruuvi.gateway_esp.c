@@ -401,6 +401,181 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual("PASS", result.outcomes["final restoration"])
         self.assertEqual(GatewayCfgLanAuthType.DEFAULT, fake.mode)
 
+    def test_execute_progress_has_nine_steps_and_no_overflow(self) -> None:
+        root: Path = Path(self.temp_dir.name)
+        (root / ".env").write_text(wire.env_text(CONFIG), encoding="utf-8")
+        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        messages: list[str] = []
+        result: RunResult = target.execute_test_5_1_4_2_a(
+            root, session_factory=lambda: wire.FakeSession(gateway),
+            random_bytes=wire.UniqueRandom(), output=messages.append,
+        )
+        self.assertEqual(0, result.exit_code)
+        steps: list[str] = [message for message in messages if message.startswith("[Step")]
+        self.assertEqual(9, len(steps))
+        self.assertTrue(steps[-1].startswith("[Step 9 out of 9]"))
+
+    def test_unapplied_second_change_requires_previous_credential(self) -> None:
+        original: Callable[..., Response] = self.fake.request
+        changes: list[dict[str, str]] = []
+        attempts: list[str] = []
+        original_login: Callable[[str, str], InteractiveAuthResult] = self.fake.authenticate_interactive
+
+        def login(username: str, password: str) -> InteractiveAuthResult:
+            attempts.append(username)
+            return original_login(username, password)
+
+        def request(*args: Any, **kwargs: Any) -> Response:
+            body: dict[str, str] | None = kwargs.get("json_body")
+            if body and body.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.RUUVI:
+                changes.append(body)
+                if len(changes) == 2:
+                    if isinstance(args[0], FakeSession):
+                        args[0].username = None
+                    raise requests.Timeout("second write unapplied")
+            return original(*args, **kwargs)
+
+        with mock.patch.object(self.fake, "request", side_effect=request), mock.patch.object(
+            self.fake, "authenticate_interactive", side_effect=login,
+        ):
+            result: RunResult = self.runner.run()
+        self.assertEqual(2, result.exit_code)
+        self.assertEqual(
+            [changes[1][GatewayCfgDesc.LAN_AUTH_USER], changes[0][GatewayCfgDesc.LAN_AUTH_USER], target.ADMIN_USERNAME],
+            attempts[-3:],
+        )
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertEqual((GatewayCfgLanAuthType.DEFAULT, target.ADMIN_USERNAME, "", ""),
+                         (self.fake.mode, self.fake.user, self.fake.ro_key, self.fake.rw_key))
+        self.assertEqual(HttpMethod.GET, self.fake.calls[-1]["method"])
+        self.assertEqual(GatewayApi.CONFIG, self.fake.calls[-1]["path"])
+
+    def test_applied_restoration_lost_reply_requires_default_fallback(self) -> None:
+        original: Callable[..., Response] = self.fake.request
+        original_login: Callable[[str, str], InteractiveAuthResult] = self.fake.authenticate_interactive
+        attempts: list[str] = []
+        lost_reply: bool = False
+
+        def login(username: str, password: str) -> InteractiveAuthResult:
+            if lost_reply:
+                attempts.append(username)
+            return original_login(username, password)
+
+        def request(*args: Any, **kwargs: Any) -> Response:
+            nonlocal lost_reply
+            reply: Response = original(*args, **kwargs)
+            body: dict[str, str] | None = kwargs.get("json_body")
+            if body and body.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DEFAULT and not lost_reply:
+                lost_reply = True
+                raise requests.Timeout("restoration applied but reply lost")
+            return reply
+
+        with mock.patch.object(self.fake, "request", side_effect=request), mock.patch.object(
+            self.fake, "authenticate_interactive", side_effect=login,
+        ):
+            result: RunResult = self.runner.run()
+        self.assertEqual(0, result.exit_code)
+        self.assertEqual([username for username, _ in reversed(self.runner.recovery_credentials)]
+                         + [target.ADMIN_USERNAME, target.ADMIN_USERNAME], attempts)
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertEqual((GatewayCfgLanAuthType.DEFAULT, target.ADMIN_USERNAME, "", ""),
+                         (self.fake.mode, self.fake.user, self.fake.ro_key, self.fake.rw_key))
+        self.assertEqual(HttpMethod.GET, self.fake.calls[-1]["method"])
+
+    def test_closed_output_at_cleanup_does_not_block_real_client_restoration(self) -> None:
+        root: Path = Path(self.temp_dir.name)
+        (root / ".env").write_text(wire.env_text(CONFIG), encoding="utf-8")
+        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        failed: bool = False
+
+        def output(message: str) -> None:
+            nonlocal failed
+            if "Restoring the factory-default" in message:
+                failed = True
+            if failed:
+                raise BrokenPipeError("closed terminal")
+
+        result: RunResult = target.execute_test_5_1_4_2_a(
+            root, session_factory=lambda: wire.FakeSession(gateway),
+            random_bytes=wire.UniqueRandom(), output=output,
+        )
+        self.assertEqual(2, result.exit_code)
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, gateway.mode)
+        self.assertEqual(("GET", "/ruuvi.json"), (gateway.calls[-1].method, gateway.calls[-1].path))
+
+    def test_closed_output_after_first_mutation_preserves_recovery(self) -> None:
+        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(
+            CONFIG, self.log, session_factory=lambda: wire.FakeSession(gateway), random_bytes=wire.UniqueRandom(),
+        )
+
+        def progress(_description: str) -> None:
+            if gateway.config_bodies:
+                raise BrokenPipeError("terminal closed after mutation")
+
+        runner.progress = progress
+        result: RunResult = runner.run()
+        self.assertEqual(2, result.exit_code)
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, gateway.mode)
+        self.assertEqual(("GET", "/ruuvi.json"), (gateway.calls[-1].method, gateway.calls[-1].path))
+
+    def test_failed_evidence_after_mutation_does_not_block_recovery_request_logging(self) -> None:
+        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(
+            CONFIG, self.log, session_factory=lambda: wire.FakeSession(gateway), random_bytes=wire.UniqueRandom(),
+        )
+        original_write: Callable[..., None] = self.log.write
+
+        def write(label: str, value: Any = "") -> None:
+            if gateway.mode == GatewayCfgLanAuthType.RUUVI or runner.evidence is not self.log:
+                raise OSError("full evidence disk")
+            original_write(label, value)
+
+        with mock.patch.object(self.log, "write", side_effect=write):
+            result: RunResult = runner.run()
+        self.assertEqual(2, result.exit_code)
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, gateway.mode)
+        self.assertEqual(("GET", "/ruuvi.json"), (gateway.calls[-1].method, gateway.calls[-1].path))
+        self.assertEqual("", gateway.ro_key)
+        self.assertEqual("", gateway.rw_key)
+
+    def test_failure_explanations_survive_later_recovery_error_without_secrets(self) -> None:
+        messages: list[str] = []
+        self.runner.output = messages.append
+        self.fake.fail_post = True
+        self.fake.fail_restore = True
+        result: RunResult = self.runner.run()
+        terminal: str = "\n".join(messages)
+        self.assertEqual(2, result.exit_code)
+        self.assertIn("expected first custom credential change succeeds; observed 500", terminal)
+        self.assertIn(target.AuthMech.LAN_WEBUI_DEFAULT, terminal)
+        self.assertIn("final restoration: ERROR", terminal)
+        self.assertIn("NOT RUN", terminal)
+        self.assertNotIn(CONFIG.gw_id, terminal)
+        self.assertNotIn(self.runner.recovery_credentials[0][1], terminal)
+        self.assertIn("RESULT EXPLANATION", self.log.path.read_text(encoding="utf-8"))
+
+    def test_transport_error_diagnostic_does_not_print_untrusted_reason(self) -> None:
+        messages: list[str] = []
+        self.runner.output = messages.append
+        with mock.patch.object(self.fake, "authenticate_interactive", side_effect=requests.Timeout("secret=leak")):
+            result: RunResult = self.runner.run()
+        self.assertEqual(2, result.exit_code)
+        self.assertIn("baseline setup: ERROR", "\n".join(messages))
+        self.assertIn("Timeout", "\n".join(messages))
+        self.assertNotIn("secret=leak", "\n".join(messages))
+
+    def test_wrapper_setup_exception_has_secret_safe_terminal_reason(self) -> None:
+        messages: list[str] = []
+        with mock.patch("test_5_1_4_2_a.load_dut_config", side_effect=target.InvalidSetup("secret=leak")):
+            result: RunResult = target.execute_test_5_1_4_2_a(Path(self.temp_dir.name), output=messages.append)
+        self.assertEqual(2, result.exit_code)
+        self.assertIn("Setup/execution: ERROR: InvalidSetup", "\n".join(messages))
+        self.assertNotIn("secret=leak", "\n".join(messages))
+
     def test_unverified_identity_never_gets_reset_advice(self) -> None:
         mac: Any
         for mac in (None, 42, "bad", "11:22:33:44:55:66", CONFIG.gw_mac):

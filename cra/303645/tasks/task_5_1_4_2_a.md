@@ -278,6 +278,12 @@ Once any credential may have changed, restoration is mandatory. In a `finally` p
    `lan_auth_type == "lan_auth_default"`, both `*_use` flags `False`, and the canonical hash equal
    to the step-1 baseline.
 
+Reporting during mandatory restoration, including HTTP request/response evidence, must be
+best-effort: a closed terminal or failed evidence stream must not prevent recovery requests or
+final configuration verification. Any reporting failure retains an overall ERROR verdict. Print
+secret-safe failure explanations and NOT RUN outcomes separately from the nine progress steps;
+retain an earlier assertion explanation when restoration later fails.
+
 The test cannot PASS unless restoration is verified. If security assertions passed but restoration
 failed, return ERROR with a concise operator warning pointing at the evidence log.
 
