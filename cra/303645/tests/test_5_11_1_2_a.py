@@ -54,12 +54,12 @@ from Crypto.Util.asn1 import DerBitString, DerObjectId, DerSequence, DerSetOf
 
 from fixture_5_11_1_2_a import HttpFixture, HttpRoute, LocalHttpFixture
 from lib.config import (
-    AUTHENTICATION_DEFAULT_FIELDS,
     FACTORY_RESET_MESSAGE,
     OCTETS_6_RE,
     InvalidConfig,
     default_config_values,
     load_dut_config,
+    load_ui_default_config,
 )
 from lib.errors import GatewayAuthenticationModeError, InvalidSetup
 from lib.evidence import EvidenceLog, format_utc, utc_now
@@ -95,11 +95,10 @@ CERTIFICATE_FILES: tuple[str, ...] = (
     StorageFile.MQTT_CLI_CERT, StorageFile.MQTT_CLI_KEY, StorageFile.MQTT_SRV_CERT,
     StorageFile.STAT_CLI_CERT, StorageFile.STAT_CLI_KEY, StorageFile.RCFG_CLI_CERT, StorageFile.RCFG_CLI_KEY,
 )
-DEFAULT_FIELDS: tuple[str, ...] = (
-    *AUTHENTICATION_DEFAULT_FIELDS, Cfg.STORAGE, Cfg.WIFI_STA_CONFIG, Cfg.USE_ETH,
-    Cfg.USE_HTTP, Cfg.HTTP_URL, Cfg.HTTP_AUTH, Cfg.USE_MQTT, Cfg.MQTT_SERVER,
-    Cfg.MQTT_PORT, Cfg.MQTT_USER, Cfg.MQTT_DATA_FORMAT, Cfg.REMOTE_CFG_USE,
-    Cfg.REMOTE_CFG_URL, Cfg.REMOTE_CFG_AUTH_TYPE,
+# Device metadata and MAC-derived MQTT defaults differ from the generator's
+# placeholder device. Preserve their stable values in the complete baseline.
+DEVICE_DERIVED_FIELDS: tuple[str, ...] = (
+    Cfg.FW_VER, Cfg.NRF52_FW_VER, Cfg.GW_MAC, Cfg.MQTT_PREFIX, Cfg.MQTT_CLIENT_ID,
 )
 REDACTED_FIELDS: tuple[str, ...] = (
     Cfg.LAN_AUTH_PASS, Cfg.LAN_AUTH_API_KEY, Cfg.LAN_AUTH_API_KEY_RW,
@@ -330,6 +329,7 @@ class FunctionalTest_5_11_1_2_a:
         self.wifi_unchanged_verified: bool = False
         self.wifi_connection_verified: bool = False
         self.attempted_files: list[str] = []
+        self.accepted_files: set[str] = set()
         self.session: requests.Session | None = None
         self.hotspot_session: requests.Session | None = None
         self.input_fn: Callable[[str], str] = input_fn
@@ -852,6 +852,7 @@ class FunctionalTest_5_11_1_2_a:
             self.attempted_files.append(pem.filename)
             response: requests.Response = self.gateway.request(self.session, HttpMethod.POST, GatewayApi.SSL_CERT, params={"file": pem.filename}, data=pem.pem)
             self._ok(response, f"Upload {pem.filename}")
+            self.accepted_files.add(pem.filename)
             response = self.gateway.request(self.session, HttpMethod.GET, GatewayApi.EXTRA_CFG, params={"file": pem.filename})
             if response.status_code == HttpStatus.C_200_OK:
                 if response.content != pem.pem.encode():
@@ -889,7 +890,16 @@ class FunctionalTest_5_11_1_2_a:
                 expected[Cfg.WIFI_STA_CONFIG][Cfg.PASSWORD] = self.fixtures.wifi_password
         filename: str
         for filename in self.attempted_files:
-            expected[Cfg.STORAGE][filename] = True
+            if filename in self.accepted_files:
+                expected[Cfg.STORAGE][filename] = True
+            else:
+                # A rejected/lost reply does not establish whether storage changed.
+                # Observe its presence independently; retain attempt tracking for reset.
+                storage: Any = payload.get(Cfg.STORAGE)
+                if not isinstance(storage, dict) or type(storage.get(filename)) is not bool:
+                    raise InvalidSetup(f"Unresolved upload storage outcome: {filename}")
+                expected[Cfg.STORAGE][filename] = storage[filename]
+                self.evidence.write("UNCONFIRMED UPLOAD STORAGE PRESENCE", (filename, storage[filename]))
         if not typed_equal(payload, expected):
             self.evidence.write("EXPECTED COMPLETE CREATED CONFIGURATION", expected)
             differences: list[str] = [
@@ -991,7 +1001,10 @@ class FunctionalTest_5_11_1_2_a:
                     "Set wifi_ssid and wifi_password in .env for an available password-protected "
                     "2.4 GHz Wi-Fi LAN. Start the Gateway on Ethernet; the runner will provision Wi-Fi."
                 )
-            defaults: dict[str, Any] = default_config_values(DEFAULT_FIELDS)
+            default_fields: tuple[str, ...] = tuple(
+                field for field in load_ui_default_config() if field not in DEVICE_DERIVED_FIELDS
+            )
+            defaults: dict[str, Any] = default_config_values(default_fields)
             self.progress("Authenticate, verify identity and capture two stable default reads")
             realm: str = self._baseline(defaults)
             fixtures: SyntheticData = self.fixture_factory(realm, self.random_bytes, self.now())

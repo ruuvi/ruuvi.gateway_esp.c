@@ -167,6 +167,8 @@ class CreationGateway(FakeGateway):
         self.lose_provision_response: bool = False
         self.fail_file: str | None = None
         self.file_status: int = 500
+        self.lose_upload_response: bool = False
+        self.omit_unconfirmed_storage: bool = False
         self.corrupt_file: str | None = None
         self.delete_failure: str | None = None
         self.lose_delete_response: bool = False
@@ -209,6 +211,8 @@ class CreationGateway(FakeGateway):
             for field in self.omit_fields:
                 result.pop(field, None)
             result.update(self.alter_fields)
+            if self.omit_unconfirmed_storage and self.fail_file is not None:
+                result["storage"].pop(self.fail_file, None)
         if self.unstable_baseline and self.config_reads == 2:
             result["coordinates"] = "unstable"
         if self.restoring and self.final_mismatch:
@@ -360,10 +364,12 @@ class CreationGateway(FakeGateway):
                 raise AssertionError("Storage requests must name a file")
             filename: str = wire.filename
             if call.method == "POST":
-                if filename == self.fail_file:
+                if filename == self.fail_file and not self.lose_upload_response:
                     return FakeResponse(self.file_status, {})
                 self.files[filename] = call.body
                 self.public["storage"][filename] = True
+                if filename == self.fail_file and self.lose_upload_response:
+                    raise requests.Timeout("upload applied, reply lost")
                 return FakeResponse(200, {})
             if call.method == "DELETE":
                 if filename == self.delete_failure:
@@ -1028,8 +1034,35 @@ class CreationTests(unittest.TestCase):
         self.gateway.fail_file = "mqtt_cli_cert"
         result: RunResult = self.execute()
         self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes[runner.CERTS], "ERROR")
+        self.assertEqual(result.outcomes["state preservation"], "PASS")
+        self.assertEqual(result.outcomes[runner.KEYS], "PASS")
+        self.assertTrue([w for w in self.gateway.wire if w.method == "POST" and w.scheme == "Bearer"])
         self.assertFalse([w for w in self.gateway.wire if w.method == "DELETE"])
         self.assertFalse(self.gateway.files)
+        self.assert_restored()
+
+    def test_applied_upload_with_lost_reply_uses_observed_storage_for_preservation(self) -> None:
+        self.gateway.fail_file = "mqtt_cli_cert"
+        self.gateway.lose_upload_response = True
+        result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes[runner.CERTS], "ERROR")
+        self.assertEqual(result.outcomes["state preservation"], "PASS")
+        self.assertEqual(result.outcomes[runner.KEYS], "PASS")
+        self.assertIn("upload applied, reply lost", self.log())
+        self.assert_restored()
+
+    def test_unobservable_rejected_upload_is_preservation_error_without_rw_probe(self) -> None:
+        self.gateway.fail_file = "mqtt_cli_cert"
+        self.gateway.omit_unconfirmed_storage = True
+        result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes[runner.CERTS], "ERROR")
+        self.assertEqual(result.outcomes["state preservation"], "ERROR")
+        self.assertEqual(result.outcomes[runner.KEYS], "ERROR")
+        self.assertFalse([w for w in self.gateway.wire if w.method == "POST" and w.scheme == "Bearer"])
+        self.assertIn("Unresolved upload storage outcome", "\n".join(self.output))
         self.assert_restored()
 
     def test_applied_write_with_lost_response_recovers_custom_candidate(self) -> None:
@@ -1292,6 +1325,27 @@ class CreationTests(unittest.TestCase):
                 result: RunResult = self.execute()
                 self.assertEqual(result.exit_code, 2)
                 self.assertFalse([w for w in self.gateway.wire if w.path == "/connect.json"])
+
+    def test_custom_resettable_settings_stop_before_mutation_or_reset_prompt(self) -> None:
+        field: str
+        value: Any
+        for field, value in (
+            ("eth_dhcp", False), ("eth_static_ip", "192.0.2.20"),
+            ("eth_netmask", "255.255.255.0"), ("eth_gw", "192.0.2.1"),
+            ("eth_dns1", "192.0.2.53"), ("eth_dns2", "192.0.2.54"),
+            ("coordinates", "60.0,24.0"), ("wifi_ap_config", {"channel": 6}),
+            ("ntp_server1", "custom.invalid"), ("auto_update_cycle", "manual"),
+            ("scan_filter_list", ["AA:BB:CC:DD:EE:FF"]),
+        ):
+            with self.subTest(field=field):
+                self.gateway = CreationGateway()
+                self.gateway.public[field] = value
+                self.confirmations.clear()
+                result: RunResult = self.execute()
+                self.assertEqual((result.exit_code, result.outcomes["baseline"]), (2, "ERROR"))
+                self.assertEqual(result.recovery_message, FACTORY_RESET_MESSAGE)
+                self.assertEqual(self.confirmations, [])
+                self.assertFalse([w for w in self.gateway.wire if w.method == "POST" and w.path != "/auth"])
 
     def test_readback_type_traps_missing_and_unequal_values(self) -> None:
         field: str
