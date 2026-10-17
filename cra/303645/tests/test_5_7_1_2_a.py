@@ -601,7 +601,7 @@ def match_console(scenario: Scenario, console: str, active: Partition, alternate
     lockout_cycles: int = 0
     if scenario.component == "app" and scenario.method == "bad signature":
         running_apps: list[re.Match[str]] = list(RUNNING_APP.finditer(clean))
-        signature_failed_slots: set[str] = set()
+        signature_failed_slots: set[tuple[str, int]] = set()
         index: int
         running_app: re.Match[str]
         for index, running_app in enumerate(running_apps):
@@ -610,8 +610,8 @@ def match_console(scenario: Scenario, console: str, active: Partition, alternate
             if (APP_SIGNATURE_FAILURE.search(boot_window) is not None
                     and APP_SIGNATURE_BAD.search(boot_window) is not None
                     and APP_CHECKSUM_FAILURE.search(boot_window) is None):
-                signature_failed_slots.add(running_app.group(1))
-        expected_slots: set[str] = {active.name}
+                signature_failed_slots.add((running_app.group(1), int(running_app.group(2), 16)))
+        expected_slots: set[tuple[str, int]] = {(active.name, active.offset)}
         detected = signature_failed_slots == expected_slots
         if scenario.both:
             # The rollback API verifies the alternate image without running it. With
@@ -632,12 +632,15 @@ def match_console(scenario: Scenario, console: str, active: Partition, alternate
         # In the FATFS cases the first rollback only reaches the second damaged
         # slot. Require a reset *after* its rejection to rule out a later hang.
         control: bool = detected and banners >= 2 and not normal
-        if scenario.component != "app":
+        if scenario.component != "app" or scenario.method == "damage":
             rejected_targets: set[str] = set()
             rejection: re.Match[str]
             pair_complete_at: int | None = None
-            for rejection in failures:
-                rejected_targets.add("_2" if "_2'" in rejection.group() else "")
+            rejections: list[re.Match[str]] = (list(APP_UNBOOTABLE.finditer(clean))
+                                                  if scenario.component == "app" else failures)
+            for rejection in rejections:
+                rejected_targets.add(rejection.group(1) if scenario.component == "app"
+                                     else "_2" if "_2'" in rejection.group() else "")
                 if len(rejected_targets) == 2:
                     pair_complete_at = rejection.end()
                     break
@@ -1043,7 +1046,7 @@ class FunctionalTest_5_7_1_2_a:
             verdict = "ERROR"
             self.evidence.recovery_mode = True
             self.evidence.exception(caught_error)
-            if self.active_case is not None:
+            if self.active_case is not None and self.outcomes[self.active_case.name] != "FAIL":
                 self.outcomes[self.active_case.name] = "ERROR"
                 self.report(f"Step {self.active_case.number:02d} finished: ERROR — {caught_error}")
         except KeyboardInterrupt as interrupted:
@@ -1052,7 +1055,7 @@ class FunctionalTest_5_7_1_2_a:
             verdict = "ERROR"
             self.evidence.recovery_mode = True
             self.evidence.exception(interrupted)
-            if self.active_case is not None:
+            if self.active_case is not None and self.outcomes[self.active_case.name] != "FAIL":
                 self.outcomes[self.active_case.name] = "ERROR"
                 self.report(f"Step {self.active_case.number:02d} finished: ERROR — interrupted")
         finally:
@@ -1144,28 +1147,31 @@ def execute_test_5_7_1_2_a(
         work_dir = Path.cwd()
     if output is None:
         output = print
-    evidence: RecoveryEvidence = RecoveryEvidence(EvidenceLog.create(work_dir / "logs", PREFIX, now))
-    output(f"Open log file: {evidence.path}")
+    evidence: RecoveryEvidence | None = None
+    result: RunResult = RunResult(2, "ERROR", {case.name: "NOT RUN" for case in scenarios}, set())
 
     def report(message: str) -> None:
         output(message)
+        assert evidence is not None
         evidence.write_line(message)
 
-    progress: ProgressReporter = ProgressReporter(report, BASE_STEPS + len(scenarios) * 3)
-    result: RunResult = RunResult(2, "ERROR", {case.name: "NOT RUN" for case in scenarios}, set())
-    evidence.write("TEST CASE AND UNIT", TEST_ID)
-    evidence.write("UTC START", format_utc(evidence.started_at))
-    evidence.write("SIGNATURE VERIFICATION PATHS", (
-        "ESP-IDF checks signed apps on boot and in the application; firmware verifies FATFS "
-        "against embedded RSA signatures. ROM secure-boot eFuses are not burned."
-    ))
-    artifact_dir: Path = work_dir / "logs" / "corruptions" / evidence.path.stem
     try:
+        active_evidence: RecoveryEvidence = RecoveryEvidence(EvidenceLog.create(work_dir / "logs", PREFIX, now))
+        evidence = active_evidence
+        output(f"Open log file: {active_evidence.path}")
+        active_evidence.write("TEST CASE AND UNIT", TEST_ID)
+        active_evidence.write("UTC START", format_utc(active_evidence.started_at))
+        active_evidence.write("SIGNATURE VERIFICATION PATHS", (
+            "ESP-IDF checks signed apps on boot and in the application; firmware verifies FATFS "
+            "against embedded RSA signatures. ROM secure-boot eFuses are not burned."
+        ))
+        artifact_dir: Path = work_dir / "logs" / "corruptions" / active_evidence.path.stem
+        progress: ProgressReporter = ProgressReporter(report, BASE_STEPS + len(scenarios) * 3)
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(work_dir / ".env")
         default_version: str = config.gw_fw or DEFAULT_FW_VERSION
         output(PREPARATION_NOTICE)
-        evidence.write_line(PREPARATION_NOTICE)
+        active_evidence.write_line(PREPARATION_NOTICE)
         try:
             answer: str = input_fn(f"Firmware version [{default_version}] (Enter for default): ").strip()
         except EOFError as cause:
@@ -1174,37 +1180,68 @@ def execute_test_5_7_1_2_a(
         version: str = answer or default_version
         if FIRMWARE_VERSION_RE.fullmatch(version) is None:
             raise PreparationDeclined("firmware version must look like v1.17.5-dev")
-        evidence.write("SELECTED FIRMWARE VERSION", version)
+        active_evidence.write("SELECTED FIRMWARE VERSION", version)
         runner: FunctionalTest_5_7_1_2_a = FunctionalTest_5_7_1_2_a(
-            config, evidence, artifact_dir, serial or SerialTransport(), flash_factory,
+            config, active_evidence, artifact_dir, serial or SerialTransport(), flash_factory,
             session_factory, progress.step, installer, scenarios, report,
         )
         result = runner.run(Path(__file__).resolve().parents[3] / "partitions.csv", version)
     except PreparationDeclined as error:
         error: PreparationDeclined
-        evidence.exception(error)
-        result = RunResult(2, "ERROR", {case.name: "NOT RUN" for case in scenarios}, set(),
+        if evidence is not None:
+            evidence.recovery_mode = True
+            evidence.exception(error)
+        result = RunResult(2, "ERROR", result.outcomes, result.coverage,
                            f"Test not started: {error}.")
-        evidence.write("OVERALL RESULT", "ERROR")
-    except Exception as initialization_error:  # noqa: BLE001 - Initialization errors still produce finalized evidence.
-        initialization_error: Exception
-        evidence.exception(initialization_error)
-        result = RunResult(2, "ERROR", {case.name: "NOT RUN" for case in scenarios}, set(),
-                           f"Setup error: {initialization_error}. See {evidence.path} for details.")
-        evidence.write("OVERALL RESULT", "ERROR")
+    except (Exception, KeyboardInterrupt) as initialization_error:  # noqa: BLE001 - Setup and evidence failures must return ERROR without touching the DUT.
+        initialization_error: Exception | KeyboardInterrupt
+        if evidence is not None:
+            evidence.recovery_mode = True
+            evidence.exception(initialization_error)
+        # Infrastructure exceptions may contain sensitive paths or output data.
+        result = RunResult(2, "ERROR", result.outcomes, result.coverage,
+                           f"Setup error: {type(initialization_error).__name__}; test could not complete.")
     finally:
-        if result.recovery_message is not None:
-            evidence.write("TERMINAL DETAILS", result.recovery_message)
-        evidence.recovery_mode = True
-        evidence.finish(result.verdict, now)
-        if evidence.failures:
-            details: str = result.recovery_message or ""
-            if "Evidence logging failed" not in details:
-                details = f"{details}\nEvidence logging failed; the test evidence is incomplete.".strip()
-            result = RunResult(2, "ERROR", result.outcomes, result.coverage, details)
-    output(f"Overall verdict: {result.verdict}")
-    if result.recovery_message is not None:
-        output(result.recovery_message)
+        if evidence is not None:
+            evidence.recovery_mode = True
+            if result.recovery_message is not None:
+                evidence.write("TERMINAL DETAILS", result.recovery_message)
+            evidence.write("OVERALL RESULT", result.verdict)
+            if evidence.failures:
+                details: str = result.recovery_message or ""
+                if "Evidence logging failed" not in details:
+                    details = f"{details}\nEvidence logging failed; the test evidence is incomplete.".strip()
+                result = RunResult(2, "ERROR", result.outcomes, result.coverage, details)
+        try:
+            output(f"Overall verdict: {result.verdict}")
+            if result.recovery_message is not None:
+                output(result.recovery_message)
+        except (OSError, ValueError):
+            # Keep recovery advice visible even when an injected destination fails.
+            result = RunResult(2, "ERROR", result.outcomes, result.coverage,
+                               f"{result.recovery_message or ''}\nTerminal output failed.".strip())
+            print("Overall verdict: ERROR")
+            print(result.recovery_message)
+        if evidence is not None:
+            if result.verdict == "ERROR":
+                evidence.write("OVERALL RESULT", "ERROR")
+            finalized_verdict: str = result.verdict
+            evidence.finish(finalized_verdict, now)
+            if evidence.failures:
+                details = result.recovery_message or ""
+                if "Evidence logging failed" not in details:
+                    details = f"{details}\nEvidence logging failed; the test evidence is incomplete.".strip()
+                result = RunResult(2, "ERROR", result.outcomes, result.coverage, details)
+                if finalized_verdict != "ERROR":
+                    # Correct a surviving record after a transient finish failure.
+                    evidence.write("OVERALL RESULT", "ERROR")
+                    evidence.finish("ERROR", now)
+                    try:
+                        output("Overall verdict: ERROR")
+                        output(details)
+                    except (OSError, ValueError):
+                        print("Overall verdict: ERROR")
+                        print(details)
     return result
 
 

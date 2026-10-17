@@ -398,7 +398,14 @@ process tree with bounded cleanup before any recovery operation; if cleanup cann
 block further flashing and print manual recovery instructions. During recovery, evidence writes
 (including progress, HTTP verification and flash command logs) are best-effort: a failed log stream
 must not prevent the two-slot reflash attempt or terminal manual recovery advice. Lost evidence
-always makes the overall verdict ERROR. Host regressions must exercise the real release-artifact
+always makes the overall verdict ERROR. A proven per-case FAIL remains FAIL if evidence writing or
+interruption subsequently raises, while the overall verdict becomes ERROR and recovery still runs.
+Initial log creation, preamble, diagnostics and finalization failures return setup ERROR (exit 2);
+failed preflight evidence prevents any DUT access. Terminal diagnostics omit raw infrastructure
+exception text and retain recovery instructions even when the configured output destination fails.
+For single-slot RSA cases, require both the damaged slot name and its reported address to match the
+selected partition. Case 9 requires a reset after both apps have been declared unbootable; banners
+before the rejection pair cannot establish a continuing reboot loop. Host regressions must exercise the real release-artifact
 gate with temporary files, covering layout mismatch, missing and wrong-sized images, and invalid
 app checksum/hash; every invalid fixture must prevent both installation and all flash writes.
 

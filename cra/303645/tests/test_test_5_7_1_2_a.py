@@ -927,6 +927,116 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("Evidence logging failed", result.recovery_message or "")
         self.assertTrue(any("Overall verdict: ERROR" == line for line in self.output))
 
+    def test_single_slot_rsa_rejects_wrong_running_address(self) -> None:
+        number: int
+        for number in (4, 8):
+            case: target.Scenario = target.SCENARIOS[number - 1]
+            active: Partition = Partition(f"ota_{case.slot}", 0, 0x10 + case.slot,
+                                          0x100000 if case.slot == 0 else 0x600000, 0x400000)
+            alternate: Partition = Partition(f"ota_{1 - case.slot}", 0, 0x11 - case.slot,
+                                             0x600000 if case.slot == 0 else 0x100000, 0x400000)
+            console: str = observation(case)
+            self.assertEqual("PASS", target.match_console(case, console, active, alternate).result)
+            wrong: str = console.replace(f"address 0x{active.offset:08x}",
+                                         f"address 0x{alternate.offset:08x}", 1)
+            self.assertNotEqual("PASS", target.match_console(case, wrong, active, alternate).result)
+
+    def test_both_damaged_apps_need_reset_after_rejection_pair(self) -> None:
+        case: target.Scenario = target.SCENARIOS[8]
+        cycle: str = observation(case).split("rst:0xc (SW_CPU_RESET)\n")[0]
+        console: str = "rst:0x1 (POWERON_RESET)\n" + cycle
+        self.serial = FakeSerial((baseline(0), baseline(0), console, baseline(0)))
+        result: RunResult = self.execute(case_number=9)
+        self.assertEqual(2, result.exit_code)
+        self.assertEqual("ERROR", result.outcomes[case.name])
+        self.assertIn("Gateway recovery verified", result.recovery_message or "")
+
+    def test_proven_security_failure_survives_evidence_error_and_interrupt(self) -> None:
+        interruption: bool
+        for interruption in (False, True):
+            with self.subTest(interruption=interruption):
+                self.serial = FakeSerial((baseline(0), baseline(0), baseline(0), baseline(0)))
+                self.installer = FakeInstaller()
+                original_write: Callable[..., None] = EvidenceLog.write
+                def write(log: EvidenceLog, label: str, value: Any = "", *,
+                          interrupt: bool = interruption,
+                          base_write: Callable[..., None] = original_write) -> None:
+                    if label == "SECURITY ASSERTION FAILURE":
+                        if interrupt:
+                            raise KeyboardInterrupt
+                        raise OSError("evidence full")
+                    base_write(log, label, value)
+                with mock.patch.object(EvidenceLog, "write", write):
+                    result: RunResult = self.execute(case_number=1)
+                self.assertEqual(2, result.exit_code)
+                self.assertEqual("FAIL", result.outcomes[target.SCENARIOS[0].name])
+                self.assertIn("expected", result.recovery_message or "")
+                self.assertIn("Gateway recovery verified", result.recovery_message or "")
+                self.assertEqual(2, len(self.installer.calls) - 1)
+                text: str = max((self.work_dir / "logs").glob("*.log")).read_text()
+                self.assertIn('"result": "FAIL"', text)
+
+    def test_entry_preamble_failure_returns_sanitized_error_without_dut_actions(self) -> None:
+        original_write: Callable[..., None] = EvidenceLog.write
+        def write(log: EvidenceLog, label: str, value: Any = "") -> None:
+            if label == "TEST CASE AND UNIT":
+                raise OSError("secret-output-token")
+            original_write(log, label, value)
+        with mock.patch.object(EvidenceLog, "write", write):
+            result: RunResult = self.execute(case_number=1)
+        self.assertEqual(2, result.exit_code)
+        self.assertEqual([], self.installer.calls)
+        self.assertEqual([], self.flash.writes)
+        self.assertIn("OSError", result.recovery_message or "")
+        self.assertNotIn("secret-output-token", "\n".join(self.output))
+        text: str = next((self.work_dir / "logs").glob("*.log")).read_text()
+        self.assertIn("OVERALL VERDICT: ERROR", text)
+
+    def test_entry_creation_and_output_failure_return_error_without_dut(self) -> None:
+        with mock.patch.object(EvidenceLog, "create", side_effect=OSError("secret-path")):
+            result: RunResult = self.execute(case_number=1)
+        self.assertEqual(2, result.exit_code)
+        self.assertNotIn("secret-path", "\n".join(self.output))
+        with mock.patch("builtins.print") as fallback:
+            result = target.execute_test_5_7_1_2_a(
+                work_dir=self.work_dir, now=lambda: NOW,
+                output=mock.Mock(side_effect=OSError("secret-output")),
+                installer=self.installer, case_number=1,
+            )
+        self.assertEqual(2, result.exit_code)
+        fallback.assert_any_call("Overall verdict: ERROR")
+        self.assertEqual([], self.installer.calls)
+        self.assertEqual([], self.flash.writes)
+
+    def test_finalization_failure_changes_pass_to_error_and_preserves_recovery_advice(self) -> None:
+        self.serial = FakeSerial((baseline(0), baseline(0), observation(target.SCENARIOS[0]), baseline(0)))
+        original_finish: Callable[..., None] = EvidenceLog.finish
+        failed: bool = False
+        def finish(log: EvidenceLog, verdict: str, now: Callable[[], datetime]) -> None:
+            nonlocal failed
+            if not failed:
+                failed = True
+                raise OSError("finish destination failed")
+            original_finish(log, verdict, now)
+        with mock.patch.object(EvidenceLog, "finish", finish):
+            result: RunResult = self.execute(case_number=1)
+        self.assertEqual(2, result.exit_code)
+        self.assertIn("Gateway recovery verified", result.recovery_message or "")
+        self.assertIn("Evidence logging failed", result.recovery_message or "")
+        self.assertEqual("Overall verdict: ERROR", self.output[-2])
+        text: str = next((self.work_dir / "logs").glob("*.log")).read_text()
+        self.assertIn("OVERALL VERDICT: ERROR", text)
+
+    def test_initial_diagnostics_failure_still_finalizes_error(self) -> None:
+        (self.work_dir / ".env").unlink()
+        with mock.patch.object(EvidenceLog, "exception", side_effect=OSError("diagnostic failure")):
+            result: RunResult = self.execute(case_number=1)
+        self.assertEqual(2, result.exit_code)
+        self.assertIn("Evidence logging failed", result.recovery_message or "")
+        text: str = next((self.work_dir / "logs").glob("*.log")).read_text()
+        self.assertIn("OVERALL VERDICT: ERROR", text)
+        self.assertEqual([], self.installer.calls)
+
     def test_wrong_app_failure_mechanism_cannot_pass_signature_case(self) -> None:
         active: Partition = Partition("ota_0", 0, 0x10, 0x100000, 0x400000)
         alternate: Partition = Partition("ota_1", 0, 0x11, 0x600000, 0x400000)
