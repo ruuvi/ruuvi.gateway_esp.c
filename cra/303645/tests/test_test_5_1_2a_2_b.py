@@ -261,6 +261,7 @@ class FunctionalTestCase(unittest.TestCase):
             ("none", "POST", "/ruuvi.json", password_body),
             ("none", "GET", "/ruuvi.json", None),
             (f"Bearer {RO_KEY}", "POST", "/ruuvi.json", {}),
+            ("none", "GET", "/ruuvi.json", None),
             (f"Bearer {RW_KEY}", "POST", "/ruuvi.json", {}),
             ("none", "GET", "/ruuvi.json", None),
             ("none", "POST", "/ruuvi.json", {"lan_auth_api_key": "", "lan_auth_api_key_rw": ""}),
@@ -275,7 +276,7 @@ class FunctionalTestCase(unittest.TestCase):
                 for call in calls
             ],
         )
-        probes: list[RecordedRequest] = calls[3:17] + calls[18:20]
+        probes: list[RecordedRequest] = calls[3:17] + [calls[18], calls[20]]
         self.assertEqual(len(probes), len({call.session_number for call in probes}))
         self.assertTrue(all(not call.allow_redirects for call in calls))
 
@@ -585,6 +586,73 @@ class FunctionalTestCase(unittest.TestCase):
                             call.authorization == f"Bearer {RO_KEY}" for call in self.gateway.calls[:cleanup_index]
                         ))
 
+    def test_hidden_remote_credentials_in_denial_are_security_failures(self) -> None:
+        field: str
+        method: str
+        for field in ("remote_cfg_auth_token", "remote_cfg_auth_apikey"):
+            for method in (HttpMethod.GET, HttpMethod.POST):
+                with self.subTest(field=field, method=method):
+                    self.gateway = BearerGateway(CONFIG)
+                    deterministic_random.calls = 0
+                    self.gateway.override[("Basic", method, GatewayApi.CONFIG)] = FakeResponse(
+                        302 if method == HttpMethod.GET else 401, {"nested": [{field: "hidden-secret"}]},
+                    )
+                    result: RunResult = self.runner().run()
+                    self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
+                    mechanism: str = AuthMech.M2M_API_BEARER_RO if method == HttpMethod.GET else AuthMech.M2M_API_BEARER_RW
+                    self.assertEqual("FAIL", result.outcomes[mechanism])
+                    self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+
+    def test_ro_denial_mutation_is_ro_fail_before_rw_post(self) -> None:
+        original: Callable[[FakeSession, RecordedRequest], FakeResponse | None] = self.gateway._response_override
+
+        def mutate(session: FakeSession, call: RecordedRequest) -> FakeResponse | None:
+            if call.authorization == f"Bearer {RO_KEY}" and call.method == HttpMethod.POST:
+                self.gateway.mutate_after_positive = True
+                return FakeResponse(401, {})
+            if call.body == {"lan_auth_api_key": "", "lan_auth_api_key_rw": ""}:
+                self.gateway.mutate_after_positive = False
+            return original(session, call)
+
+        self.gateway._response_override = mutate
+        runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
+        result: RunResult = runner.run()
+        self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RO])
+        self.assertEqual("NOT RUN", result.outcomes[AuthMech.M2M_API_BEARER_RW])
+        self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+        rw_posts: list[RecordedRequest] = [call for call in self.gateway.calls
+            if call.authorization == f"Bearer {RW_KEY}" and call.method == HttpMethod.POST]
+        self.assertEqual(1, len(rw_posts))  # Only mandatory revoked-key verification, after restoration.
+        self.assertIn("denied RO POST did not change configuration", " ".join(runner.diagnostics))
+
+    def test_revoked_key_success_marks_its_own_mechanism_fail(self) -> None:
+        key: str
+        method: str
+        path: str
+        mechanism: str
+        for key, method, path, mechanism in (
+            (RO_KEY, "GET", "/history", AuthMech.M2M_API_BEARER_RO),
+            (RW_KEY, "POST", "/ruuvi.json", AuthMech.M2M_API_BEARER_RW),
+        ):
+            with self.subTest(mechanism=mechanism):
+                self.gateway = BearerGateway(CONFIG)
+                deterministic_random.calls = 0
+                runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
+
+                def inject(description: str, token: str = key, verb: str = method, route: str = path) -> None:
+                    if description.startswith("Restoring"):
+                        self.gateway.override[(f"Bearer {token}", verb, route)] = FakeResponse(200, {})
+
+                runner.progress = inject
+                result: RunResult = runner.run()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual("FAIL", result.outcomes[mechanism])
+                self.assertEqual("ERROR", result.outcomes["final restoration and non-mutation"])
+                self.assertIn("expected HTTP 401", " ".join(runner.diagnostics))
+                self.assertIn("observed: 200", " ".join(runner.diagnostics))
+                self.assertIn('"result": "FAIL"', self.log.path.read_text())
+
     def test_negative_get_embedded_or_truncated_protected_json_is_fail(self) -> None:
         text: str
         for text in ('<html>{"lan_auth_type":"lan_auth_default"}</html>', '{"data":{"tags":',
@@ -848,6 +916,14 @@ class FunctionalTestCase(unittest.TestCase):
                 if not unverified:
                     self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
 
+    def test_runner_preamble_failure_is_error_before_dut_access(self) -> None:
+        runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
+        with mock.patch.object(self.log, "write", side_effect=OSError("evidence unavailable")):
+            result: RunResult = runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual([], self.gateway.calls)
+        self.assertIn("initial evidence preamble: OSError", " ".join(runner.diagnostics))
+
     def test_progress_failure_during_cleanup_preserves_verified_recovery(self) -> None:
         runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
 
@@ -1073,6 +1149,110 @@ class ConfigurationAndLoggingTestCase(unittest.TestCase):
             self.assertEqual(3, sum(call.body == {
                 GatewayCfgDesc.LAN_AUTH_API_KEY: "", GatewayCfgDesc.LAN_AUTH_API_KEY_RW: ""
             } for call in gateway.calls))
+
+    def test_complete_entrypoint_lifecycle_failures_return_error_without_escaping(self) -> None:
+        phase: str
+        for phase in ("create", "open-output", "preamble", "finish", "terminal-output"):
+            directory: str
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
+                root: Path = Path(directory)
+                self.write_env(root)
+                gateway: BearerGateway = BearerGateway(CONFIG)
+                deterministic_random.calls = 0
+                messages: list[str] = []
+                failed: bool = False
+                original_write: Callable[[target.EvidenceLog, str, Any], None] = cast(
+                    Callable[[target.EvidenceLog, str, Any], None], target.EvidenceLog.write,
+                )
+
+                def output(message: str, selected: str = phase, sink: Callable[[str], None] = messages.append) -> None:
+                    nonlocal failed
+                    if not failed and ((selected == "open-output" and message.startswith("Open log"))
+                                       or (selected == "terminal-output" and message.startswith("Overall verdict"))):
+                        failed = True
+                        raise OSError("secret-in-output-error")
+                    sink(message)
+
+                def write(log: target.EvidenceLog, label: str, value: Any = "", selected: str = phase,
+                          emit: Callable[[target.EvidenceLog, str, Any], None] = original_write) -> None:
+                    nonlocal failed
+                    if selected == "preamble" and not failed:
+                        failed = True
+                        raise OSError("secret-in-preamble-error")
+                    emit(log, label, value)
+
+                with mock.patch.object(target.EvidenceLog, "write", new=write):
+                    if phase == "create":
+                        with mock.patch.object(target.EvidenceLog, "create", side_effect=PermissionError("secret-path")):
+                            result: RunResult = target.execute_test_5_1_2a_2_b(root, output=output)
+                    elif phase == "finish":
+                        with mock.patch.object(target.EvidenceLog, "finish", side_effect=OSError("secret-path")):
+                            result = target.execute_test_5_1_2a_2_b(
+                                root, session_factory=lambda fixture=gateway: FakeSession(fixture), output=output,
+                                random_bytes=deterministic_random,
+                            )
+                    else:
+                        result = target.execute_test_5_1_2a_2_b(
+                            root, session_factory=lambda fixture=gateway: FakeSession(fixture), output=output,
+                            random_bytes=deterministic_random,
+                        )
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertIn("Overall verdict: ERROR", messages)
+                self.assertFalse(any("secret-" in message for message in messages))
+                if phase in ("create", "open-output", "preamble"):
+                    self.assertEqual([], gateway.calls)
+                else:
+                    self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+                    self.assertEqual("", gateway.ro_key)
+                    self.assertEqual("", gateway.rw_key)
+                if phase == "terminal-output":
+                    evidence: str = next((root / "logs").iterdir()).read_text()
+                    self.assertIn("OVERALL VERDICT: ERROR", evidence)
+
+    def test_terminal_fail_reason_survives_later_restoration_error(self) -> None:
+        directory: str
+        with tempfile.TemporaryDirectory() as directory:
+            root: Path = Path(directory)
+            self.write_env(root)
+            gateway: BearerGateway = BearerGateway(CONFIG)
+            gateway.override[("Basic", "GET", "/history")] = FakeResponse(200, {"secret": CONFIG.gw_id})
+            gateway.restore_admin_failures = 100
+            gateway.restore_rw_failure = True
+            messages: list[str] = []
+            result: RunResult = target.execute_test_5_1_2a_2_b(
+                root, session_factory=lambda: FakeSession(gateway), output=messages.append,
+                random_bytes=deterministic_random,
+            )
+            self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+            text: str = "\n".join(messages)
+            self.assertIn("Basic gains no access to GET /history", text)
+            self.assertIn("expected: assertion satisfied; observed: 200", text)
+            self.assertIn("Restoration ERROR", text)
+            self.assertEqual(target.FACTORY_RESET_MESSAGE, messages[-1])
+            self.assertNotIn(CONFIG.gw_id, text)
+            self.assertNotIn(RO_KEY, text)
+            self.assertNotIn(RW_KEY, text)
+            evidence: str = next((root / "logs").iterdir()).read_text()
+            self.assertIn("TERMINAL DIAGNOSTIC", evidence)
+            self.assertIn("Basic gains no access", evidence)
+
+    def test_transport_error_terminal_reason_is_secret_free(self) -> None:
+        directory: str
+        with tempfile.TemporaryDirectory() as directory:
+            root: Path = Path(directory)
+            self.write_env(root)
+            gateway: BearerGateway = BearerGateway(CONFIG)
+            gateway.override[("Basic", "GET", "/history")] = requests.ConnectionError(f"Bearer {CONFIG.gw_id}")
+            messages: list[str] = []
+            result: RunResult = target.execute_test_5_1_2a_2_b(
+                root, session_factory=lambda: FakeSession(gateway), output=messages.append,
+                random_bytes=deterministic_random,
+            )
+            self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+            text: str = "\n".join(messages)
+            self.assertIn("Testing rejection of password schemes by M2M read routes", text)
+            self.assertIn("GatewayConnectionError", text)
+            self.assertNotIn(CONFIG.gw_id, text)
 
     def test_basic_and_digest_setup_errors_report_recovery_and_stop(self) -> None:
         mode: str

@@ -63,6 +63,24 @@ MECHANISMS: tuple[str, ...] = (
 )
 
 
+# These hidden wire fields are emitted only when password hiding is disabled.
+# Source: main/gw_cfg_json_generate_remote.c, token/apikey serializers.
+HIDDEN_REMOTE_CREDENTIAL_FIELDS: tuple[str, ...] = ("remote_cfg_auth_token", "remote_cfg_auth_apikey")
+
+
+def safe_error_reason(error: BaseException) -> str:
+    """Never echo arbitrary protocol bodies, URLs, credentials, or OS filenames."""
+    if isinstance(error, requests.RequestException):
+        return "gateway transport request failed"
+    if isinstance(error, OSError):
+        return "evidence/output or local configuration unavailable"
+    if isinstance(error, GatewayAuthenticationModeError):
+        return "default interactive authentication is required"
+    if isinstance(error, GatewayProtocolError):
+        return "gateway response violates the required protocol or endpoint schema"
+    return "required check could not be completed; see evidence for details"
+
+
 class SecurityFailure(Exception):
     """A security assertion failed."""
 
@@ -170,6 +188,24 @@ class FunctionalTest_5_1_2a_2_b:
         self.mutation_possible: bool = False
         self.factory_reset_required: bool = False
         self.protected_response_fields: set[str] = set()
+        self.diagnostics: list[str] = []
+        self.active_check: str = "initial evidence preamble"
+
+    def _step(self, description: str) -> None:
+        self.active_check = description
+        self.progress(description)
+
+    @staticmethod
+    def _assertion_diagnostic(description: str, actual: Any) -> str:
+        # Only numeric/status and hash observations are safe for terminal output.
+        observed: str = "redacted"
+        if (type(actual) in (int, bool) or isinstance(actual, HashComparisonEvidence)
+                or actual in ("protected data detected", "no protected data detected")):
+            observed = str(actual)
+        return f"{description}; expected: assertion satisfied; observed: {observed}"
+
+    def _error_diagnostic(self, error: BaseException) -> None:
+        self.diagnostics.append(f"{self.active_check}: {type(error).__name__}: {safe_error_reason(error)}")
 
     def _record_assertion(self, description: str, passed: bool, actual: Any = "") -> None:
         self.evidence.write(
@@ -184,6 +220,7 @@ class FunctionalTest_5_1_2a_2_b:
     def _require_setup(self, condition: bool, description: str, actual: Any = "") -> None:
         self._record_assertion(description, condition, actual)
         if not condition:
+            self.diagnostics.append(self._assertion_diagnostic(description, actual))
             raise InvalidSetup(f"{description} (actual: {actual!r})")
 
     def _require_security(
@@ -193,6 +230,7 @@ class FunctionalTest_5_1_2a_2_b:
         if not condition:
             if mechanism is not None:
                 self.outcomes[mechanism] = "FAIL"
+            self.diagnostics.append(self._assertion_diagnostic(description, actual))
             raise SecurityFailure(f"{description} (actual: {actual!r})")
 
     def _authenticate_admin(self) -> InteractiveAuthResult:
@@ -294,6 +332,7 @@ class FunctionalTest_5_1_2a_2_b:
             GatewayCfgDesc.MQTT_PASS, GatewayCfgDesc.REMOTE_CFG_AUTH_BASIC_USER,
             GatewayCfgDesc.REMOTE_CFG_AUTH_BASIC_PASS, "http_bearer_token", "http_api_key",
             "http_stat_pass", "remote_cfg_auth_bearer_token",
+            *HIDDEN_REMOTE_CREDENTIAL_FIELDS,
         })
 
     def _provision(self) -> None:
@@ -489,7 +528,7 @@ class FunctionalTest_5_1_2a_2_b:
                 )
                 self._require_security(
                     response.status_code == probe.expected_status,
-                    f"{probe.name} returns the exact status for {probe.method} {probe.path}",
+                    f"{probe.name} returns expected HTTP {probe.expected_status} for {probe.method} {probe.path}",
                     response.status_code,
                 )
                 self._require_no_protected_data(response, probe)
@@ -630,7 +669,7 @@ class FunctionalTest_5_1_2a_2_b:
             try:
                 self._require_security(
                     response.status_code == probe.expected_status,
-                    f"{probe.name} has the required scope for {probe.method} {probe.path}",
+                    f"{probe.name} has the required scope (expected HTTP {probe.expected_status}) for {probe.method} {probe.path}",
                     response.status_code,
                 )
                 if probe.expected_status == HttpStatus.C_401_UNAUTHORIZED:
@@ -656,6 +695,14 @@ class FunctionalTest_5_1_2a_2_b:
                 ),
             )
             if method == HttpMethod.POST and probe.mechanism == AuthMech.M2M_API_BEARER_RO:
+                current_ro: dict[str, Any] = self._read_config(self.admin_session, "post-RO-denial GET /ruuvi.json")
+                current_ro_hash: str = canonical_json_hash(current_ro)
+                self._require_security(
+                    current_ro_hash == self.prepared_hash,
+                    "denied RO POST did not change configuration before the RW write",
+                    HashComparisonEvidence(baseline=self.prepared_hash or "", final=current_ro_hash),
+                    mechanism=AuthMech.M2M_API_BEARER_RO,
+                )
                 self.outcomes[AuthMech.M2M_API_BEARER_RO] = "PASS"
         if method == HttpMethod.GET:
             return
@@ -778,6 +825,12 @@ class FunctionalTest_5_1_2a_2_b:
                     headers={HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {key or ''}"},
                     json_body={} if method == HttpMethod.POST else None,
                 )
+                self._require_security(
+                    not 200 <= response.status_code <= 299,
+                    f"revoked {name} bearer is denied (expected HTTP 401)",
+                    response.status_code,
+                    mechanism=AuthMech.M2M_API_BEARER_RO if name == "RO" else AuthMech.M2M_API_BEARER_RW,
+                )
                 self._require_setup(
                     response.status_code == HttpStatus.C_401_UNAUTHORIZED,
                     f"temporary {name} key no longer authorizes",
@@ -789,6 +842,7 @@ class FunctionalTest_5_1_2a_2_b:
                     None, None,
                 ))
         except Exception as error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
+            self._error_diagnostic(error)
             self.evidence.exception(error)
             self.outcomes["final restoration and non-mutation"] = "ERROR"
             return False
@@ -796,42 +850,42 @@ class FunctionalTest_5_1_2a_2_b:
         return True
 
     def run(self) -> RunResult:
-        self.evidence.write("TEST CASE AND UNIT", TEST_ID)
-        self.evidence.write("UTC START", format_utc(self.evidence.started_at))
-        self.evidence.write("DUT CONFIGURATION", self.config)
-        self.evidence.write(
-            "SCOPE BOUNDARY",
-            "Interactive Web-UI access control, unconfigured-secret boundaries, rate limiting, "
-            "and Unit A interface discovery are out of scope.",
-        )
         verdict: str = "ERROR"
         exit_code: int = 2
         failure: BaseException | None = None
         recovery_evidence: RecoveryEvidence = RecoveryEvidence(self.evidence)
         try:
-            self.progress("Authenticating with the default administrative credentials")
+            self.evidence.write("TEST CASE AND UNIT", TEST_ID)
+            self.evidence.write("UTC START", format_utc(self.evidence.started_at))
+            self.evidence.write("DUT CONFIGURATION", self.config)
+            self.evidence.write(
+                "SCOPE BOUNDARY",
+                "Interactive Web-UI access control, unconfigured-secret boundaries, rate limiting, "
+                "and Unit A interface discovery are out of scope.",
+            )
+            self._step("Authenticating with the default administrative credentials")
             login: InteractiveAuthResult = self._authenticate_admin()
             self.admin_session = login.session
-            self.progress("Reading and validating the baseline gateway configuration")
+            self._step("Reading and validating the baseline gateway configuration")
             baseline: dict[str, Any] = self._read_config(self.admin_session, "baseline GET /ruuvi.json")
             self._validate_baseline(baseline, login.auth_payload)
             self.baseline_hash = canonical_json_hash(baseline)
             self.evidence.write("BASELINE CONFIGURATION SHA256", self.baseline_hash)
-            self.progress("Provisioning temporary RO and RW bearer keys")
+            self._step("Provisioning temporary RO and RW bearer keys")
             try:
                 self._provision()
-                self.progress("Verifying the prepared temporary state")
+                self._step("Verifying the prepared temporary state")
                 self._verify_prepared()
             except Exception:
                 self.outcomes["temporary-state setup"] = "ERROR"
                 raise
-            self.progress("Testing rejection of password schemes by M2M read routes")
+            self._step("Testing rejection of password schemes by M2M read routes")
             self._run_negative_matrix(login.challenge["realm"], HttpMethod.GET)
-            self.progress("Testing positive RO and RW bearer read scope")
+            self._step("Testing positive RO and RW bearer read scope")
             self._run_positive_matrix(HttpMethod.GET)
-            self.progress("Testing rejection of password schemes by M2M write routes")
+            self._step("Testing rejection of password schemes by M2M write routes")
             self._run_negative_matrix(login.challenge["realm"], HttpMethod.POST)
-            self.progress("Testing positive RO and RW bearer write scope")
+            self._step("Testing positive RO and RW bearer write scope")
             self._run_positive_matrix(HttpMethod.POST)
         except SecurityFailure as error:
             error: Exception
@@ -841,6 +895,7 @@ class FunctionalTest_5_1_2a_2_b:
             exit_code = 1
         except Exception as error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
             failure = error
+            self._error_diagnostic(error)
             recovery_evidence.exception(error)
             verdict = "ERROR"
             exit_code = 2
@@ -849,17 +904,19 @@ class FunctionalTest_5_1_2a_2_b:
             # references so a broken sink cannot prevent cleanup requests.
             self.evidence = recovery_evidence
             self.gateway.evidence = recovery_evidence
-            recovery_evidence.attempt(lambda: self.progress("Restoring the original API-key configuration"))
+            recovery_evidence.attempt(lambda: self._step("Restoring the original API-key configuration"))
             try:
                 restoration_ok: bool = self._restore()
             except Exception as restoration_error:  # noqa: BLE001 - Retain manual recovery on unexpected failures.
                 restoration_error: Exception
+                self._error_diagnostic(restoration_error)
                 recovery_evidence.exception(restoration_error)
                 self.outcomes["final restoration and non-mutation"] = "ERROR"
                 restoration_ok = False
-            recovery_evidence.attempt(lambda: self.progress("Verifying restoration and aggregating the verdict"))
+            recovery_evidence.attempt(lambda: self._step("Verifying restoration and aggregating the verdict"))
             if not restoration_ok:
                 self.factory_reset_required = True
+                self.diagnostics.append("Restoration ERROR: original state and credential revocation could not be verified")
                 verdict = "ERROR"
                 exit_code = 2
             elif failure is None:
@@ -868,6 +925,11 @@ class FunctionalTest_5_1_2a_2_b:
         if recovery_evidence.failed:
             verdict = "ERROR"
             exit_code = 2
+        if recovery_evidence.failed:
+            self.diagnostics.append("Recovery evidence/output ERROR: one or more observations could not be recorded")
+        diagnostic: str
+        for diagnostic in self.diagnostics:
+            self.evidence.write("TERMINAL DIAGNOSTIC", diagnostic)
         outcome: str
         mechanism: str
         for mechanism, outcome in self.outcomes.items():
@@ -879,6 +941,8 @@ class FunctionalTest_5_1_2a_2_b:
         if recovery_evidence.failed:
             verdict = "ERROR"
             exit_code = 2
+            if not any("evidence/output ERROR" in diagnostic for diagnostic in self.diagnostics):
+                self.diagnostics.append("Final evidence/output ERROR: result observations could not be recorded")
         recovery_message: str | None = FACTORY_RESET_MESSAGE if self.factory_reset_required else None
         return RunResult(exit_code, verdict, dict(self.outcomes), set(self.coverage), recovery_message)
 
@@ -894,46 +958,104 @@ def execute_test_5_1_2a_2_b(
         work_dir = Path.cwd()
     if output is None:
         output = print
-    log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_1_2a_2_b", now)
-    output(f"Open log file: {log.path}")
-
-    def output_progress(message: str) -> None:
-        output(message)
-        log.write_line(message)
-
-    progress: ProgressReporter = ProgressReporter(output_progress, TOTAL_STEPS)
+    log: EvidenceLog
+    final_evidence: RecoveryEvidence | None = None
+    runner: FunctionalTest_5_1_2a_2_b | None = None
+    diagnostics: list[str] = []
     result: RunResult = RunResult(2, "ERROR", {mechanism: "NOT RUN" for mechanism in MECHANISMS}, set())
-    final_evidence: RecoveryEvidence = RecoveryEvidence(log)
-    try:
+
+    def terminal(message: str) -> bool:
+        nonlocal result
         try:
-            log.write("TEST CASE AND UNIT", TEST_ID)
-            log.write("UTC START", format_utc(log.started_at))
-            progress.step("Loading and validating .env")
-            config: DutConfig = load_dut_config(work_dir / ".env")
-            log.write("DUT CONFIGURATION", config)
-            result = FunctionalTest_5_1_2a_2_b(
-                config,
-                log,
-                session_factory=session_factory,
-                random_bytes=random_bytes,
-                progress=progress.step,
-            ).run()
-        except Exception as error:  # noqa: BLE001 - Preserve the terminal ERROR even when evidence fails.
-            error: Exception
-            final_evidence.exception(error)
-            final_evidence.write("OVERALL RESULT", "ERROR")
-    finally:
-        if result.recovery_message is not None:
-            final_evidence.write("USER ACTION REQUIRED", result.recovery_message)
-        final_evidence.attempt(lambda: log.finish(result.verdict, now))
-        if not log._stream.closed:
-            final_evidence.attempt(log._stream.close)
-        if final_evidence.failed:
+            output(message)
+            return True
+        except Exception as output_error:  # noqa: BLE001 - An unavailable output callback must remain infrastructure ERROR.
+            output_error: Exception
             result.exit_code = 2
             result.verdict = "ERROR"
-    output(f"Overall verdict: {result.verdict}")
-    if result.recovery_message is not None:
-        output(result.recovery_message)
+            reason: str = f"Terminal output ERROR: {type(output_error).__name__}: output callback unavailable"
+            if final_evidence is not None:
+                final_evidence.write("TERMINAL OUTPUT ERROR", reason)
+            try:
+                output(reason)
+            except Exception:  # noqa: BLE001 - A permanently broken output sink cannot be repaired here.
+                return False
+            return False
+
+    try:
+        log = EvidenceLog.create(work_dir / "logs", "test_5_1_2a_2_b", now)
+        final_evidence = RecoveryEvidence(log)
+        output(f"Open log file: {log.path}")
+
+        def output_progress(message: str) -> None:
+            output(message)
+            log.write_line(message)
+
+        progress: ProgressReporter = ProgressReporter(output_progress, TOTAL_STEPS)
+        log.write("TEST CASE AND UNIT", TEST_ID)
+        log.write("UTC START", format_utc(log.started_at))
+        progress.step("Loading and validating .env")
+        config: DutConfig = load_dut_config(work_dir / ".env")
+        log.write("DUT CONFIGURATION", config)
+        active_runner: FunctionalTest_5_1_2a_2_b = FunctionalTest_5_1_2a_2_b(
+            config, log, session_factory=session_factory, random_bytes=random_bytes, progress=progress.step,
+        )
+        runner = active_runner
+        result = active_runner.run()
+    except Exception as error:  # noqa: BLE001 - The entire entrypoint, including log creation, returns ERROR/2.
+        error: Exception
+        diagnostics.append(f"Execution setup ERROR: {type(error).__name__}: {safe_error_reason(error)}")
+        if final_evidence is not None:
+            final_evidence.exception(error)
+    finally:
+        if runner is not None:
+            diagnostics = runner.diagnostics + diagnostics
+        if result.verdict != "PASS":
+            mechanism: str
+            outcome: str
+            for mechanism, outcome in result.outcomes.items():
+                if outcome == "NOT RUN":
+                    diagnostics.append(f"{mechanism}: NOT RUN")
+        diagnostic: str
+        for diagnostic in diagnostics:
+            if final_evidence is not None:
+                final_evidence.write("TERMINAL DIAGNOSTIC", diagnostic)
+            terminal(diagnostic)
+        if final_evidence is not None:
+            if result.recovery_message is not None:
+                final_evidence.write("USER ACTION REQUIRED", result.recovery_message)
+            if final_evidence.failed:
+                result.exit_code = 2
+                result.verdict = "ERROR"
+            # Deliver the verdict before finishing so terminal-output failure is
+            # reflected in the final evidence verdict and returned result.
+            if not terminal(f"Overall verdict: {result.verdict}"):
+                terminal("Overall verdict: ERROR")
+            if result.recovery_message is not None:
+                terminal(result.recovery_message)
+            final_log: EvidenceLog = final_evidence.source
+            final_evidence.attempt(lambda: final_log.finish(result.verdict, now))
+            if final_evidence.failed:
+                result.exit_code = 2
+                result.verdict = "ERROR"
+                final_evidence.write("FINALIZATION ERROR", "evidence/output could not be completed")
+                final_evidence.write("OVERALL VERDICT", "ERROR")
+                terminal("Evidence finalization ERROR: evidence/output could not be completed")
+                terminal("Overall verdict: ERROR")
+                if result.recovery_message is not None:
+                    terminal(result.recovery_message)
+            if not final_log._stream.closed:
+                close_failed_before: bool = final_evidence.failed
+                final_evidence.attempt(final_log._stream.close)
+                if final_evidence.failed and not close_failed_before:
+                    result.exit_code = 2
+                    result.verdict = "ERROR"
+                    terminal("Evidence close ERROR: evidence stream could not be closed")
+                    terminal("Overall verdict: ERROR")
+                    if result.recovery_message is not None:
+                        terminal(result.recovery_message)
+        else:
+            terminal("Overall verdict: ERROR")
     return result
 
 

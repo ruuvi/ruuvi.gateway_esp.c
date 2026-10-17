@@ -345,8 +345,10 @@ Run the positive matrix: `Bearer <RO>` → `200` on `/history` and `GET /ruuvi.j
 `POST /ruuvi.json` with `{}`; `Bearer <RW>` → `200` on `/history`, `GET /ruuvi.json`, and
 `POST /ruuvi.json` with `{}`. A missing `200` where required, or a `200` where the RO key must be
 denied, is FAIL for the corresponding mechanism. Fetch `/ruuvi.json` through the authorized `Admin`
-session after the successful RW POST and require its canonical hash to equal the post-provisioning
-state. Finalize RO only after its reads and POST denial have passed. Preserve that RO PASS if the
+session immediately after the RO POST denial, before sending the RW POST, and again after the
+successful RW POST; require each canonical hash to equal the post-provisioning state. Attribute an
+RO-denial mutation to RO and abort before the RW write. Finalize RO only after its reads, POST
+denial, and immediate non-mutation check have passed. Preserve that RO PASS if the
 later RW POST or its non-mutation check fails; mark RW FAIL for either assertion. Do not mark RW
 PASS before the hash check completes.
 
@@ -380,7 +382,16 @@ Emit separate results for:
 - temporary-state setup;
 - final restoration and non-mutation.
 
-Overall PASS requires every result to pass and restoration to be verified.
+Overall PASS requires every result to pass and restoration to be verified. A revoked key returning
+2xx marks its own RO/RW mechanism FAIL, while unverified restoration makes the overall result ERROR.
+
+Guard evidence creation, initial output/preamble, execution, and finalization as infrastructure
+operations: failures return ERROR/2 without contacting the DUT when setup has not completed.
+Print secret-free check diagnostics with expected/observed values for FAIL and exception type/reason
+for ERROR before the final verdict; retain earlier FAIL explanations after recovery ERROR. Mirror
+diagnostics in evidence when writable. Recovery instructions remain the last terminal message.
+Denial leak checks explicitly include hidden `remote_cfg_auth_token` and `remote_cfg_auth_apikey`,
+which are absent from normal UI configuration readback.
 
 | Exit code | Meaning                                                                                               |
 | :-------: | :---------------------------------------------------------------------------------------------------- |
