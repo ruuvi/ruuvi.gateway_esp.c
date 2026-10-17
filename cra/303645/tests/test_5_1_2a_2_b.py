@@ -164,6 +164,7 @@ class FunctionalTest_5_1_2a_2_b:
         self.admin_session: requests.Session | None = None
         self.baseline_hash: str | None = None
         self.prepared_hash: str | None = None
+        self.prepared_config: dict[str, Any] = {}
         self.ro_key: str | None = None
         self.rw_key: str | None = None
         self.mutation_possible: bool = False
@@ -329,6 +330,7 @@ class FunctionalTest_5_1_2a_2_b:
                 prepared.get(field),
             )
         self.prepared_hash = canonical_json_hash(prepared)
+        self.prepared_config = prepared
         self.evidence.write("PREPARED CONFIGURATION SHA256", self.prepared_hash)
         self.outcomes["temporary-state setup"] = "PASS"
 
@@ -559,6 +561,44 @@ class FunctionalTest_5_1_2a_2_b:
             ),
         ]
 
+    def _validate_positive_read(self, payload: dict[str, Any], probe: PositiveProbe) -> None:
+        if probe.path == GatewayApi.CONFIG:
+            if canonical_json_hash(payload) != self.prepared_hash:
+                raise GatewayProtocolError("bearer GET /ruuvi.json does not match the prepared configuration")
+            return
+        data: Any = payload.get("data")
+        if not isinstance(data, dict):
+            raise GatewayProtocolError("bearer GET /history requires a data object")
+        mac: Any = data.get(GatewayCfgDesc.GW_MAC)
+        if (
+            not isinstance(mac, str)
+            or OCTETS_6_RE.fullmatch(mac) is None
+            or normalize_mac(mac) != normalize_mac(self.config.gw_mac)
+            or not isinstance(data.get("coordinates"), str)
+            or not isinstance(data.get("tags"), dict)
+        ):
+            raise GatewayProtocolError("bearer GET /history has invalid identity, coordinates, or tags")
+        # Firmware omits the envelope timestamp when NTP timestamps are disabled.
+        if self.prepared_config.get("ntp_use", True) and type(data.get("timestamp")) is not int:
+            raise GatewayProtocolError("bearer GET /history requires an integer timestamp")
+        if "timestamp" in data and type(data["timestamp"]) is not int:
+            raise GatewayProtocolError("bearer GET /history timestamp must be an integer")
+        tags: dict[str, Any] = data["tags"]
+        sensor_mac: str
+        report: Any
+        for sensor_mac, report in tags.items():
+            if (
+                OCTETS_6_RE.fullmatch(sensor_mac) is None
+                or not isinstance(report, dict)
+                or type(report.get("rssi")) is not int
+                or type(report.get("ble_chan")) is not int
+                or ("ble_phy" in report and report["ble_phy"] not in ("1M", "2M", "Coded"))
+                or not isinstance(report.get("data"), str)
+                or re.fullmatch(r"(?:[0-9A-Fa-f]{2})+", report["data"]) is None
+                or type(report.get("timestamp" if self.prepared_config.get("ntp_use", True) else "counter")) is not int
+            ):
+                raise GatewayProtocolError("bearer GET /history contains a malformed sensor report")
+
     def _run_positive_matrix(self, method: str) -> None:
         probe: PositiveProbe
         for probe in self._positive_matrix():
@@ -587,6 +627,8 @@ class FunctionalTest_5_1_2a_2_b:
                 )
                 if probe.method == HttpMethod.POST and payload != {}:
                     raise GatewayProtocolError("successful RW POST /ruuvi.json must return an empty JSON object")
+                if probe.method == HttpMethod.GET:
+                    self._validate_positive_read(payload, probe)
             self.evidence.write(
                 "PER-PROBE RESULT",
                 RouteResultEvidence(

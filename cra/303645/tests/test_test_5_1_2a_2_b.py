@@ -75,6 +75,7 @@ class BearerGateway(DefaultAuthGateway):
         self.override: dict[tuple[str, str, str], FakeResponse | BaseException] = {}
         self.malformed_config: bool = False
         self.mutate_after_positive: bool = False
+        self.ntp_use: bool = True
 
     def config(self) -> dict[str, Any]:
         return {
@@ -86,7 +87,20 @@ class BearerGateway(DefaultAuthGateway):
             GatewayCfgDesc.FW_VER: "test-fw",
             GatewayCfgDesc.NRF52_FW_VER: "test-nrf",
             "stable": "mutated" if self.mutate_after_positive else "value",
+            "ntp_use": self.ntp_use,
         }
+
+    def _read_response(self, path: str) -> FakeResponse:
+        if path == GatewayApi.HISTORY:
+            data: dict[str, Any] = {
+                "coordinates": "",
+                "gw_mac": self.dut_config.gw_mac,
+                "tags": {},
+            }
+            if self.ntp_use:
+                data["timestamp"] = 1720000000
+            return FakeResponse(HttpStatus.C_200_OK, {"data": data})
+        return super()._read_response(path)
 
     def _response_override(self, session: FakeSession, call: RecordedRequest) -> FakeResponse | None:
         override: FakeResponse | BaseException | None = self.override.get(
@@ -634,6 +648,97 @@ class FunctionalTestCase(unittest.TestCase):
                     self.assertNotEqual("PASS", result.outcomes[
                         AuthMech.M2M_API_BEARER_RO if key == RO_KEY else AuthMech.M2M_API_BEARER_RW
                     ])
+
+    def test_positive_reads_reject_empty_error_only_and_incomplete_data(self) -> None:
+        key: str
+        path: str
+        payload: dict[str, Any]
+        for key in (RO_KEY, RW_KEY):
+            for path in (GatewayApi.CONFIG, GatewayApi.HISTORY):
+                for payload in ({}, {"error": "unauthorized"}, {"data": {"tags": {}}}):
+                    with self.subTest(key=key, path=path, payload=payload):
+                        self.gateway = BearerGateway(CONFIG)
+                        deterministic_random.calls = 0
+                        self.gateway.override[(f"Bearer {key}", HttpMethod.GET, path)] = FakeResponse(200, payload)
+                        runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
+
+                        def stop_fault_for_recovery(description: str) -> None:
+                            if description.startswith("Restoring"):
+                                self.gateway.override.clear()
+
+                        runner.progress = stop_fault_for_recovery
+                        result: RunResult = runner.run()
+                        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                        self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+                        self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
+                        restore_index: int = next(
+                            index for index, call in enumerate(self.gateway.calls)
+                            if call.body == {"lan_auth_api_key": "", "lan_auth_api_key_rw": ""}
+                        )
+                        self.assertFalse(any(
+                            call.method == HttpMethod.POST and call.body == {}
+                            for call in self.gateway.calls[:restore_index]
+                        ))
+
+    def test_positive_config_must_match_prepared_state(self) -> None:
+        stale: dict[str, Any] = self.gateway.config()
+        self.gateway.override[(f"Bearer {RO_KEY}", HttpMethod.GET, GatewayApi.CONFIG)] = FakeResponse(200, stale)
+        result: RunResult = self.runner().run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+        self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
+
+    def test_history_structure_and_sensor_reports(self) -> None:
+        fault: str
+        ntp_use: bool
+        for ntp_use in (False, True):
+            for fault in ("none", "wrong-mac", "coordinates", "tags", "timestamp", "report"):
+                with self.subTest(ntp_use=ntp_use, fault=fault):
+                    self.gateway = BearerGateway(CONFIG)
+                    self.gateway.ntp_use = ntp_use
+                    deterministic_random.calls = 0
+                    report: dict[str, Any] = {
+                        "rssi": -60, "ble_chan": 37, "ble_phy": "1M", "data": "020106",
+                        "timestamp" if ntp_use else "counter": 123,
+                    }
+                    data: dict[str, Any] = {
+                        "gw_mac": CONFIG.gw_mac, "coordinates": "",
+                        "tags": {"01:02:03:04:05:06": report},
+                    }
+                    if ntp_use:
+                        data["timestamp"] = 1720000000
+                    if fault == "wrong-mac":
+                        data["gw_mac"] = "01:02:03:04:05:06"
+                    elif fault == "coordinates":
+                        data["coordinates"] = None
+                    elif fault == "tags":
+                        data["tags"] = []
+                    elif fault == "timestamp":
+                        data["timestamp"] = True
+                    elif fault == "report":
+                        report["rssi"] = "-60"
+                    self.gateway.override[(f"Bearer {RO_KEY}", HttpMethod.GET, GatewayApi.HISTORY)] = FakeResponse(
+                        200, {"data": data}
+                    )
+                    runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
+
+                    def stop_history_fault_for_recovery(description: str) -> None:
+                        if description.startswith("Restoring"):
+                            self.gateway.override.clear()
+
+                    runner.progress = stop_history_fault_for_recovery
+                    result: RunResult = runner.run()
+                    self.assertEqual(
+                        (0, "PASS") if fault == "none" else (2, "ERROR"),
+                        (result.exit_code, result.verdict),
+                    )
+                    self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+                    self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
+
+    def test_empty_history_passes_with_ntp_disabled(self) -> None:
+        self.gateway.ntp_use = False
+        result: RunResult = self.runner().run()
+        self.assertEqual((0, "PASS"), (result.exit_code, result.verdict))
 
     def test_evidence_failure_after_provisioning_cannot_block_recovery(self) -> None:
         unverified: bool

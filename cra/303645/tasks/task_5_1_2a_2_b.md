@@ -200,6 +200,14 @@ unexpected success must still trigger the mandatory restoration phase.
 | `Authorization: Bearer <RO key>` |        `200`        |         `200`          |               `401`               |
 | `Authorization: Bearer <RW key>` |        `200`        |         `200`          |               `200`               |
 
+Positive GETs must prove access to endpoint data, not merely return a JSON object. Require bearer
+`/ruuvi.json` to match the complete prepared configuration. Require `/history` to contain a `data`
+object with the verified nRF52 `gw_mac`, string `coordinates`, and object `tags`; empty tags are valid.
+Require an integer envelope `timestamp` when `ntp_use` is enabled; firmware omits it when disabled.
+Validate any sensor reports' MAC, RSSI, raw hex data, and timestamp/counter structure. Empty,
+error-only, incomplete, or inconsistent positive payloads are protocol ERROR and still require
+restoration. Cover these cases in the host-side regressions.
+
 Use exactly `{}` as the body of the positive `POST /ruuvi.json` probe. The firmware copies the
 current configuration before parsing the partial body, so an empty object changes no configuration
 fields. Verify this by comparing the canonical authenticated `/ruuvi.json` hash before and after the
