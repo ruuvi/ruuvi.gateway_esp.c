@@ -22,8 +22,8 @@ credential witnesses and the authenticated public Mosquitto test listener.
 RO/RW bearer proof applies only to those API keys. Certificates are NVS strings in current firmware: /extra_cfg may
 return 403, so use storage.<filename> (not a TLS enable switch) as presence proof.
 Only readable blobs get readback hashes. The generated default snapshot's MQTT
-prefix/client ID contain a placeholder MAC; retain these device-derived fields
-from the stable baseline rather than comparing them to the placeholder.
+prefix/client ID contain a placeholder MAC; substitute the verified DUT MAC when
+checking these defaults and retain their stable values in the complete baseline.
 Print bench requirements before DUT access: start on LAN, with the hotspot closed.
 The operator confirms CONFIGURE and host network changes at explicit prompts.
 The runner performs API transitions and verifies identity after reconnecting.
@@ -96,7 +96,7 @@ CERTIFICATE_FILES: tuple[str, ...] = (
     StorageFile.STAT_CLI_CERT, StorageFile.STAT_CLI_KEY, StorageFile.RCFG_CLI_CERT, StorageFile.RCFG_CLI_KEY,
 )
 # Device metadata and MAC-derived MQTT defaults differ from the generator's
-# placeholder device. Preserve their stable values in the complete baseline.
+# placeholder device. Check MAC-derived defaults separately after identity verification.
 DEVICE_DERIVED_FIELDS: tuple[str, ...] = (
     Cfg.FW_VER, Cfg.NRF52_FW_VER, Cfg.GW_MAC, Cfg.MQTT_PREFIX, Cfg.MQTT_CLIENT_ID,
 )
@@ -599,9 +599,18 @@ class FunctionalTest_5_11_1_2_a:
                 raise InvalidSetup(f"Required factory default field differs or is missing: {field}")
         if not identified:
             raise InvalidSetup("Missing nRF52 identity; cannot authorize mutations")
+        device_defaults: dict[str, Any] = default_config_values((Cfg.GW_MAC, Cfg.MQTT_PREFIX, Cfg.MQTT_CLIENT_ID))
+        placeholder_mac: Any = device_defaults[Cfg.GW_MAC]
+        if not isinstance(placeholder_mac, str) or not placeholder_mac:
+            raise InvalidConfig("Default reference has no placeholder MAC for MQTT defaults")
         for field in (Cfg.MQTT_PREFIX, Cfg.MQTT_CLIENT_ID):
-            if not isinstance(payload.get(field), str) or not payload[field]:
-                raise InvalidSetup(f"Missing device-derived baseline field: {field}")
+            template: Any = device_defaults[field]
+            if not isinstance(template, str) or placeholder_mac not in template:
+                raise InvalidConfig(f"Default reference lacks MAC-derived MQTT template: {field}")
+            expected = template.replace(placeholder_mac, payload[Cfg.GW_MAC])
+            if field not in payload or not typed_equal(payload[field], expected):
+                self.recovery_message = FACTORY_RESET_MESSAGE
+                raise InvalidSetup(f"Required device-derived factory default differs or is missing: {field}")
         second: dict[str, Any] = self._read(self.gateway, self.session)
         if not typed_equal(payload, second):
             raise InvalidSetup("Two baseline reads are not stable")

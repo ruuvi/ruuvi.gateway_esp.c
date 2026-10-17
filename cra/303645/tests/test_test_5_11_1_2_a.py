@@ -735,6 +735,8 @@ class CreationTests(unittest.TestCase):
         (self.directory / ".env").write_text(env_text(DutConfig(CONFIG.gw_id, mac, CONFIG.gw_hostname)) + self.wifi_env(), encoding="utf-8")
         self.gateway.public["gw_mac"] = mac
         self.gateway.initial["gw_mac"] = mac
+        self.gateway.public.update(mqtt_prefix=f"ruuvi/{mac}/", mqtt_client_id=mac)
+        self.gateway.initial.update(mqtt_prefix=f"ruuvi/{mac}/", mqtt_client_id=mac)
         self.gateway.reset_mac = mac
         self.gateway.hotspot_mac = mac
         result: RunResult = self.execute()
@@ -1101,14 +1103,12 @@ class CreationTests(unittest.TestCase):
                 self.assert_restored()
 
     def test_rw_workaround_uses_observed_client_id_and_records_workaround(self) -> None:
-        self.gateway.public["mqtt_client_id"] = "observed-bench-client"
-        self.gateway.initial["mqtt_client_id"] = "observed-bench-client"
         result: RunResult = self.execute()
         self.assertEqual(result.exit_code, 0)
         bodies: list[dict[str, Any]] = [w.body for w in self.gateway.wire if w.method == "POST" and w.scheme == "Bearer"]
         self.assertEqual(bodies, [{
             "mqtt_prefix": "cra/224a0dd91f13f268d34c57ae/",
-            "mqtt_client_id": "observed-bench-client", "mqtt_data_format": "ruuvi_raw",
+            "mqtt_client_id": CONFIG.gw_mac, "mqtt_data_format": "ruuvi_raw",
         }])
         self.assertIn("workaround for firmware issue #1650", "\n".join(self.output))
         rw_item: dict[str, Any] = next(i for i in self.manifest()["items"] if i["field_or_file"] == "lan_auth_api_key_rw")
@@ -1334,6 +1334,7 @@ class CreationTests(unittest.TestCase):
             ("eth_netmask", "255.255.255.0"), ("eth_gw", "192.0.2.1"),
             ("eth_dns1", "192.0.2.53"), ("eth_dns2", "192.0.2.54"),
             ("coordinates", "60.0,24.0"), ("wifi_ap_config", {"channel": 6}),
+            ("mqtt_prefix", "custom/topic/"), ("mqtt_client_id", "custom-client"),
             ("ntp_server1", "custom.invalid"), ("auto_update_cycle", "manual"),
             ("scan_filter_list", ["AA:BB:CC:DD:EE:FF"]),
         ):
