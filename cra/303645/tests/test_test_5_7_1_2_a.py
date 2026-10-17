@@ -719,6 +719,8 @@ class RunnerTests(unittest.TestCase):
                            + name.encode("ascii").ljust(16, b"\x00") + b"\x00" * 4)
         entries.extend(b"\xff" * (0xC00 - len(entries)))
         (release / "partition-table.bin").write_bytes(entries)
+        shutil.copyfile(Path(__file__).resolve().parents[3] / "components/binaries/bootloader.bin",
+                        release / "bootloader.bin")
         filename: str
         image: bytes
         for filename, image in (("ruuvi_gateway_esp.bin", APP), ("fatfs_gwui.bin", WEB),
@@ -729,7 +731,8 @@ class RunnerTests(unittest.TestCase):
 
     def test_real_release_gate_prevents_all_writes_for_invalid_artifacts(self) -> None:
         variant: str
-        for variant in ("valid", "layout", "missing", "size", "integrity"):
+        for variant in ("valid", "layout", "missing", "size", "integrity", "boot-missing",
+                        "boot-size", "boot-header", "boot-segment", "boot-checksum", "boot-hash"):
             with self.subTest(variant=variant):
                 self._assert_release_gate(variant)
 
@@ -748,6 +751,23 @@ class RunnerTests(unittest.TestCase):
             app: bytearray = bytearray(APP)
             app[0x40000] ^= 1
             (release / "ruuvi_gateway_esp.bin").write_bytes(app)
+        elif variant.startswith("boot-"):
+            boot_path: Path = release / "bootloader.bin"
+            boot: bytearray = bytearray(boot_path.read_bytes())
+            if variant == "boot-missing":
+                boot_path.unlink()
+            else:
+                if variant == "boot-size":
+                    boot.extend(b"\xff" * 0x7000)
+                elif variant == "boot-header":
+                    boot[0] = 0
+                elif variant == "boot-segment":
+                    boot[28:32] = (0xFFFFFFFF).to_bytes(4, "little")
+                elif variant == "boot-checksum":
+                    boot[32] ^= 1
+                else:
+                    boot[-1] ^= 1
+                boot_path.write_bytes(boot)
         commands: list[list[str]] = []
         def command(args: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
             commands.append(args)
@@ -975,6 +995,70 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(2, len(self.installer.calls) - 1)
                 text: str = max((self.work_dir / "logs").glob("*.log")).read_text()
                 self.assertIn('"result": "FAIL"', text)
+
+    def test_rsa_rejections_do_not_cross_a_reset_boundary(self) -> None:
+        number: int
+        for number in (4, 8):
+            with self.subTest(case=number):
+                case: target.Scenario = target.SCENARIOS[number - 1]
+                console: str = observation(case).replace(
+                    "E (2674) esp_image: Secure boot signature verification failed",
+                    "rst:0xc (SW_CPU_RESET)\n"
+                    "E (2674) esp_image: Secure boot signature verification failed",
+                )
+                slot: int = case.slot
+                self.serial = FakeSerial((baseline(slot), baseline(slot), console, baseline(0)))
+                self.installer = FakeInstaller()
+                result: RunResult = self.execute(case_number=number)
+                self.assertEqual(2, result.exit_code, result.recovery_message)
+                self.assertEqual("ERROR", result.outcomes[case.name])
+
+    def test_computed_fail_survives_boot_match_logging_failure(self) -> None:
+        failure: type[BaseException]
+        for failure in (OSError, ValueError, KeyboardInterrupt):
+            with self.subTest(failure=failure.__name__):
+                self.serial = FakeSerial((baseline(0), baseline(0), baseline(0), baseline(0)))
+                self.installer = FakeInstaller()
+                original_write: Callable[..., None] = EvidenceLog.write
+                def write(log: EvidenceLog, label: str, value: Any = "", *,
+                          error_type: type[BaseException] = failure,
+                          base_write: Callable[..., None] = original_write) -> None:
+                    if label == "BOOT MATCH":
+                        raise error_type("match reporting failed")
+                    base_write(log, label, value)
+                with mock.patch.object(EvidenceLog, "write", write):
+                    result: RunResult = self.execute(case_number=1)
+                self.assertEqual(2, result.exit_code)
+                self.assertEqual("FAIL", result.outcomes[target.SCENARIOS[0].name])
+                self.assertIn("expected", result.recovery_message or "")
+                self.assertIn("Gateway recovery verified", result.recovery_message or "")
+                self.assertIn("Retry case 1", result.recovery_message or "")
+
+    def test_persistent_output_failure_keeps_case_outcome_and_manual_recovery(self) -> None:
+        failure: type[Exception]
+        for failure in (OSError, ValueError):
+            with self.subTest(failure=failure.__name__):
+                self.flash = FakeFlash()
+                self.installer = FakeInstaller()
+                self.installer.fail_on_flash_call = 2
+                self.serial = FakeSerial((baseline(0), baseline(0), observation(target.SCENARIOS[0])))
+                def output(message: str, *, error_type: type[Exception] = failure) -> None:
+                    if any(offset == 0x140000 for offset, _data in self.flash.writes):
+                        raise error_type("terminal unavailable")
+                    self.output.append(message)
+                with mock.patch("builtins.print") as fallback:
+                    result: RunResult = target.execute_test_5_7_1_2_a(
+                        work_dir=self.work_dir, session_factory=lambda: FakeSession(self.gateway),
+                        serial=self.serial, flash_factory=lambda _port, _versions, _log: self.flash,
+                        now=lambda: NOW, output=output, input_fn=lambda _prompt: "v1.17.5-dev",
+                        installer=self.installer, case_number=1,
+                    )
+                self.assertEqual(2, result.exit_code)
+                self.assertEqual("ERROR", result.outcomes[target.SCENARIOS[0].name])
+                self.assertIn("--flash_both_slots", result.recovery_message or "")
+                self.assertNotIn("Setup error", result.recovery_message or "")
+                self.assertEqual(2, sum(action == "flash_both" for action, _version in self.installer.calls))
+                fallback.assert_any_call(result.recovery_message)
 
     def test_entry_preamble_failure_returns_sanitized_error_without_dut_actions(self) -> None:
         original_write: Callable[..., None] = EvidenceLog.write

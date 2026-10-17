@@ -178,9 +178,15 @@ verdict for every case.
 
 Interpretation rules:
 
-- Corrupt **only** the byte ranges specified below. **Never** modify the second-stage bootloader
-  (`0x1000`), the partition table (`0x8000`), `nvs` (`0x9000`), `phy_init` (`0xf000`), or the
-  default-config partition `gw_cfg_def` (`0xB00000`). The test may write only a validated two-entry
+- During corruption cases and case-to-case restoration, modify **only** the byte ranges specified
+  below; preserve the second-stage bootloader (`0x1000`) and partition table (`0x8000`). Initial
+  installation and final recovery are exceptions: `ruuvi_gw_flash.py --flash_both_slots` rewrites
+  both regions from the selected release, as well as OTA metadata, both apps, and their paired
+  FATFS images. Before any installation, validate the bootloader ESP32 image header, bounded size,
+  segment lengths, checksum and appended SHA-256 when present, and compare the partition table
+  with the repository layout. This checks artifact integrity, not signing-key authenticity. Never
+  modify `nvs` (`0x9000`), `phy_init` (`0xf000`), or `gw_cfg_def` (`0xB00000`).
+  Case selection may write only a validated two-entry
   OTA selection image to the `otadata` partition (`0xd000`, `0x2000`).
 - **Never** request, read, generate, or use the secure-boot signing key. This test proves detection
   of corruption; it does not sign anything. Signature _validity_ is not the goal — signature/digest
@@ -408,6 +414,10 @@ selected partition. Case 9 requires a reset after both apps have been declared u
 before the rejection pair cannot establish a continuing reboot loop. Host regressions must exercise the real release-artifact
 gate with temporary files, covering layout mismatch, missing and wrong-sized images, and invalid
 app checksum/hash; every invalid fixture must prevent both installation and all flash writes.
+
+RSA failure evidence must stay within one boot, ending at the next reset banner or running-partition
+line. Save computed security failures before logging their match. Output failures abort normal
+acquisition but remain best-effort during recovery, preserving per-case outcomes and manual advice.
 
 ## Evidence log
 

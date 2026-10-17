@@ -442,6 +442,37 @@ def fatfs_padding_offset(image: bytes) -> int:
     return offset
 
 
+def validate_bootloader(image: bytes) -> None:
+    """Validate the ESP32 image envelope before the installer overwrites 0x1000."""
+    if (not 24 <= len(image) <= 0x7000 or image[0] != 0xE9
+            or not 1 <= image[1] <= 16 or image[23] not in (0, 1)):
+        raise InvalidSetup("downloaded bootloader has an invalid ESP32 image header or size")
+    cursor: int = 24
+    checksum: int = 0xEF
+    segment: int
+    for segment in range(image[1]):
+        if cursor + 8 > len(image):
+            raise InvalidSetup("downloaded bootloader segment header is truncated")
+        length: int = int.from_bytes(image[cursor + 4:cursor + 8], "little")
+        cursor += 8
+        if length == 0 or cursor + length > len(image):
+            raise InvalidSetup("downloaded bootloader segment data is truncated or empty")
+        byte: int
+        for byte in image[cursor:cursor + length]:
+            checksum ^= byte
+        cursor += length
+    checksum_offset: int = (cursor + 16) // 16 * 16 - 1
+    if checksum_offset >= len(image) or image[checksum_offset] != checksum:
+        raise InvalidSetup("downloaded bootloader checksum is invalid")
+    end: int = checksum_offset + 1
+    if image[23]:
+        if image[end:end + 32] != hashlib.sha256(image[:end]).digest():
+            raise InvalidSetup("downloaded bootloader appended SHA-256 is invalid")
+        end += 32
+    if any(byte not in (0, 0xFF) for byte in image[end:]):
+        raise InvalidSetup("downloaded bootloader contains unsupported trailing data")
+
+
 def load_release_images(repository: Path, version: str) -> ReleaseImages:
     def read(filename: str) -> bytes:
         path: Path = repository / ".releases" / version / filename
@@ -451,6 +482,7 @@ def load_release_images(repository: Path, version: str) -> ReleaseImages:
             error: OSError
             raise InvalidSetup(f"missing downloaded firmware image {path}: {error}") from error
 
+    validate_bootloader(read("bootloader.bin"))
     partitions: tuple[Partition, ...] = parse_partition_table(read("partition-table.bin"))
     if partitions != parse_partition_csv(repository / "partitions.csv"):
         raise InvalidSetup("downloaded partition table differs from partitions.csv")
@@ -606,6 +638,9 @@ def match_console(scenario: Scenario, console: str, active: Partition, alternate
         running_app: re.Match[str]
         for index, running_app in enumerate(running_apps):
             end: int = running_apps[index + 1].start() if index + 1 < len(running_apps) else len(clean)
+            reset: re.Match[str] | None = BOOT_BANNER.search(clean, running_app.end(), end)
+            if reset is not None:
+                end = reset.start()
             boot_window: str = clean[running_app.end():end]
             if (APP_SIGNATURE_FAILURE.search(boot_window) is not None
                     and APP_SIGNATURE_BAD.search(boot_window) is not None
@@ -918,6 +953,14 @@ class FunctionalTest_5_7_1_2_a:
                        lambda captured: match_console(scenario, captured, active, alternate).result == "PASS"),
         )
         match: ConsoleMatch = match_console(scenario, console, active, alternate)
+        # Save a proven security failure before any fallible evidence/reporting call.
+        if match.result == "FAIL":
+            self.outcomes[scenario.name] = "FAIL"
+            self.failed_numbers.append(scenario.number)
+            self.failure_details.append(
+                f"{scenario.name}: expected {scenario_plan(scenario)}; "
+                f"observed {scenario_observation(scenario, match)}."
+            )
         self.evidence.write("BOOT MATCH", match)
         return match
 
@@ -1027,9 +1070,7 @@ class FunctionalTest_5_7_1_2_a:
                 observed: str = scenario_observation(case, observation)
                 if observation.result == "FAIL":
                     verdict = "FAIL"
-                    self.failed_numbers.append(case.number)
-                    detail: str = f"{case.name}: expected {scenario_plan(case)}; observed {observed}."
-                    self.failure_details.append(detail)
+                    detail: str = self.failure_details[-1]
                     self.evidence.write("SECURITY ASSERTION FAILURE", detail)
                     self.report(f"Step {case.number:02d} finished: FAIL — {observed}")
                 elif observation.result != "PASS":
@@ -1151,8 +1192,8 @@ def execute_test_5_7_1_2_a(
     result: RunResult = RunResult(2, "ERROR", {case.name: "NOT RUN" for case in scenarios}, set())
 
     def report(message: str) -> None:
-        output(message)
         assert evidence is not None
+        evidence.record(lambda: output(message))
         evidence.write_line(message)
 
     try:
