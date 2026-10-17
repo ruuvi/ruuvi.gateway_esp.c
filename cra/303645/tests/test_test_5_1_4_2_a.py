@@ -482,6 +482,31 @@ class FunctionalTestCase(unittest.TestCase):
                          (self.fake.mode, self.fake.user, self.fake.ro_key, self.fake.rw_key))
         self.assertEqual(HttpMethod.GET, self.fake.calls[-1]["method"])
 
+    def test_final_verdict_output_failure_is_recorded_in_healthy_log(self) -> None:
+        root: Path = Path(self.temp_dir.name)
+        (root / ".env").write_text(wire.env_text(CONFIG), encoding="utf-8")
+        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
+        messages: list[str] = []
+
+        def output(message: str) -> None:
+            messages.append(message)
+            if message.startswith("Overall verdict:"):
+                raise BrokenPipeError("final terminal write failed")
+
+        result: RunResult = target.execute_test_5_1_4_2_a(
+            root, session_factory=lambda: wire.FakeSession(gateway),
+            random_bytes=wire.UniqueRandom(), output=output,
+        )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        log_path: Path = Path(messages[0][len("Open log file: "):])
+        evidence: str = log_path.read_text(encoding="utf-8")
+        self.assertIn("Reporting: ERROR; output/evidence sink failed", evidence)
+        self.assertIn("OVERALL VERDICT: ERROR", evidence)
+        self.assertNotIn("OVERALL VERDICT: PASS", evidence)
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, gateway.mode)
+        self.assertEqual(("GET", "/ruuvi.json"), (gateway.calls[-1].method, gateway.calls[-1].path))
+
     def test_closed_output_at_cleanup_does_not_block_real_client_restoration(self) -> None:
         root: Path = Path(self.temp_dir.name)
         (root / ".env").write_text(wire.env_text(CONFIG), encoding="utf-8")

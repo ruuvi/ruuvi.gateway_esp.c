@@ -637,17 +637,22 @@ def execute_test_5_1_4_2_a(
     finally:
         if result.recovery_message is not None:
             final_evidence.write("USER ACTION REQUIRED", result.recovery_message)
+        if final_evidence.failed:
+            result.exit_code, result.verdict = 2, "ERROR"
+        # Terminal reporting can fail even after all progress messages succeeded.
+        # Apply that failure before writing the final verdict to a healthy log.
+        final_evidence.attempt(lambda: output(f"Overall verdict: {result.verdict}"))
+        recovery_message: str | None = result.recovery_message
+        if recovery_message is not None:
+            final_evidence.attempt(lambda: output(str(recovery_message)))
+        if final_evidence.failed:
+            result.exit_code, result.verdict = 2, "ERROR"
+            final_evidence.write("RESULT EXPLANATION", "Reporting: ERROR; output/evidence sink failed")
         final_evidence.attempt(lambda: log.finish(result.verdict, now))
         if not log._stream.closed:
             final_evidence.attempt(log._stream.close)
         if final_evidence.failed:
             result.exit_code, result.verdict = 2, "ERROR"
-    final_evidence.attempt(lambda: output(f"Overall verdict: {result.verdict}"))
-    recovery_message: str | None = result.recovery_message
-    if recovery_message is not None:
-        final_evidence.attempt(lambda: output(str(recovery_message)))
-    if final_evidence.failed:
-        result.exit_code, result.verdict = 2, "ERROR"
     return result
 
 
