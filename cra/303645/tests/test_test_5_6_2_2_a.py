@@ -8,10 +8,13 @@ import struct
 import subprocess
 import tempfile
 import unittest
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, BinaryIO, Callable
 from unittest.mock import Mock, patch
+
+import requests
 
 from lib.gateway import GatewayCfgDesc, GatewayCfgLanAuthType
 from lib.http_api import GatewayApi, HttpMethod
@@ -49,7 +52,7 @@ class DisclosureGateway(DefaultAuthGateway):
     def _config_response(self) -> FakeResponse:
         return FakeResponse(200, self.config_override) if self.config_override is not None else super()._config_response()
 
-    def _unauthorized_response(self, method: str, path: str, headers: dict[str, str]) -> FakeResponse:
+    def _unauthorized_response(self, method: str, path: str, headers: Mapping[str, str]) -> FakeResponse:
         if method == "HEAD":
             return FakeResponse(400)
         if path == "/":
@@ -65,7 +68,7 @@ class DisclosureGateway(DefaultAuthGateway):
             response_headers["Set-Cookie"] = f"RUUVI_PREV_URL={path}"
         return FakeResponse(302, headers=response_headers)
 
-    def response_for(self, session: FakeSession, method: str, path: str, headers: dict[str, str],
+    def response_for(self, session: FakeSession, method: str, path: str, headers: Mapping[str, str],
                      body: Any, allow_redirects: bool = False) -> FakeResponse:
         response: FakeResponse = super().response_for(session, method, path, headers, body, allow_redirects)
         response.headers["Server"] = "Ruuvi Gateway"
@@ -183,7 +186,116 @@ class RunnerTests(unittest.TestCase):
         self.fake.changed_header = ("WWW-Authenticate", "invalid")
         result = self._run()
         self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+        self.assertEqual("ERROR", result.outcomes["redirects and challenge"])
+        self.assertEqual("PASS", result.outcomes["generic banner"])
+        self.assertEqual("NOT RUN", result.outcomes["sensitive disclosure scan"])
         self.assertIn("GatewayProtocolError", self._log())
+
+    def test_short_whitespace_credentials_and_coordinates_are_disclosures(self) -> None:
+        body: str
+        for body in ('{"http_pass":"abc"}', '{"mqtt_pass":"a b c"}',
+                     '{"mqtt_pass":"false"}', '{"wifi_sta_config":{"password":"x"}}',
+                     '{"coordinates":"60.1699,24.9384"}', '{"coordinates":"office,top floor"}'):
+            with self.subTest(body=body):
+                self.setUp()
+                self.fake.changed_path = "/app.js"
+                self.fake.changed_body = body
+                result: RunResult = self._run()
+                self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+                self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+
+    def test_empty_defaults_and_coordinate_schema_are_public(self) -> None:
+        self.fake.changed_path = "/app.js"
+        self.fake.changed_body = (
+            '{"http_pass":"","mqtt_pass":"","coordinates":"",'
+            '"properties":{"coordinates":{"type":"string","description":"Coordinates"}}}'
+        )
+        result: RunResult = self._run()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code), self.messages)
+
+    def test_runtime_backtrace_in_successful_html_fails_but_static_marker_is_public(self) -> None:
+        self.fake.changed_path = "/"
+        self.fake.changed_body = (
+            '<script src="/app.js"></script><pre>Backtrace: 0x400d1234:0x3ffb5678</pre>'
+        )
+        result: RunResult = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+        self.assertIn("runtime backtrace", self._log())
+        self.setUp()
+        self.fake.changed_path = "/app.js"
+        self.fake.changed_body = 'const label="Backtrace:"; const mask=0xffffffff;'
+        result = self._run()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code), self.messages)
+
+    def test_cookie_and_valid_challenge_cannot_hide_secret_fields(self) -> None:
+        self.fake.changed_path = "/"
+        self.fake.changed_header = ("Set-Cookie", 'mqtt_pass="leaked-password"')
+        result: RunResult = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+        self.setUp()
+        self.fake.changed_path = GatewayApi.AUTH
+        self.fake.changed_header = (
+            "WWW-Authenticate",
+            ('x-ruuvi-interactive realm="Ruuvi Gateway", challenge="nonce", '
+             'session_id="session-3", session_cookie="RUUVISESSION", mqtt_pass="leaked-password"'),
+        )
+        result = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual("PASS", result.outcomes["redirects and challenge"])
+        self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+
+    def test_ipv4_redirect_is_public_but_appended_build_is_not(self) -> None:
+        config: DutConfig = replace(CONFIG, gw_hostname="192.0.2.10")
+        (self.work_dir / ".env").write_text(env_text(config), encoding="utf-8")
+        self.fake = DisclosureGateway(config)
+        result: RunResult = self._run()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code), self.messages)
+        self.setUp()
+        (self.work_dir / ".env").write_text(env_text(config), encoding="utf-8")
+        self.fake = DisclosureGateway(config)
+        self.fake.changed_path = GatewayApi.STATUS
+        self.fake.changed_header = ("Location", f"{config.base_url}/#auth-v1.2.3")
+        result = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+        self.assertIn("build identifier", self._log())
+
+    def test_matrix_failure_then_timeout_keeps_failure_and_unrun_checks(self) -> None:
+        self.fake.changed_path = "/app.js"
+        self.fake.changed_status = 404
+        original_response: Callable[..., FakeResponse] = self.fake.response_for
+
+        def response_with_timeout(session: FakeSession, method: str, path: str,
+                                  headers: Mapping[str, str], body: Any,
+                                  allow_redirects: bool = False) -> FakeResponse:
+            if path == GatewayApi.AP:
+                raise requests.Timeout("injected matrix timeout")
+            return original_response(session, method, path, headers, body, allow_redirects)
+
+        with patch.object(self.fake, "response_for", side_effect=response_with_timeout):
+            result: RunResult = self._run()
+        self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+        self.assertEqual("PASS", result.outcomes["factory-default preflight"])
+        self.assertEqual("FAIL", result.outcomes["HTTP disclosure matrix"])
+        self.assertTrue(all(state == "NOT RUN" for check, state in result.outcomes.items()
+                            if check not in {"factory-default preflight", "HTTP disclosure matrix"}))
+        self.assertIn("HTTP disclosure matrix ERROR", "\n".join(self.messages))
+        self.assertIn("HTTP disclosure matrix FAIL", "\n".join(self.messages))
+        self.assertIn("INCOMPLETE CHECK", self._log())
+        self.assertEqual([], self.capture_calls)
+
+    def test_dhcp_device_id_seed_in_allowed_option_fails(self) -> None:
+        option: str
+        for option in ("01" + ETHERNET_MAC.replace(":", ""), CONFIG.gw_id.encode().hex()):
+            with self.subTest(option=option):
+                self.setUp()
+                self.capture = replace(self.capture, hostname=DHCP_HOSTNAME,
+                    option_values=((12, DHCP_HOSTNAME.encode().hex()), (61, option)))
+                result: RunResult = self._run()
+                expected: str = "FAIL" if option == CONFIG.gw_id.encode().hex() else "PASS"
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["DHCP capture"])
 
     def test_public_bearer_prose_is_not_a_token(self) -> None:
         self.fake.changed_path = "/"

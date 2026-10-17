@@ -65,19 +65,25 @@ SECRET_FIELDS: tuple[str, ...] = (
 )
 SECRET_FIELD_PATTERN: re.Pattern[str] = re.compile(
     r'(?i)["\']?(' + "|".join(re.escape(field) for field in SECRET_FIELDS) +
-    r')["\']?\s*[:=]\s*["\']([^"\'\s,;}]{4,})["\']?'
+    r')["\']?\s*[:=]\s*(["\'])((?:(?!\2).)+)\2', re.DOTALL
 )
 PEM_PATTERN: re.Pattern[str] = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 POINTER_PATTERN: re.Pattern[str] = re.compile(r"\b0x[0-9a-fA-F]{6,}\b")
 POINTER_CONTEXT_PATTERN: re.Pattern[str] = re.compile(
     r"(?i)\b(?:pointer|address|stack|heap|pc|sp)\s*[:=]\s*0x[0-9a-f]{6,}\b"
 )
+RUNTIME_BACKTRACE_PATTERN: re.Pattern[str] = re.compile(
+    r"(?i)\b(?:backtrace|stack trace)\s*:\s*0x[0-9a-f]{6,}\s*:\s*0x[0-9a-f]{6,}\b"
+)
+COORDINATES_PATTERN: re.Pattern[str] = re.compile(
+    r'(?is)["\']coordinates["\']\s*:\s*(["\'])((?:(?!\1).)+)\1'
+)
 DIAGNOSTIC_PATTERN: re.Pattern[str] = re.compile(r"(?i)\b(?:backtrace|stack trace|panic|abort\(\))\b")
 BUILD_PATTERN: re.Pattern[str] = re.compile(r"(?i)\b(?:v?\d+\.\d+\.\d+(?:[-+][\w.]+)?|[0-9a-f]{40}|[0-9a-f]{7,}(?=\b)|esp-idf\s*[:/]?\s*v?\d+\.\d+)\b")
 BEARER_PATTERN: re.Pattern[str] = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/-]{8,}")
-HISTORY_PATTERN: re.Pattern[str] = re.compile(r'(?i)["\'](?:history|sensor_data|ble_mac|coordinates)["\']\s*:\s*(?:\[\s*\{|\[\s*["\']|\{\s*["\'])')
+HISTORY_PATTERN: re.Pattern[str] = re.compile(r'(?i)["\'](?:history|sensor_data|ble_mac)["\']\s*:\s*(?:\[\s*\{|\[\s*["\']|\{\s*["\'])')
 WIFI_PASSWORD_PATTERN: re.Pattern[str] = re.compile(
-    r'(?is)["\']wifi_sta_config["\']\s*:\s*\{[^}]*["\']password["\']\s*:\s*["\'][^"\']{4,}["\']'
+    r'(?is)["\']wifi_sta_config["\']\s*:\s*\{[^}]*["\']password["\']\s*:\s*["\'][^"\']+["\']'
 )
 STATIC_REF_PATTERN: re.Pattern[str] = re.compile(r'''(?:src|href)\s*=\s*["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']''', re.IGNORECASE)
 
@@ -373,7 +379,9 @@ def probes(static_path: str, unknown_path: str) -> tuple[Probe, ...]:
     return tuple(routes)
 
 
-def scan_observation(observation: Observation, gw_id: str, default_username: str) -> tuple[DisclosureFinding, ...]:
+def scan_observation(
+    observation: Observation, gw_id: str, default_username: str, public_base_url: str = "",
+) -> tuple[DisclosureFinding, ...]:
     findings: list[DisclosureFinding] = []
     parts: list[tuple[str, str]] = [(f"header:{name}", value) for name, value in observation.headers]
     parts.append(("body", observation.body))
@@ -383,7 +391,8 @@ def scan_observation(observation: Observation, gw_id: str, default_username: str
         patterns: tuple[tuple[str, re.Pattern[str]], ...] = (
             ("private key", PEM_PATTERN),
             ("bearer token", BEARER_PATTERN),
-            ("personal telemetry", HISTORY_PATTERN), ("Wi-Fi PSK", WIFI_PASSWORD_PATTERN),
+            ("personal telemetry", HISTORY_PATTERN), ("coordinates", COORDINATES_PATTERN),
+            ("Wi-Fi PSK", WIFI_PASSWORD_PATTERN), ("runtime backtrace", RUNTIME_BACKTRACE_PATTERN),
         )
         if location == "body" and observation.status == HttpStatus.C_200_OK:
             patterns += (("memory address", POINTER_CONTEXT_PATTERN),)
@@ -400,7 +409,13 @@ def scan_observation(observation: Observation, gw_id: str, default_username: str
         pattern: re.Pattern[str]
         for category, pattern in patterns:
             hit: re.Match[str]
-            for hit in pattern.finditer(content):
+            scanned_content: str = content
+            if category == "build identifier" and location.lower() == "header:location" and (
+                public_base_url and content.startswith(public_base_url + "/")
+            ):
+                # Only the verified redirect authority is public; retain path/query/fragment leaks.
+                scanned_content = content[len(public_base_url):]
+            for hit in pattern.finditer(scanned_content):
                 if category == "bearer token" and location == "body":
                     candidate: str = hit.group(0).split()[-1]
                     context: str = content[max(0, hit.start() - 24):hit.start()].lower()
@@ -412,18 +427,17 @@ def scan_observation(observation: Observation, gw_id: str, default_username: str
         if gw_id and gw_id.lower() in content.lower():
             findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                               location, "DeviceID password seed", gw_id))
-        if not public_challenge_header:
-            field_match: re.Match[str]
-            for field_match in SECRET_FIELD_PATTERN.finditer(content):
-                field: str = field_match.group(1)
-                value: str = field_match.group(2)
-                public_ui_default: bool = (
-                    location == "body" and observation.probe.path.endswith((".js", ".css"))
-                    and field == GatewayCfgDesc.LAN_AUTH_USER and value == default_username
-                )
-                if not public_ui_default and value.lower() not in {"null", "true", "false", "undefined"}:
-                    findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
-                                                      location, "credential value", field_match.group(0)))
+        field_match: re.Match[str]
+        for field_match in SECRET_FIELD_PATTERN.finditer(content):
+            field: str = field_match.group(1)
+            value: str = field_match.group(3)
+            public_ui_default: bool = (
+                location == "body" and observation.probe.path.endswith((".js", ".css"))
+                and field == GatewayCfgDesc.LAN_AUTH_USER and value == default_username
+            )
+            if not public_ui_default:
+                findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                  location, "credential value", field_match.group(0)))
     return tuple(findings)
 
 
@@ -598,7 +612,8 @@ class FunctionalTest_5_6_2_2_a:
             "fields": SECRET_FIELDS, "regexes": (PEM_PATTERN.pattern, POINTER_PATTERN.pattern,
                 DIAGNOSTIC_PATTERN.pattern, BUILD_PATTERN.pattern, BEARER_PATTERN.pattern,
                 POINTER_CONTEXT_PATTERN.pattern,
-                HISTORY_PATTERN.pattern, WIFI_PASSWORD_PATTERN.pattern),
+                HISTORY_PATTERN.pattern, COORDINATES_PATTERN.pattern, WIFI_PASSWORD_PATTERN.pattern,
+                RUNTIME_BACKTRACE_PATTERN.pattern),
             "sources": ("IXIT 10-SecParam sections WebUI/WiFi/remote/custom/bearer/DeviceID",
                         "IXIT 1-AuthMech", "IXIT 21-PersData BLE telemetry",
                         "IXIT 28-LogIntf Disclosed Information"),
@@ -606,7 +621,7 @@ class FunctionalTest_5_6_2_2_a:
         observation: Observation
         for observation in self.observations:
             matches: tuple[DisclosureFinding, ...] = scan_observation(
-                observation, self.config.gw_id, self.default_username,
+                observation, self.config.gw_id, self.default_username, self.config.base_url,
             )
             self.evidence.write("SENSITIVE SCAN RESULT", {"method": observation.probe.method,
                 "path": observation.probe.path, "findings": matches})
@@ -706,6 +721,7 @@ class FunctionalTest_5_6_2_2_a:
                 option_value: str
                 for _, option_value in observed.option_values:
                     decoded: str = bytes.fromhex(option_value).decode("utf-8", errors="replace")
+                    suspicious = suspicious or self.config.gw_id.casefold() in decoded.casefold()
                     suspicious = suspicious or any(pattern.search(decoded) for pattern in
                                                    (PEM_PATTERN, POINTER_PATTERN, DIAGNOSTIC_PATTERN,
                                                     BEARER_PATTERN, BUILD_PATTERN))
@@ -719,28 +735,39 @@ class FunctionalTest_5_6_2_2_a:
         started_at: datetime = self.clock()
         self.evidence.write("RUN UTC START", format_utc(started_at))
         self.progress("Authenticating and checking initialized factory-default DUT")
+        active_check: str = "factory-default preflight"
+        incomplete: bool = False
         try:
             self._preflight()
             self.progress("Executing isolated unauthenticated GET/HEAD matrix")
+            active_check = "HTTP disclosure matrix"
             self._matrix()
             self.progress("Checking generic GET Server banner")
+            active_check = "generic banner"
             self._banner()
             self.progress("Checking redirects and interactive challenge")
+            active_check = "redirects and challenge"
             self._redirects()
             self.progress("Scanning every unauthenticated header and body")
+            active_check = "sensitive disclosure scan"
             self._scan()
             self.progress("Confirming deliberately public metadata")
+            active_check = "public metadata"
             self._public()
             self.progress("Capturing DUT DHCP frame on LAN")
+            active_check = "DHCP capture"
             self._dhcp()
         except Exception as error:  # noqa: BLE001 - Preserve evidence and classify all incomplete observations.
             self.evidence.exception(error)
             self.output(f"test ERROR: {type(error).__name__}: {error}")
-            next_check: str = next((check for check, state in self.outcomes.items() if state == "NOT RUN"),
-                                   "HTTP disclosure matrix")
-            self.outcomes[next_check] = "ERROR"
+            incomplete = True
+            self.evidence.write("INCOMPLETE CHECK", {"check": active_check, "error": type(error).__name__,
+                                                      "earlier_result": self.outcomes[active_check]})
+            self.output(f"{active_check} ERROR: incomplete observation; earlier result {self.outcomes[active_check]}")
+            if self.outcomes[active_check] != "FAIL":
+                self.outcomes[active_check] = "ERROR"
         values: tuple[str, ...] = tuple(self.outcomes.values())
-        verdict: str = "ERROR" if "ERROR" in values or "NOT RUN" in values else (
+        verdict: str = "ERROR" if incomplete or "ERROR" in values or "NOT RUN" in values else (
             "FAIL" if "FAIL" in values else "PASS"
         )
         if self.outcomes["DHCP capture"] == "ERROR" and all(
