@@ -7,7 +7,6 @@ import hashlib
 import json
 import tempfile
 import unittest
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -15,7 +14,6 @@ from unittest import mock
 from urllib.parse import urlsplit
 
 import requests
-from Crypto.PublicKey import ECC
 
 import test_5_1_2a_2_b as target
 from lib.gateway import (
@@ -27,6 +25,12 @@ from lib.gateway import (
 )
 from lib.http_api import HttpAuthScheme, HttpHeader, HttpMethod, HttpStatus
 from lib.models import RunResult
+from test_support.fake_gateway import (
+    DefaultAuthGateway,
+    FakeResponse,
+    FakeSession,
+    RecordedRequest,
+)
 
 FIXED_NOW: datetime = datetime(2026, 9, 3, 4, 20, 4, 888000, tzinfo=timezone.utc)
 CONFIG: target.DutConfig = target.DutConfig(
@@ -59,231 +63,69 @@ def env_text() -> str:
     )
 
 
-class FakeResponse(requests.Response):
-    def __init__(
-        self,
-        status: int,
-        payload: Any = None,
-        headers: dict[str, str] | None = None,
-        cookies: dict[str, str] | None = None,
-        malformed_json: bool = False,
-    ) -> None:
-        super().__init__()
-        self.status_code: int = status
-        self.headers.update(headers or {})
-        self.cookies.update(cookies or {})
-        self._payload: Any = payload
-        self._malformed_json: bool = malformed_json
-        text: str = "{broken" if malformed_json else json.dumps(payload) if payload is not None else ""
-        self._content: bytes = text.encode("utf-8")
-        self.encoding: str = "utf-8"
+class BearerGateway(DefaultAuthGateway):
+    """Fault scenarios for bearer provisioning, scope checks, and restoration."""
 
-    def json(self, **kwargs: Any) -> Any:
-        if self._malformed_json:
-            raise ValueError("malformed")
-        return self._payload
-
-
-@dataclass(frozen=True)
-class RecordedRequest:
-    session_number: int
-    method: str
-    path: str
-    authorization: str
-    body: Any
-    allow_redirects: bool
-
-    @property
-    def scheme(self) -> str:
-        return self.authorization.split(" ", 1)[0] if self.authorization else "none"
-
-
-class FakeGateway:
-    def __init__(self) -> None:
-        self.calls: list[RecordedRequest] = []
-        self.ro_key: str = ""
-        self.rw_key: str = ""
-        self.auth_user: str = target.ADMIN_USERNAME
-        self.auth_mode: str = GatewayCfgLanAuthType.DEFAULT
+    def __init__(self, config: target.DutConfig) -> None:
+        super().__init__(config)
         self.config_reads: int = 0
         self.config_overrides: dict[int, dict[str, Any]] = {}
         self.restore_admin_failures: int = 0
         self.restore_rw_failure: bool = False
         self.override: dict[tuple[str, str, str], FakeResponse | BaseException] = {}
-        self.connection_error: BaseException | None = None
         self.malformed_config: bool = False
         self.mutate_after_positive: bool = False
-        self.server_key: ECC.EccKey = ECC.generate(curve="secp256r1")
-        public: ECC.EccKey = self.server_key.public_key()
-        raw: bytes = b"\x04" + int(public.pointQ.x).to_bytes(32, "big") + int(public.pointQ.y).to_bytes(32, "big")
-        self.server_public_b64: str = base64.b64encode(raw).decode("ascii")
 
     def config(self) -> dict[str, Any]:
         return {
-            GatewayCfgDesc.LAN_AUTH_TYPE: self.auth_mode,
-            GatewayCfgDesc.LAN_AUTH_USER: self.auth_user,
+            GatewayCfgDesc.LAN_AUTH_TYPE: self.mode,
+            GatewayCfgDesc.LAN_AUTH_USER: self.custom_username,
             GatewayCfgDesc.LAN_AUTH_API_KEY_USE: bool(self.ro_key),
             GatewayCfgDesc.LAN_AUTH_API_KEY_RW_USE: bool(self.rw_key),
-            GatewayCfgDesc.GW_MAC: CONFIG.gw_mac,
+            GatewayCfgDesc.GW_MAC: self.dut_config.gw_mac,
             GatewayCfgDesc.FW_VER: "test-fw",
             GatewayCfgDesc.NRF52_FW_VER: "test-nrf",
             "stable": "mutated" if self.mutate_after_positive else "value",
         }
 
-    @staticmethod
-    def token(authorization: str) -> str | None:
-        prefix: str = f"{HttpAuthScheme.BEARER} "
-        return authorization[len(prefix) :] if authorization.startswith(prefix) else None
-
-    def response_for(
-        self,
-        session: FakeSession,
-        method: str,
-        path: str,
-        headers: dict[str, str],
-        body: Any,
-        allow_redirects: bool,
-    ) -> FakeResponse:
-        authorization: str = headers.get(HttpHeader.AUTHORIZATION, "")
-        call: RecordedRequest = RecordedRequest(
-            session.number,
-            method,
-            path,
-            authorization,
-            body,
-            allow_redirects,
-        )
-        self.calls.append(call)
-        if self.connection_error is not None:
-            error: BaseException = self.connection_error
-            self.connection_error = None
-            raise error
+    def _response_override(self, session: FakeSession, call: RecordedRequest) -> FakeResponse | None:
         override: FakeResponse | BaseException | None = self.override.get(
-            (authorization, method, path),
-            self.override.get((call.scheme, method, path)),
+            (call.authorization, call.method, call.path),
+            self.override.get((call.scheme, call.method, call.path)),
         )
         if isinstance(override, BaseException):
             raise override
         if override is not None:
             return override
-
-        if path == GatewayApi.AUTH and method == HttpMethod.GET:
-            if self.auth_mode in (GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST):
-                scheme: str = (
-                    HttpAuthScheme.BASIC if self.auth_mode == GatewayCfgLanAuthType.BASIC else HttpAuthScheme.DIGEST
-                )
-                return FakeResponse(
-                    401,
-                    {GatewayCfgDesc.LAN_AUTH_TYPE: self.auth_mode},
-                    {HttpHeader.WWW_AUTHENTICATE: f'{scheme} realm="Ruuvi Gateway"'},
-                )
-            session_id: str = f"session-{session.number}"
-            session.challenge_number += 1
-            session.challenge = f"challenge-{session.number}-{session.challenge_number}"
-            session.cookie = session_id
-            header: str = (
-                f'x-ruuvi-interactive realm="Ruuvi Gateway" challenge="{session.challenge}" '
-                f'session_cookie="RUUVISESSION" session_id="{session_id}"'
-            )
-            return FakeResponse(
-                HttpStatus.C_401_UNAUTHORIZED,
-                {GatewayCfgDesc.LAN_AUTH_TYPE: self.auth_mode},
-                headers={
-                    HttpHeader.WWW_AUTHENTICATE: header,
-                    HttpHeader.RUUVI_ECDH_PUBLIC_KEY: self.server_public_b64,
-                },
-                cookies={"RUUVISESSION": session_id},
-            )
-        if path == GatewayApi.AUTH and method == HttpMethod.POST:
-            ha1: str = hashlib.md5(f"Admin:Ruuvi Gateway:{CONFIG.gw_id}".encode()).hexdigest()
-            expected_body: dict[str, str] = {
-                "login": "Admin",
-                "password": hashlib.sha256(f"{session.challenge}:{ha1}".encode()).hexdigest(),
-            }
-            if (
-                session.challenge
-                and body == expected_body
-                and headers.get(HttpHeader.COOKIE) == f"RUUVISESSION={session.cookie}"
-            ):
-                session.authorized = True
-                session.challenge = ""
-                return FakeResponse(HttpStatus.C_200_OK, {"authenticated": True})
-            return FakeResponse(HttpStatus.C_401_UNAUTHORIZED, {"authenticated": False})
-
-        bearer: str | None = self.token(authorization)
-        read_allowed: bool = bearer in {self.ro_key, self.rw_key} and bearer != ""
-        write_allowed: bool = bearer == self.rw_key and bearer != ""
-        authorized_read: bool = session.authorized or read_allowed
-        authorized_write: bool = session.authorized or write_allowed
-
-        if path == GatewayApi.CONFIG and method == HttpMethod.GET and authorized_read:
-            self.config_reads += 1
-            if self.malformed_config:
-                return FakeResponse(HttpStatus.C_200_OK, malformed_json=True)
-            return FakeResponse(HttpStatus.C_200_OK, self.config_overrides.get(self.config_reads, self.config()))
-        if path == GatewayApi.HISTORY and method == HttpMethod.GET and authorized_read:
-            return FakeResponse(HttpStatus.C_200_OK, {"data": []})
-        if path == GatewayApi.CONFIG and method == HttpMethod.POST and authorized_write:
-            restoration: bool = body == {
+        restoration: bool = (
+            call.method == HttpMethod.POST
+            and call.path == GatewayApi.CONFIG
+            and call.body == {
                 GatewayCfgDesc.LAN_AUTH_API_KEY: "",
                 GatewayCfgDesc.LAN_AUTH_API_KEY_RW: "",
             }
-            if restoration and session.authorized and self.restore_admin_failures > 0:
-                self.restore_admin_failures -= 1
-                return FakeResponse(HttpStatus.C_500_INTERNAL_SERVER_ERROR, {"error": "injected"})
-            if restoration and bearer == self.rw_key and self.restore_rw_failure:
-                return FakeResponse(HttpStatus.C_500_INTERNAL_SERVER_ERROR, {"error": "injected"})
-            if isinstance(body, dict):
-                if GatewayCfgDesc.LAN_AUTH_API_KEY in body:
-                    self.ro_key = body[GatewayCfgDesc.LAN_AUTH_API_KEY]
-                if GatewayCfgDesc.LAN_AUTH_API_KEY_RW in body:
-                    self.rw_key = body[GatewayCfgDesc.LAN_AUTH_API_KEY_RW]
-            return FakeResponse(HttpStatus.C_200_OK, {})
-
-        if bearer is not None:
-            return FakeResponse(HttpStatus.C_401_UNAUTHORIZED, {"error": "unauthorized"})
-        return FakeResponse(
-            HttpStatus.C_302_FOUND if method == HttpMethod.GET else HttpStatus.C_401_UNAUTHORIZED,
-            {"error": "unauthorized"},
         )
+        if restoration and session.authorized and self.restore_admin_failures > 0:
+            self.restore_admin_failures -= 1
+            return FakeResponse(HttpStatus.C_500_INTERNAL_SERVER_ERROR, {"error": "injected"})
+        if restoration and call.bearer_token == self.rw_key and self.restore_rw_failure:
+            return FakeResponse(HttpStatus.C_500_INTERNAL_SERVER_ERROR, {"error": "injected"})
+        return None
 
-
-class FakeSession(requests.Session):
-    next_number: int = 1
-
-    def __init__(self, gateway: FakeGateway) -> None:
-        super().__init__()
-        self.gateway: FakeGateway = gateway
-        self.authorized: bool = False
-        self.challenge_number: int = 0
-        self.challenge: str = ""
-        self.cookie: str = ""
-        self.number: int = FakeSession.next_number
-        FakeSession.next_number += 1
-
-    def prepare_request(self, request: requests.Request) -> requests.PreparedRequest:
-        return request.prepare()
-
-    def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
-        body: Any = json.loads(request.body) if request.body else None
-        return self.gateway.response_for(
-            self,
-            request.method,
-            urlsplit(request.url).path,
-            dict(request.headers),
-            body,
-            kwargs["allow_redirects"],
-        )
+    def _config_response(self) -> FakeResponse:
+        self.config_reads += 1
+        if self.malformed_config:
+            return FakeResponse(HttpStatus.C_200_OK, malformed_json=True)
+        return FakeResponse(HttpStatus.C_200_OK, self.config_overrides.get(self.config_reads, self.config()))
 
 
 class FunctionalTestCase(unittest.TestCase):
     def setUp(self) -> None:
-        FakeSession.next_number = 1
         deterministic_random.calls = 0
         self.temp_dir: tempfile.TemporaryDirectory[str] = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)
         self.root: Path = Path(self.temp_dir.name)
-        self.gateway: FakeGateway = FakeGateway()
+        self.gateway: BearerGateway = BearerGateway(CONFIG)
         self.log: target.EvidenceLog = target.EvidenceLog.create(
             self.root / "logs",
             "test_5_1_2a_2_b",
@@ -426,7 +268,7 @@ class FunctionalTestCase(unittest.TestCase):
         authorization: str
         for authorization in (f"Bearer {CONFIG.gw_id}", f"Bearer {RW_KEY}"):
             with self.subTest(authorization=authorization):
-                self.gateway = FakeGateway()
+                self.gateway = BearerGateway(CONFIG)
                 deterministic_random.calls = 0
                 self.gateway.override[(authorization, "GET", "/ruuvi.json")] = FakeResponse(500, {})
                 result: RunResult = self.runner().run()
@@ -475,7 +317,7 @@ class FunctionalTestCase(unittest.TestCase):
         fault: str
         for fault in ("missing-cookie", "cookie", "challenge", "extra-body-field"):
             with self.subTest(fault=fault):
-                self.gateway = FakeGateway()
+                self.gateway = BearerGateway(CONFIG)
 
                 class CorruptLoginSession(FakeSession):
                     def send(
@@ -523,6 +365,8 @@ class FunctionalTestCase(unittest.TestCase):
             }
 
         def submit(session: requests.Session, submitted_body: dict[str, str], submitted_cookie: str | None) -> int:
+            # Omit the cookie on the wire even when the challenge populated the jar.
+            session.cookies.clear()
             response: requests.Response = client.request(
                 session,
                 HttpMethod.POST,
@@ -530,6 +374,7 @@ class FunctionalTestCase(unittest.TestCase):
                 headers={HttpHeader.COOKIE: submitted_cookie} if submitted_cookie is not None else {},
                 json_body=submitted_body,
             )
+            self.assertEqual(submitted_cookie, self.gateway.calls[-1].cookie)
             return response.status_code
 
         body: dict[str, str] = login_body(first.challenge["challenge"])
@@ -580,7 +425,7 @@ class FunctionalTestCase(unittest.TestCase):
         mac: Any
         for mac in (None, 123, "invalid", "11:22:33:44:55:66", CONFIG.gw_mac):
             with self.subTest(mac=mac):
-                self.gateway = FakeGateway()
+                self.gateway = BearerGateway(CONFIG)
                 payload: dict[str, Any] = self.gateway.config()
                 payload[GatewayCfgDesc.LAN_AUTH_API_KEY_USE] = True
                 if mac is None:
@@ -601,8 +446,8 @@ class FunctionalTestCase(unittest.TestCase):
         for config_mode in (GatewayCfgLanAuthType.DEFAULT, GatewayCfgLanAuthType.RUUVI):
             for mac in (None, 123, "invalid", "11:22:33:44:55:66", CONFIG.gw_mac):
                 with self.subTest(config_mode=config_mode, mac=mac):
-                    self.gateway = FakeGateway()
-                    self.gateway.auth_mode = GatewayCfgLanAuthType.RUUVI
+                    self.gateway = BearerGateway(CONFIG)
+                    self.gateway.mode = GatewayCfgLanAuthType.RUUVI
                     payload: dict[str, Any] = self.gateway.config()
                     payload[GatewayCfgDesc.LAN_AUTH_TYPE] = config_mode
                     if mac is None:
@@ -634,8 +479,8 @@ class FunctionalTestCase(unittest.TestCase):
         )
         for fault in faults:
             with self.subTest(fault=fault):
-                self.gateway = FakeGateway()
-                self.gateway.auth_mode = GatewayCfgLanAuthType.RUUVI
+                self.gateway = BearerGateway(CONFIG)
+                self.gateway.mode = GatewayCfgLanAuthType.RUUVI
                 self.gateway.override[("", "GET", "/ruuvi.json")] = fault
                 result: RunResult = self.runner().run()
                 self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
@@ -656,7 +501,7 @@ class FunctionalTestCase(unittest.TestCase):
         key: str
         for key, method, path, status in cases:
             with self.subTest(key=key, method=method, path=path):
-                gateway: FakeGateway = FakeGateway()
+                gateway: BearerGateway = BearerGateway(CONFIG)
                 gateway.override[(f"{HttpAuthScheme.BEARER} {key}", method, path)] = FakeResponse(status, {})
                 runner: target.FunctionalTest_5_1_2a_2_b = target.FunctionalTest_5_1_2a_2_b(
                     CONFIG,
@@ -699,7 +544,7 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual("", restore_calls[0].authorization)
         self.assertEqual(f"{HttpAuthScheme.BEARER} {RW_KEY}", restore_calls[1].authorization)
 
-        gateway: FakeGateway = FakeGateway()
+        gateway: BearerGateway = BearerGateway(CONFIG)
         gateway.restore_admin_failures = 1
         gateway.restore_rw_failure = True
         deterministic_random.calls = 0
@@ -740,7 +585,7 @@ class FunctionalTestCase(unittest.TestCase):
             path: str,
             headers: dict[str, str],
             body: Any,
-            allow_redirects: bool,
+            allow_redirects: bool = False,
         ) -> FakeResponse:
             response: FakeResponse = original(session, method, path, headers, body, allow_redirects)
             if (
@@ -768,7 +613,7 @@ class FunctionalTestCase(unittest.TestCase):
         mode: str
         for mode in ("timeout", "connection", "json"):
             with self.subTest(mode=mode):
-                gateway: FakeGateway = FakeGateway()
+                gateway: BearerGateway = BearerGateway(CONFIG)
                 if mode == "timeout":
                     gateway.connection_error = requests.Timeout("timeout")
                 elif mode == "connection":
@@ -783,7 +628,7 @@ class FunctionalTestCase(unittest.TestCase):
                 self.assertEqual(2, runner.run().exit_code)
 
     def test_non_default_or_enabled_key_baseline_is_error(self) -> None:
-        gateway: FakeGateway = FakeGateway()
+        gateway: BearerGateway = BearerGateway(CONFIG)
         gateway.ro_key = "already-enabled"
         runner: target.FunctionalTest_5_1_2a_2_b = target.FunctionalTest_5_1_2a_2_b(
             CONFIG,
@@ -794,8 +639,8 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual(2, result.exit_code)
         self.assertEqual(target.FACTORY_RESET_MESSAGE, result.recovery_message)
 
-        gateway = FakeGateway()
-        gateway.auth_user = "NotAdmin"
+        gateway = BearerGateway(CONFIG)
+        gateway.custom_username = "NotAdmin"
         runner = target.FunctionalTest_5_1_2a_2_b(
             CONFIG,
             self.log,
@@ -832,7 +677,7 @@ class ConfigurationAndLoggingTestCase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root: Path = Path(directory)
             self.write_env(root)
-            gateway: FakeGateway = FakeGateway()
+            gateway: BearerGateway = BearerGateway(CONFIG)
             messages: list[str] = []
             deterministic_random.calls = 0
             result: RunResult = target.execute_test_5_1_2a_2_b(
@@ -863,8 +708,8 @@ class ConfigurationAndLoggingTestCase(unittest.TestCase):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
                 root: Path = Path(directory)
                 self.write_env(root)
-                gateway: FakeGateway = FakeGateway()
-                gateway.auth_mode = mode
+                gateway: BearerGateway = BearerGateway(CONFIG)
+                gateway.mode = mode
                 messages: list[str] = []
                 result: RunResult = target.execute_test_5_1_2a_2_b(
                     root,
