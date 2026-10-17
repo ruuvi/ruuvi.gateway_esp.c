@@ -1,15 +1,21 @@
 # Task: Automate ETSI Test Case 5.1-5-2, Unit B
 
+**MAC identity for this task:** `.env` `gw_mac` is the nRF52 identity MAC checked against
+authenticated `/ruuvi.json`; it is not the ESP32 Ethernet or Wi-Fi MAC, nor any future ESP32
+Bluetooth MAC. For link-layer observations, obtain the active interface MAC from the verified DUT IP
+and an on-link ARP/neighbor entry or equivalent trusted context; do not filter frames on `.env`
+`gw_mac`. See [DUT configuration](../tests/README.md#dut-configuration).
+
 ## Mandatory factory-default precondition
 
 Before test-specific probes or configuration changes, authenticate and fetch `GET /ruuvi.json`, then
 use the shared `lib.config` helper to compare all fields relevant to this test directly with
 `gw_cfg_default/gw_cfg_default_gen_ui.json`. Authentication tests must compare `lan_auth_type`,
 `lan_auth_user`, `lan_auth_api_key_use`, and `lan_auth_api_key_rw_use`. The generated file already
-matches the public UI/API representation; do not derive it from the raw saved configuration or handle
-hidden passwords or keys. Any missing, wrongly typed, or non-default value is setup ERROR: print the
-shared CONFIGURE-button factory-reset instruction and stop without changing the DUT to manufacture a
-baseline.
+matches the public UI/API representation; do not derive it from the raw saved configuration or
+handle hidden passwords or keys. Any missing, wrongly typed, or non-default value is setup ERROR:
+print the shared CONFIGURE-button factory-reset instruction and stop without changing the DUT to
+manufacture a baseline.
 
 ## Review regression requirements
 
@@ -18,10 +24,10 @@ implementation tests. These requirements qualify the factory-default preconditio
 
 - Catch Basic/Digest `GatewayAuthenticationModeError` and mark failed default login as setup ERROR
   with the shared recovery message in evidence and terminal output. Once configuration is available,
-  validate its MAC before default fields; wrong, malformed, or absent identity must not trigger reset
-  advice for a non-default baseline. Do not manufacture defaults by changing the DUT.
-  A successful login must reach the authenticated identity read even if `/auth` reports a
-  non-default mode; only a verified matching MAC permits reset advice for that mode.
+  validate its MAC before default fields; wrong, malformed, or absent identity must not trigger
+  reset advice for a non-default baseline. Do not manufacture defaults by changing the DUT. A
+  successful login must reach the authenticated identity read even if `/auth` reports a non-default
+  mode; only a verified matching MAC permits reset advice for that mode.
 - Complete safer probes across all schemes before potentially mutating probes within the same
   prepared state; include positive reads where applicable. Abort on unexpected negative success,
   while preserving mandatory restoration. Assert exact ordered method/path/scheme/body/session
@@ -34,9 +40,9 @@ implementation tests. These requirements qualify the factory-default preconditio
   completed mechanisms when a later one fails; never leave a failed mechanism PASS or NOT RUN.
   Provisioning, read-back, and required login controls must all classify setup exceptions as ERROR.
   Retain new and previous recovery credentials across partially applied changes.
-- Use `FACTORY_RESET_MESSAGE`; the reset completion condition is red LED 200 ms on/200 ms off
-  after boot-time erasure. Approximately eleven seconds is observed elapsed time, not a threshold.
-  Verify recovery advice against both restart and erasure paths.
+- Use `FACTORY_RESET_MESSAGE`; the reset completion condition is red LED 200 ms on/200 ms off after
+  boot-time erasure. Approximately eleven seconds is observed elapsed time, not a threshold. Verify
+  recovery advice against both restart and erasure paths.
 - Check referenced documents and predecessor scripts exist before changing links. Shared-library
   tests belong only in `test_lib.py`; case tests cover integration. Run Python 3.8 host discovery,
   required library coverage for shared changes, whole-subtree Ruff before/after, and the mandatory
@@ -44,25 +50,25 @@ implementation tests. These requirements qualify the factory-default preconditio
 
 ## Objective
 
-Maintain a Python 3.8 functional test for **ETSI EN 303 645 / ETSI TS 103 701 test case
-5.1-5-2, Test Unit B: Functional Brute-Force Attempt**. The test runs against a physical Ruuvi
-Gateway, measures authentication timing, verifies that guessed credentials are rejected, and restores
-the gateway configuration after every outcome.
+Maintain a Python 3.8 functional test for **ETSI EN 303 645 / ETSI TS 103 701 test case 5.1-5-2,
+Test Unit B: Functional Brute-Force Attempt**. The test runs against a physical Ruuvi Gateway,
+measures authentication timing, verifies that guessed credentials are rejected, and restores the
+gateway configuration after every outcome.
 
 The implementation is:
 
 - [`tests/test_5_1_5_2_b.py`](../tests/test_5_1_5_2_b.py) — live-DUT test;
 - [`tests/test_test_5_1_5_2_b.py`](../tests/test_test_5_1_5_2_b.py) — deterministic implementation
   tests, not ETSI evidence;
-- [`tests/lib/`](../tests/lib/README.md) — shared configuration, HTTP, authentication, evidence, error, and
-  result helpers.
+- [`tests/lib/`](../tests/lib/README.md) — shared configuration, HTTP, authentication, evidence,
+  error, and result helpers.
 
 Do not modify firmware behavior or self-assessment source documents.
 
 ## Required shared test infrastructure
 
-Reuse the modules under [`tests/lib/`](../tests/lib/README.md) rather than implementing infrastructure in the
-test script:
+Reuse the modules under [`tests/lib/`](../tests/lib/README.md) rather than implementing
+infrastructure in the test script:
 
 - [`gateway.py`](../tests/lib/gateway.py): use `GatewayClient`, `GatewayApi`, `AuthMech`,
   `GatewayCfgDesc`, and `GatewayCfgLanAuthType`;
@@ -115,8 +121,8 @@ MAX_INTERACTIVE_ATTEMPTS_PER_SECOND = 1.12
 Threshold comparisons are strict: an exact 1.00- or 0.250-second boundary does not pass.
 
 The source assessment describes 1,000 attempts and entropy-only defenses for bearer/legacy modes;
-this runner uses the ten-attempt matrix above, not that historical campaign. Current firmware applies
-the shared delay to HTTP `401` and `403` in
+this runner uses the ten-attempt matrix above, not that historical campaign. Current firmware
+applies the shared delay to HTTP `401` and `403` in
 [`http_server_netconn_serve_handle_req()`](../../../components/esp32-wifi-manager/src/http_server_netconn_serve_handle_req.c#L197),
 including Basic, Digest, and bearer denials. Do not interpret this reduced run as proof of keyspace
 exhaustion or silently substitute the source's timing claims for the implemented matrix.
@@ -133,10 +139,11 @@ For successful controls, obtain a new challenge before each POST because a succe
 the login session. Require every successful GET to exceed one second and the successful POST average
 to remain below 250 ms after ignoring one slowest response.
 
-For a failed brute-force campaign, send exactly one initial GET. Each failed POST returns 401 together
-with a fresh `x-ruuvi-interactive` challenge and `RUUVISESSION` cookie; use those values for the next
-POST instead of sending another GET. Require the initial GET and every failed POST to exceed one
-second. Compute aggregate interactive throughput from POST timings only, ignoring one slowest POST.
+For a failed brute-force campaign, send exactly one initial GET. Each failed POST returns 401
+together with a fresh `x-ruuvi-interactive` challenge and `RUUVISESSION` cookie; use those values
+for the next POST instead of sending another GET. Require the initial GET and every failed POST to
+exceed one second. Compute aggregate interactive throughput from POST timings only, ignoring one
+slowest POST.
 
 Basic and bearer authentication use one request per measured attempt.
 
@@ -162,21 +169,21 @@ Do not add client-side sleeps or run attempts in parallel.
 
 ### Default interactive authentication
 
-Always use username `Admin`. Generate each wrong password from an independent random 64-bit value and
-format it as `XX:XX:XX:XX:XX:XX:XX:XX`. Regenerate if it equals `.env` `gw_id`.
+Always use username `Admin`. Generate each wrong password from an independent random 64-bit value
+and format it as `XX:XX:XX:XX:XX:XX:XX:XX`. Regenerate if it equals `.env` `gw_id`.
 
 ### Temporary user-defined authentication
 
-Generate a distinct username and a 256-bit random plaintext password. Capture the live authentication
-realm from the gateway challenge and store:
+Generate a distinct username and a 256-bit random plaintext password. Capture the live
+authentication realm from the gateway challenge and store:
 
 ```text
 MD5(username + ":" + realm + ":" + plaintext_password)
 ```
 
-Do not derive the realm from `gw_hostname`.
-Failed attempts use this configured username and independent wrong 256-bit passwords, so the campaign
-exercises password guessing rather than rejection of unknown usernames.
+Do not derive the realm from `gw_hostname`. Failed attempts use this configured username and
+independent wrong 256-bit passwords, so the campaign exercises password guessing rather than
+rejection of unknown usernames.
 
 ### Bearer authentication
 
@@ -186,18 +193,17 @@ Generate temporary independent 256-bit RO and RW keys. Each failed guess must al
 Use `/history` for RO checks. Prove RW authorization with `POST /ruuvi.json` and exactly `{}` as its
 body; compare the canonical configuration hash before and after to prove that no field changed. Use
 `/status.json` for timed valid bearer controls so configuration handling does not affect the
-sub-250-ms success benchmark.
-Do not depend on `/ap.json` or Wi-Fi scanning. The RO guess campaign uses `GET /history`; the RW
-guess campaign uses `POST /ruuvi.json` with `{}`. Use fresh cookie-free sessions for guesses and
-scope checks. RO on the POST route must return HTTP `401`; valid RW returns `200`. Revoked explicit
-RO/RW bearer tokens return `401`, not an interactive `302` redirect.
+sub-250-ms success benchmark. Do not depend on `/ap.json` or Wi-Fi scanning. The RO guess campaign
+uses `GET /history`; the RW guess campaign uses `POST /ruuvi.json` with `{}`. Use fresh cookie-free
+sessions for guesses and scope checks. RO on the POST route must return HTTP `401`; valid RW returns
+`200`. Revoked explicit RO/RW bearer tokens return `401`, not an interactive `302` redirect.
 
-Within the prepared custom state, complete the interactive and bearer read controls, custom
-password campaign, and RO guess campaign before configuration probes. Then check RO denial on POST,
-verify an RW no-op and its unchanged hash, run the RW guess campaign, and repeat the RW no-op/hash
-control. Basic/Digest/ALLOW/DENY campaigns follow in their own explicitly configured states.
-Timing-only failures may be collected while testing continues, but **any unexpected `2xx` from a
-negative probe aborts all later probes and transitions**. Run mandatory restoration after that abort.
+Within the prepared custom state, complete the interactive and bearer read controls, custom password
+campaign, and RO guess campaign before configuration probes. Then check RO denial on POST, verify an
+RW no-op and its unchanged hash, run the RW guess campaign, and repeat the RW no-op/hash control.
+Basic/Digest/ALLOW/DENY campaigns follow in their own explicitly configured states. Timing-only
+failures may be collected while testing continues, but **any unexpected `2xx` from a negative probe
+aborts all later probes and transitions**. Run mandatory restoration after that abort.
 
 ### Basic authentication
 
@@ -215,15 +221,16 @@ MD5(username + ":" + realm + ":" + plaintext_password)
 ```
 
 Build authenticated requests with `GatewayClient.authorization_header_digest()` rather than
-reimplementing the response calculation from HA1, nonce, nc, cnonce, qop, and HA2.
-The live `WWW-Authenticate` header separates quoted fields with spaces rather than RFC-style commas:
+reimplementing the response calculation from HA1, nonce, nc, cnonce, qop, and HA2. The live
+`WWW-Authenticate` header separates quoted fields with spaces rather than RFC-style commas:
 
 ```text
 Digest realm="..." qop="auth" nonce="..." opaque="..."
 ```
 
-Use `GatewayClient.parse_digest_challenge()`, which supports this syntax. Host fixtures must reproduce
-the live space-separated header; `requests.utils.parse_dict_header()` cannot parse it correctly.
+Use `GatewayClient.parse_digest_challenge()`, which supports this syntax. Host fixtures must
+reproduce the live space-separated header; `requests.utils.parse_dict_header()` cannot parse it
+correctly.
 
 ## Transport retries
 
@@ -259,9 +266,9 @@ Authentication-only transitions must not send or preserve `mqtt_data_format`, `m
 `mqtt_client_id`. The final full-configuration hash comparison will reveal whether omission changes
 gateway state on the tested firmware.
 
-Authentication changes clear interactive sessions, and the firmware has a small authorization-session
-pool. Obtain a fresh valid login immediately before a configuration POST instead of assuming an older
-session remains authorized.
+Authentication changes clear interactive sessions, and the firmware has a small
+authorization-session pool. Obtain a fresh valid login immediately before a configuration POST
+instead of assuming an older session remains authorized.
 
 ## Restoration and operator recovery
 
@@ -291,30 +298,30 @@ The test cannot PASS without verified restoration. If a run starts in a non-defa
 mode, or if restoration cannot be verified, end with this explicit operator instruction:
 
 ```text
-USER ACTION REQUIRED: Factory reset erases saved local configuration, credentials, tokens, and 
-uploaded certificates/private keys and interrupts connectivity. Back up needed settings first. 
-It does not delete cloud accounts or already-forwarded data. Hold CONFIGURE through the LED turning 
-off and the Gateway restarting until the red LED repeatedly turns on for 200 ms and off for 200 ms 
+USER ACTION REQUIRED: Factory reset erases saved local configuration, credentials, tokens, and
+uploaded certificates/private keys and interrupts connectivity. Back up needed settings first.
+It does not delete cloud accounts or already-forwarded data. Hold CONFIGURE through the LED turning
+off and the Gateway restarting until the red LED repeatedly turns on for 200 ms and off for 200 ms
 (normally about 11 seconds after the initial press). Release only after this completion signal;
 the Gateway restarts again and opens its configuration hotspot. If the signal never appears,
 do not assume erasure succeeded.
 ```
 
-Eleven seconds is user-reported approximate elapsed time, not an exact threshold or a guarantee
-that shorter holds are safe. A separate five-second timer requests restart; holding at the boot-time
+Eleven seconds is user-reported approximate elapsed time, not an exact threshold or a guarantee that
+shorter holds are safe. A separate five-second timer requests restart; holding at the boot-time
 check selects erasure. Hotspot appearance, lost LAN access, LED off, or solid red alone are not
 confirmation, and release after the completion signal cannot undo erasure. See the
 [warned local reset procedure](../ixit_25-DelFunc.md#initiation-and-interaction).
 
-Non-default mode detection uses `GatewayAuthenticationModeError`; the recovery instruction is carried
-in `RunResult.recovery_message` and must be the final console message.
+Non-default mode detection uses `GatewayAuthenticationModeError`; the recovery instruction is
+carried in `RunResult.recovery_message` and must be the final console message.
 
 ## Evidence and verdicts
 
-Log every HTTP request/response, credential, raw timing sample, retry, transition, restoration attempt,
-exception, per-mechanism result, and overall result. Print each attempt and measured response time to
-the console. End with a summary containing the evaluated successful average and raw failed minimum for
-every mechanism.
+Log every HTTP request/response, credential, raw timing sample, retry, transition, restoration
+attempt, exception, per-mechanism result, and overall result. Print each attempt and measured
+response time to the console. End with a summary containing the evaluated successful average and raw
+failed minimum for every mechanism.
 
 Stable evidence payloads must be immutable dataclasses with named attributes, including nested
 campaign counts and restoration-attempt records. Do not pass schema-like dictionaries to
@@ -352,8 +359,8 @@ Host tests must model:
 - omitted MQTT fields remaining absent from authentication payloads;
 - all authentication transitions and restoration fallbacks;
 - factory-reset output when initial mode is non-default or restoration fails;
-- Basic and Digest setup responses with their actual challenge schemes, rejected default logins,
-  and mismatched/malformed/missing MAC combined with non-default fields;
+- Basic and Digest setup responses with their actual challenge schemes, rejected default logins, and
+  mismatched/malformed/missing MAC combined with non-default fields;
 - late custom/RO/RW control failures overriding earlier mechanism PASS in results and evidence;
 - prepared-state login failure marking temporary-state setup ERROR even after provisioning passed;
 - IDE-clean Optional and callable typing.
@@ -361,8 +368,8 @@ Host tests must model:
   no Wi-Fi-scan dependency, and hash-checked RW no-op controls;
 - immediate abort on unexpected interactive or bearer success, with only restoration/verification
   requests afterward, and incomplete mechanisms preventing overall PASS;
-- fake config writes enforcing RW authorization and clearing sessions on auth changes, while a
-  valid empty update leaves configuration and sessions unchanged.
+- fake config writes enforcing RW authorization and clearing sessions on auth changes, while a valid
+  empty update leaves configuration and sessions unchanged.
 
 Run:
 
@@ -375,9 +382,10 @@ cd cra/303645/tests
 
 - [`tests/lib/gateway.py`](../tests/lib/gateway.py) — primary authentication and gateway HTTP API;
 - [`tests/lib/http_api.py`](../tests/lib/http_api.py) — shared HTTP vocabulary;
-- [`tests/lib/config.py`](../tests/lib/config.py), [`tests/lib/evidence.py`](../tests/lib/evidence.py),
-  [`tests/lib/errors.py`](../tests/lib/errors.py), and [`tests/lib/models.py`](../tests/lib/models.py)
-  — shared test infrastructure;
+- [`tests/lib/config.py`](../tests/lib/config.py),
+  [`tests/lib/evidence.py`](../tests/lib/evidence.py),
+  [`tests/lib/errors.py`](../tests/lib/errors.py), and
+  [`tests/lib/models.py`](../tests/lib/models.py) — shared test infrastructure;
 - [`Self_Assessment_Test_Group_5_1-5.md`](../Self_Assessment_Test_Group_5_1-5.md)
 - [`ixit_1-AuthMech.md`](../ixit_1-AuthMech.md)
 - [`docs/http_api.md`](../../../docs/http_api.md)

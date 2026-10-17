@@ -165,6 +165,33 @@ the repository root instead changes their base directory. See
 [`cra/303645/tests/README.md` — Required linting](cra/303645/tests/README.md#required-linting)
 for both invocation forms and a command to verify the selected configuration.
 
+## IDE Inspections through MCP
+
+Use the connected JetBrains IDE's `get_file_problems` operation through MCP for every file you
+create or modify, including documentation. Inspect existing files before editing and inspect each
+changed file again after its final edit. For shared-code changes, also inspect affected callers
+and their tests. Pass a repository-relative `filePath`, include warnings with `errorsOnly: false`,
+and set a finite timeout.
+
+The current integration exposes `mcp__jetbrains_air_ide__execute_tool`, which accepts the operation
+and its arguments in a `command` string. For example, call that MCP tool with:
+
+```json
+{"command": "get_file_problems --filePath main/ruuvi_gateway_main.c --errorsOnly false --timeout 20000"}
+```
+
+Discover the available IDE tools in the current session rather than assuming a fixed server/tool
+name. A missing older direct tool does not establish that inspections are unavailable; check for
+the generic IDE executor too. If a direct `get_file_problems` tool is exposed, use its declared
+argument schema for the same operation.
+
+Review all errors, warnings, and weak warnings. Fix actionable findings and repeat the inspection
+after fixes. Do not disable inspections or add blanket suppressions; explain any remaining
+intentional convention or confirmed false positive. Ruff, compilation, and tests do not replace
+MCP inspection. If the operation fails, is unavailable, or returns `timedOut: true`, retry where
+possible, finish other validation, and report the unverified files and limitation explicitly.
+Report inspected files and remaining findings at handoff.
+
 ## Code Style
 
 - **BARR-C:2018** style enforced via `.clang-format` (clang-format v14)
@@ -199,8 +226,11 @@ Ten workflows run on push, pull requests, schedules, and/or manual dispatch:
    runs `scripts/clang_format_all.sh`, and fails if any file changes (`git diff --exit-code`).
 3. **`check-schemas.yml` (Check JSON Schemas)** — installs `check-jsonschema` pip package,
    runs `schemas/check_schemas.sh`.
-4. **`check-ca-bundle.yml` (Check CA Bundle)** — verifies the bundled Mozilla CA certificates and,
-   on scheduled runs, maintains a tracking issue when the bundle is stale.
+4. **`check-ca-bundle.yml` (Check CA Bundle)** — checks for newer Mozilla CA certificates and
+   creates or reuses a dated release-note issue and opens or updates a linked CA-bundle pull request
+   on weekly/manual default-branch runs. Issues are deduplicated by title across all states;
+   an open PR with the same issue-number/date title prevents duplicate updates.
+   See `esp_crt_bundle/README.md` for repository permissions and automatic PR CI setup.
 5. **`build-fw-dev.yml` (Build Firmware — dev)** — builds firmware in dev environment on push/PR,
    runs reproducible build (build → touch → build), uploads artifact with all binary images.
    Requires `bincopy` pip package and secure boot signing key.
@@ -228,10 +258,10 @@ Key CI details for reproducing locally:
 
 ## Subprojects
 
-| Subproject | Path | Description |
-|---|---|---|
-| Web UI | `ruuvi.gwui.html/` | Gateway configurator web interface (see `ruuvi.gwui.html/AGENTS.md`) |
-| esp32-wifi-manager | `components/esp32-wifi-manager/` | Wi-Fi/HTTP server component (see `components/esp32-wifi-manager/AGENTS.md`) |
-| esp32-wifi-manager tests | `components/esp32-wifi-manager/tests/` | Independent CMake test project (see `components/esp32-wifi-manager/tests/AGENTS.md`) |
-| Unit tests | `tests/` | Main firmware unit tests, independent CMake project (see `tests/AGENTS.md`) |
-| CRA functional tests | `cra/303645/tests/` | Python live-DUT automation and offline implementation tests (see `cra/303645/tests/README.md` and `cra/303645/tests/AGENTS.md`) |
+| Subproject               | Path                                   | Description                                                                                                                     |
+| ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Web UI                   | `ruuvi.gwui.html/`                     | Gateway configurator web interface (see `ruuvi.gwui.html/AGENTS.md`)                                                            |
+| esp32-wifi-manager       | `components/esp32-wifi-manager/`       | Wi-Fi/HTTP server component (see `components/esp32-wifi-manager/AGENTS.md`)                                                     |
+| esp32-wifi-manager tests | `components/esp32-wifi-manager/tests/` | Independent CMake test project (see `components/esp32-wifi-manager/tests/AGENTS.md`)                                            |
+| Unit tests               | `tests/`                               | Main firmware unit tests, independent CMake project (see `tests/AGENTS.md`)                                                     |
+| CRA functional tests     | `cra/303645/tests/`                    | Python live-DUT automation and offline implementation tests (see `cra/303645/tests/README.md` and `cra/303645/tests/AGENTS.md`) |

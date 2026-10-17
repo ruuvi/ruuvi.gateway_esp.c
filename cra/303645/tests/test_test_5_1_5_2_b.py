@@ -8,17 +8,15 @@ import json
 import sys
 import tempfile
 import unittest
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterator
 from unittest import mock
-from urllib.parse import urlsplit
 
 import requests
-from Crypto.PublicKey import ECC
 
 from lib.models import RunResult
+from test_support.fake_gateway import FakeGateway, FakeResponse, FakeSession, RecordedRequest, UniqueRandom, env_text
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import test_5_1_5_2_b as target
@@ -29,8 +27,6 @@ from lib.gateway import (
     GatewayCfgLanAuthType,
 )
 from lib.http_api import (
-    HttpAuthScheme,
-    HttpHeader,
     HttpMethod,
     HttpStatus,
 )
@@ -41,377 +37,6 @@ CONFIG: target.DutConfig = target.DutConfig(
     gw_mac="AA:BB:CC:DD:EE:FF",
     gw_hostname="gateway.local",
 )
-
-
-def env_text(config: target.DutConfig = CONFIG) -> str:
-    return (
-        f"{GatewayCfgDesc.GW_ID}={config.gw_id}\n"
-        f"{GatewayCfgDesc.GW_MAC}={config.gw_mac}\n"
-        f"{GatewayCfgDesc.GW_HOSTNAME}={config.gw_hostname}\n"
-    )
-
-
-class FakeResponse(requests.Response):
-    def __init__(
-        self,
-        status: int,
-        payload: Any = None,
-        headers: dict[str, str] | None = None,
-        cookies: dict[str, str] | None = None,
-        malformed_json: bool = False,
-    ) -> None:
-        super().__init__()
-        self.status_code: int = status
-        self.headers.update(headers or {})
-        self.cookies.update(cookies or {})
-        self._payload: Any = payload
-        self._malformed_json: bool = malformed_json
-        text: str = "{broken" if malformed_json else json.dumps(payload) if payload is not None else ""
-        self._content: bytes = text.encode("utf-8")
-        self.encoding: str = "utf-8"
-
-    def json(self, **kwargs: Any) -> Any:
-        if self._malformed_json:
-            raise ValueError("malformed")
-        return self._payload
-
-
-@dataclass(frozen=True)
-class RecordedRequest:
-    method: str
-    path: str
-    bearer_token: str | None
-    body: Any
-    session_number: int
-    authorization: str | None
-    cookie: str | None
-
-
-class FakeGateway:
-    def __init__(self) -> None:
-        self.mode: str = GatewayCfgLanAuthType.DEFAULT
-        self.custom_username: str = ""
-        self.custom_ha1: str = ""
-        self.ro_key: str = ""
-        self.rw_key: str = ""
-        self.calls: list[RecordedRequest] = []
-        self.config_bodies: list[dict[str, Any]] = []
-        self.wrong_login_success: bool = False
-        self.bearer_guess_status: int | None = None
-        self.malformed_challenge: bool = False
-        self.digest_authenticated_timeouts: int = 0
-        self.timeout_next: bool = False
-        self.prepared_config_timeouts: int = 0
-        self.guess_exception: BaseException | None = None
-        self.guess_exceptions: list[BaseException] = []
-        self.primary_restore_status: int = HttpStatus.C_200_OK
-        self.primary_restore_applies: bool = False
-        self.custom_fallback_enabled: bool = True
-        self.restored_config_mismatch: bool = False
-        self.temporary_bearers_survive: bool = False
-        self.restoration_attempts: list[str] = []
-        self.authorized_sessions: list[FakeSession] = []
-        self.server_key: ECC.EccKey = ECC.generate(curve="secp256r1")
-        public: ECC.EccKey = self.server_key.public_key()
-        raw: bytes = (
-            b"\x04"
-            + int(public.pointQ.x).to_bytes(32, byteorder="big")
-            + int(public.pointQ.y).to_bytes(32, byteorder="big")
-        )
-        self.server_public_b64: str = base64.b64encode(raw).decode("ascii")
-
-    @staticmethod
-    def _bearer(headers: dict[str, str]) -> str | None:
-        authorization: str = headers.get(HttpHeader.AUTHORIZATION, "")
-        bearer_prefix: str = f"{HttpAuthScheme.BEARER} "
-        return authorization[len(bearer_prefix) :] if authorization.startswith(bearer_prefix) else None
-
-    def _is_real_bearer(self, token: str | None, path: str) -> bool:
-        if not token:
-            return False
-        if token == self.rw_key:
-            return True
-        return token == self.ro_key and path != GatewayApi.AP
-
-    def _interactive_challenge_response(
-        self,
-        session: FakeSession,
-        include_ecdh_public_key: bool,
-    ) -> FakeResponse:
-        session.challenge_number += 1
-        session.challenge = f"challenge-{session.challenge_number}"
-        session.cookie = f"session-{session.number}-{session.challenge_number}"
-        auth_header: str = (
-            f'x-ruuvi-interactive realm="Ruuvi Gateway" challenge="{session.challenge}" '
-            f'session_cookie="RUUVISESSION" session_id="{session.cookie}"'
-        )
-        if self.malformed_challenge:
-            auth_header = 'x-ruuvi-interactive realm="Ruuvi Gateway"'
-        response_headers: dict[str, str] = {HttpHeader.WWW_AUTHENTICATE: auth_header}
-        if include_ecdh_public_key:
-            response_headers[HttpHeader.RUUVI_ECDH_PUBLIC_KEY] = self.server_public_b64
-        return FakeResponse(
-            HttpStatus.C_401_UNAUTHORIZED,
-            {GatewayCfgDesc.LAN_AUTH_TYPE: self.mode},
-            headers=response_headers,
-            cookies={"RUUVISESSION": session.cookie},
-        )
-
-    def response_for(
-        self,
-        session: FakeSession,
-        method: str,
-        path: str,
-        headers: dict[str, str],
-        body: Any,
-    ) -> FakeResponse:
-        token: str | None = self._bearer(headers)
-        self.calls.append(
-            RecordedRequest(
-                method, path, token, body, session.number,
-                headers.get(HttpHeader.AUTHORIZATION), headers.get(HttpHeader.COOKIE),
-            )
-        )
-        if self.timeout_next:
-            self.timeout_next = False
-            raise requests.Timeout("timeout")
-
-        if method == HttpMethod.GET and path == GatewayApi.AUTH:
-            if self.mode in (GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST):
-                scheme: str = (
-                    HttpAuthScheme.BASIC if self.mode == GatewayCfgLanAuthType.BASIC else HttpAuthScheme.DIGEST
-                )
-                return FakeResponse(
-                    401,
-                    {GatewayCfgDesc.LAN_AUTH_TYPE: self.mode},
-                    headers={HttpHeader.WWW_AUTHENTICATE: f'{scheme} realm="Ruuvi Gateway"'},
-                )
-            if session.authorized:
-                return FakeResponse(
-                    HttpStatus.C_200_OK,
-                    {GatewayCfgDesc.LAN_AUTH_TYPE: self.mode},
-                )
-            return self._interactive_challenge_response(session, True)
-
-        if method == HttpMethod.POST and path == GatewayApi.AUTH:
-            login: str = body.get("login", "") if isinstance(body, dict) else ""
-            default_ha1: str = hashlib.md5(f"{target.ADMIN_USERNAME}:Ruuvi Gateway:{CONFIG.gw_id}".encode()).hexdigest()
-            configured_ha1: str = default_ha1 if self.mode == GatewayCfgLanAuthType.DEFAULT else self.custom_ha1
-            expected_response: str = hashlib.sha256(f"{session.challenge}:{configured_ha1}".encode()).hexdigest()
-            valid_username: bool = (self.mode == GatewayCfgLanAuthType.DEFAULT and login == target.ADMIN_USERNAME) or (
-                self.mode == GatewayCfgLanAuthType.RUUVI
-                and login == self.custom_username
-                and self.custom_fallback_enabled
-            )
-            valid_cookie: bool = headers.get(HttpHeader.COOKIE) == f"RUUVISESSION={session.cookie}"
-            valid: bool = (
-                bool(session.challenge)
-                and valid_username
-                and valid_cookie
-                and body
-                == {
-                    "login": login,
-                    "password": expected_response,
-                }
-            )
-            if self.wrong_login_success and not valid:
-                valid = True
-                self.wrong_login_success = False
-            session.authorized = valid
-            if valid:
-                session.challenge = ""
-                self.authorized_sessions.append(session)
-                if len(self.authorized_sessions) > 4:
-                    self.authorized_sessions.pop(0).authorized = False
-                return FakeResponse(
-                    HttpStatus.C_200_OK,
-                    {"authenticated": True},
-                )
-            return self._interactive_challenge_response(session, False)
-
-        if method == HttpMethod.POST and path == GatewayApi.CONFIG:
-            authorized: bool = bool(token) and token == self.rw_key if token is not None else session.authorized
-            if not authorized:
-                if token and token not in {self.ro_key, self.rw_key}:
-                    if self.guess_exceptions:
-                        raise self.guess_exceptions.pop(0)
-                    if self.guess_exception is not None:
-                        error: BaseException = self.guess_exception
-                        self.guess_exception = None
-                        raise error
-                    if self.bearer_guess_status is not None:
-                        status: int = self.bearer_guess_status
-                        self.bearer_guess_status = None
-                        return FakeResponse(status, {})
-                return FakeResponse(
-                    HttpStatus.C_401_UNAUTHORIZED,
-                    {"error": "unauthorized"},
-                )
-            self.config_bodies.append(body)
-            restoring: bool = body.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DEFAULT
-            if restoring:
-                method_name: str = (
-                    "bearer" if token else ("custom" if self.mode == GatewayCfgLanAuthType.RUUVI else "default")
-                )
-                self.restoration_attempts.append(method_name)
-                if token and self.primary_restore_status != HttpStatus.C_200_OK:
-                    if self.primary_restore_applies:
-                        self._apply_config(body)
-                    return FakeResponse(self.primary_restore_status, {})
-            self._apply_config(body)
-            return FakeResponse(HttpStatus.C_200_OK, {})
-
-        if method == HttpMethod.GET and path == GatewayApi.CONFIG and (
-            self._is_real_bearer(token, path) if token is not None else session.authorized
-        ):
-            if self.mode == GatewayCfgLanAuthType.RUUVI and self.prepared_config_timeouts > 0:
-                self.prepared_config_timeouts -= 1
-                raise requests.Timeout("prepared-state timeout")
-            payload: dict[str, str | bool] = {
-                GatewayCfgDesc.LAN_AUTH_TYPE: self.mode,
-                GatewayCfgDesc.LAN_AUTH_USER: (
-                    self.custom_username if self.mode != GatewayCfgLanAuthType.DEFAULT else target.ADMIN_USERNAME
-                ),
-                GatewayCfgDesc.LAN_AUTH_API_KEY_USE: bool(self.ro_key),
-                GatewayCfgDesc.LAN_AUTH_API_KEY_RW_USE: bool(self.rw_key),
-                GatewayCfgDesc.GW_MAC: CONFIG.gw_mac,
-                GatewayCfgDesc.FW_VER: "test",
-            }
-            if self.restored_config_mismatch and self.mode == GatewayCfgLanAuthType.DEFAULT and self.config_bodies:
-                payload["unexpected"] = True
-            return FakeResponse(HttpStatus.C_200_OK, payload)
-
-        if method == HttpMethod.GET and path == GatewayApi.STATUS and session.authorized:
-            return FakeResponse(HttpStatus.C_200_OK, {"status": "ok"})
-
-        if (
-            method == HttpMethod.GET
-            and path
-            in {
-                GatewayApi.HISTORY,
-                GatewayApi.AP,
-                GatewayApi.STATUS,
-                GatewayApi.CONFIG,
-            }
-            and token
-        ):
-            if self.temporary_bearers_survive and self.mode == GatewayCfgLanAuthType.DEFAULT:
-                return FakeResponse(HttpStatus.C_200_OK, {})
-            if self._is_real_bearer(token, path):
-                return FakeResponse(HttpStatus.C_200_OK, {})
-            if token in {self.ro_key, self.rw_key}:
-                return FakeResponse(
-                    HttpStatus.C_401_UNAUTHORIZED,
-                    {"error": "unauthorized"},
-                )
-            if self.guess_exceptions:
-                raise self.guess_exceptions.pop(0)
-            if self.guess_exception is not None:
-                error = self.guess_exception
-                self.guess_exception = None
-                raise error
-            if self.bearer_guess_status is not None:
-                status = self.bearer_guess_status
-                self.bearer_guess_status = None
-                return FakeResponse(status, {})
-            return FakeResponse(HttpStatus.C_401_UNAUTHORIZED, {"error": "unauthorized"})
-
-        if method == HttpMethod.GET and path == GatewayApi.STATUS:
-            authorization: str = headers.get(HttpHeader.AUTHORIZATION, "")
-            if self.mode == GatewayCfgLanAuthType.ALLOW:
-                return FakeResponse(HttpStatus.C_200_OK, {"status": "ok"})
-            if self.mode == GatewayCfgLanAuthType.DENY:
-                return FakeResponse(HttpStatus.C_403_FORBIDDEN, {"error": "forbidden"})
-            if self.mode == GatewayCfgLanAuthType.BASIC:
-                valid = authorization == f"{HttpAuthScheme.BASIC} {self.custom_ha1}"
-                return FakeResponse(
-                    HttpStatus.C_200_OK if valid else HttpStatus.C_401_UNAUTHORIZED,
-                    {"authenticated": valid},
-                )
-            if self.mode == GatewayCfgLanAuthType.DIGEST:
-                if not authorization.startswith(f"{HttpAuthScheme.DIGEST} "):
-                    return FakeResponse(
-                        HttpStatus.C_401_UNAUTHORIZED,
-                        {"authenticated": False},
-                        headers={
-                            HttpHeader.WWW_AUTHENTICATE: (
-                                'Digest realm="Ruuvi Gateway" qop="auth" nonce="nonce" opaque="opaque"'
-                            )
-                        },
-                    )
-                if self.digest_authenticated_timeouts > 0:
-                    self.digest_authenticated_timeouts -= 1
-                    raise requests.Timeout("Digest authenticated request timeout")
-                parameters: dict[str, str] = requests.utils.parse_dict_header(
-                    authorization[len(f"{HttpAuthScheme.DIGEST} ") :]
-                )
-                ha2: str = hashlib.md5(f"{HttpMethod.GET}:{parameters['uri']}".encode()).hexdigest()
-                expected: str = hashlib.md5(
-                    f"{self.custom_ha1}:{parameters['nonce']}:{parameters['nc']}:"
-                    f"{parameters['cnonce']}:{parameters['qop']}:{ha2}".encode()
-                ).hexdigest()
-                valid = parameters["username"] == self.custom_username and parameters["response"] == expected
-                return FakeResponse(
-                    HttpStatus.C_200_OK if valid else HttpStatus.C_401_UNAUTHORIZED,
-                    {"authenticated": valid},
-                )
-        return FakeResponse(HttpStatus.C_401_UNAUTHORIZED, {"error": "unauthorized"})
-
-    def _apply_config(self, body: dict[str, str]) -> None:
-        if not body:
-            return
-        old_auth: tuple[str, str, str] = (self.mode, self.custom_username, self.custom_ha1)
-        self.mode = body[GatewayCfgDesc.LAN_AUTH_TYPE]
-        if self.mode in {
-            GatewayCfgLanAuthType.RUUVI,
-            GatewayCfgLanAuthType.BASIC,
-            GatewayCfgLanAuthType.DIGEST,
-        }:
-            self.custom_username = body[GatewayCfgDesc.LAN_AUTH_USER]
-            self.custom_ha1 = body[GatewayCfgDesc.LAN_AUTH_PASS]
-            self.ro_key = body[GatewayCfgDesc.LAN_AUTH_API_KEY]
-            self.rw_key = body[GatewayCfgDesc.LAN_AUTH_API_KEY_RW]
-        elif self.mode == GatewayCfgLanAuthType.DEFAULT:
-            if not self.temporary_bearers_survive:
-                self.ro_key = body[GatewayCfgDesc.LAN_AUTH_API_KEY]
-                self.rw_key = body[GatewayCfgDesc.LAN_AUTH_API_KEY_RW]
-        else:
-            self.ro_key = body[GatewayCfgDesc.LAN_AUTH_API_KEY]
-            self.rw_key = body[GatewayCfgDesc.LAN_AUTH_API_KEY_RW]
-        if old_auth != (self.mode, self.custom_username, self.custom_ha1):
-            session: FakeSession
-            for session in self.authorized_sessions:
-                session.authorized = False
-            self.authorized_sessions.clear()
-
-
-class FakeSession(requests.Session):
-    next_number: int = 1
-
-    def __init__(self, gateway: FakeGateway) -> None:
-        super().__init__()
-        self.gateway: FakeGateway = gateway
-        self.authorized: bool = False
-        self.number: int = FakeSession.next_number
-        self.challenge_number: int = 0
-        self.challenge: str = ""
-        self.cookie: str = ""
-        FakeSession.next_number += 1
-
-    def prepare_request(self, request: requests.Request) -> requests.PreparedRequest:
-        return super().prepare_request(request)
-
-    def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
-        if kwargs.get("allow_redirects") is not False:
-            raise AssertionError("functional probes must disable redirects")
-        body: Any = json.loads(request.body) if request.body else None
-        return self.gateway.response_for(
-            self,
-            request.method,
-            urlsplit(request.url).path,
-            dict(request.headers),
-            body,
-        )
 
 
 class AdvancingClock:
@@ -440,24 +65,12 @@ class ContiguousAttemptClock:
         return self.value
 
 
-class UniqueRandom:
-    def __init__(self) -> None:
-        self.calls: list[int] = []
-        self.value: int = 0
-
-    def __call__(self, size: int) -> bytes:
-        self.calls.append(size)
-        self.value += 1
-        return bytes((self.value + index) % 256 for index in range(size))
-
-
 class FunctionalTestCase(unittest.TestCase):
     def setUp(self) -> None:
-        FakeSession.next_number = 1
         self.temp_dir: tempfile.TemporaryDirectory[str] = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)
         self.root: Path = Path(self.temp_dir.name)
-        self.gateway: FakeGateway = FakeGateway()
+        self.gateway: FakeGateway = FakeGateway(CONFIG)
         self.random: UniqueRandom = UniqueRandom()
         self.log: target.EvidenceLog = target.EvidenceLog.create(
             self.root / "logs",
@@ -539,7 +152,7 @@ class FunctionalTestCase(unittest.TestCase):
         mac: Any
         for mac in (None, 123, "bad", "11:22:33:44:55:66", CONFIG.gw_mac):
             with self.subTest(mac=mac):
-                self.gateway = FakeGateway()
+                self.gateway = FakeGateway(CONFIG)
                 original: Callable[..., FakeResponse] = self.gateway.response_for
 
                 def response(
@@ -682,7 +295,7 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual("PASS", result.outcomes["final restoration"])
 
     def check_late_bearer_control_failure(self, mechanism: str) -> None:
-        self.gateway = FakeGateway()
+        self.gateway = FakeGateway(CONFIG)
         runner: target.FunctionalTest_5_1_5_2_b = self.make_runner()
         original: Callable[[str, str, set[str]], None] = runner._attack_bearer
         response_for: Callable[[FakeSession, str, str, dict[str, str], Any], FakeResponse] = self.gateway.response_for
@@ -912,8 +525,7 @@ class FunctionalTestCase(unittest.TestCase):
     def test_successful_average_must_be_strictly_below_250_ms(self) -> None:
         runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=2)
         runner.success_monotonic_ns = AdvancingClock(250_000_000)
-        session: FakeSession = FakeSession(self.gateway)
-        session.authorized = True
+        session: requests.Session = runner.gateway.authenticate_interactive("Admin", CONFIG.gw_id).session
         with self.assertRaises(target.SecurityFailure):
             runner._measure_success(
                 AuthMech.LAN_WEBUI_DEFAULT,
@@ -1006,7 +618,7 @@ class FunctionalTestCase(unittest.TestCase):
         attribute: str
         for attribute in ("timeout_next", "malformed_challenge"):
             with self.subTest(attribute=attribute):
-                gateway: FakeGateway = FakeGateway()
+                gateway: FakeGateway = FakeGateway(CONFIG)
                 setattr(gateway, attribute, True)
                 runner: target.FunctionalTest_5_1_5_2_b = target.FunctionalTest_5_1_5_2_b(
                     CONFIG,
@@ -1050,7 +662,7 @@ class FunctionalTestCase(unittest.TestCase):
         status: int
         for status in (HttpStatus.C_200_OK, HttpStatus.C_403_FORBIDDEN):
             with self.subTest(status=status):
-                gateway: FakeGateway = FakeGateway()
+                gateway: FakeGateway = FakeGateway(CONFIG)
                 gateway.bearer_guess_status = status
                 runner: target.FunctionalTest_5_1_5_2_b = target.FunctionalTest_5_1_5_2_b(
                     CONFIG,
@@ -1149,7 +761,7 @@ class FunctionalTestCase(unittest.TestCase):
             self.assertEqual(0, runner.run().exit_code)
             self.assertEqual(["bearer"], self.gateway.restoration_attempts)
 
-        gateway: FakeGateway = FakeGateway()
+        gateway: FakeGateway = FakeGateway(CONFIG)
         gateway.primary_restore_status = HttpStatus.C_401_UNAUTHORIZED
         runner = target.FunctionalTest_5_1_5_2_b(
             CONFIG,
@@ -1163,7 +775,7 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual(0, runner.run().exit_code)
         self.assertEqual(["bearer", "custom"], gateway.restoration_attempts)
 
-        gateway = FakeGateway()
+        gateway = FakeGateway(CONFIG)
         gateway.primary_restore_status = HttpStatus.C_500_INTERNAL_SERVER_ERROR
         gateway.primary_restore_applies = True
         runner = target.FunctionalTest_5_1_5_2_b(
@@ -1182,7 +794,7 @@ class FunctionalTestCase(unittest.TestCase):
         attribute: str
         for attribute in ("restored_config_mismatch", "temporary_bearers_survive"):
             with self.subTest(attribute=attribute):
-                gateway: FakeGateway = FakeGateway()
+                gateway: FakeGateway = FakeGateway(CONFIG)
                 setattr(gateway, attribute, True)
                 runner: target.FunctionalTest_5_1_5_2_b = target.FunctionalTest_5_1_5_2_b(
                     CONFIG,
@@ -1196,7 +808,7 @@ class FunctionalTestCase(unittest.TestCase):
                 result: RunResult = runner.run()
                 self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
 
-        gateway = FakeGateway()
+        gateway = FakeGateway(CONFIG)
         gateway.primary_restore_status = HttpStatus.C_401_UNAUTHORIZED
         gateway.custom_fallback_enabled = False
         runner = target.FunctionalTest_5_1_5_2_b(
@@ -1224,8 +836,8 @@ class ExecutionTestCase(unittest.TestCase):
         directory: str
         with tempfile.TemporaryDirectory() as directory:
             root: Path = Path(directory)
-            (root / ".env").write_text(env_text(), encoding="utf-8")
-            gateway: FakeGateway = FakeGateway()
+            (root / ".env").write_text(env_text(CONFIG), encoding="utf-8")
+            gateway: FakeGateway = FakeGateway(CONFIG)
             messages: list[str] = []
             result: RunResult = target.execute_test_5_1_5_2_b(
                 root,
@@ -1281,8 +893,8 @@ class ExecutionTestCase(unittest.TestCase):
         directory: str
         with tempfile.TemporaryDirectory() as directory:
             root: Path = Path(directory)
-            (root / ".env").write_text(env_text(), encoding="utf-8")
-            gateway: FakeGateway = FakeGateway()
+            (root / ".env").write_text(env_text(CONFIG), encoding="utf-8")
+            gateway: FakeGateway = FakeGateway(CONFIG)
             gateway.mode = mode
             messages: list[str] = []
             result: RunResult = target.execute_test_5_1_5_2_b(
