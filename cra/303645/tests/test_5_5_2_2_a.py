@@ -47,7 +47,7 @@ VERSION_PATTERN: str = r"[vV]?(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-
 VERSION_RE: re.Pattern[str] = re.compile(VERSION_PATTERN)
 ANSI_ESCAPE_RE: re.Pattern[str] = re.compile(r"\x1b\[[0-9;]*m")
 BANNER_RE: re.Pattern[str] = re.compile(
-    rf"cpu_start:[ \t]+ESP-IDF:[ \t]+({VERSION_PATTERN})[ \t]*\r?$", re.MULTILINE,
+    rf"cpu_start:[ \t]+ESP-IDF:[ \t]+({VERSION_PATTERN})[ \t]*\r?\n", re.MULTILINE,
 )
 MAC_RE: re.Pattern[str] = re.compile(r"[0-9a-fA-F]{12}|[0-9a-fA-F]{2}(?:[:-][0-9a-fA-F]{2}){5}")
 APP_VERSION_RE: re.Pattern[str] = re.compile(

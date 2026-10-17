@@ -227,6 +227,22 @@ class IdentificationTests(unittest.TestCase):
         with self.assertRaises(target.GatewayProtocolError):
             target.extract_boot_banner(f"{BANNER}\nI (962) cpu_start: ESP-IDF: v4.2.4\n")
 
+    def test_unterminated_framework_record_is_acquisition_error(self) -> None:
+        suffix: str
+        for suffix in ("v4.2.5", "v4.2.50", "v4.2.2\r"):
+            with self.subTest(suffix=suffix):
+                console: str = BANNER.split("I (961) cpu_start:")[0] + f"I (961) cpu_start: ESP-IDF: {suffix}"
+                with self.assertRaisesRegex(InvalidSetup, "no application cpu_start: ESP-IDF:"):
+                    target.extract_boot_banner(console)
+                self.gateway = StatusGateway()
+                self.serial.capture.side_effect = None
+                self.serial.capture.return_value = console
+                result: RunResult = self.runner().run()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual("ERROR", result.outcomes[target.FRAMEWORK])
+                self.assertEqual([], self.release_calls)
+                self.assertFalse(target.startup_complete(console))
+
     def test_each_source_and_component_mismatch_fails_without_release_pass_masking(self) -> None:
         source: str
         field: str
@@ -679,6 +695,8 @@ class IdentificationTests(unittest.TestCase):
                             elif injected_fault == "wrong-cookie":
                                 request.headers["Cookie"] = "RUUVISESSION=cross-session"
                             elif injected_fault in ("password", "extra-field"):
+                                if not isinstance(request.body, (str, bytes)):
+                                    raise AssertionError("authentication request requires a JSON body")
                                 body: dict[str, str] = json.loads(request.body)
                                 body["password" if injected_fault == "password" else "extra"] = "bad"
                                 request.body = json.dumps(body)
