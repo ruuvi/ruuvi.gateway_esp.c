@@ -2,8 +2,26 @@ name: Clang-Format
 
 on:
   push:
+    paths:
+      - 'main/**'
+      - 'gw_cfg_default/**'
+      - 'tests/test*/**'
+      - '.clang-format'
+      - '.clang-format-ignore'
+      - 'scripts/clang_format_all.sh'
+      - 'scripts/run-clang-format.sh'
+      - '.github/workflows/code-style.yml'
     branches: [ master ]
   pull_request:
+    paths:
+      - 'main/**'
+      - 'gw_cfg_default/**'
+      - 'tests/test*/**'
+      - '.clang-format'
+      - '.clang-format-ignore'
+      - 'scripts/clang_format_all.sh'
+      - 'scripts/run-clang-format.sh'
+      - '.github/workflows/code-style.yml'
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
 

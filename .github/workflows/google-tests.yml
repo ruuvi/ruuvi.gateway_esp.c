@@ -2,8 +2,20 @@ name: Google Tests
 
 on:
   push:
+    paths:
+      - 'tests/**'
+      - 'main/**'
+      - 'components/**'
+      - '.gitmodules'
+      - '.github/workflows/google-tests.yml'
     branches: [ master ]
   pull_request:
+    paths:
+      - 'tests/**'
+      - 'main/**'
+      - 'components/**'
+      - '.gitmodules'
+      - '.github/workflows/google-tests.yml'
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
 
