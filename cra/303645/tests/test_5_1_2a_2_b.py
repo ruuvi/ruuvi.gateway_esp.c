@@ -271,13 +271,29 @@ class FunctionalTest_5_1_2a_2_b:
         self.evidence.write("DUT VERSION AND IDENTITY", identity)
         # Identity/version fields can occur in public authentication metadata.
         # Other configuration fields and the history schema describe protected data.
-        self.protected_response_fields = set(load_ui_default_config()) - {
+        def field_names(node: Any) -> set[str]:
+            fields: set[str] = set()
+            child: Any
+            if isinstance(node, dict):
+                fields.update(node)
+                for child in node.values():
+                    fields.update(field_names(child))
+            elif isinstance(node, list):
+                for child in node:
+                    fields.update(field_names(child))
+            return fields
+
+        self.protected_response_fields = (field_names(load_ui_default_config()) | field_names(payload)) - {
             GatewayCfgDesc.GW_MAC, GatewayCfgDesc.FW_VER, GatewayCfgDesc.NRF52_FW_VER,
         }
         self.protected_response_fields.update({
             "tags", "coordinates", "rssi", "ble_phy", "ble_chan",
             GatewayCfgDesc.LAN_AUTH_PASS, GatewayCfgDesc.LAN_AUTH_API_KEY,
             GatewayCfgDesc.LAN_AUTH_API_KEY_RW,
+            GatewayCfgDesc.PASSWORD, GatewayCfgDesc.HTTP_USER, GatewayCfgDesc.HTTP_PASS,
+            GatewayCfgDesc.MQTT_PASS, GatewayCfgDesc.REMOTE_CFG_AUTH_BASIC_USER,
+            GatewayCfgDesc.REMOTE_CFG_AUTH_BASIC_PASS, "http_bearer_token", "http_api_key",
+            "http_stat_pass", "remote_cfg_auth_bearer_token",
         })
 
     def _provision(self) -> None:
@@ -418,7 +434,7 @@ class FunctionalTest_5_1_2a_2_b:
         )
         return probes
 
-    def _require_no_protected_data(self, response: requests.Response, probe: NegativeProbe) -> None:
+    def _require_no_protected_data(self, response: requests.Response, probe: NegativeProbe | PositiveProbe) -> None:
         def contains_protected_fields(node: Any) -> bool:
             if isinstance(node, dict):
                 if self.protected_response_fields.intersection(node):
@@ -476,8 +492,7 @@ class FunctionalTest_5_1_2a_2_b:
                     f"{probe.name} returns the exact status for {probe.method} {probe.path}",
                     response.status_code,
                 )
-                if probe.method == HttpMethod.GET:
-                    self._require_no_protected_data(response, probe)
+                self._require_no_protected_data(response, probe)
             except SecurityFailure:
                 self.outcomes[probe.mechanism] = "FAIL"
                 raise
@@ -618,6 +633,8 @@ class FunctionalTest_5_1_2a_2_b:
                     f"{probe.name} has the required scope for {probe.method} {probe.path}",
                     response.status_code,
                 )
+                if probe.expected_status == HttpStatus.C_401_UNAUTHORIZED:
+                    self._require_no_protected_data(response, probe)
             except SecurityFailure:
                 self.outcomes[probe.mechanism] = "FAIL"
                 raise
@@ -766,6 +783,11 @@ class FunctionalTest_5_1_2a_2_b:
                     f"temporary {name} key no longer authorizes",
                     response.status_code,
                 )
+                self._require_no_protected_data(response, NegativeProbe(
+                    f"revoked {name} bearer", method, path, HttpStatus.C_401_UNAUTHORIZED,
+                    AuthMech.M2M_API_BEARER_RO if name == "RO" else AuthMech.M2M_API_BEARER_RW,
+                    None, None,
+                ))
         except Exception as error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
             self.evidence.exception(error)
             self.outcomes["final restoration and non-mutation"] = "ERROR"

@@ -88,6 +88,7 @@ class BearerGateway(DefaultAuthGateway):
             GatewayCfgDesc.NRF52_FW_VER: "test-nrf",
             "stable": "mutated" if self.mutate_after_positive else "value",
             "ntp_use": self.ntp_use,
+            "extension": [{"baseline_nested_field": "private-value"}],
         }
 
     def _read_response(self, path: str) -> FakeResponse:
@@ -548,6 +549,16 @@ class FunctionalTestCase(unittest.TestCase):
         payload: Any
         cases: tuple[Any, ...] = (
             {GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.DEFAULT},
+            {"ssid": "private-network"},
+            {"channel": 6},
+            {"stable": "authenticated-baseline-only"},
+            {"baseline_nested_field": "authenticated-baseline-only"},
+            {"http_user": "private-user"},
+            {"mqtt_pass": "private-password"},
+            {"http_bearer_token": "private-token"},
+            {"http_api_key": "private-key"},
+            {"http_stat_pass": "private-password"},
+            {"remote_cfg_auth_bearer_token": "private-token"},
             {"wrapper": [{"wifi_sta_config": {"ssid": "private-network"}}]},
             {"data": {"tags": {"01:02:03:04:05:06": {"rssi": -60}}}},
             {"data": {"coordinates": "private-location", "tags": {}}},
@@ -576,7 +587,8 @@ class FunctionalTestCase(unittest.TestCase):
 
     def test_negative_get_embedded_or_truncated_protected_json_is_fail(self) -> None:
         text: str
-        for text in ('<html>{"lan_auth_type":"lan_auth_default"}</html>', '{"data":{"tags":'):
+        for text in ('<html>{"lan_auth_type":"lan_auth_default"}</html>', '{"data":{"tags":',
+                     '<html>{"http_bearer_token":"private-token"}</html>', '{"ssid":'):
             with self.subTest(text=text):
                 self.gateway = BearerGateway(CONFIG)
                 deterministic_random.calls = 0
@@ -587,6 +599,67 @@ class FunctionalTestCase(unittest.TestCase):
                 self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
                 self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RO])
                 self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+
+    def test_post_denials_reject_protected_data_and_abort_before_rw_write(self) -> None:
+        authorization: str
+        payload: Any
+        for authorization in (HttpAuthScheme.BASIC, HttpAuthScheme.DIGEST,
+                              f"Bearer {CONFIG.gw_id}", f"Bearer {RO_KEY}"):
+            for payload in ({"ssid": "private-network"}, {"mqtt_pass": "secret"},
+                            {"http_user": "private-user"}, {"storage_ready": True}):
+                with self.subTest(authorization=authorization, payload=payload):
+                    self.gateway = BearerGateway(CONFIG)
+                    deterministic_random.calls = 0
+                    self.gateway.override[(authorization, HttpMethod.POST, GatewayApi.CONFIG)] = FakeResponse(401, payload)
+                    result: RunResult = self.runner().run()
+                    mechanism: str = (AuthMech.M2M_API_BEARER_RO if authorization == f"Bearer {RO_KEY}"
+                                      else AuthMech.M2M_API_BEARER_RW)
+                    self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
+                    self.assertEqual("FAIL", result.outcomes[mechanism])
+                    self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+                    self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
+                    cleanup_index: int = next(
+                        index for index, call in enumerate(self.gateway.calls)
+                        if call.body == {GatewayCfgDesc.LAN_AUTH_API_KEY: "", GatewayCfgDesc.LAN_AUTH_API_KEY_RW: ""}
+                    )
+                    self.assertFalse(any(
+                        call.authorization == f"Bearer {RW_KEY}" and call.method == HttpMethod.POST
+                        for call in self.gateway.calls[:cleanup_index]
+                    ))
+
+    def test_post_denials_allow_auth_errors_and_public_metadata(self) -> None:
+        authorization: str
+        payload: Any
+        for authorization in (HttpAuthScheme.BASIC, f"Bearer {RO_KEY}"):
+            for payload in (None, {}, {"error": "unauthorized"},
+                            {"gw_mac": CONFIG.gw_mac, "fw_ver": "public-fw", "nrf52_fw_ver": "public-nrf"}):
+                with self.subTest(authorization=authorization, payload=payload):
+                    self.gateway = BearerGateway(CONFIG)
+                    deterministic_random.calls = 0
+                    self.gateway.override[(authorization, HttpMethod.POST, GatewayApi.CONFIG)] = FakeResponse(401, payload)
+                    self.assertEqual(0, self.runner().run().exit_code)
+
+    def test_revoked_bearer_denials_must_not_disclose_protected_data(self) -> None:
+        key: str
+        method: str
+        path: str
+        for key, method, path in ((RO_KEY, HttpMethod.GET, GatewayApi.HISTORY),
+                                  (RW_KEY, HttpMethod.POST, GatewayApi.CONFIG)):
+            with self.subTest(method=method):
+                self.gateway = BearerGateway(CONFIG)
+                deterministic_random.calls = 0
+                runner: target.FunctionalTest_5_1_2a_2_b = self.runner()
+
+                def inject_revoked_leak(description: str, token: str = key,
+                                        verb: str = method, route: str = path) -> None:
+                    if description == "Restoring the original API-key configuration":
+                        self.gateway.override[(f"Bearer {token}", verb, route)] = FakeResponse(401, {"ssid": "private"})
+
+                runner.progress = inject_revoked_leak
+                result: RunResult = runner.run()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual("ERROR", result.outcomes["final restoration and non-mutation"])
+                self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
 
     def test_negative_get_allows_empty_auth_errors_and_public_metadata(self) -> None:
         payload: Any
