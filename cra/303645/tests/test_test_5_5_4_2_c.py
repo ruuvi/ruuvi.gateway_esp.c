@@ -11,7 +11,7 @@ import unittest
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Callable, cast
 from unittest import mock
 from urllib.parse import urlsplit
 
@@ -51,7 +51,9 @@ class EncryptedGateway(DefaultAuthGateway):
         super().__init__(CONFIG)
         self.server_public_b64 = SERVER_PUBLIC
         self.state: dict[str, Any] = default_config_values(AUTHENTICATION_DEFAULT_FIELDS)
-        self.state.update({"gw_mac": CONFIG.gw_mac, "coordinates": "original", "unrelated": {"flag": False}})
+        self.state.update({"gw_mac": CONFIG.gw_mac, "coordinates": "original", "unrelated": {"flag": False},
+                           "mqtt_data_format": "ruuvi_raw", "mqtt_prefix": f"ruuvi/{CONFIG.gw_mac}/",
+                           "mqtt_client_id": CONFIG.gw_mac})
         self.original: dict[str, Any] = json.loads(json.dumps(self.state))
         self.prepared: list[requests.PreparedRequest] = []
         self.sessions: list[EncryptedSession] = []
@@ -137,6 +139,9 @@ class EncryptedGateway(DefaultAuthGateway):
                 self.state.update(self.pending_body)
                 if self.restore_reply_lost:
                     raise requests.Timeout("restoration applied, response lost")
+            # The real partial parser resets these omitted fields for every accepted POST.
+            self.state.update({"mqtt_data_format": "ruuvi_raw", "mqtt_prefix": f"ruuvi/{CONFIG.gw_mac}/",
+                               "mqtt_client_id": CONFIG.gw_mac})
             return FakeResponse(200, {})
         return None
 
@@ -246,6 +251,104 @@ class UnitCImplementationTests(unittest.TestCase):
         self.assertIn("TLS not claimed", self.log)
         self.assertIn("EXCEPTION TYPE", self.log)
         self.assertEqual("Overall verdict: ERROR", self.output[-1])
+
+    def test_parser_sensitive_mqtt_baselines_abort_without_post(self) -> None:
+        field: str
+        for field in ("mqtt_data_format", "mqtt_prefix", "mqtt_client_id"):
+            variant: Any
+            for variant in ("custom", None, False):
+                with self.subTest(field=field, value=variant):
+                    self.gateway = EncryptedGateway()
+                    self.gateway.state[field] = variant
+                    result: RunResult = self.execute()
+                    self.assertEqual((2, "ERROR"), (result.exit_code, result.outcomes[runner.SETUP]))
+                    self.assertEqual(0, self.gateway.posts)
+                    self.assertEqual(0, self.gateway.restore_attempts)
+
+    def test_device_mqtt_defaults_use_canonical_verified_mac(self) -> None:
+        config: DutConfig = DutConfig(CONFIG.gw_id, CONFIG.gw_mac.lower(), CONFIG.gw_hostname)
+        (self.work_dir / ".env").write_text(env_text(config), encoding="utf-8")
+        result: RunResult = self.execute()
+        self.assertEqual(0, result.exit_code)
+        self.assertEqual(self.gateway.original, self.gateway.state)
+
+    def test_reporting_failure_after_mutation_cannot_block_cleanup(self) -> None:
+        boundary: str
+        failure: bool
+        for boundary in ("evidence", "terminal", "progress"):
+            for failure in (False, True):
+                with self.subTest(boundary=boundary, restoration_fails=failure):
+                    self.gateway = EncryptedGateway()
+                    if failure:
+                        self.gateway.restore_from_attempt = 100
+                    evidence: EvidenceLog = EvidenceLog(Path("memory"), io.StringIO(), NOW)
+                    write: Callable[[str, Any], None] = evidence.write
+
+                    def reporting_write(
+                        label: str, value: Any = "", selected: str = boundary,
+                        delegate: Callable[[str, Any], None] = write,
+                    ) -> None:
+                        if selected == "evidence" and self.gateway.posts:
+                            raise OSError("evidence disk full")
+                        delegate(label, value)
+
+                    def reporting_output(_message: str, selected: str = boundary) -> None:
+                        if selected == "terminal" and self.gateway.posts:
+                            raise BrokenPipeError("closed terminal")
+
+                    def reporting_progress(_message: str, selected: str = boundary) -> None:
+                        if selected == "progress" and self.gateway.posts:
+                            raise BrokenPipeError("closed progress output")
+
+                    with mock.patch.object(evidence, "write", side_effect=reporting_write):
+                        test: runner.FunctionalTest_5_5_4_2_c = runner.FunctionalTest_5_5_4_2_c(
+                            CONFIG, evidence, self.gateway.session, lambda size: bytes(range(size)),
+                            lambda **kwargs: ECC.construct(curve="P-256", d=1), lambda size: bytes(range(size)),
+                            reporting_progress, reporting_output,
+                        )
+                        result: RunResult = test.run()
+                    self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                    self.assertGreater(self.gateway.restore_attempts, 0)
+                    self.assertEqual(("GET", "/ruuvi.json"),
+                                     (self.gateway.calls[-1].method, self.gateway.calls[-1].path))
+                    if failure:
+                        self.assertEqual(runner.RECOVERY_MESSAGE, result.recovery_message)
+                    else:
+                        self.assertEqual("PASS", result.outcomes[runner.RESTORE])
+                        self.assertEqual(self.gateway.original, self.gateway.state)
+
+    def test_execute_persistent_reporting_failure_retains_result_and_recovery_advice(self) -> None:
+        boundary: str
+        for boundary in ("evidence", "terminal"):
+            with self.subTest(boundary=boundary):
+                self.gateway = EncryptedGateway()
+                self.gateway.restore_from_attempt = 100
+                write: Callable[[EvidenceLog, str, Any], None] = EvidenceLog.write
+
+                def reporting_write(
+                    log: EvidenceLog, label: str, value: Any = "", selected: str = boundary,
+                    delegate: Callable[[EvidenceLog, str, Any], None] = write,
+                ) -> None:
+                    if selected == "evidence" and self.gateway.posts:
+                        raise OSError("persistent disk failure")
+                    delegate(log, label, value)
+
+                def reporting_output(message: str, selected: str = boundary) -> None:
+                    if selected == "terminal" and self.gateway.posts:
+                        raise BrokenPipeError("persistent closed terminal")
+                    self.output.append(message)
+
+                with mock.patch.object(EvidenceLog, "write", reporting_write):
+                    result: RunResult = runner.execute_test_5_5_4_2_c(
+                        self.work_dir, self.gateway.session, lambda size: bytes(range(size)),
+                        lambda **kwargs: ECC.construct(curve="P-256", d=1), lambda size: bytes(range(size)),
+                        lambda: NOW, reporting_output,
+                    )
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual(runner.RECOVERY_MESSAGE, result.recovery_message)
+                self.assertEqual(3, self.gateway.restore_attempts)
+                self.assertEqual(("GET", "/ruuvi.json"),
+                                 (self.gateway.calls[-1].method, self.gateway.calls[-1].path))
 
     def test_config_writes_reject_missing_and_cross_session_cookies(self) -> None:
         encrypted: bool

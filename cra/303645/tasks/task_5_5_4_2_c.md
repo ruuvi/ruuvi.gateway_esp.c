@@ -231,11 +231,17 @@ cd cra/303645/tests
 The runner captures its own requests over plain HTTP port 80; TLS is not used or claimed. It
 verifies the interactive challenge and cookie binding, P-256 exchange, MD5/SHA-256 login body, and
 acceptance and effect of an AES-CBC coordinates write. It first requires two identical full
-configuration reads. Cleanup restores the original coordinates, retries with fresh default
+configuration reads. Before writing, it requires the omitted-parser fields `mqtt_data_format`
+(`ruuvi_raw` from the checked-in default template), `mqtt_prefix` (`ruuvi/<MAC>/`), and
+`mqtt_client_id` (`<MAC>`) to match the firmware defaults. `<MAC>` is the uppercase, verified
+nRF52 identity MAC. Missing, wrongly typed, or custom values produce setup ERROR without a POST,
+because coordinates-only partial parsing would overwrite them. Cleanup restores the original coordinates, retries with fresh default
 authentication or cleartext when needed, and compares the entire final configuration with the
 baseline. Unrelated parser side effects remain visible; cleanup never adds unrelated fields to
 conceal a mismatch. Unverified restoration is ERROR while earlier protection FAIL outcomes remain
-recorded.
+recorded. Recovery reporting is best-effort across progress, terminal output, and the client's
+request/response evidence: a reporting failure cannot block cleanup HTTP or full read-back, but
+retains overall ERROR for incomplete reporting. Unverified cleanup retains operator recovery advice.
 
 The plaintext-password check includes every captured request, including recovery. Full keys,
 credentials, configuration and bodies are confined to the local evidence log. The paired offline

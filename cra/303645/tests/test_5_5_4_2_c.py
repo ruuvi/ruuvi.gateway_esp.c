@@ -63,6 +63,44 @@ def config_hash(payload: dict[str, Any]) -> str:
                                      ensure_ascii=True, allow_nan=False).encode("utf-8")).hexdigest()
 
 
+class RecoveryEvidence(EvidenceLog):
+    """Keep recovery HTTP usable after evidence or terminal output fails."""
+
+    def __init__(self, delegate: EvidenceLog) -> None:
+        # This proxy delegates every EvidenceLog operation; it does not own a second stream.
+        self.delegate: EvidenceLog = delegate
+        self.path: Path = delegate.path
+        self.started_at: datetime = delegate.started_at
+        self.recovering: bool = False
+        self.failed: bool = False
+
+    def report(self, action: Callable[[], None]) -> None:
+        try:
+            action()
+        except Exception:  # Reporting must not obstruct mandatory DUT recovery.
+            self.failed = True
+            if not self.recovering:
+                raise
+
+    def write(self, label: str, value: Any = "") -> None:
+        self.report(lambda: self.delegate.write(label, value))
+
+    def write_line(self, message: str) -> None:
+        self.report(lambda: self.delegate.write_line(message))
+
+    def write_http_request(self, request: requests.PreparedRequest) -> None:
+        self.report(lambda: self.delegate.write_http_request(request))
+
+    def write_http_response(self, response: requests.Response) -> None:
+        self.report(lambda: self.delegate.write_http_response(response))
+
+    def exception(self, error: BaseException) -> None:
+        self.report(lambda: self.delegate.exception(error))
+
+    def finish(self, verdict: str, now: Callable[[], datetime] = utc_now) -> None:
+        self.report(lambda: self.delegate.finish(verdict, now))
+
+
 class FunctionalTest_5_5_4_2_c:
     def __init__(
         self, config: DutConfig, evidence: EvidenceLog,
@@ -74,14 +112,14 @@ class FunctionalTest_5_5_4_2_c:
         output: Callable[[str], None] = print,
     ) -> None:
         self.config: DutConfig = config
-        self.evidence: EvidenceLog = evidence
+        self.evidence: RecoveryEvidence = evidence if isinstance(evidence, RecoveryEvidence) else RecoveryEvidence(evidence)
         self.gateway: GatewayClient = GatewayClient(
-            config, evidence, session_factory, random_bytes, ecc_generate,
+            config, self.evidence, session_factory, random_bytes, ecc_generate,
             timeout=(5, 15), user_agent="ruuvi-etsi-test-5.5-4-2-c",
         )
         self.iv_generate: Callable[[int], bytes] = iv_generate
-        self.progress: Callable[[str], None] = progress
-        self.output: Callable[[str], None] = output
+        self.progress: Callable[[str], None] = lambda message: self.evidence.report(lambda: progress(message))
+        self.output: Callable[[str], None] = lambda message: self.evidence.report(lambda: output(message))
         self.outcomes: dict[str, str] = {check: "NOT RUN" for check in CHECKS}
         self.active: str = SETUP
         self.recovery_message: str | None = None
@@ -149,6 +187,15 @@ class FunctionalTest_5_5_4_2_c:
         self._require(valid, "challenge must report default authentication", mode, setup=True)
         self._require(type(payload.get(GatewayCfgDesc.COORDINATES)) is str,
                       "coordinates must be present as a string", setup=True)
+        self._require(verified, "verified MAC is required to derive safe MQTT defaults", setup=True)
+        mqtt_defaults: dict[str, Any] = default_config_values((GatewayCfgDesc.MQTT_DATA_FORMAT,))
+        # Firmware builds these defaults from the uppercase nRF52 MAC, not the JSON template.
+        mqtt_defaults[GatewayCfgDesc.MQTT_PREFIX] = f"ruuvi/{self.config.gw_mac.upper()}/"
+        mqtt_defaults[GatewayCfgDesc.MQTT_CLIENT_ID] = self.config.gw_mac.upper()
+        for field, value in mqtt_defaults.items():
+            actual = payload.get(field)
+            self._require(type(actual) is type(value) and actual == value,
+                          f"{field} must survive coordinates-only partial parsing unchanged", setup=True)
 
     def _compare(self, actual: dict[str, Any], expected: dict[str, Any], *, setup: bool = False) -> None:
         comparison: HashComparisonEvidence = HashComparisonEvidence(config_hash(expected), config_hash(actual))
@@ -316,13 +363,16 @@ class FunctionalTest_5_5_4_2_c:
             self._mutate(auth, baseline)
             verdict = "PASS"
         except ProtectionFailure as error:
+            self.evidence.recovering = True
             self.evidence.exception(error)
             verdict = "FAIL"
         except Exception as error:  # noqa: BLE001 - Unexpected errors must still trigger mandatory restoration.
+            self.evidence.recovering = True
             self.evidence.exception(error)
             self.outcomes[self.active] = "ERROR"
             self._say(f"{self.active}: ERROR — {type(error).__name__}; see local evidence")
         finally:
+            self.evidence.recovering = True
             if self.baseline is not None and self.auth is not None and not self._restore(self.auth, self.baseline):
                 verdict = "ERROR"
             try:
@@ -342,6 +392,9 @@ class FunctionalTest_5_5_4_2_c:
         for check, outcome in self.outcomes.items():
             self.evidence.write("FINAL RESULT", MechanismResultEvidence(check, outcome))
             self._say(f"{check}: {outcome}")
+        if self.evidence.failed:
+            verdict = "ERROR"
+            self._say("Reporting ERROR — terminal or evidence output failed; recovery checks still attempted")
         return RunResult(0 if verdict == "PASS" else 1 if verdict == "FAIL" else 2,
                          verdict, dict(self.outcomes), set(), self.recovery_message)
 
@@ -356,7 +409,9 @@ def execute_test_5_5_4_2_c(
     output: Callable[[str], None] = print,
 ) -> RunResult:
     work_dir = Path.cwd() if work_dir is None else work_dir
-    log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_5_4_2_c", now)
+    log: RecoveryEvidence = RecoveryEvidence(EvidenceLog.create(work_dir / "logs", "test_5_5_4_2_c", now))
+    raw_output: Callable[[str], None] = output
+    output = lambda message: log.report(lambda: raw_output(message))
     output(f"Open log file: {log.path}")
 
     def progress_output(message: str) -> None:
@@ -376,15 +431,21 @@ def execute_test_5_5_4_2_c(
         ).run()
     except Exception as error:  # Setup failures must still produce final evidence.
         error: Exception
+        log.recovering = True
         log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
         result.outcomes[SETUP] = "ERROR"
         log.write("FINAL RESULTS", result.outcomes)
         progress_output(f"Setup ERROR — {type(error).__name__}; see local evidence")
     finally:
+        log.recovering = True
         if result.recovery_message:
             progress_output(result.recovery_message)
         log.finish(result.verdict, now)
+    if log.failed:
+        result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
     output(f"Overall verdict: {result.verdict}")
+    if log.failed:
+        result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
     return result
 
 
