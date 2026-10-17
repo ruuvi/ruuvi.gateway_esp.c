@@ -467,12 +467,12 @@ def execute_test_5_5_4_2_b(
     output: Callable[[str], None] = print,
 ) -> RunResult:
     work_dir = Path.cwd() if work_dir is None else work_dir
-    log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_5_4_2_b", now)
-    output(f"Open log file: {log.path}")
+    log: EvidenceLog | None = None
 
     def progress_output(message: str) -> None:
         output(message)
-        log.write_line(message)
+        if log is not None:
+            log.write_line(message)
 
     progress: ProgressReporter = ProgressReporter(progress_output, TOTAL_STEPS)
     result: RunResult = RunResult(2, "ERROR", {check: "NOT RUN" for check in CHECKS}, set())
@@ -483,31 +483,44 @@ def execute_test_5_5_4_2_b(
             result.exit_code = 2
             result.verdict = "ERROR"
         try:
-            if record:
+            if record and log is not None:
                 log.write_line(message)
         except Exception:  # noqa: BLE001 - Failed evidence must not discard the run result.
             result.exit_code = 2
             result.verdict = "ERROR"
 
-    log.write("TEST CASE AND UNIT", TEST_ID)
-    log.write("UTC START", log.started_at.isoformat())
     try:
+        created_log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_5_4_2_b", now)
+        log = created_log
+        output(f"Open log file: {created_log.path}")
+        created_log.write("TEST CASE AND UNIT", TEST_ID)
+        created_log.write("UTC START", created_log.started_at.isoformat())
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(work_dir / ".env")
         result = FunctionalTest_5_5_4_2_b(
-            config, log, session_factory, random_bytes, ecc_generate, progress.step, output,
+            config, created_log, session_factory, random_bytes, ecc_generate, progress.step, output,
         ).run()
-    except Exception as error:  # Setup errors must still create and finish evidence.
+    except Exception as error:  # noqa: BLE001 - Setup failures must return ERROR and finish evidence.
         error: Exception
-        log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
+        result.exit_code = 2
+        result.verdict = "ERROR"
         result.outcomes[SETUP] = "ERROR"
-        log.write("FINAL RESULTS", result.outcomes)
+        if log is not None:
+            try:
+                log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
+            except Exception:  # noqa: BLE001 - Failed setup evidence must not discard the result.
+                result.exit_code = 2
+            try:
+                log.write("FINAL RESULTS", result.outcomes)
+            except Exception:  # noqa: BLE001 - Still report the terminal verdict if evidence is unavailable.
+                result.exit_code = 2
         report(f"Setup ERROR — {type(error).__name__}; see evidence for details")
     finally:
         if result.recovery_message is not None:
             report(result.recovery_message)
         try:
-            log.finish(result.verdict, now)
+            if log is not None:
+                log.finish(result.verdict, now)
         except Exception:  # noqa: BLE001 - Persistent disk failures must not discard the recovery result.
             result.exit_code = 2
             result.verdict = "ERROR"

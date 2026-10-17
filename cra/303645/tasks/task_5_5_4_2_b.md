@@ -559,3 +559,7 @@ assertion evidence are best-effort as well. A persistent full-disk or flush fail
 prevent restoration traffic, retained-credential fallback, or final state and revocation checks.
 Any lost evidence keeps ERROR; actual authorization, protocol, transport and assertion failures
 still control recovery attempts and per-check outcomes.
+
+Evidence creation, initial headers, and setup progress are part of the protected run lifecycle.
+A creation or initial setup reporting failure returns setup ERROR/exit 2 before contacting the DUT;
+exception evidence is best-effort and the terminal verdict is attempted even when the log fails.

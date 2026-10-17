@@ -185,11 +185,15 @@ class ImplementationTests(unittest.TestCase):
         self.evidence: str = ""
 
     def execute(self) -> RunResult:
+        output_start: int = len(self.output)
         result: RunResult = runner.execute_test_5_5_4_2_b(
             self.work_dir, self.gateway.session, FixedRandom(), fixed_ecc, fixed_now, self.output.append,
         )
-        logs: list[Path] = sorted((self.work_dir / "logs").glob("test_5_5_4_2_b_*.log"))
-        self.evidence = logs[-1].read_text(encoding="utf-8")
+        announcements: list[str] = [
+            line for line in self.output[output_start:] if line.startswith("Open log file: ")
+        ]
+        self.assertEqual(len(announcements), 1)
+        self.evidence = Path(announcements[0][len("Open log file: "):]).read_text(encoding="utf-8")
         self.assertEqual(self.output[-1], f"Overall verdict: {result.verdict}")
         return result
 
@@ -199,6 +203,70 @@ class ImplementationTests(unittest.TestCase):
         self.assertEqual(self.gateway.ro_key, "")
         self.assertEqual(self.gateway.rw_key, "")
         self.assertEqual(self.gateway.config_bodies[-1], RESTORE)
+
+    def test_each_invocation_reads_its_own_evidence_after_ten_collisions(self) -> None:
+        invocation: int
+        for invocation in range(12):
+            self.gateway = PositiveGateway()
+            self.gateway.ntp_use = invocation % 2 == 0
+            result: RunResult = self.execute()
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn(f'"ntp_use": {str(self.gateway.ntp_use).lower()}', self.evidence)
+            self.assertNotIn(f'"ntp_use": {str(not self.gateway.ntp_use).lower()}', self.evidence)
+
+    def test_setup_evidence_creation_and_reporting_failures_return_error_without_dut_access(self) -> None:
+        target: str
+        persistent: bool
+        for target in ("create", "announcement", "header", "start", "progress", "identity"):
+            for persistent in (False, True):
+                with self.subTest(target=target, persistent=persistent):
+                    self.gateway = PositiveGateway()
+                    self.output = []
+                    failed: bool = False
+                    original_write: Callable[[runner.EvidenceLog, str, Any], None] = runner.EvidenceLog.write
+                    original_line: Callable[[runner.EvidenceLog, str], None] = runner.EvidenceLog.write_line
+
+                    def check_failure(selected: str, failure_target: str = target,
+                                      keep_failing: bool = persistent) -> None:
+                        nonlocal failed
+                        if selected == failure_target and not failed or failed and keep_failing:
+                            failed = True
+                            raise OSError("private setup stream detail")
+
+                    def write(log: runner.EvidenceLog, label: str, value: Any = "",
+                              original: Callable[[runner.EvidenceLog, str, Any], None] = original_write) -> None:
+                        selected: str = {"TEST CASE AND UNIT": "header", "UTC START": "start",
+                                         "DUT IDENTITY": "identity"}.get(label, "other")
+                        check_failure(selected)
+                        original(log, label, value)
+
+                    def write_line(log: runner.EvidenceLog, message: str,
+                                   original: Callable[[runner.EvidenceLog, str], None] = original_line) -> None:
+                        check_failure("progress" if message.startswith("[Step ") else "other")
+                        original(log, message)
+
+                    def output(message: str, selected: str = target) -> None:
+                        if selected == "announcement" and message.startswith("Open log file: "):
+                            raise BrokenPipeError("private terminal detail")
+                        self.output.append(message)
+
+                    with patch.object(runner.EvidenceLog, "write", write), \
+                            patch.object(runner.EvidenceLog, "write_line", write_line):
+                        if target == "create":
+                            with patch.object(runner.EvidenceLog, "create", side_effect=OSError("private path")):
+                                result: RunResult = runner.execute_test_5_5_4_2_b(
+                                    self.work_dir, self.gateway.session, FixedRandom(), fixed_ecc, fixed_now, output,
+                                )
+                        else:
+                            result = runner.execute_test_5_5_4_2_b(
+                                self.work_dir, self.gateway.session, FixedRandom(), fixed_ecc, fixed_now, output,
+                            )
+                    self.assertEqual((result.exit_code, result.verdict), (2, "ERROR"))
+                    self.assertEqual(result.outcomes[runner.SETUP], "ERROR")
+                    self.assertEqual(self.gateway.calls, [])
+                    self.assertEqual(self.output[-1], "Overall verdict: ERROR")
+                    self.assertTrue(any(line.startswith("Setup ERROR — ") for line in self.output))
+                    self.assertNotIn("private", "\n".join(self.output))
 
     def test_complete_pass_exact_prepared_wire_sequence(self) -> None:
         result: RunResult = self.execute()
