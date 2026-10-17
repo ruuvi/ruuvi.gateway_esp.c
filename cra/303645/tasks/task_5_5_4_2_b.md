@@ -362,6 +362,7 @@ Perform `authenticate_interactive(custom_username, custom_plaintext_password)` u
 -> require the login `POST /auth` to return `200` and the session to be authorized (a follow-up
 `GET /ruuvi.json` returns `200`). Record the "custom interactive" positive result. (Satisfies Unit b
 step 1 for the user-defined credential; covers `AuthMech-LAN-WebUI-User-Defined`.)
+Retain this authorized session, including its cookie, for the independent revocation check below.
 
 ### 5. Confirm RO bearer positive authorization
 
@@ -416,6 +417,10 @@ Verify restoration by authenticating as `Admin`/`gw_id`, fetching `/ruuvi.json`,
 that the temporary custom credential, RO key, and RW key no longer authorize access. The test cannot
 PASS unless restoration is verified; if security assertions passed but restoration failed, return
 ERROR with a concise operator warning.
+Independently reuse the retained custom session without reauthenticating or replacing its cookie:
+`GET /ruuvi.json` must return `302`. A fresh rejected password login does not establish revocation
+of a session that was previously authorized. Continue the password and both bearer checks even
+when this retained-session check fails.
 
 ### 8. Non-mutation proof
 

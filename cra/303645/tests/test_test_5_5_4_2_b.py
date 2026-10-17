@@ -11,8 +11,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, cast
-from unittest.mock import patch
+from typing import Any, Callable, TextIO, cast
+from unittest.mock import Mock, patch
 
 import requests
 from Crypto.PublicKey import ECC
@@ -76,6 +76,16 @@ class PositiveGateway(FakeGateway):
         self.auth_edit: Callable[[dict[str, Any], int], None] | None = None
         self.corrupt_login: Callable[[requests.PreparedRequest], None] | None = None
         self.sessions: list[BoundarySession] = []
+        self.retain_custom_session: bool = False
+
+    def _apply_config(self, body: dict[str, str]) -> None:
+        retained: list[FakeSession] = list(self.authorized_sessions)
+        super()._apply_config(body)
+        if self.retain_custom_session and body == RESTORE:
+            session: FakeSession
+            for session in retained:
+                session.authorized = True
+            self.authorized_sessions.extend(retained)
 
     def session(self) -> BoundarySession:
         session: BoundarySession = BoundarySession(self)
@@ -214,6 +224,7 @@ class ImplementationTests(unittest.TestCase):
             ExpectedRequest("POST", "/ruuvi.json", 10, RESTORE, RW_KEY),
         ] + login_requests(11) + [
             ExpectedRequest("GET", "/ruuvi.json", 11, cookie="RUUVISESSION=session-11-1"),
+            ExpectedRequest("GET", "/ruuvi.json", 3, cookie="RUUVISESSION=session-3-1"),
         ] + login_requests(12, custom=True) + [
             ExpectedRequest("GET", "/ruuvi.json", 12, cookie="RUUVISESSION=session-12-2"),
             ExpectedRequest("GET", "/ruuvi.json", 13, token=RO_KEY),
@@ -648,8 +659,9 @@ class ImplementationTests(unittest.TestCase):
             final_reads: list[RecordedRequest] = [call for call in self.gateway.calls
                                                  if call.method == "GET" and call.path == "/ruuvi.json"
                                                  and call.bearer_token is None]
-            self.assertIn(final_reads[-2].session_number,
-                          [session.number for session in self.gateway.authorized_sessions])
+            self.assertTrue(any(call.session_number in
+                                [session.number for session in self.gateway.authorized_sessions]
+                                for call in final_reads))
         if scenario == "unrevoked-key":
             self.assertEqual(result.outcomes[runner.FINAL], "FAIL")
 
@@ -769,6 +781,7 @@ class ImplementationTests(unittest.TestCase):
         for fault in (
             Fault(FakeRequestKey("none", "POST", "/auth"), 4, FakeResponse(200, {})),
             Fault(FakeRequestKey("none", "GET", "/ruuvi.json"), 6, FakeResponse(200, {})),
+            Fault(FakeRequestKey("none", "GET", "/ruuvi.json"), 7, FakeResponse(200, {})),
             Fault(FakeRequestKey("Bearer", "GET", "/ruuvi.json"), 5, FakeResponse(200, {})),
             Fault(FakeRequestKey("Bearer", "GET", "/ruuvi.json"), 6, FakeResponse(200, {})),
         ):
@@ -779,6 +792,60 @@ class ImplementationTests(unittest.TestCase):
                 self.assertEqual(result.exit_code, 2)
                 self.assertEqual(result.outcomes[runner.FINAL], "FAIL")
                 self.assertEqual(self.gateway.calls[-1].bearer_token, RW_KEY)
+
+    def test_retained_custom_session_must_be_revoked_independently_of_password(self) -> None:
+        self.gateway.retain_custom_session = True
+        result: RunResult = self.execute()
+        self.assertEqual((result.exit_code, result.verdict), (2, "ERROR"))
+        self.assertEqual(result.outcomes[runner.CUSTOM], "PASS")
+        self.assertEqual(result.outcomes[runner.FINAL], "FAIL")
+        self.assertEqual(self.gateway.mode, "lan_auth_default")
+        self.assertEqual((self.gateway.ro_key, self.gateway.rw_key), ("", ""))
+        retained_reads: list[RecordedRequest] = [call for call in self.gateway.calls
+                                               if call.method == "GET" and call.path == "/ruuvi.json"
+                                               and call.session_number == 3]
+        self.assertEqual(len(retained_reads), 2)
+        self.assertEqual([call.cookie for call in retained_reads], ["RUUVISESSION=session-3-1"] * 2)
+        self.assertIn("expected HTTP 302, observed 200", self.evidence)
+        self.assertEqual([call.bearer_token for call in self.gateway.calls[-2:]], [RO_KEY, RW_KEY])
+        removed_password: RecordedRequest = self.gateway.calls[-4]
+        self.assertEqual((removed_password.method, removed_password.path), ("POST", "/auth"))
+        self.assertEqual(removed_password.body, login_body(12, USERNAME, PASSWORD))
+        self.assertIn("removed custom login: expected HTTP 401, observed 401", self.evidence)
+
+    def test_log_finalization_write_flush_close_failures_preserve_result_and_verdict(self) -> None:
+        original_finish: Callable[[runner.EvidenceLog, str, Callable[[], datetime]], None] = cast(
+            "Callable[[runner.EvidenceLog, str, Callable[[], datetime]], None]", runner.EvidenceLog.finish,
+        )
+        operation: str
+        for operation in ("write", "flush", "close"):
+            with self.subTest(operation=operation):
+                self.gateway = PositiveGateway()
+                log: runner.EvidenceLog = runner.EvidenceLog.create(self.work_dir / "logs", operation, fixed_now)
+                stream: TextIO = log._stream
+                failing_stream: Mock = Mock(wraps=stream)
+                getattr(failing_stream, operation).side_effect = OSError(f"final {operation} failed")
+
+                def finish(
+                    evidence_log: runner.EvidenceLog, verdict: str, now: Callable[[], datetime],
+                    selected_stream: Mock = failing_stream,
+                ) -> None:
+                    evidence_log._stream = cast("TextIO", selected_stream)
+                    original_finish(evidence_log, verdict, now)
+
+                try:
+                    with patch.object(runner.EvidenceLog, "create", return_value=log), \
+                            patch.object(runner.EvidenceLog, "finish", finish):
+                        result: RunResult = runner.execute_test_5_5_4_2_b(
+                            self.work_dir, self.gateway.session, FixedRandom(), fixed_ecc, fixed_now, self.output.append,
+                        )
+                finally:
+                    stream.close()
+                self.assertEqual((result.exit_code, result.verdict), (2, "ERROR"))
+                self.assertEqual(self.output[-1], "Overall verdict: ERROR")
+                self.assertEqual(set(result.outcomes.values()), {"PASS"})
+                self.assert_restored(result)
+                getattr(failing_stream, operation).assert_called()
 
     def test_corrupted_login_password_and_cookie_cannot_authorize(self) -> None:
         corruption: str

@@ -109,6 +109,7 @@ class FunctionalTest_5_5_4_2_b:
         self.coverage: set[ApiRoute] = set()
         self.baseline: dict[str, Any] | None = None
         self.credentials: Credentials | None = None
+        self.custom_session: requests.Session | None = None
         self.mutation_possible: bool = False
         self.recovery_message: str | None = None
         self.reporting_failed: bool = False
@@ -277,6 +278,7 @@ class FunctionalTest_5_5_4_2_b:
         self.active = CUSTOM
         self.progress("Checking custom interactive login and configuration access")
         auth: InteractiveAuthResult = self._login(credentials.username, credentials.password)
+        self.custom_session = auth.session
         self._compare_config(self._read(GatewayApi.CONFIG, session=auth.session), prepared)
         self.outcomes[PREPARED] = "PASS"
         self.outcomes[CUSTOM] = "PASS"
@@ -364,6 +366,14 @@ class FunctionalTest_5_5_4_2_b:
             self._log_error(error)
             failed = True
         if self.mutation_possible and credentials is not None:
+            if self.custom_session is not None:
+                try:
+                    # Keep the positively authorized cookie intact; a fresh login cannot prove revocation.
+                    self._request(HttpMethod.GET, GatewayApi.CONFIG, session=self.custom_session,
+                                  expected=HttpStatus.C_302_FOUND)
+                except Exception as error:  # noqa: BLE001 - Still check removed passwords and both bearer keys.
+                    self._log_error(error)
+                    failed = True
             try:
                 revoked: InteractiveAuthResult = self.gateway.authenticate_interactive(
                     credentials.username, credentials.password,
