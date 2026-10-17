@@ -2,8 +2,24 @@ name: SonarCloud Analysis
 
 on:
   push:
+    # Keep tests eligible because they affect the coverage report.
+    paths-ignore:
+      - 'cra/**'
+      - 'docs/**'
+      - 'integration_tests/**'
+      - 'schemas/**'
+      - '**.md'
+      - 'LICENSE'
     branches: [ master ]
   pull_request:
+    # Keep tests eligible because they affect the coverage report.
+    paths-ignore:
+      - 'cra/**'
+      - 'docs/**'
+      - 'integration_tests/**'
+      - 'schemas/**'
+      - '**.md'
+      - 'LICENSE'
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
   # Allows you to run this workflow manually from the Actions tab
