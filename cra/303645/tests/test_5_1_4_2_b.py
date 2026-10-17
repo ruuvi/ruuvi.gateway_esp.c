@@ -66,6 +66,33 @@ class SecurityFailure(Exception):
     """An observed security assertion failed; restoration is still mandatory."""
 
 
+class RecoveryEvidence(EvidenceLog):
+    """Best-effort evidence only during mandatory recovery and final reporting."""
+
+    def __init__(self, source: EvidenceLog) -> None:
+        super().__init__(source.path, source._stream, source.started_at)
+        self.source: EvidenceLog = source
+        self.failed: bool = False
+
+    def attempt(self, operation: Callable[[], None]) -> None:
+        try:
+            operation()
+        except Exception:  # noqa: BLE001 - Evidence/output failures must never block recovery.
+            self.failed = True
+
+    def write(self, label: str, value: Any = "") -> None:
+        self.attempt(lambda: self.source.write(label, value))
+
+    def exception(self, error: BaseException) -> None:
+        self.attempt(lambda: self.source.exception(error))
+
+    def write_http_request(self, request: requests.PreparedRequest) -> None:
+        self.attempt(lambda: self.source.write_http_request(request))
+
+    def write_http_response(self, response: requests.Response) -> None:
+        self.attempt(lambda: self.source.write_http_response(response))
+
+
 def configuration_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
@@ -81,6 +108,7 @@ class FunctionalTest_5_1_4_2_b:
         random_bytes: Callable[[int], bytes] = secrets.token_bytes,
         ecc_generate: Callable[..., ECC.EccKey] = ECC.generate,
         progress: Callable[[str], None] | None = None,
+        output: Callable[[str], None] | None = None,
     ) -> None:
         self.config: DutConfig = config
         self.evidence: EvidenceLog = evidence
@@ -88,6 +116,9 @@ class FunctionalTest_5_1_4_2_b:
             config, evidence, session_factory, random_bytes, ecc_generate, (5, 15), "ruuvi-etsi-test-5.1-4-2-b"
         )
         self.progress: Callable[[str], None] = progress or (lambda message: None)
+        self.output: Callable[[str], None] = output or (lambda message: None)
+        self.diagnostics: list[str] = []
+        self.last_check: str = "initial setup"
         self.outcomes: dict[str, str] = {name: "NOT RUN" for name in (SETUP, *MECHANISMS, RESTORATION)}
         self.active: str = SETUP
         self.last_mutator: str = SETUP
@@ -101,6 +132,10 @@ class FunctionalTest_5_1_4_2_b:
         self.recovery_message: str | None = None
 
     def _check(self, condition: bool, description: str, actual: Any = "", *, setup: bool = False) -> None:
+        self.last_check = description
+        if not condition:
+            observed: str = str(actual) if isinstance(actual, (int, bool)) else "value mismatch (details in log)"
+            self.diagnostics.append(f"{self.active}: expected {description}; observed {observed}")
         self.evidence.write("ASSERTION", AssertionEvidence(description, "PASS" if condition else "FAIL", actual))
         if not condition:
             if setup:
@@ -113,6 +148,7 @@ class FunctionalTest_5_1_4_2_b:
         self, session: requests.Session, method: str, path: str,
         *, headers: dict[str, str] | None = None, body: dict[str, str] | None = None,
     ) -> requests.Response:
+        self.last_check = f"{method} {path}"
         route: ApiRoute = ApiRoute(method, path)
         if route not in API_INVENTORY:
             raise InvalidSetup(f"non-canonical route: {method} {path}")
@@ -123,6 +159,7 @@ class FunctionalTest_5_1_4_2_b:
         return response
 
     def _login(self, username: str, password: str, *, setup: bool = False) -> InteractiveAuthResult:
+        self.last_check = "interactive login"
         try:
             result: InteractiveAuthResult = self.gateway.authenticate_interactive(username, password)
         except Exception:  # Setup includes required positive login controls; the run boundary logs the error.
@@ -276,14 +313,24 @@ class FunctionalTest_5_1_4_2_b:
     def _bearer_write(self, login: InteractiveAuthResult, token: str, status: int, description: str) -> None:
         # Every authorization-only POST, even rejection or a lost response, gets a full hash check.
         self.last_mutator = self.active
+        pending: Exception | None = None
         try:
             response: requests.Response = self._request(
                 self.gateway.new_session(), HttpMethod.POST, GatewayApi.CONFIG,
                 headers={HttpHeader.AUTHORIZATION: f"{HttpAuthScheme.BEARER} {token}"}, body={},
             )
             self._check(response.status_code == status, description, response.status_code)
+        except Exception as error:  # Preserve a lost POST reply while still measuring possible side effects.
+            error: Exception
+            pending = error
+            raise
         finally:
-            self._compare_config(self._read_config(login), self.expected)
+            try:
+                self._compare_config(self._read_config(login, setup=True), self.expected)
+            except SecurityFailure:
+                if pending is not None and not isinstance(pending, SecurityFailure):
+                    raise pending
+                raise
 
     def _key_change(self, login: InteractiveAuthResult, body: dict[str, str]) -> None:
         self._change(login, body)
@@ -391,6 +438,7 @@ class FunctionalTest_5_1_4_2_b:
         self.active = RESTORATION
 
     def run(self) -> RunResult:
+        recovery_evidence: RecoveryEvidence = RecoveryEvidence(self.evidence)
         verdict: str = "ERROR"
         exit_code: int = 2
         self.evidence.write("TEST CASE AND UNIT", TEST_ID)
@@ -409,21 +457,31 @@ class FunctionalTest_5_1_4_2_b:
             self._bearers(second)
             verdict, exit_code = "PASS", 0
         except SecurityFailure as error:
-            self.evidence.exception(error)
+            recovery_evidence.exception(error)
             verdict, exit_code = "FAIL", 1
         except Exception as error:  # noqa: BLE001 - Unexpected failures are evidence-bearing ERRORs with recovery.
-            self.evidence.exception(error)
+            self.diagnostics.append(
+                f"{self.active}: ERROR during {self.last_check}: {type(error).__name__} (details in log)"
+            )
+            recovery_evidence.exception(error)
             if self.outcomes[self.active] != "FAIL":
                 self.outcomes[self.active] = "ERROR"
             if isinstance(error, InvalidSetup):
                 self.outcomes[SETUP] = "ERROR"
         finally:
-            self.progress("Restoring defaults and verifying the full baseline and temporary-value revocation")
+            self.evidence = recovery_evidence
+            self.gateway.evidence = recovery_evidence
+            recovery_evidence.attempt(
+                lambda: self.progress("Restoring defaults and verifying the full baseline and temporary-value revocation")
+            )
             self.active = RESTORATION
             try:
                 self._restore()
             except Exception as error:  # noqa: BLE001 - Unverified restoration always overrides the overall verdict.
-                self.evidence.exception(error)
+                recovery_evidence.exception(error)
+                self.diagnostics.append(
+                    f"final restoration: ERROR during {self.last_check}: {type(error).__name__} (details in log)"
+                )
                 self.outcomes[RESTORATION] = "ERROR"
                 self.recovery_message = f"Restoration is unverified; inspect {self.evidence.path}. {FACTORY_RESET_MESSAGE}"
                 verdict, exit_code = "ERROR", 2
@@ -433,6 +491,18 @@ class FunctionalTest_5_1_4_2_b:
         outcome: str
         for name, outcome in self.outcomes.items():
             self.evidence.write("FINAL RESULT", MechanismResultEvidence(name, outcome))
+        diagnostic: str
+        for diagnostic in self.diagnostics:
+            self.evidence.write("RESULT EXPLANATION", diagnostic)
+            recovery_evidence.attempt(lambda message=diagnostic: self.output(message))
+        for name, outcome in self.outcomes.items():
+            if outcome == "NOT RUN":
+                self.evidence.write("RESULT EXPLANATION", f"{name}: NOT RUN")
+                recovery_evidence.attempt(lambda component=name: self.output(f"{component}: NOT RUN"))
+        if recovery_evidence.failed:
+            verdict, exit_code = "ERROR", 2
+            self.evidence.write("RESULT EXPLANATION", "Reporting: ERROR; output/evidence sink failed")
+            recovery_evidence.attempt(lambda: self.output("Reporting: ERROR; output/evidence sink failed"))
         if self.recovery_message:
             self.evidence.write("USER ACTION REQUIRED", self.recovery_message)
         return RunResult(exit_code, verdict, dict(self.outcomes), set(self.coverage), self.recovery_message)
@@ -459,23 +529,38 @@ def execute_test_5_1_4_2_b(
     initial_outcomes: dict[str, str] = {name: "NOT RUN" for name in (*MECHANISMS, RESTORATION)}
     initial_outcomes[SETUP] = "ERROR"
     result: RunResult = RunResult(2, "ERROR", initial_outcomes, set())
+    final_evidence: RecoveryEvidence = RecoveryEvidence(log)
     try:
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(work_dir / ".env")
         log.write("DUT CONFIGURATION", config)
-        result = FunctionalTest_5_1_4_2_b(config, log, session_factory, random_bytes, progress=progress.step).run()
-    except Exception as error:
+        result = FunctionalTest_5_1_4_2_b(
+            config, log, session_factory, random_bytes, progress=progress.step, output=output
+        ).run()
+    except Exception as error:  # noqa: BLE001 - Setup failures remain ERROR even if reporting fails.
         error: Exception
-        log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object, unlike logging.
+        final_evidence.exception(error)
+        summary: str = f"Setup/execution: ERROR: {type(error).__name__} (details in log)"
+        final_evidence.write("RESULT EXPLANATION", summary)
+        final_evidence.attempt(lambda: output(summary))
         name: str
         outcome: str
         for name, outcome in result.outcomes.items():
-            log.write("FINAL RESULT", MechanismResultEvidence(name, outcome))
+            final_evidence.write("FINAL RESULT", MechanismResultEvidence(name, outcome))
+            if outcome == "NOT RUN":
+                final_evidence.write("RESULT EXPLANATION", f"{name}: NOT RUN")
+                final_evidence.attempt(lambda component=name: output(f"{component}: NOT RUN"))
     finally:
-        log.finish(result.verdict, now)
-    output(f"Overall verdict: {result.verdict}")
+        final_evidence.attempt(lambda: log.finish(result.verdict, now))
+        if not log._stream.closed:
+            final_evidence.attempt(log._stream.close)
+        if final_evidence.failed:
+            result.exit_code, result.verdict = 2, "ERROR"
+    final_evidence.attempt(lambda: output(f"Overall verdict: {result.verdict}"))
     if result.recovery_message:
-        output(result.recovery_message)
+        final_evidence.attempt(lambda: output(str(result.recovery_message)))
+    if final_evidence.failed:
+        result.exit_code, result.verdict = 2, "ERROR"
     return result
 
 

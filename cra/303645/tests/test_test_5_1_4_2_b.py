@@ -365,6 +365,82 @@ class RotationTests(unittest.TestCase):
         self.fault("old RW write hash", error=requests.Timeout("lost verification"))
         self.run_case("ERROR", AuthMech.M2M_API_BEARER_RW, "FAIL")
 
+    def test_bearer_hash_server_error_is_error_after_verified_restoration(self) -> None:
+        self.fault("initial RW write hash", FakeResponse(500, {}))
+        result: RunResult = self.run_case("ERROR", AuthMech.M2M_API_BEARER_RO)
+        self.assertEqual("PASS", result.outcomes[target.RESTORATION])
+
+    def test_post_timeout_and_hash_mismatch_preserve_error_and_mechanism_fail(self) -> None:
+        payload: dict[str, Any] = {"unexpected": True}
+        self.fault("initial RW write", error=requests.Timeout("secret=leak"))
+        self.fault("initial RW write hash", FakeResponse(200, payload))
+        messages: list[str] = []
+        self.runner.output = messages.append
+        result: RunResult = self.run_case("ERROR", AuthMech.M2M_API_BEARER_RO, "FAIL")
+        self.assertEqual("PASS", result.outcomes[target.RESTORATION])
+        terminal: str = "\n".join(messages)
+        self.assertIn("expected complete configuration matches expected state", terminal)
+        self.assertIn("GatewayConnectionError", terminal)
+        self.assertIn("NOT RUN", terminal)
+        self.assertNotIn("secret=leak", terminal)
+        self.assertIn("RESULT EXPLANATION", self.log.path.read_text())
+
+    def test_final_progress_failure_still_restores_and_retains_error(self) -> None:
+        def progress(message: str) -> None:
+            if message.startswith("Restoring defaults"):
+                raise BrokenPipeError("closed output")
+
+        self.runner.progress = progress
+        result: RunResult = self.run_case("ERROR")
+        self.assertEqual("PASS", result.outcomes[target.RESTORATION])
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, self.fake.mode)
+        self.assertEqual(("", ""), (self.fake.ro_key, self.fake.rw_key))
+
+    def test_failed_progress_and_persistent_evidence_failure_still_restore(self) -> None:
+        original: Callable[[str, Any], None] = self.log.write
+        failed: bool = False
+
+        def write(label: str, value: Any = "") -> None:
+            if failed:
+                raise OSError("unwritable evidence")
+            original(label, value)
+
+        def progress(message: str) -> None:
+            nonlocal failed
+            if message.startswith("Restoring defaults"):
+                failed = True
+                raise BrokenPipeError("closed output")
+
+        self.runner.progress = progress
+        with mock.patch.object(self.log, "write", side_effect=write):
+            result: RunResult = self.runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes[target.RESTORATION])
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, self.fake.mode)
+        self.assertEqual(("", ""), (self.fake.ro_key, self.fake.rw_key))
+
+    def test_terminal_keeps_security_failure_after_recovery_error(self) -> None:
+        self.fake.session_drop_bug = True
+        self.fake.restore_failures = 100
+        messages: list[str] = []
+        self.runner.output = messages.append
+        self.run_case("ERROR", AuthMech.LAN_WEBUI_DEFAULT, "FAIL")
+        terminal: str = "\n".join(messages)
+        self.assertIn("expected session dropped; observed 200", terminal)
+        self.assertIn("final restoration: ERROR", terminal)
+        self.assertIn("NOT RUN", terminal)
+        self.assertNotIn(CONFIG.gw_id, terminal)
+        self.assertNotIn(generated(1, 12), terminal)
+
+    def test_wrapper_setup_error_has_secret_safe_diagnostic(self) -> None:
+        messages: list[str] = []
+        (self.directory / ".env").write_text("gw_id=secret=leak\n", encoding="utf-8")
+        result: RunResult = target.execute_test_5_1_4_2_b(self.directory, output=messages.append)
+        self.assertEqual(2, result.exit_code)
+        self.assertIn("Setup/execution: ERROR: InvalidConfig", "\n".join(messages))
+        self.assertIn("NOT RUN", "\n".join(messages))
+        self.assertNotIn("secret=leak", "\n".join(messages))
+
     def test_partial_change_retains_candidate_for_recovery(self) -> None:
         self.fault("custom change", error=requests.Timeout("applied but response lost"), apply=True)
         result: RunResult = self.run_case("ERROR", AuthMech.LAN_WEBUI_USER_DEFINED)

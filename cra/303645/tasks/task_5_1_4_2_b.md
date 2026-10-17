@@ -368,7 +368,15 @@ restoration verified.
 | `1`       | A security assertion failed (old value still valid, new value not accepted, session not dropped, key rotation not isolated, or DUT left mutated) |
 | `2`       | Invalid setup, infrastructure/protocol error, or unverified restoration                                                                          |
 
-No silent errors; never convert an exception into a PASS-shaped default.
+No silent errors; never convert an exception into a PASS-shaped default. Terminal diagnostics name
+failed checks with secret-safe expected/observed summaries, classify exceptions by type and affected
+check, and identify NOT RUN mechanisms. Mirror these explanations in evidence and retain earlier
+FAIL explanations after later ERRORs. Diagnostics do not add progress steps.
+
+Bearer POST verification must still read and compare the configuration after a lost reply. A failed
+read-back is infrastructure ERROR; a measured mismatch records the mechanism FAIL while a pending
+POST transport error keeps the overall ERROR. Final progress and evidence failures must not prevent
+restoration attempts or their verification; failed reporting retains overall ERROR.
 
 ## Host-side implementation tests
 
