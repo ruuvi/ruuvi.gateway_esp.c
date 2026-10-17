@@ -263,6 +263,49 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual("ERROR", result.outcomes[target.AuthMech.M2M_API_BEARER_RW])
         self.assertEqual("PASS", result.outcomes["final restoration"])
 
+    def test_logs_path_regular_file_returns_error_before_configuration_or_http(self) -> None:
+        root: Path = Path(self.temp_dir.name) / "blocked-logs"
+        root.mkdir()
+        (root / "logs").write_text("existing file", encoding="utf-8")
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
+        messages: list[str] = []
+        load_config: mock.MagicMock
+        finish: mock.MagicMock
+        with mock.patch("test_5_1_4_2_a.load_dut_config") as load_config, \
+                mock.patch.object(target.EvidenceLog, "finish") as finish:
+            result: RunResult = target.execute_test_5_1_4_2_a(
+                root, session_factory=lambda: wire.FakeSession(gateway), output=messages.append,
+            )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertTrue(all(value == "NOT RUN" for value in result.outcomes.values()))
+        self.assertEqual(["Evidence log creation: ERROR; evidence unavailable", "Overall verdict: ERROR"], messages)
+        self.assertEqual("existing file", (root / "logs").read_text(encoding="utf-8"))
+        self.assertEqual([], gateway.calls)
+        load_config.assert_not_called()
+        finish.assert_not_called()
+
+    def test_log_creation_failure_is_sanitized_even_when_terminal_reporting_fails(self) -> None:
+        gateway: FirmwareGateway = FirmwareGateway(CONFIG)
+        messages: list[str] = []
+
+        def output(message: str) -> None:
+            messages.append(message)
+            raise BrokenPipeError("terminal-secret")
+
+        load_config: mock.MagicMock
+        finish: mock.MagicMock
+        with mock.patch.object(target.EvidenceLog, "create", side_effect=OSError("credential-secret")), \
+                mock.patch("test_5_1_4_2_a.load_dut_config") as load_config, \
+                mock.patch.object(target.EvidenceLog, "finish") as finish:
+            result: RunResult = target.execute_test_5_1_4_2_a(
+                Path(self.temp_dir.name), session_factory=lambda: wire.FakeSession(gateway), output=output,
+            )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual(["Evidence log creation: ERROR; evidence unavailable", "Overall verdict: ERROR"], messages)
+        self.assertEqual([], gateway.calls)
+        load_config.assert_not_called()
+        finish.assert_not_called()
+
     def test_first_output_failure_returns_error_and_finalizes_evidence_without_http(self) -> None:
         root: Path = Path(self.temp_dir.name)
         gateway: FirmwareGateway = FirmwareGateway(CONFIG)

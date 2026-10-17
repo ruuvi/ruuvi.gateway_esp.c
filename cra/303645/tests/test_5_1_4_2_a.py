@@ -621,14 +621,23 @@ def execute_test_5_1_4_2_a(
     output: Callable[[str], None] | None = None,
 ) -> RunResult:
     work_dir, output = work_dir or Path.cwd(), output or print
-    log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_1_4_2_a", now)
+    result: RunResult = RunResult(2, "ERROR", {mechanism: "NOT RUN" for mechanism in MECHANISMS}, set())
+    try:
+        log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_1_4_2_a", now)
+    except Exception:  # noqa: BLE001 - Evidence setup failures must return ERROR before DUT activity.
+        failure_message: str
+        for failure_message in ("Evidence log creation: ERROR; evidence unavailable", "Overall verdict: ERROR"):
+            try:
+                output(failure_message)
+            except Exception:  # noqa: BLE001, S110 - Both reporting sinks are unavailable; still return ERROR.
+                pass
+        return result
 
     def output_progress(message: str) -> None:
         output(message)
         log.write_line(message)
 
     progress: ProgressReporter = ProgressReporter(output_progress, TOTAL_STEPS)
-    result: RunResult = RunResult(2, "ERROR", {mechanism: "NOT RUN" for mechanism in MECHANISMS}, set())
     final_evidence: RecoveryEvidence = RecoveryEvidence(log)
     try:
         output(f"Open log file: {log.path}")
