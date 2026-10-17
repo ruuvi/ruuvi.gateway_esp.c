@@ -320,7 +320,9 @@ startup only after the opposite slot verifies its app and paired FATFS signature
 `### Init gw_cfg:`. The detailed signal rules and recovery procedure follow below.
 Initialization by a damaged slot is FAIL even if a later signed fallback boots successfully.
 Both-slot cases 9-12 observe the entire bounded 30-second capture window before declaring PASS,
-so initialization after an initially sufficient rejection prefix remains visible.
+so initialization after an initially sufficient rejection prefix remains visible. For FATFS cases
+10/11, require another reset after both target partitions have been rejected. A trace that rejects
+one slot, rolls back, rejects the other, then hangs is incomplete evidence (ERROR).
 
 ## Firmware installation and scenario sequence
 
@@ -391,6 +393,14 @@ Retain the original stable full-configuration digest and require the recovered c
 match it; stable changes to non-authentication settings also make recovery ERROR. Preserve any
 factory-reset advice when appending installation or recovery diagnostics. Firmware-helper child
 processes prepend the running interpreter's directory to PATH, supporting an unactivated virtualenv.
+Run the firmware helper in its own process group. On timeout or interruption, kill and reap the
+process tree with bounded cleanup before any recovery operation; if cleanup cannot be verified,
+block further flashing and print manual recovery instructions. During recovery, evidence writes
+(including progress, HTTP verification and flash command logs) are best-effort: a failed log stream
+must not prevent the two-slot reflash attempt or terminal manual recovery advice. Lost evidence
+always makes the overall verdict ERROR. Host regressions must exercise the real release-artifact
+gate with temporary files, covering layout mismatch, missing and wrong-sized images, and invalid
+app checksum/hash; every invalid fixture must prevent both installation and all flash writes.
 
 ## Evidence log
 

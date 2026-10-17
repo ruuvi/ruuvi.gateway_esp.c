@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -173,14 +174,93 @@ class SerialBoundary(Protocol):
     ) -> str: ...
 
 
+class RecoveryEvidence(EvidenceLog):
+    """Preserve restoration even when the original evidence destination fails."""
+
+    def __init__(self, original: EvidenceLog) -> None:
+        # This adapter delegates every stream operation to the existing log;
+        # it deliberately does not initialize or own a second stream.
+        self.original: EvidenceLog = original
+        self.path: Path = original.path
+        self.started_at: datetime = original.started_at
+        self.recovery_mode: bool = False
+        self.failures: list[str] = []
+
+    def record(self, operation: Callable[[], None]) -> None:
+        try:
+            operation()
+        except (OSError, ValueError) as error:
+            error: OSError | ValueError
+            self.failures.append(f"{type(error).__name__}: {error}")
+            if not self.recovery_mode:
+                raise
+
+    def write(self, label: str, value: Any = "") -> None:
+        self.record(lambda: self.original.write(label, value))
+
+    def write_line(self, message: str) -> None:
+        self.record(lambda: self.original.write_line(message))
+
+    def write_http_request(self, request: requests.PreparedRequest) -> None:
+        self.record(lambda: self.original.write_http_request(request))
+
+    def write_http_response(self, response: requests.Response) -> None:
+        self.record(lambda: self.original.write_http_response(response))
+
+    def exception(self, error: BaseException) -> None:
+        self.record(lambda: self.original.exception(error))
+
+    def finish(self, verdict: str, now: Callable[[], datetime] = utc_now) -> None:
+        self.record(lambda: self.original.finish(verdict, now))
+
+
+class InstallerCleanupError(InvalidSetup):
+    """An installer process tree could not be confirmed stopped; do not reflash."""
+
+
+def run_installer_command(
+    command: list[str], *, cwd: str, capture_output: bool, text: bool,
+    timeout: float, check: bool, env: dict[str, str],
+) -> subprocess.CompletedProcess[str]:
+    # The release helper spawns esptool. A new session gives the complete tree a
+    # private group so neither a timeout nor Ctrl+C leaves a flash writer alive.
+    process: subprocess.Popen[str] = subprocess.Popen(
+        command, cwd=cwd, stdout=subprocess.PIPE if capture_output else None,
+        stderr=subprocess.PIPE if capture_output else None, text=text, env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout: str
+        stderr: str
+        stdout, stderr = process.communicate(timeout=timeout)
+    except BaseException:  # Stop every child before propagating timeout or interruption.
+        try:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass  # Already exited, but still reap it and drain the pipes.
+            process.communicate(timeout=5.0)
+        except (OSError, subprocess.SubprocessError, KeyboardInterrupt) as cleanup_error:
+            cleanup_error: OSError | subprocess.SubprocessError | KeyboardInterrupt
+            raise InstallerCleanupError("installer process-tree cleanup could not be verified") from cleanup_error
+        raise
+    completed: subprocess.CompletedProcess[str] = subprocess.CompletedProcess(
+        command, process.returncode, stdout, stderr,
+    )
+    if check:
+        completed.check_returncode()
+    return completed
+
+
 class FirmwareInstaller:
     def __init__(
         self, repository: Path, evidence: EvidenceLog,
-        run_command: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+        run_command: Callable[..., subprocess.CompletedProcess[str]] = run_installer_command,
     ) -> None:
         self.repository: Path = repository
         self.evidence: EvidenceLog = evidence
         self.run_command: Callable[..., subprocess.CompletedProcess[str]] = run_command
+        self.safe_to_flash: bool = True
 
     def _command(self, version: str, *options: str, timeout: float) -> None:
         command: tuple[str, ...] = (sys.executable, str(self.repository / "ruuvi_gw_flash.py"),
@@ -193,6 +273,9 @@ class FirmwareInstaller:
                 list(command), cwd=str(self.repository), capture_output=True, text=True,
                 timeout=timeout, check=False, env=environment,
             )
+        except InstallerCleanupError:
+            self.safe_to_flash = False
+            raise
         except (OSError, subprocess.SubprocessError) as error:
             error: OSError | subprocess.SubprocessError
             self.evidence.write("FIRMWARE INSTALL ERROR", f"{type(error).__name__}: {error}")
@@ -210,6 +293,8 @@ class FirmwareInstaller:
         return load_release_images(self.repository, version)
 
     def flash_both(self, version: str, port: SerialPort) -> None:
+        if not self.safe_to_flash:
+            raise InvalidSetup("unsafe to reflash: installer process-tree cleanup was not verified")
         self._command(version, "--port", port.device, "--flash_both_slots", timeout=900.0)
 
 
@@ -544,7 +629,20 @@ def match_console(scenario: Scenario, console: str, active: Partition, alternate
             suffixes: set[str] = {"_2" if "_2'" in line else "" for line in clean.splitlines()
                                   if pattern.search(line) is not None}
             detected = detected and suffixes == {"", "_2"}
+        # In the FATFS cases the first rollback only reaches the second damaged
+        # slot. Require a reset *after* its rejection to rule out a later hang.
         control: bool = detected and banners >= 2 and not normal
+        if scenario.component != "app":
+            rejected_targets: set[str] = set()
+            rejection: re.Match[str]
+            pair_complete_at: int | None = None
+            for rejection in failures:
+                rejected_targets.add("_2" if "_2'" in rejection.group() else "")
+                if len(rejected_targets) == 2:
+                    pair_complete_at = rejection.end()
+                    break
+            control = (control and pair_complete_at is not None
+                       and BOOT_BANNER.search(clean, pair_complete_at) is not None)
         if scenario.component == "app" and scenario.method == "bad signature":
             control = control and lockout_cycles >= 2
         alternate_loaded: bool = False
@@ -611,13 +709,13 @@ class FunctionalTest_5_7_1_2_a:
         report: Callable[[str], None] | None = None,
     ) -> None:
         self.config: DutConfig = config
-        self.evidence: EvidenceLog = evidence
+        self.evidence: RecoveryEvidence = evidence if isinstance(evidence, RecoveryEvidence) else RecoveryEvidence(evidence)
         self.artifact_dir: Path = artifact_dir
         self.serial: SerialBoundary = serial
         self.flash_factory: Callable[[SerialPort, SerialVersions, EvidenceLog], FlashBoundary] = flash_factory
-        self.gateway: GatewayClient = GatewayClient(config, evidence, session_factory=session_factory)
+        self.gateway: GatewayClient = GatewayClient(config, self.evidence, session_factory=session_factory)
         self.progress: Callable[[str], None] = progress if progress is not None else lambda _: None
-        self.report: Callable[[str], None] = report if report is not None else evidence.write_line
+        self.report: Callable[[str], None] = report if report is not None else self.evidence.write_line
         self.scenarios: tuple[Scenario, ...] = scenarios
         self.outcomes: dict[str, str] = {case.name: "NOT RUN" for case in scenarios}
         self.failure_details: list[str] = []
@@ -631,8 +729,10 @@ class FunctionalTest_5_7_1_2_a:
         self.recovery_notice: str = RECOVERY_NOTICE
         self.repository: Path = Path(__file__).resolve().parents[3]
         self.installer: InstallerBoundary = installer if installer is not None else FirmwareInstaller(
-            self.repository, evidence,
+            self.repository, self.evidence,
         )
+        if isinstance(self.installer, FirmwareInstaller):
+            self.installer.evidence = self.evidence
 
     def _baseline(self) -> str:
         self.progress("Authenticating and validating factory-default identity")
@@ -941,6 +1041,7 @@ class FunctionalTest_5_7_1_2_a:
             caught_error: Exception
             error = caught_error
             verdict = "ERROR"
+            self.evidence.recovery_mode = True
             self.evidence.exception(caught_error)
             if self.active_case is not None:
                 self.outcomes[self.active_case.name] = "ERROR"
@@ -949,14 +1050,16 @@ class FunctionalTest_5_7_1_2_a:
             interrupted: KeyboardInterrupt
             error = interrupted
             verdict = "ERROR"
+            self.evidence.recovery_mode = True
             self.evidence.exception(interrupted)
             if self.active_case is not None:
                 self.outcomes[self.active_case.name] = "ERROR"
                 self.report(f"Step {self.active_case.number:02d} finished: ERROR — interrupted")
         finally:
+            self.evidence.recovery_mode = True
             if self.touched and self.port is not None and images is not None:
                 try:
-                    self.progress(f"Recovering {version} in both OTA slots")
+                    self.evidence.record(lambda: self.progress(f"Recovering {version} in both OTA slots"))
                     self.installer.flash_both(version, self.port)
                     csv_parts = {part.name: part for part in parse_partition_csv(partition_csv)}
                     self._write_otadata(csv_parts["otadata"], 0, images.ota_initial)
@@ -1011,7 +1114,12 @@ class FunctionalTest_5_7_1_2_a:
         result: str
         for name, result in self.outcomes.items():
             self.evidence.write("FINAL RESULT", {"scenario": name, "result": result})
+        if self.evidence.failures:
+            verdict = "ERROR"
         self.evidence.write("OVERALL RESULT", verdict)
+        if self.evidence.failures:
+            verdict = "ERROR"
+            recovery = f"{recovery or ''}\nEvidence logging failed; the test evidence is incomplete.".strip()
         return RunResult(0 if verdict == "PASS" else 1 if verdict == "FAIL" else 2,
                          verdict, dict(self.outcomes), set(), recovery)
 
@@ -1036,7 +1144,7 @@ def execute_test_5_7_1_2_a(
         work_dir = Path.cwd()
     if output is None:
         output = print
-    evidence: EvidenceLog = EvidenceLog.create(work_dir / "logs", PREFIX, now)
+    evidence: RecoveryEvidence = RecoveryEvidence(EvidenceLog.create(work_dir / "logs", PREFIX, now))
     output(f"Open log file: {evidence.path}")
 
     def report(message: str) -> None:
@@ -1087,7 +1195,13 @@ def execute_test_5_7_1_2_a(
     finally:
         if result.recovery_message is not None:
             evidence.write("TERMINAL DETAILS", result.recovery_message)
+        evidence.recovery_mode = True
         evidence.finish(result.verdict, now)
+        if evidence.failures:
+            details: str = result.recovery_message or ""
+            if "Evidence logging failed" not in details:
+                details = f"{details}\nEvidence logging failed; the test evidence is incomplete.".strip()
+            result = RunResult(2, "ERROR", result.outcomes, result.coverage, details)
     output(f"Overall verdict: {result.verdict}")
     if result.recovery_message is not None:
         output(result.recovery_message)

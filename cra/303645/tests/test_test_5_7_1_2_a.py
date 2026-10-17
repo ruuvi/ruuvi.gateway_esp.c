@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,7 +18,7 @@ import test_5_7_1_2_a as target
 from lib.config import FACTORY_RESET_MESSAGE
 from lib.errors import InvalidSetup
 from lib.evidence import EvidenceLog
-from lib.flash_dut import OTADATA_OFFSET, OTADATA_SIZE, OtaSelection, Partition, decode_otadata
+from lib.flash_dut import OTADATA_OFFSET, OTADATA_SIZE, FlashTool, OtaSelection, Partition, decode_otadata
 from lib.gateway import GatewayCfgLanAuthType
 from lib.models import DutConfig, RunResult
 from lib.serial_dut import SerialPort, SerialVersions
@@ -152,7 +153,8 @@ def observation(case: target.Scenario) -> str:
                     "using embedded signature\n")
         if case.both:
             return ("rst:0x1 (POWERON_RESET)\n" + fatfs_error(0)
-                    + "rst:0xc (SW_CPU_RESET)\n" + fatfs_error(1))
+                    + "rst:0xc (SW_CPU_RESET)\n" + fatfs_error(1)
+                    + "rst:0xc (SW_CPU_RESET)\n")
         errors = ("Signature of the running partition is valid.\n" + fatfs_error(case.slot)
                   + "Firmware rollback is possible, so try to do it\n")
     other: int = 1 - case.slot
@@ -680,6 +682,250 @@ class RunnerTests(unittest.TestCase):
         self.assertIn(FACTORY_RESET_MESSAGE, result.recovery_message or "")
         self.assertTrue(any(FACTORY_RESET_MESSAGE in line for line in self.output))
         self.assertEqual(2, sum(action == "flash_both" for action, _version in self.installer.calls))
+
+    def test_both_fatfs_rejections_followed_by_hang_are_incomplete(self) -> None:
+        case: target.Scenario
+        for case in target.SCENARIOS[9:11]:
+            with self.subTest(case=case.number):
+                hanging: str = observation(case).rsplit("rst:0xc", 1)[0]
+                self.serial = FakeSerial((baseline(0), baseline(0), hanging, baseline(0)))
+                result: RunResult = self.execute(case_number=case.number)
+                self.assertEqual(2, result.exit_code, result.recovery_message)
+                self.assertEqual("ERROR", result.outcomes[case.name])
+                self.assertIn("Gateway recovery verified", result.recovery_message or "")
+
+    def test_both_fatfs_reset_proof_survives_an_incomplete_later_cycle(self) -> None:
+        case: target.Scenario
+        for case in target.SCENARIOS[9:11]:
+            console: str = observation(case)
+            first_rejection: str = console.splitlines()[1]
+            self.serial = FakeSerial((baseline(0), baseline(0), console + first_rejection + "\n", baseline(0)))
+            result: RunResult = self.execute(case_number=case.number)
+            self.assertEqual(0, result.exit_code, result.recovery_message)
+            self.assertEqual("PASS", result.outcomes[case.name])
+
+    def _release_fixture(self) -> None:
+        release: Path = self.work_dir / ".releases" / "v1.17.5-dev"
+        release.mkdir(parents=True, exist_ok=True)
+        entries: bytearray = bytearray()
+        name: str
+        type_id: int
+        subtype: int
+        offset: int
+        size: int
+        for name, type_id, subtype, offset, size in LAYOUT:
+            entries.extend(b"\xaa\x50" + bytes((type_id, subtype))
+                           + offset.to_bytes(4, "little") + size.to_bytes(4, "little")
+                           + name.encode("ascii").ljust(16, b"\x00") + b"\x00" * 4)
+        entries.extend(b"\xff" * (0xC00 - len(entries)))
+        (release / "partition-table.bin").write_bytes(entries)
+        filename: str
+        image: bytes
+        for filename, image in (("ruuvi_gateway_esp.bin", APP), ("fatfs_gwui.bin", WEB),
+                                ("fatfs_nrf52.bin", NRF), ("ota_data_initial.bin", BLANK_OTADATA)):
+            (release / filename).write_bytes(image)
+        shutil.copyfile(Path(__file__).resolve().parents[3] / "partitions.csv",
+                        self.work_dir / "partitions.csv")
+
+    def test_real_release_gate_prevents_all_writes_for_invalid_artifacts(self) -> None:
+        variant: str
+        for variant in ("valid", "layout", "missing", "size", "integrity"):
+            with self.subTest(variant=variant):
+                self._assert_release_gate(variant)
+
+    def _assert_release_gate(self, variant: str) -> None:
+        self._release_fixture()
+        release: Path = self.work_dir / ".releases" / "v1.17.5-dev"
+        if variant == "layout":
+            table: bytearray = bytearray((release / "partition-table.bin").read_bytes())
+            table[4:8] = (0xA000).to_bytes(4, "little")
+            (release / "partition-table.bin").write_bytes(table)
+        elif variant == "missing":
+            (release / "fatfs_gwui.bin").unlink()
+        elif variant == "size":
+            (release / "fatfs_nrf52.bin").write_bytes(NRF[:-1])
+        elif variant == "integrity":
+            app: bytearray = bytearray(APP)
+            app[0x40000] ^= 1
+            (release / "ruuvi_gateway_esp.bin").write_bytes(app)
+        commands: list[list[str]] = []
+        def command(args: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+            commands.append(args)
+            return subprocess.CompletedProcess(args, 0, "completed offline", "")
+        evidence: EvidenceLog = EvidenceLog.create(self.work_dir / "logs", "gate", lambda: NOW)
+        self.addCleanup(evidence.finish, "ERROR", lambda: NOW)
+        installer: target.FirmwareInstaller = target.FirmwareInstaller(self.work_dir, evidence, command)
+        flash: FakeFlash = FakeFlash()
+        serial: FakeSerial = FakeSerial((baseline(0), baseline(0), observation(target.SCENARIOS[0]), baseline(0)))
+        runner: target.FunctionalTest_5_7_1_2_a = target.FunctionalTest_5_7_1_2_a(
+            CONFIG, evidence, self.work_dir / "artifacts", serial,
+            lambda _port, _versions, _evidence: flash,
+            lambda: FakeSession(self.gateway), installer=installer, scenarios=target.SCENARIOS[:1],
+        )
+        with mock.patch.object(installer, "flash_both", wraps=installer.flash_both) as flash_both:
+            result: RunResult = runner.run(self.work_dir / "partitions.csv", "v1.17.5-dev")
+        if variant == "valid":
+            self.assertEqual(0, result.exit_code, result.recovery_message)
+            self.assertEqual(2, flash_both.call_count)
+            self.assertTrue(flash.writes)
+        else:
+            self.assertEqual(2, result.exit_code)
+            flash_both.assert_not_called()
+            self.assertEqual([], flash.writes)
+            self.assertEqual(1, len(commands))
+            self.assertIn("--download_only", commands[0])
+
+    def test_installer_timeout_and_interruption_stop_surviving_child(self) -> None:
+        helper: Path = self.work_dir / "helper.py"
+        child_pid: Path = self.work_dir / "child.pid"
+        heartbeat: Path = self.work_dir / "heartbeat"
+        child_code: str = (
+            "import pathlib, signal, sys, time\n"
+            "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+            "path = pathlib.Path(sys.argv[1])\n"
+            "while True:\n path.write_text(str(time.monotonic()))\n time.sleep(0.02)\n"
+        )
+        # This helper and its child only write temporary files; no flash tool runs.
+        helper.write_text(
+            "import pathlib, subprocess, sys, time\n"
+            f"child = subprocess.Popen([sys.executable, '-c', {child_code!r}, sys.argv[2]])\n"
+            "pathlib.Path(sys.argv[1]).write_text(str(child.pid))\n"
+            "time.sleep(60)\n", encoding="utf-8",
+        )
+        original_communicate: Callable[..., tuple[str, str]] = subprocess.Popen.communicate
+        def run_once(interrupted: bool) -> None:
+            child_pid.unlink(missing_ok=True)
+            heartbeat.unlink(missing_ok=True)
+            first_call: bool = True
+            def communicate(process: subprocess.Popen[str], **kwargs: Any) -> tuple[str, str]:
+                nonlocal first_call
+                if first_call:
+                    first_call = False
+                    deadline: float = time.monotonic() + 3.0
+                    while not heartbeat.exists() and time.monotonic() < deadline:
+                        time.sleep(0.01)
+                    self.assertTrue(heartbeat.exists(), "offline child did not become ready")
+                    if interrupted:
+                        raise KeyboardInterrupt
+                return original_communicate(process, **kwargs)
+            started: float = time.monotonic()
+            with mock.patch.object(subprocess.Popen, "communicate", communicate), self.assertRaises(
+                KeyboardInterrupt if interrupted else subprocess.TimeoutExpired,
+            ):
+                target.run_installer_command(
+                    [target.sys.executable, str(helper), str(child_pid), str(heartbeat)],
+                    cwd=str(self.work_dir), capture_output=True, text=True, timeout=0.5,
+                    check=False, env=os.environ.copy(),
+                )
+            self.assertLess(time.monotonic() - started, 6.0)
+            self.assertTrue(heartbeat.exists(), "child must run before the cancellation")
+            saved: str = heartbeat.read_text(encoding="utf-8")
+            time.sleep(0.08)
+            self.assertEqual(saved, heartbeat.read_text(encoding="utf-8"))
+            status_path: Path = Path(f"/proc/{child_pid.read_text(encoding='utf-8')}/stat")
+            if status_path.exists():
+                self.assertEqual("Z", status_path.read_text(encoding="utf-8").split()[2],
+                                 "a killed, unreaped child cannot keep writing flash")
+        run_once(False)
+        run_once(True)
+
+    def test_failed_evidence_does_not_block_reflash_or_manual_advice(self) -> None:
+        fail_recovery: bool
+        for fail_recovery in (False, True):
+            with self.subTest(fail_recovery=fail_recovery):
+                self._assert_failed_evidence_recovery(fail_recovery)
+
+    def _assert_failed_evidence_recovery(self, fail_recovery: bool) -> None:
+        original_write: Callable[..., None] = EvidenceLog.write
+        original_line: Callable[..., None] = EvidenceLog.write_line
+        self.flash = FakeFlash()
+        self.installer = FakeInstaller()
+        if fail_recovery:
+            self.installer.fail_on_flash_call = 2
+        self.serial = FakeSerial((baseline(0), baseline(0), baseline(0)))
+        failed: bool = False
+        def write(log: EvidenceLog, label: str, value: Any = "") -> None:
+            nonlocal failed
+            # A sector write has occurred, then every evidence write fails.
+            if any(offset == 0x140000 for offset, _data in self.flash.writes):
+                failed = True
+            if failed:
+                raise OSError("evidence destination full")
+            original_write(log, label, value)
+        def line(log: EvidenceLog, message: str) -> None:
+            if failed:
+                raise OSError("evidence destination full")
+            original_line(log, message)
+        with mock.patch.object(EvidenceLog, "write", write), mock.patch.object(EvidenceLog, "write_line", line):
+            result: RunResult = self.execute(case_number=1)
+        self.assertTrue(failed)
+        self.assertEqual(2, result.exit_code)
+        self.assertEqual(2, sum(action == "flash_both" for action, _version in self.installer.calls))
+        self.assertIn("Evidence logging failed", result.recovery_message or "")
+        if fail_recovery:
+            self.assertIn("--flash_both_slots", result.recovery_message or "")
+            self.assertTrue(any("--flash_both_slots" in message for message in self.output))
+        else:
+            self.assertIn("Gateway recovery verified", result.recovery_message or "")
+
+    def test_unverified_installer_cleanup_blocks_another_flash_command(self) -> None:
+        evidence: EvidenceLog = EvidenceLog.create(self.work_dir / "logs", "cleanup", lambda: NOW)
+        self.addCleanup(evidence.finish, "ERROR", lambda: NOW)
+        command: mock.Mock = mock.Mock(side_effect=target.InstallerCleanupError("unverified child"))
+        installer: target.FirmwareInstaller = target.FirmwareInstaller(self.work_dir, evidence, command)
+        with self.assertRaises(target.InstallerCleanupError):
+            installer.flash_both("v1.17.5-dev", self.serial.discover())
+        with self.assertRaisesRegex(InvalidSetup, "unsafe to reflash"):
+            installer.flash_both("v1.17.5-dev", self.serial.discover())
+        self.assertEqual(1, command.call_count)
+
+    def test_failed_evidence_allows_real_installer_and_flash_recovery_boundaries(self) -> None:
+        evidence: EvidenceLog = EvidenceLog.create(self.work_dir / "logs", "recovery-boundaries", lambda: NOW)
+        original_write: Callable[..., None] = EvidenceLog.write
+        original_line: Callable[..., None] = EvidenceLog.write_line
+        lost: bool = False
+        installs: list[list[str]] = []
+        writes: list[int] = []
+        def install(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+            installs.append(command)
+            return subprocess.CompletedProcess(command, 0, "flashed offline", "")
+        def flash_command(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+            nonlocal lost
+            if "write_flash" in command:
+                offset: int = int(command[-2], 16)
+                writes.append(offset)
+                if offset == 0x140000:
+                    lost = True
+            return subprocess.CompletedProcess(command, 0, "Chip ID: 1234\nDetected flash size: 16MB", "")
+        def flash_factory(port: SerialPort, versions: SerialVersions, log: EvidenceLog) -> FlashTool:
+            return FlashTool(port, versions, log, run_command=flash_command)
+        def write(log: EvidenceLog, label: str, value: Any = "") -> None:
+            if lost:
+                raise OSError("evidence destination unavailable")
+            original_write(log, label, value)
+        def line(log: EvidenceLog, message: str) -> None:
+            if lost:
+                raise OSError("evidence destination unavailable")
+            original_line(log, message)
+        installer: target.FirmwareInstaller = target.FirmwareInstaller(self.work_dir, evidence, install)
+        self.serial = FakeSerial((baseline(0), baseline(0), baseline(0)))
+        with mock.patch.object(EvidenceLog, "write", write), mock.patch.object(EvidenceLog, "write_line", line), mock.patch.object(
+            installer, "download", return_value=IMAGES,
+        ):
+            result: RunResult = target.execute_test_5_7_1_2_a(
+                work_dir=self.work_dir, session_factory=lambda: FakeSession(self.gateway),
+                serial=self.serial, flash_factory=flash_factory, now=lambda: NOW,
+                output=self.output.append, input_fn=lambda _prompt: "v1.17.5-dev",
+                installer=installer, case_number=1,
+            )
+        evidence.finish("ERROR", lambda: NOW)
+        self.assertEqual(2, result.exit_code)
+        self.assertEqual(2, len(installs))
+        self.assertTrue(all("--flash_both_slots" in command for command in installs))
+        self.assertEqual([0xD000, 0xD000, 0x140000, 0xD000], writes)
+        self.assertIn("Gateway recovery verified", result.recovery_message or "")
+        self.assertIn("Evidence logging failed", result.recovery_message or "")
+        self.assertTrue(any("Overall verdict: ERROR" == line for line in self.output))
 
     def test_wrong_app_failure_mechanism_cannot_pass_signature_case(self) -> None:
         active: Partition = Partition("ota_0", 0, 0x10, 0x100000, 0x400000)
