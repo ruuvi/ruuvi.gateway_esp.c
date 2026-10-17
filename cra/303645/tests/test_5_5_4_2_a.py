@@ -275,6 +275,11 @@ class FunctionalTest_5_5_4_2_a:
     def _invalid_login(self) -> None:
         self.active = INVALID
         self.progress("Checking invalid interactive credentials")
+        username: str
+        for username in (f"invalid-{self.gateway.random_text(9)}", "Admin"):
+            self._invalid_login_attempt(username)
+
+    def _invalid_login_attempt(self, username: str) -> None:
         request: InteractiveChallengeRequest = self.gateway.prepare_interactive_challenge_request()
         challenge_response: requests.Response = self.gateway.send_interactive_challenge_request(request)
         self._require(challenge_response.status_code == HttpStatus.C_401_UNAUTHORIZED,
@@ -282,7 +287,6 @@ class FunctionalTest_5_5_4_2_a:
         challenge: InteractiveAuthChallenge = self.gateway.parse_interactive_challenge_response(
             request, challenge_response,
         )
-        username: str = f"invalid-{self.gateway.random_text(9)}"
         password: str = self.gateway.random_text(24)
         self._require(password != self.config.gw_id, "invalid password must differ from default", setup=True)
         response: requests.Response = self.gateway.submit_interactive_authentication(challenge, username, password)
@@ -293,9 +297,15 @@ class FunctionalTest_5_5_4_2_a:
         ))
         self._require(response.status_code == HttpStatus.C_401_UNAUTHORIZED,
                       f"invalid login: expected HTTP 401, observed {response.status_code}")
-        challenge.session.cookies.clear()
-        challenge.session.cookies.set("RUUVISESSION", response.cookies.get("RUUVISESSION") or challenge.cookie)
-        self._auth_denial(challenge.session)
+        cookies: list[str] = [challenge.cookie]
+        replacement: str | None = response.cookies.get("RUUVISESSION")
+        if replacement and replacement not in cookies:
+            cookies.append(replacement)
+        cookie: str
+        for cookie in cookies:
+            challenge.session.cookies.clear()
+            challenge.session.cookies.set("RUUVISESSION", cookie)
+            self._auth_denial(challenge.session)
 
     def _invalid_header(self, scheme: str, method: str, path: str) -> str:
         username: str = f"invalid-{self.gateway.random_text(9)}"

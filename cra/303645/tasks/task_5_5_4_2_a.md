@@ -400,9 +400,13 @@ Use fresh sessions **without** the authorized baseline cookie and with redirects
 
 ### 3. Invalid-credential probes
 
-1. Use the shared staged interactive flow to submit a random non-default username/password and
-   inspect the login response; require `401` and that no authorized session is granted (a follow-up
-   `GET /auth` on that session returns `401`). Classify as `401`.
+1. Use the shared staged interactive flow to submit a random non-default username/password, then
+   separately submit `Admin` with a password guaranteed to differ from `gw_id`. Obtain a fresh
+   challenge for each attempt and require each login response to be `401`. Retain the original
+   submitted `RUUVISESSION` cookie and any distinct replacement returned by the failed login;
+   separately send each cookie on a follow-up `GET /auth` and require `401` with default interactive
+   authentication. Neither cookie may authorize access. Keep both attempts within the existing
+   invalid-interactive-credentials progress phase. Classify as `401`.
 2. Complete invalid Basic and Digest GETs on `/ruuvi.json`, `/status.json`, and `/history` using the
    shared authorization builders before any configuration POST probe. Require the route-specific
    `302`/`401` denial expectations; `GET /auth` must not advertise Basic or Digest.

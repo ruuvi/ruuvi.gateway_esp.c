@@ -76,6 +76,10 @@ class DenialGateway(DefaultAuthGateway):
         self.auth_edit: Callable[[dict[str, Any], int], None] | None = None
         self.corrupt_login: Callable[[requests.PreparedRequest], None] | None = None
         self.sessions: list[BoundarySession] = []
+        self.accept_any_admin_password: bool = False
+        self.rotate_failed_username: str | None = None
+        self.authorize_failed_original: bool = False
+        self.failed_original_cookies: set[str] = set()
 
     def session(self) -> BoundarySession:
         session: BoundarySession = BoundarySession(self)
@@ -109,7 +113,24 @@ class DenialGateway(DefaultAuthGateway):
     def _auth_response(
         self, session: FakeSession, method: str, headers: Mapping[str, str], body: Any,
     ) -> FakeResponse:
+        cookie: str = headers.get(HttpHeader.COOKIE, "")
+        if (method == HttpMethod.GET and self.authorize_failed_original
+                and cookie in self.failed_original_cookies):
+            return FakeResponse(200, {GatewayCfgDesc.LAN_AUTH_TYPE: self.mode})
         response: FakeResponse = super()._auth_response(session, method, headers, body)
+        if method == HttpMethod.POST and response.status_code == 401 and isinstance(body, dict):
+            if (self.accept_any_admin_password and body.get("login") == "Admin"
+                    and session.challenge and self._has_session_cookie(session, headers)):
+                session.authorized = True
+                session.challenge = ""
+                self.authorized_sessions.append(session)
+                return FakeResponse(200, {"authenticated": True})
+            username: str = body.get("login", "")
+            if (self.rotate_failed_username == username
+                    or self.rotate_failed_username == "invalid" and username.startswith("invalid-")):
+                self.failed_original_cookies.add(cookie)
+                return FakeResponse(401, {"authenticated": False},
+                                    cookies={"RUUVISESSION": f"replacement-{session.number}"})
         if method == HttpMethod.GET and self.auth_edit is not None:
             payload: dict[str, Any] = response.json()
             self.auth_edit(payload, session.number)
@@ -145,9 +166,9 @@ class ExpectedRequest:
     body: Any = None
 
 
-def login_body(session: int, *, invalid: bool = False) -> dict[str, str]:
+def login_body(session: int, *, invalid: bool = False, wrong_password: bool = False) -> dict[str, str]:
     username: str = f"invalid-{base64.urlsafe_b64encode(b'x' * 9).decode()}" if invalid else "Admin"
-    password: str = base64.urlsafe_b64encode(b"x" * 24).decode() if invalid else CONFIG.gw_id
+    password: str = base64.urlsafe_b64encode(b"x" * 24).decode() if invalid or wrong_password else CONFIG.gw_id
     ha1: str = hashlib.md5(f"{username}:Ruuvi Gateway:{password}".encode()).hexdigest()
     response: str = hashlib.sha256(f"challenge-{session}-1:{ha1}".encode()).hexdigest()
     return {"login": username, "password": response}
@@ -199,34 +220,37 @@ class DenialRunnerTests(unittest.TestCase):
             ExpectedRequest("none", "GET", "/auth", 7),
             ExpectedRequest("none", "POST", "/auth", 7, login_body(7, invalid=True)),
             ExpectedRequest("none", "GET", "/auth", 7),
-            ExpectedRequest("Basic", "GET", "/ruuvi.json", 8),
-            ExpectedRequest("Basic", "GET", "/status.json", 9),
-            ExpectedRequest("Basic", "GET", "/history", 10),
-            ExpectedRequest("Digest", "GET", "/ruuvi.json", 11),
-            ExpectedRequest("Digest", "GET", "/status.json", 12),
-            ExpectedRequest("Digest", "GET", "/history", 13),
-            ExpectedRequest("none", "POST", "/ruuvi.json", 14, {}),
+            ExpectedRequest("none", "GET", "/auth", 8),
+            ExpectedRequest("none", "POST", "/auth", 8, login_body(8, wrong_password=True)),
+            ExpectedRequest("none", "GET", "/auth", 8),
+            ExpectedRequest("Basic", "GET", "/ruuvi.json", 9),
+            ExpectedRequest("Basic", "GET", "/status.json", 10),
+            ExpectedRequest("Basic", "GET", "/history", 11),
+            ExpectedRequest("Digest", "GET", "/ruuvi.json", 12),
+            ExpectedRequest("Digest", "GET", "/status.json", 13),
+            ExpectedRequest("Digest", "GET", "/history", 14),
+            ExpectedRequest("none", "POST", "/ruuvi.json", 15, {}),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
-            ExpectedRequest("Basic", "POST", "/ruuvi.json", 15, {}),
+            ExpectedRequest("Basic", "POST", "/ruuvi.json", 16, {}),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
-            ExpectedRequest("Digest", "POST", "/ruuvi.json", 16, {}),
+            ExpectedRequest("Digest", "POST", "/ruuvi.json", 17, {}),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
             ExpectedRequest("none", "POST", "/ruuvi.json", 1, KEY_BODY),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
-            ExpectedRequest("Bearer", "GET", "/history", 17),
             ExpectedRequest("Bearer", "GET", "/history", 18),
-            ExpectedRequest("Bearer", "POST", "/ruuvi.json", 19, {}),
+            ExpectedRequest("Bearer", "GET", "/history", 19),
+            ExpectedRequest("Bearer", "POST", "/ruuvi.json", 20, {}),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
-            ExpectedRequest("Bearer", "POST", "/connect_wps", 20),
+            ExpectedRequest("Bearer", "POST", "/connect_wps", 21),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
-            ExpectedRequest("none", "GET", "/auth", 21),
-            ExpectedRequest("none", "POST", "/auth", 21, login_body(21)),
-            ExpectedRequest("none", "POST", "/ruuvi.json", 21, CLEAR_BODY),
             ExpectedRequest("none", "GET", "/auth", 22),
             ExpectedRequest("none", "POST", "/auth", 22, login_body(22)),
-            ExpectedRequest("none", "GET", "/ruuvi.json", 22),
-            ExpectedRequest("Bearer", "GET", "/history", 23),
+            ExpectedRequest("none", "POST", "/ruuvi.json", 22, CLEAR_BODY),
+            ExpectedRequest("none", "GET", "/auth", 23),
+            ExpectedRequest("none", "POST", "/auth", 23, login_body(23)),
+            ExpectedRequest("none", "GET", "/ruuvi.json", 23),
             ExpectedRequest("Bearer", "GET", "/history", 24),
+            ExpectedRequest("Bearer", "GET", "/history", 25),
         ]
         observed: list[ExpectedRequest] = [
             ExpectedRequest(call.scheme, call.method, call.path, call.session_number, call.body)
@@ -236,8 +260,8 @@ class DenialRunnerTests(unittest.TestCase):
         call: RecordedRequest
         for call in self.gateway.calls:
             self.assertFalse(call.allow_redirects)
-            if call.session_number in (1, 21, 22) and call.method != "GET" or (
-                call.path == "/ruuvi.json" and call.session_number in (1, 22)
+            if call.session_number in (1, 22, 23) and call.method != "GET" or (
+                call.path == "/ruuvi.json" and call.session_number in (1, 23)
             ):
                 self.assertEqual(call.cookie, f"RUUVISESSION=session-{call.session_number}")
             if call.scheme != "none":
@@ -252,6 +276,16 @@ class DenialRunnerTests(unittest.TestCase):
                 digest: str = hashlib.md5(f"{ha1}:{'eHh4' * 4}:00000001:{'eHh4' * 4}:auth:{ha2}".encode()).hexdigest()
                 self.assertEqual(parameters["response"], digest)
                 self.assertEqual(parameters["uri"], call.path)
+        number: int
+        for number in (7, 8):
+            self.assertEqual([
+                (call.method, call.path, call.cookie) for call in self.gateway.calls
+                if call.session_number == number
+            ], [
+                ("GET", "/auth", None),
+                ("POST", "/auth", f"RUUVISESSION=session-{number}"),
+                ("GET", "/auth", f"RUUVISESSION=session-{number}"),
+            ])
         bearers: list[str | None] = [call.bearer_token for call in self.gateway.calls if call.scheme == "Bearer"]
         self.assertEqual(bearers, [RO, RW, RO, RW, RO, RW])
         self.assertEqual(set(result.outcomes.values()), {"PASS"})
@@ -266,7 +300,6 @@ class DenialRunnerTests(unittest.TestCase):
         steps: list[str] = [line for line in self.output if line.startswith("[Step")]
         self.assertEqual(len(steps), 12)
         step: str
-        number: int
         for number, step in enumerate(steps, 1):
             self.assertTrue(step.startswith(f"[Step {number} out of 12]"))
             self.assertIn(step, self.log)
@@ -407,6 +440,9 @@ class DenialRunnerTests(unittest.TestCase):
             ("none", "GET", "/auth", 2, runner.UNAUTHENTICATED),
             ("none", "DELETE", "/auth", 1, runner.UNAUTHENTICATED),
             ("none", "POST", "/auth", 2, runner.INVALID),
+            ("none", "POST", "/auth", 3, runner.INVALID),
+            ("none", "GET", "/auth", 5, runner.INVALID),
+            ("none", "GET", "/auth", 6, runner.INVALID),
             ("none", "GET", "/auth", 3, runner.INVALID),
             ("Basic", "GET", "/ruuvi.json", 1, runner.INVALID),
             ("Basic", "GET", "/status.json", 1, runner.INVALID),
@@ -442,6 +478,58 @@ class DenialRunnerTests(unittest.TestCase):
                     if owner in (runner.INSUFFICIENT, runner.LAN_FORBIDDEN):
                         self.assert_keys_cleared()
                     self.assertIn(f'"mechanism": "{owner}", "result": "FAIL"', self.log)
+
+    def test_admin_wrong_password_bypass_fails_before_configuration_writes(self) -> None:
+        self.gateway.accept_any_admin_password = True
+        result: RunResult = self.execute()
+        self.assertEqual((result.exit_code, result.outcomes[runner.INVALID]), (1, "FAIL"))
+        logins: list[RecordedRequest] = [
+            call for call in self.gateway.calls if call.method == "POST" and call.path == "/auth"
+        ]
+        self.assertEqual([call.body for call in logins], [
+            login_body(1), login_body(7, invalid=True), login_body(8, wrong_password=True),
+            login_body(9),
+        ])
+        self.assertEqual(self.gateway.config_bodies, [])
+        self.assertIn('"mechanism": "invalid-credential denial", "result": "FAIL"', self.log)
+
+    def test_failed_login_rotated_cookie_checks_both_distinct_candidates(self) -> None:
+        username: str
+        for username in ("invalid", "Admin"):
+            with self.subTest(username=username):
+                self.gateway = DenialGateway()
+                self.gateway.rotate_failed_username = username
+                self.assertEqual(self.execute().exit_code, 0)
+                number: int = 7 if username == "invalid" else 8
+                calls: list[RecordedRequest] = [
+                    call for call in self.gateway.calls if call.session_number == number
+                ]
+                self.assertEqual([(call.method, call.path, call.cookie) for call in calls], [
+                    ("GET", "/auth", None),
+                    ("POST", "/auth", f"RUUVISESSION=session-{number}"),
+                    ("GET", "/auth", f"RUUVISESSION=session-{number}"),
+                    ("GET", "/auth", f"RUUVISESSION=replacement-{number}"),
+                ])
+
+    def test_failed_login_rotated_cookie_cannot_hide_original_authorization(self) -> None:
+        username: str
+        for username in ("invalid", "Admin"):
+            with self.subTest(username=username):
+                self.gateway = DenialGateway()
+                self.gateway.rotate_failed_username = username
+                self.gateway.authorize_failed_original = True
+                result: RunResult = self.execute()
+                self.assertEqual((result.exit_code, result.outcomes[runner.INVALID]), (1, "FAIL"))
+                self.assertEqual(self.gateway.config_bodies, [])
+                number: int = 7 if username == "invalid" else 8
+                calls: list[RecordedRequest] = [
+                    call for call in self.gateway.calls if call.session_number == number
+                ]
+                self.assertEqual([(call.method, call.cookie) for call in calls], [
+                    ("GET", None), ("POST", f"RUUVISESSION=session-{number}"),
+                    ("GET", f"RUUVISESSION=session-{number}"),
+                ])
+                self.assertEqual(result.outcomes[runner.FINAL], "PASS")
 
     def test_invalid_login_must_not_authorize_followup_session(self) -> None:
         self.fault("none", "GET", "/auth", 200, 4)
@@ -731,8 +819,8 @@ class DenialRunnerTests(unittest.TestCase):
             self.gateway.faults.append(Fault(FakeRequestKey("none", "POST", "/ruuvi.json"), 3,
                                             error=requests.Timeout("clearing response lost"), apply_body=True))
         elif scenario == "denied-login":
-            self.fault("none", "POST", "/auth", 401, 3)
             self.fault("none", "POST", "/auth", 401, 4)
+            self.fault("none", "POST", "/auth", 401, 5)
         elif scenario == "unrevoked-key":
             self.fault("Bearer", "GET", "/history", 200, 1)
 
@@ -784,7 +872,7 @@ class DenialRunnerTests(unittest.TestCase):
             self.assertNotIn(CLEAR_BODY, self.gateway.config_bodies)
             self.assertEqual((self.gateway.ro_key, self.gateway.rw_key), (RO, RW))
             self.assertEqual(len([call for call in self.gateway.calls
-                                  if call.method == "POST" and call.path == "/auth"]), 5)
+                                  if call.method == "POST" and call.path == "/auth"]), 6)
         else:
             self.assert_keys_cleared()
             self.assertEqual(len([call for call in self.gateway.calls if call.body == CLEAR_BODY]),
@@ -938,7 +1026,7 @@ class DenialRunnerTests(unittest.TestCase):
         self.assertIn('"mechanism": "AuthMech-M2M-API-Bearer-RO", "result": "FAIL"', self.log)
 
     def test_restoration_login_failure_retries_with_fresh_credentials(self) -> None:
-        self.fault("none", "POST", "/auth", 401, 3)
+        self.fault("none", "POST", "/auth", 401, 4)
         result: RunResult = self.execute()
         self.assertEqual(result.exit_code, 0)
         self.assertIn("KEY RESTORATION ATTEMPT: 2", self.log)
