@@ -282,7 +282,13 @@ Restoration is mandatory after mutation:
 }
 ```
 
-Try the temporary RW bearer first, then the temporary interactive credential, then `Admin`/`gw_id`.
+Try the temporary RW bearer first, then the temporary interactive credential.
+If interactive recovery is unavailable, try retained Basic/Digest credentials (or unauthenticated
+ALLOW access) before the default interactive fallback. Retain both previous and candidate legacy
+credentials before each transition request, including when the reply is lost; Digest recovery must
+authenticate the restoration POST's method and path. Reporting failures must not prevent recovery
+HTTP requests or final verification. Preserve restoration and mechanism outcomes in the returned
+result when terminal or evidence sinks fail; unavailable reporting makes the overall result ERROR.
 Verify:
 
 - default login succeeds;

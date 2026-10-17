@@ -350,6 +350,43 @@ class InteractiveTimingStats:
     failed_post_durations_ns: list[int] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class RecoveryCredential:
+    mode: str
+    username: str
+    password: str
+
+
+class RecoveryEvidenceLog(EvidenceLog):
+    """Preserve recovery HTTP operations even when the evidence sink has failed."""
+
+    def __init__(self, delegate: EvidenceLog) -> None:
+        super().__init__(delegate.path, delegate._stream, delegate.started_at)
+        self.delegate: EvidenceLog = delegate
+        self.failed: bool = False
+
+    def attempt(self, operation: Callable[[], None]) -> None:
+        try:
+            operation()
+        except Exception:  # noqa: BLE001 - A failed evidence sink must not prevent recovery.
+            self.failed = True
+
+    def write(self, label: str, value: Any = "") -> None:
+        self.attempt(lambda: self.delegate.write(label, value))
+
+    def write_line(self, message: str) -> None:
+        self.attempt(lambda: self.delegate.write_line(message))
+
+    def write_http_request(self, request: requests.PreparedRequest) -> None:
+        self.attempt(lambda: self.delegate.write_http_request(request))
+
+    def write_http_response(self, response: requests.Response) -> None:
+        self.attempt(lambda: self.delegate.write_http_response(response))
+
+    def exception(self, error: BaseException) -> None:
+        self.attempt(lambda: self.delegate.exception(error))
+
+
 class FunctionalTest_5_1_5_2_b:
     def __init__(
         self,
@@ -399,6 +436,7 @@ class FunctionalTest_5_1_5_2_b:
         self.temporary_rw_key: str | None = None
         self.mutation_possible: bool = False
         self.factory_reset_required: bool = False
+        self.recovery_credentials: list[RecoveryCredential] = []
 
     def _set_outcome(self, mechanism: str, outcome: str) -> None:
         priority: dict[str, int] = {"NOT RUN": 0, "PASS": 1, "FAIL": 2, "ERROR": 3}
@@ -830,6 +868,7 @@ class FunctionalTest_5_1_5_2_b:
         auth_type: str,
         username: str = "",
         stored_password: str = "",
+        plaintext_password: str = "",
     ) -> None:
         body: dict[str, str] = {
             GatewayCfgDesc.LAN_AUTH_TYPE: auth_type,
@@ -843,6 +882,9 @@ class FunctionalTest_5_1_5_2_b:
         }:
             body[GatewayCfgDesc.LAN_AUTH_USER] = username
             body[GatewayCfgDesc.LAN_AUTH_PASS] = stored_password
+        # Save both possible states before a request whose reply may be lost.
+        if auth_type in {GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST, GatewayCfgLanAuthType.ALLOW}:
+            self.recovery_credentials.append(RecoveryCredential(auth_type, username, plaintext_password))
         self.evidence.write("CONFIGURATION TRANSITION", body)
         mechanism_by_mode: dict[str, str] = {
             GatewayCfgLanAuthType.BASIC: AuthMech.LAN_WEBUI_BASIC,
@@ -1046,7 +1088,7 @@ class FunctionalTest_5_1_5_2_b:
         basic_authorization: str = self.gateway.authorization_header_basic(username, basic_password)
         basic_token: str = basic_authorization[len(f"{HttpAuthScheme.BASIC} ") :]
         self.progress("Testing Basic authentication")
-        self._configure_auth_mode(GatewayCfgLanAuthType.BASIC, username, basic_token)
+        self._configure_auth_mode(GatewayCfgLanAuthType.BASIC, username, basic_token, basic_password)
         basic_session: requests.Session = self.gateway.new_session()
         basic_headers: dict[str, str] = {HttpHeader.AUTHORIZATION: basic_authorization}
         observe(
@@ -1085,7 +1127,7 @@ class FunctionalTest_5_1_5_2_b:
 
         digest_ha1: str = self.gateway.calculate_digest_ha1(username, realm, password)
         self.progress("Testing Digest authentication")
-        self._configure_auth_mode(GatewayCfgLanAuthType.DIGEST, username, digest_ha1)
+        self._configure_auth_mode(GatewayCfgLanAuthType.DIGEST, username, digest_ha1, password)
         observe(
             lambda: self._measure_http_auth_campaign(
                 AuthMech.LAN_WEBUI_DIGEST,
@@ -1693,6 +1735,32 @@ class FunctionalTest_5_1_5_2_b:
                     )
                 )
                 self.evidence.exception(error)
+        credential: RecoveryCredential
+        for credential in reversed(self.recovery_credentials):
+            if restored:
+                break
+            try:
+                recovery_session: requests.Session = self.gateway.new_session()
+                if credential.mode == GatewayCfgLanAuthType.BASIC:
+                    recovery_session.headers[HttpHeader.AUTHORIZATION] = self.gateway.authorization_header_basic(
+                        credential.username, credential.password
+                    )
+                elif credential.mode == GatewayCfgLanAuthType.DIGEST:
+                    challenge: requests.Response = self.gateway.request(recovery_session, HttpMethod.GET, GatewayApi.CONFIG)
+                    parameters: dict[str, str] = self.gateway.parse_digest_challenge(
+                        challenge.headers.get(HttpHeader.WWW_AUTHENTICATE, "")
+                    )
+                    recovery_session.headers[HttpHeader.AUTHORIZATION] = self.gateway.authorization_header_digest(
+                        credential.username, credential.password, HttpMethod.POST, GatewayApi.CONFIG, parameters
+                    )
+                restored = try_post(f"temporary {credential.mode}", recovery_session)
+            except Exception as recovery_error:  # noqa: BLE001 - Try earlier credentials after a failed transition.
+                recovery_error: Exception
+                attempts.append(RestorationErrorAttemptEvidence(
+                    method=f"temporary {credential.mode}", error=type(recovery_error).__name__,
+                    message=str(recovery_error),
+                ))
+                self.evidence.exception(recovery_error)
         if not restored:
             try:
                 default: InteractiveAuthResult = self.gateway.authenticate_interactive(
@@ -1792,6 +1860,17 @@ class FunctionalTest_5_1_5_2_b:
         failure: BaseException | None = None
         security_failures: list[SecurityFailure] = []
         active_mechanism: str | None = None
+        recovery_evidence: RecoveryEvidenceLog = RecoveryEvidenceLog(self.evidence)
+        reporting_failed: bool = False
+
+        def report(operation: Callable[[str], None], message: str) -> None:
+            nonlocal reporting_failed
+            try:
+                operation(message)
+            except Exception as reporting_error:  # noqa: BLE001 - Reporting must not interrupt restoration or results.
+                reporting_error: Exception
+                reporting_failed = True
+                recovery_evidence.exception(reporting_error)
 
         def observe_security(operation: Callable[[], None]) -> None:
             try:
@@ -1954,19 +2033,31 @@ class FunctionalTest_5_1_5_2_b:
             if active_mechanism is not None:
                 self._set_outcome(active_mechanism, "FAIL")
             failure = error
-            self.evidence.exception(error)
+            recovery_evidence.exception(error)
             verdict = "FAIL"
             exit_code = 1
         except Exception as error:  # noqa: BLE001 - Log unexpected failures and preserve ERROR/recovery behavior.
             if active_mechanism is not None:
                 self._set_outcome(active_mechanism, "ERROR")
             failure = error
-            self.evidence.exception(error)
+            recovery_evidence.exception(error)
             verdict = "ERROR"
             exit_code = 2
         finally:
+            self.evidence = recovery_evidence
+            self.gateway.evidence = recovery_evidence
+            original_progress: Callable[[str], None] = self.progress
+            original_campaign_progress: Callable[[str], None] = self.campaign_progress
+            self.progress = lambda message: report(original_progress, message)
+            self.campaign_progress = lambda message: report(original_campaign_progress, message)
             self.progress("Restoring the original gateway authentication configuration")
-            restoration_ok: bool = self._restore()
+            try:
+                restoration_ok: bool = self._restore()
+            except Exception as restoration_error:  # noqa: BLE001 - Preserve recovery classification and prior results.
+                restoration_error: Exception
+                recovery_evidence.exception(restoration_error)
+                self.outcomes["final restoration"] = "ERROR"
+                restoration_ok = False
             self.progress("Verifying restoration and aggregating the verdict")
             if not restoration_ok:
                 self.factory_reset_required = True
@@ -1986,7 +2077,11 @@ class FunctionalTest_5_1_5_2_b:
                 MechanismResultEvidence(mechanism=mechanism, result=outcome),
             )
         self._print_summary()
+        if reporting_failed or recovery_evidence.failed:
+            verdict, exit_code = "ERROR", 2
         self.evidence.write("OVERALL RESULT", verdict)
+        if recovery_evidence.failed:
+            verdict, exit_code = "ERROR", 2
         recovery_message: str | None = FACTORY_RESET_MESSAGE if self.factory_reset_required else None
         return RunResult(exit_code, verdict, dict(self.outcomes), set(), recovery_message)
 
@@ -2006,7 +2101,8 @@ def execute_test_5_1_5_2_b(
     if output is None:
         output = print
     log: EvidenceLog = EvidenceLog.create(work_dir / "logs", "test_5_1_5_2_b", now)
-    output(f"Open log file: {log.path}")
+    reporting_log: RecoveryEvidenceLog = RecoveryEvidenceLog(log)
+    reporting_log.attempt(lambda: output(f"Open log file: {log.path}"))
 
     def output_progress(message: str) -> None:
         output(message)
@@ -2035,17 +2131,21 @@ def execute_test_5_1_5_2_b(
                 progress=progress.step,
                 campaign_progress=output_progress,
             ).run()
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - Preserve ERROR results after execution failures.
             error: Exception
-            log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
-            log.write("OVERALL RESULT", "ERROR")
+            reporting_log.exception(error)
+            reporting_log.write("OVERALL RESULT", "ERROR")
     finally:
         if result.recovery_message is not None:
-            log.write("USER ACTION REQUIRED", result.recovery_message)
-        log.finish(result.verdict, now)
-    output(f"Overall verdict: {result.verdict}")
-    if result.recovery_message is not None:
-        output(result.recovery_message)
+            reporting_log.write("USER ACTION REQUIRED", result.recovery_message)
+        reporting_log.attempt(lambda: output(f"Overall verdict: {result.verdict}"))
+        if result.recovery_message is not None:
+            reporting_log.attempt(lambda: output(result.recovery_message or ""))
+        if reporting_log.failed:
+            result.exit_code, result.verdict = 2, "ERROR"
+        reporting_log.attempt(lambda: log.finish(result.verdict, now))
+    if reporting_log.failed:
+        result.exit_code, result.verdict = 2, "ERROR"
     return result
 
 

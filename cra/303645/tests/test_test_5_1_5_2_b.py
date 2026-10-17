@@ -839,6 +839,123 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertIn("restoration reply lost", records[0][0]["message"])
         self.assertEqual({"method": "temporary custom interactive", "status": 200}, records[0][1])
 
+    def test_legacy_abort_recovers_after_primary_restore_failure(self) -> None:
+        mode: str
+        for mode in (GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST):
+            with self.subTest(mode=mode):
+                gateway: FakeGateway = FakeGateway(CONFIG)
+                gateway.primary_restore_status = HttpStatus.C_500_INTERNAL_SERVER_ERROR
+                original: Callable[..., FakeResponse] = gateway.response_for
+
+                def response(
+                    session: FakeSession, method: str, path: str, headers: dict[str, str], body: Any,
+                    fixture: FakeGateway = gateway, active_mode: str = mode,
+                    transport: Callable[..., FakeResponse] = original,
+                ) -> FakeResponse:
+                    reply: FakeResponse = transport(session, method, path, headers, body)
+                    if fixture.mode == active_mode and method == HttpMethod.GET and path == GatewayApi.STATUS:
+                        raise requests.Timeout("legacy campaign aborted")
+                    return reply
+
+                runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
+                runner.gateway.session_factory = lambda fixture=gateway: FakeSession(fixture)
+                with mock.patch.object(gateway, "response_for", side_effect=response):
+                    result: RunResult = runner.run()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual("PASS", result.outcomes["final restoration"])
+                self.assertEqual("ERROR", result.outcomes[
+                    AuthMech.LAN_WEBUI_BASIC if mode == GatewayCfgLanAuthType.BASIC else AuthMech.LAN_WEBUI_DIGEST
+                ])
+                self.assertIsNone(result.recovery_message)
+                self.assertEqual(GatewayCfgLanAuthType.DEFAULT, gateway.mode)
+                restored_calls: list[RecordedRequest] = [
+                    call for call in gateway.calls if call.method == HttpMethod.POST
+                    and call.path == GatewayApi.CONFIG and isinstance(call.body, dict)
+                    and call.body.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DEFAULT
+                ]
+                self.assertEqual(2, len(restored_calls))
+                self.assertTrue(restored_calls[0].authorization.startswith("Bearer "))
+                self.assertTrue(restored_calls[1].authorization.startswith(
+                    "Basic " if mode == GatewayCfgLanAuthType.BASIC else "Digest "
+                ))
+
+    def test_failed_digest_transition_keeps_previous_basic_recovery(self) -> None:
+        self.check_lost_digest_transition(applied=False)
+
+    def test_applied_digest_transition_with_lost_reply_keeps_new_recovery(self) -> None:
+        self.check_lost_digest_transition(applied=True)
+
+    def check_lost_digest_transition(self, applied: bool) -> None:
+        self.gateway.primary_restore_status = HttpStatus.C_500_INTERNAL_SERVER_ERROR
+        original: Callable[..., FakeResponse] = self.gateway.response_for
+
+        def response(
+            session: FakeSession, method: str, path: str, headers: dict[str, str], body: Any
+        ) -> FakeResponse:
+            if (method == HttpMethod.POST and path == GatewayApi.CONFIG and isinstance(body, dict)
+                    and body.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DIGEST):
+                if applied:
+                    original(session, method, path, headers, body)
+                raise requests.Timeout("Digest transition not applied")
+            return original(session, method, path, headers, body)
+
+        with mock.patch.object(self.gateway, "response_for", side_effect=response):
+            result: RunResult = self.make_runner(attempt_count=1).run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertEqual("PASS", result.outcomes[AuthMech.LAN_WEBUI_BASIC])
+        self.assertEqual("ERROR", result.outcomes[AuthMech.LAN_WEBUI_DIGEST])
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, self.gateway.mode)
+
+    def test_progress_and_persistent_evidence_failures_do_not_skip_recovery(self) -> None:
+        boundary: str
+        for boundary in ("progress", "evidence"):
+            with self.subTest(boundary=boundary):
+                gateway: FakeGateway = FakeGateway(CONFIG)
+                runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
+                runner.gateway.session_factory = lambda fixture=gateway: FakeSession(fixture)
+                original_write: Callable[[str, Any], None] = self.log.write
+
+                def write(
+                    label: str, value: Any = "", active_runner: target.FunctionalTest_5_1_5_2_b = runner,
+                    active_boundary: str = boundary, delegate: Callable[[str, Any], None] = original_write,
+                ) -> None:
+                    if active_runner.mutation_possible and active_boundary == "evidence":
+                        raise OSError("evidence sink closed")
+                    delegate(label, value)
+
+                def progress(
+                    _message: str, active_runner: target.FunctionalTest_5_1_5_2_b = runner,
+                    active_boundary: str = boundary,
+                ) -> None:
+                    if active_runner.mutation_possible and active_boundary == "progress":
+                        raise BrokenPipeError("stdout closed")
+
+                runner.progress = progress
+                with mock.patch.object(self.log, "write", side_effect=write):
+                    result: RunResult = runner.run()
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                self.assertEqual("PASS", result.outcomes["final restoration"])
+                self.assertEqual(GatewayCfgLanAuthType.DEFAULT, gateway.mode)
+                self.assertEqual("", gateway.rw_key)
+                self.assertIsNone(result.recovery_message)
+
+    def test_reporting_error_preserves_earlier_security_failure(self) -> None:
+        self.gateway.bearer_guess_status = HttpStatus.C_200_OK
+        runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
+
+        def progress(message: str) -> None:
+            if "Restoring the original" in message:
+                raise BrokenPipeError("stdout closed during cleanup")
+
+        runner.progress = progress
+        result: RunResult = runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RO])
+        self.assertEqual("PASS", result.outcomes[AuthMech.LAN_WEBUI_DEFAULT])
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, self.gateway.mode)
+
     def test_restoration_failure_or_verification_mismatch_prevents_pass(self) -> None:
         attribute: str
         for attribute in ("restored_config_mismatch", "temporary_bearers_survive"):
@@ -881,6 +998,40 @@ class FunctionalTestCase(unittest.TestCase):
 
 
 class ExecutionTestCase(unittest.TestCase):
+    def test_output_failures_preserve_restoration_and_return_result(self) -> None:
+        trigger: str
+        for trigger in ("Restoring the original", "result=", "Overall verdict:"):
+            with self.subTest(trigger=trigger):
+                self.check_output_failure(trigger)
+
+    def check_output_failure(self, trigger: str) -> None:
+        directory: str
+        with tempfile.TemporaryDirectory() as directory:
+            root: Path = Path(directory)
+            (root / ".env").write_text(env_text(CONFIG), encoding="utf-8")
+            gateway: FakeGateway = FakeGateway(CONFIG)
+            broken: bool = False
+
+            def output(message: str) -> None:
+                nonlocal broken
+                broken = broken or trigger in message
+                if broken:
+                    raise BrokenPipeError("terminal consumer closed")
+
+            result: RunResult = target.execute_test_5_1_5_2_b(
+                root, session_factory=lambda: FakeSession(gateway), now=lambda: FIXED_NOW,
+                monotonic_ns=AdvancingClock(2_100_000_000),
+                success_monotonic_ns=AdvancingClock(100_000_000), attempt_count=1,
+                random_bytes=UniqueRandom(), output=output,
+            )
+            self.assertTrue(broken)
+            self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+            self.assertEqual("PASS", result.outcomes["final restoration"])
+            self.assertTrue(all(value == "PASS" for value in result.outcomes.values()))
+            self.assertEqual(GatewayCfgLanAuthType.DEFAULT, gateway.mode)
+            self.assertEqual("", gateway.rw_key)
+            self.assertIsNone(result.recovery_message)
+
     def test_execute_log_and_terminal_progress_match_shared_pattern(self) -> None:
         directory: str
         with tempfile.TemporaryDirectory() as directory:
