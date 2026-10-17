@@ -242,6 +242,10 @@ conceal a mismatch. Unverified restoration is ERROR while earlier protection FAI
 recorded. Recovery reporting is best-effort across progress, terminal output, and the client's
 request/response evidence: a reporting failure cannot block cleanup HTTP or full read-back, but
 retains overall ERROR for incomplete reporting. Unverified cleanup retains operator recovery advice.
+Log creation and setup-reporting failures return setup ERROR before any DUT request. The final
+terminal verdict is attempted before evidence closure so a terminal failure is recorded as ERROR
+when the evidence stream remains usable. Failed evidence finalization returns ERROR and attempts
+to correct the terminal verdict while retaining any recovery advice.
 
 The plaintext-password check includes every captured request, including recovery. Full keys,
 credentials, configuration and bodies are confined to the local evidence log. The paired offline

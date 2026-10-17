@@ -252,6 +252,117 @@ class UnitCImplementationTests(unittest.TestCase):
         self.assertIn("EXCEPTION TYPE", self.log)
         self.assertEqual("Overall verdict: ERROR", self.output[-1])
 
+    def test_final_terminal_failure_is_recorded_before_evidence_close(self) -> None:
+        def output(message: str) -> None:
+            if message == "Overall verdict: PASS":
+                raise BrokenPipeError("terminal contains secret-password")
+            self.output.append(message)
+
+        result: RunResult = runner.execute_test_5_5_4_2_c(
+            self.work_dir, self.gateway.session, lambda size: bytes(range(size)),
+            lambda **kwargs: ECC.construct(curve="P-256", d=1), lambda size: bytes(range(size)),
+            lambda: NOW, output,
+        )
+        self.log = next((self.work_dir / "logs").glob("*.log")).read_text(encoding="utf-8")
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertIn("OVERALL VERDICT: ERROR", self.log)
+        self.assertNotIn("OVERALL VERDICT: PASS", self.log)
+        self.assertEqual("Overall verdict: ERROR", self.output[-1])
+        self.assertEqual(self.gateway.original, self.gateway.state)
+        self.assertNotIn("secret-password", "\n".join(self.output))
+
+    def test_setup_reporting_failures_abort_before_dut_and_finalize(self) -> None:
+        boundary: str
+        persistent: bool
+        for boundary in ("terminal", "evidence", "create"):
+            for persistent in (False, True):
+                with self.subTest(boundary=boundary, persistent=persistent):
+                    self.gateway = EncryptedGateway()
+                    self.output = []
+                    failed: bool = False
+                    write: Callable[[EvidenceLog, str, Any], None] = EvidenceLog.write
+
+                    def reporting_write(
+                        log: EvidenceLog, label: str, value: Any = "", selected: str = boundary,
+                        repeat: bool = persistent, delegate: Callable[[EvidenceLog, str, Any], None] = write,
+                    ) -> None:
+                        nonlocal failed
+                        if selected == "evidence" and (repeat or not failed):
+                            failed = True
+                            raise OSError("secret evidence error")
+                        delegate(log, label, value)
+
+                    def output(message: str, selected: str = boundary, repeat: bool = persistent) -> None:
+                        nonlocal failed
+                        if selected == "terminal" and (repeat or not failed):
+                            failed = True
+                            raise BrokenPipeError("secret terminal error")
+                        self.output.append(message)
+
+                    load: mock.MagicMock
+                    with mock.patch.object(EvidenceLog, "write", reporting_write), mock.patch(
+                        "test_5_5_4_2_c.load_dut_config",
+                    ) as load:
+                        if boundary == "create":
+                            with mock.patch.object(EvidenceLog, "create", side_effect=OSError("secret creation error")):
+                                result: RunResult = runner.execute_test_5_5_4_2_c(
+                                    self.work_dir, self.gateway.session, output=output,
+                                )
+                        else:
+                            result = runner.execute_test_5_5_4_2_c(
+                                self.work_dir, self.gateway.session, output=output,
+                            )
+                    self.assertEqual((2, "ERROR"), (result.exit_code, result.outcomes[runner.SETUP]))
+                    load.assert_not_called()
+                    self.assertFalse(self.gateway.calls)
+                    self.assertNotIn("secret", "\n".join(self.output))
+                    if boundary != "create":
+                        paths: list[Path] = list((self.work_dir / "logs").glob("*.log"))
+                        self.assertTrue(paths)
+                        self.assertTrue(all("OVERALL VERDICT: ERROR" in path.read_text() for path in paths))
+
+    def test_finish_failure_corrects_terminal_and_retains_recovery_advice(self) -> None:
+        persistent: bool
+        restoration_fails: bool
+        for persistent in (False, True):
+            for restoration_fails in (False, True):
+                with self.subTest(persistent=persistent, restoration_fails=restoration_fails):
+                    self.gateway = EncryptedGateway()
+                    self.output = []
+                    if restoration_fails:
+                        self.gateway.restore_from_attempt = 100
+                    finish: Callable[[EvidenceLog, str, Callable[[], datetime]], None] = EvidenceLog.finish
+                    attempts: int = 0
+                    last_log: EvidenceLog | None = None
+
+                    def failing_finish(
+                        log: EvidenceLog, verdict: str, now: Callable[[], datetime], repeat: bool = persistent,
+                        delegate: Callable[[EvidenceLog, str, Callable[[], datetime]], None] = finish,
+                    ) -> None:
+                        nonlocal attempts, last_log
+                        last_log = log
+                        attempts += 1
+                        if repeat or attempts == 1:
+                            raise OSError("secret finalization error")
+                        delegate(log, verdict, now)
+
+                    with mock.patch.object(EvidenceLog, "finish", failing_finish):
+                        result: RunResult = self.execute()
+                    if persistent and last_log is not None:
+                        # Release the deliberately faulted test stream after removing the fault.
+                        last_log.finish("ERROR", lambda: NOW)
+                    self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+                    self.assertEqual(2, attempts)
+                    self.assertEqual("Overall verdict: ERROR", self.output[-1])
+                    self.assertNotIn("secret", "\n".join(self.output))
+                    if not persistent:
+                        self.assertIn("OVERALL VERDICT: ERROR", self.log)
+                    if restoration_fails:
+                        self.assertEqual(runner.RECOVERY_MESSAGE, result.recovery_message)
+                        self.assertEqual(runner.RECOVERY_MESSAGE, self.output[-2])
+                    else:
+                        self.assertEqual(self.gateway.original, self.gateway.state)
+
     def test_parser_sensitive_mqtt_baselines_abort_without_post(self) -> None:
         field: str
         for field in ("mqtt_data_format", "mqtt_prefix", "mqtt_client_id"):

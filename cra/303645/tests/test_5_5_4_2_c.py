@@ -408,44 +408,77 @@ def execute_test_5_5_4_2_c(
     now: Callable[[], datetime] = utc_now,
     output: Callable[[str], None] = print,
 ) -> RunResult:
-    work_dir = Path.cwd() if work_dir is None else work_dir
-    log: RecoveryEvidence = RecoveryEvidence(EvidenceLog.create(work_dir / "logs", "test_5_5_4_2_c", now))
-    raw_output: Callable[[str], None] = output
-    output = lambda message: log.report(lambda: raw_output(message))
-    output(f"Open log file: {log.path}")
+    log: RecoveryEvidence | None = None
+    result: RunResult = RunResult(2, "ERROR", {check: "NOT RUN" for check in CHECKS}, set())
+    reporting_failed: bool = False
+
+    def terminal(message: str) -> None:
+        nonlocal reporting_failed
+        try:
+            output(message)
+        except Exception:  # Reporting failures must retain a result and cannot block recovery.
+            reporting_failed = True
+            if log is not None:
+                log.failed = True
+            if log is not None and not log.recovering:
+                raise
 
     def progress_output(message: str) -> None:
-        output(message)
-        log.write_line(message)
+        terminal(message)
+        if log is not None:
+            log.write_line(message)
 
-    progress: ProgressReporter = ProgressReporter(progress_output, TOTAL_STEPS)
-    result: RunResult = RunResult(2, "ERROR", {check: "NOT RUN" for check in CHECKS}, set())
-    log.write("TEST CASE AND UNIT", TEST_ID)
-    log.write("UTC START", log.started_at.isoformat())
-    log.write("TRANSPORT", TLS_STATEMENT)
+    error: Exception
     try:
+        work_dir = Path.cwd() if work_dir is None else work_dir
+        active_log: RecoveryEvidence = RecoveryEvidence(EvidenceLog.create(work_dir / "logs", "test_5_5_4_2_c", now))
+        log = active_log
+        terminal(f"Open log file: {active_log.path}")
+        progress: ProgressReporter = ProgressReporter(progress_output, TOTAL_STEPS)
+        active_log.write("TEST CASE AND UNIT", TEST_ID)
+        active_log.write("UTC START", active_log.started_at.isoformat())
+        active_log.write("TRANSPORT", TLS_STATEMENT)
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(work_dir / ".env")
         result = FunctionalTest_5_5_4_2_c(
-            config, log, session_factory, random_bytes, ecc_generate, iv_generate, progress.step, output,
+            config, active_log, session_factory, random_bytes, ecc_generate, iv_generate, progress.step, terminal,
         ).run()
-    except Exception as error:  # Setup failures must still produce final evidence.
-        error: Exception
-        log.recovering = True
-        log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
+    except Exception as error:  # Setup failures must still produce best-effort final evidence.
+        if log is not None:
+            log.recovering = True
+            log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
         result.outcomes[SETUP] = "ERROR"
-        log.write("FINAL RESULTS", result.outcomes)
-        progress_output(f"Setup ERROR — {type(error).__name__}; see local evidence")
+        if log is not None:
+            log.write("FINAL RESULTS", result.outcomes)
+        progress_output(f"Setup ERROR — {type(error).__name__}; see local evidence if available")
     finally:
-        log.recovering = True
+        if log is not None:
+            log.recovering = True
         if result.recovery_message:
             progress_output(result.recovery_message)
-        log.finish(result.verdict, now)
-    if log.failed:
-        result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
-    output(f"Overall verdict: {result.verdict}")
-    if log.failed:
-        result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
+        if reporting_failed or (log is not None and log.failed):
+            result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
+        # A terminal failure must affect the verdict before healthy evidence is closed.
+        reported_verdict: str = result.verdict
+        terminal(f"Overall verdict: {reported_verdict}")
+        if reporting_failed or (log is not None and log.failed):
+            result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
+        if reported_verdict != result.verdict:
+            terminal(f"Overall verdict: {result.verdict}")
+        if log is not None:
+            try:
+                log.delegate.finish(result.verdict, now)
+            except Exception as error:  # Finalization failures must correct any previously printed PASS/FAIL.
+                log.failed = True
+                result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
+                log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
+                log.finish("ERROR", now)
+                progress_output("Reporting ERROR — evidence finalization failed; see local evidence if available")
+                if result.recovery_message:
+                    progress_output(result.recovery_message)
+                terminal("Overall verdict: ERROR")
+        if reporting_failed or (log is not None and log.failed):
+            result = RunResult(2, "ERROR", result.outcomes, result.coverage, result.recovery_message)
     return result
 
 
