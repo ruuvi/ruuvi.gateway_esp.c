@@ -533,6 +533,82 @@ class RotationTests(unittest.TestCase):
         self.assertIn("OSError", "\n".join(messages))
         self.assertNotIn("secret=leak", "\n".join(messages))
 
+    def test_final_verdict_output_failure_is_recorded_before_evidence_closes(self) -> None:
+        (self.directory / ".env").write_text(env_text(CONFIG), encoding="utf-8")
+        messages: list[str] = []
+        log: target.EvidenceLog = target.EvidenceLog.create(self.directory, "failed_verdict", lambda: NOW)
+
+        def output(message: str) -> None:
+            if message.startswith("Overall verdict:"):
+                self.assertFalse(log._stream.closed)
+                raise BrokenPipeError("secret=leak")
+            messages.append(message)
+
+        with mock.patch.object(target.EvidenceLog, "create", return_value=log):
+            result: RunResult = target.execute_test_5_1_4_2_b(
+                self.directory, lambda: CookieSession(self.fake), UniqueRandom(), lambda: NOW, output
+            )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes[target.RESTORATION])
+        self.assertTrue(log._stream.closed)
+        evidence: str = log.path.read_text()
+        self.assertIn("Final reporting: ERROR", evidence)
+        self.assertIn("OVERALL VERDICT: ERROR", evidence)
+        self.assertNotIn("OVERALL VERDICT: PASS", evidence)
+        self.assertIn("Final reporting: ERROR", "\n".join(messages))
+        self.assertNotIn("secret=leak", "\n".join(messages))
+
+    def test_finish_failure_corrects_terminal_verdict_and_closes_log(self) -> None:
+        (self.directory / ".env").write_text(env_text(CONFIG), encoding="utf-8")
+        messages: list[str] = []
+        log: target.EvidenceLog = target.EvidenceLog.create(self.directory, "failed_finish", lambda: NOW)
+        with mock.patch.object(target.EvidenceLog, "create", return_value=log), \
+                mock.patch.object(log, "finish", side_effect=OSError("secret=leak")):
+            result: RunResult = target.execute_test_5_1_4_2_b(
+                self.directory, lambda: CookieSession(self.fake), UniqueRandom(), lambda: NOW, messages.append
+            )
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes[target.RESTORATION])
+        self.assertTrue(log._stream.closed)
+        self.assertEqual("Overall verdict: ERROR", messages[-1])
+        self.assertIn("Final reporting: ERROR", log.path.read_text())
+        self.assertIn("OVERALL VERDICT: ERROR", log.path.read_text())
+        self.assertNotIn("secret=leak", "\n".join(messages))
+
+    def test_final_output_failure_preserves_security_fail_and_recovery_notice_last(self) -> None:
+        (self.directory / ".env").write_text(env_text(CONFIG), encoding="utf-8")
+        messages: list[str] = []
+        result: RunResult = RunResult(1, "FAIL", {AuthMech.M2M_API_BEARER_RW: "FAIL"}, set(), target.FACTORY_RESET_MESSAGE)
+
+        def output(message: str) -> None:
+            if message.startswith("Overall verdict:"):
+                raise BrokenPipeError("closed")
+            messages.append(message)
+
+        with mock.patch.object(target.FunctionalTest_5_1_4_2_b, "run", return_value=result):
+            result = target.execute_test_5_1_4_2_b(self.directory, now=lambda: NOW, output=output)
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RW])
+        self.assertEqual(target.FACTORY_RESET_MESSAGE, messages[-1])
+        log_path: Path = next((self.directory / "logs").glob("*.log"))
+        self.assertIn("OVERALL VERDICT: ERROR", log_path.read_text())
+
+    def test_recovery_notice_output_failure_is_recorded_before_finalization(self) -> None:
+        (self.directory / ".env").write_text(env_text(CONFIG), encoding="utf-8")
+        result: RunResult = RunResult(1, "FAIL", {AuthMech.M2M_API_BEARER_RW: "FAIL"}, set(), target.FACTORY_RESET_MESSAGE)
+
+        def output(message: str) -> None:
+            if message == target.FACTORY_RESET_MESSAGE:
+                raise BrokenPipeError("closed")
+
+        with mock.patch.object(target.FunctionalTest_5_1_4_2_b, "run", return_value=result):
+            result = target.execute_test_5_1_4_2_b(self.directory, now=lambda: NOW, output=output)
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RW])
+        log_path: Path = next((self.directory / "logs").glob("*.log"))
+        self.assertIn("Final reporting: ERROR", log_path.read_text())
+        self.assertIn("OVERALL VERDICT: ERROR", log_path.read_text())
+
     def test_log_creation_failure_returns_sanitized_error_without_dut_requests(self) -> None:
         messages: list[str] = []
         (self.directory / "logs").write_text("blocked", encoding="utf-8")

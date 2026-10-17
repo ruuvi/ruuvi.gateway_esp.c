@@ -563,16 +563,39 @@ def execute_test_5_1_4_2_b(
                 final_evidence.write("RESULT EXPLANATION", f"{name}: NOT RUN")
                 final_evidence.attempt(lambda component=name: output(f"{component}: NOT RUN"))
     finally:
+        final_evidence.attempt(lambda: output(f"Overall verdict: {result.verdict}"))
+        if final_evidence.failed:
+            result.exit_code, result.verdict = 2, "ERROR"
+            final_evidence.write("RESULT EXPLANATION", "Final reporting: ERROR; output/evidence sink failed")
+            final_evidence.attempt(lambda: output("Final reporting: ERROR; output/evidence sink failed"))
+            final_evidence.attempt(lambda: output("Overall verdict: ERROR"))
+        # Recovery advice is part of reporting too: attempt it while evidence is writable.
+        reporting_failed: bool = final_evidence.failed
+        if result.recovery_message:
+            final_evidence.attempt(lambda: output(str(result.recovery_message)))
+        if final_evidence.failed:
+            result.exit_code, result.verdict = 2, "ERROR"
+            final_evidence.write("RESULT EXPLANATION", "Final reporting: ERROR; output/evidence sink failed")
+            if not reporting_failed:
+                final_evidence.attempt(lambda: output("Final reporting: ERROR; output/evidence sink failed"))
+                final_evidence.attempt(lambda: output("Overall verdict: ERROR"))
+                final_evidence.attempt(lambda: output(str(result.recovery_message)))
+        reporting_failed = final_evidence.failed
         final_evidence.attempt(lambda: log.finish(result.verdict, now))
+        if final_evidence.failed and not reporting_failed:
+            result.exit_code, result.verdict = 2, "ERROR"
+            # finish() can fail before closing the stream; preserve a correction when writable.
+            if not log._stream.closed:
+                final_evidence.write("RESULT EXPLANATION", "Final reporting: ERROR; output/evidence sink failed")
+                final_evidence.write("OVERALL VERDICT", "ERROR")
+            final_evidence.attempt(lambda: output("Final reporting: ERROR; output/evidence sink failed"))
+            final_evidence.attempt(lambda: output("Overall verdict: ERROR"))
+            if result.recovery_message:
+                final_evidence.attempt(lambda: output(str(result.recovery_message)))
         if not log._stream.closed:
             final_evidence.attempt(log._stream.close)
         if final_evidence.failed:
             result.exit_code, result.verdict = 2, "ERROR"
-    final_evidence.attempt(lambda: output(f"Overall verdict: {result.verdict}"))
-    if result.recovery_message:
-        final_evidence.attempt(lambda: output(str(result.recovery_message)))
-    if final_evidence.failed:
-        result.exit_code, result.verdict = 2, "ERROR"
     return result
 
 
