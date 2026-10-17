@@ -334,6 +334,79 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(expected, result.verdict, self.messages)
                 self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
 
+    def test_credential_input_attributes_are_scanned_without_empty_control_false_positives(self) -> None:
+        markup: str
+        expected: str
+        for markup, expected in (
+            ('<input type="password" name="mqtt_pass" value="leaked-password">', "FAIL"),
+            ('<input type="hidden" id="http_pass" value="abc">', "FAIL"),
+            ('<input type="password" name="mqtt_pass" value="a &amp; b">', "FAIL"),
+            ('<input type="password" name="mqtt_pass" value="">', "PASS"),
+            ('<input type="password" name="mqtt_pass">', "PASS"),
+            ('<input name="hostname" value="gateway">', "PASS"),
+            ('<script>const form = \'<input name="mqtt_pass" value="example">\';</script>', "PASS"),
+        ):
+            with self.subTest(markup=markup):
+                self.setUp()
+                self.fake.changed_path = "/"
+                self.fake.changed_body = '<script src="/app.js"></script>' + markup
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_plain_text_credentials_fail_without_scanning_javascript_expressions(self) -> None:
+        path: str
+        content_type: str
+        body: str
+        expected: str
+        for path, content_type, body, expected in (
+            (GatewayApi.AUTH, "text/plain; charset=utf-8", "mqtt_pass=abc", "FAIL"),
+            (GatewayApi.AUTH, "text/plain", "http_pass=a&b", "FAIL"),
+            (GatewayApi.AUTH, "text/plain", "mqtt_pass=", "PASS"),
+            ("/app.js", "application/javascript", "mqtt_pass=config.mqtt_pass;", "PASS"),
+            ("/app.js", "text/javascript", "mqtt_pass=config.mqtt_pass;", "PASS"),
+        ):
+            with self.subTest(path=path, content_type=content_type, body=body):
+                self.setUp()
+                self.fake.changed_path = path
+                self.fake.changed_header = ("Content-Type", content_type)
+                self.fake.changed_body = body
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_bootp_fixed_fields_cannot_hide_disclosures_in_any_packet(self) -> None:
+        field_offset: int
+        payload: bytes
+        early: bool
+        for field_offset in (44, 108):
+            for payload in (b"mqtt_pass=abc", CONFIG.gw_id.encode(), bytes.fromhex(CONFIG.gw_id.replace(":", "")), b""):
+                for early in (False, True):
+                    with self.subTest(field_offset=field_offset, payload=payload, early=early):
+                        self.setUp()
+                        # IPv4 options make the BOOTP offset differ from the common 20-byte header.
+                        ip_header: bytearray = bytearray(24)
+                        ip_header[0] = 0x46
+                        ip_header[9] = 17
+                        bootp: bytearray = bytearray(240)
+                        bootp[236:240] = b"\x63\x82\x53\x63"
+                        bootp[field_offset:field_offset + len(payload)] = payload
+                        hostname: bytes = DHCP_HOSTNAME.encode()
+                        options: bytes = bytes((12, len(hostname))) + hostname + bytes((255,))
+                        ethernet: bytes = bytes.fromhex("ffffffffffff0211223344550800")
+                        frame: bytes = ethernet + ip_header + bytes(8) + bootp + options
+                        pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+                        pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+                        if early:
+                            bootp[44:236] = bytes(192)
+                            frame = ethernet + ip_header + bytes(8) + bootp + options
+                            pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+                        self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                        result: RunResult = self._run()
+                        expected: str = "FAIL" if payload else "PASS"
+                        self.assertEqual(expected, result.verdict, self.messages)
+                        self.assertEqual(expected, result.outcomes["DHCP capture"])
+
     def test_standalone_abort_diagnostics_fail(self) -> None:
         diagnostic: str
         for diagnostic in ("abort()", "abort() called", "panic", "backtrace"):

@@ -148,6 +148,7 @@ class CaptureResult:
     ethernet_mac: str | None = None
     uart_hostname: str | None = None
     prior_frames: tuple[CaptureResult, ...] = ()
+    bootp_fixed_values: tuple[tuple[str, str], ...] = ()
 
 
 STANDARD_DHCP_OPTIONS: frozenset[int] = frozenset({1, 3, 6, 12, 15, 28, 50, 51, 53, 54, 55, 57, 58, 59, 61})
@@ -189,7 +190,9 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     codes: str = ", ".join(f"{code:d}" for code, _ in options)
     summary: str = f"{source_mac} DHCP Hostname {hostname}; option codes {codes}"
     return CaptureResult(summary, interface, option_values=tuple(options), raw_hex=frame.hex(),
-                         source_mac=source_mac, hostname=hostname)
+                         source_mac=source_mac, hostname=hostname,
+                         bootp_fixed_values=(("sname", frame[bootp_offset + 44:bootp_offset + 108].hex()),
+                                             ("file", frame[bootp_offset + 108:bootp_offset + 236].hex())))
 
 
 def decode_dhcp_pcap(data: bytes, interface: str) -> CaptureResult:
@@ -409,10 +412,17 @@ class PublicHtmlText(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.fragments: list[str] = []
         self.hidden_element: str | None = None
+        self.credential_values: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in {"script", "style"}:
             self.hidden_element = tag
+        if tag == "input" and self.hidden_element is None:
+            attributes: dict[str, str | None] = dict(attrs)
+            identifiers: tuple[str, ...] = tuple((attributes.get(key) or "").casefold() for key in ("name", "id"))
+            value: str = attributes.get("value") or ""
+            if value and any(identifier in SECRET_FIELDS for identifier in identifiers):
+                self.credential_values.append(value)
 
     def handle_endtag(self, tag: str) -> None:
         if tag == self.hidden_element:
@@ -494,6 +504,17 @@ def scan_observation(
             html_text.feed(content)
             html_text.close()
             for bare_match in HEADER_SECRET_FIELD_PATTERN.finditer("".join(html_text.fragments)):
+                findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                  location, "credential value", bare_match.group(0)))
+            form_value: str
+            for form_value in html_text.credential_values:
+                findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                  location, "credential form value", form_value))
+        if location == "body" and any(
+            name.lower() == "content-type" and value.split(";", 1)[0].strip().lower() == "text/plain"
+            for name, value in observation.headers
+        ):
+            for bare_match in HEADER_SECRET_FIELD_PATTERN.finditer(content):
                 findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                                   location, "credential value", bare_match.group(0)))
         field_match: re.Match[str]
@@ -828,6 +849,12 @@ class FunctionalTest_5_6_2_2_a:
         suspicious: bool = False
         observed: CaptureResult
         for observed in observed_frames:
+            # RFC 2131 BOOTP fixed fields are not DHCP options. This client should send
+            # zero-filled server-name/boot-file fields; any payload is undeclared data,
+            # including binary DeviceID seeds and option-overload contents.
+            suspicious = suspicious or any(
+                any(bytes.fromhex(value)) for _, value in observed.bootp_fixed_values
+            )
             observed_text: str = observed.frame or ""
             suspicious = suspicious or any(pattern.search(observed_text) for pattern in
                                            (PEM_PATTERN, POINTER_PATTERN, DIAGNOSTIC_PATTERN,
@@ -856,7 +883,7 @@ class FunctionalTest_5_6_2_2_a:
                                                     COORDINATES_PATTERN, TAGS_PATTERN, BEARER_PATTERN, BUILD_PATTERN))
         self.outcomes["DHCP capture"] = "FAIL" if suspicious else "PASS"
         if suspicious:
-            self.output("DHCP disclosure FAIL: unexpected or sensitive DHCP option")
+            self.output("DHCP disclosure FAIL: unexpected or sensitive DHCP field or option")
         self.evidence.write("DHCP DISCLOSURE ASSERTION", AssertionEvidence(
             "DUT DHCP frame contains no sensitive or vendor payload", self.outcomes["DHCP capture"], frame))
 
