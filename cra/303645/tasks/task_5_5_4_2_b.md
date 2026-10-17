@@ -369,7 +369,11 @@ Using a session with no interactive cookie and `Authorization: Bearer <temporary
 
 - `GET /history` -> require `200` and the JSON object defined by
   [the history schema](../../../schemas/ruuvi_history.schema.json), including its `data` object; do
-  not encode the source's informal "array" wording as a top-level array requirement;
+  not encode the source's informal "array" wording as a top-level array requirement. Retain the
+  boolean `ntp_use` from the baseline without changing it: when enabled, require the envelope
+  timestamp and per-sensor integer timestamps; when disabled, the firmware omits the envelope
+  timestamp and uses integer per-sensor `counter` values instead (the linked schema describes
+  timestamp mode);
 - `GET /status.json` -> require `200`;
 - `GET /ruuvi.json` -> require `200`.
 
@@ -540,3 +544,7 @@ actionable findings and recheck; report unavailable or timed-out inspections as 
 with `git diff --check` and a clean whole-subtree Ruff run. Guidance-only changes require Ruff, IDE
 inspection, and path/command checks, not rerunning unchanged Python suites. Keep local `.env`, logs,
 backups, manifests, and coverage output out of commits.
+
+Cleanup reporting is best-effort: progress, terminal output, or evidence checkpoint errors must
+not prevent restoration, fallback credentials, or independent final verification. Such errors
+keep the overall result ERROR even when restoration succeeds.

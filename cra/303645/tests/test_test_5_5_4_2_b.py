@@ -7,6 +7,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -70,6 +71,7 @@ class PositiveGateway(FakeGateway):
             super().__init__(CONFIG)
         self.faults: list[Fault] = []
         self.config_reads: int = 0
+        self.ntp_use: bool = True
         self.config_edit: Callable[[dict[str, Any], int], None] | None = None
         self.auth_edit: Callable[[dict[str, Any], int], None] | None = None
         self.corrupt_login: Callable[[requests.PreparedRequest], None] | None = None
@@ -96,13 +98,14 @@ class PositiveGateway(FakeGateway):
         self.config_reads += 1
         response: FakeResponse = super()._config_response()
         payload: dict[str, Any] = response.json()
+        payload["ntp_use"] = self.ntp_use
         payload["mqtt"] = {"enabled": False, "port": 1883, "topics": ["sensor"]}
         if self.config_edit is not None:
             self.config_edit(payload, self.config_reads)
         return FakeResponse(response.status_code, json.loads(json.dumps(payload)))
 
     def _auth_response(
-        self, session: FakeSession, method: str, headers: dict[str, str], body: Any,
+        self, session: FakeSession, method: str, headers: Mapping[str, str], body: Any,
     ) -> FakeResponse:
         response: FakeResponse = super()._auth_response(session, method, headers, body)
         if method == HttpMethod.GET and self.auth_edit is not None:
@@ -118,9 +121,14 @@ class PositiveGateway(FakeGateway):
             payload = {"data": {"coordinates": "", "timestamp": 1760000000, "gw_mac": CONFIG.gw_mac,
                                 "tags": {"AA:11:22:33:44:55": {"rssi": -33, "timestamp": 1759999999,
                                                             "ble_chan": 37, "ble_phy": "1M", "data": "AABB"}}}}
+            if not self.ntp_use:
+                payload["data"].pop("timestamp")
+                tag: dict[str, Any]
+                for tag in payload["data"]["tags"].values():
+                    tag["counter"] = tag.pop("timestamp")
         return FakeResponse(200, json.loads(json.dumps(payload)))
 
-    def _unauthorized_response(self, method: str, path: str, headers: dict[str, str]) -> FakeResponse:
+    def _unauthorized_response(self, method: str, path: str, headers: Mapping[str, str]) -> FakeResponse:
         return FakeResponse(302 if method == "GET" and self._bearer(headers) is None else 401, {})
 
 
@@ -485,6 +493,80 @@ class ImplementationTests(unittest.TestCase):
         result = self.execute()
         self.assertEqual(result.exit_code, 2)
         self.assert_restored(result)
+
+    def test_ntp_disabled_counter_history_completes_rw_check_and_restores(self) -> None:
+        self.gateway.ntp_use = False
+        result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.outcomes[runner.RO], "PASS")
+        self.assertEqual(result.outcomes[runner.RW], "PASS")
+        self.assertIn({}, self.gateway.config_bodies)
+        self.assert_restored(result)
+
+    def test_counter_history_rejects_missing_and_mistyped_counter(self) -> None:
+        value: Any
+        for value in (None, True, "123"):
+            with self.subTest(value=value):
+                self.gateway = PositiveGateway()
+                self.gateway.ntp_use = False
+                tag: dict[str, Any] = {"rssi": -33, "ble_chan": 37, "ble_phy": "1M", "data": "AABB"}
+                if value is not None:
+                    tag["counter"] = value
+                self.gateway.faults = [Fault(FakeRequestKey("Bearer", "GET", "/history"),
+                    response=FakeResponse(200, {"data": {"coordinates": "", "gw_mac": CONFIG.gw_mac,
+                                                        "tags": {"AA:11:22:33:44:55": tag}}}))]
+                result: RunResult = self.execute()
+                self.assertEqual(result.exit_code, 2)
+                self.assertEqual(result.outcomes[runner.RO], "ERROR")
+                self.assert_restored(result)
+
+    def test_cleanup_reporting_failures_preserve_restoration_and_fallbacks(self) -> None:
+        target: str
+        for target in ("progress", "output", "persistent-output", "prior-fail", "checkpoint", "exception"):
+            with self.subTest(target=target):
+                self.gateway = PositiveGateway()
+                if target != "progress":
+                    self.gateway.primary_restore_status = 401
+                if target == "prior-fail":
+                    self.gateway.faults = [Fault(FakeRequestKey("Bearer", "GET", "/history"),
+                                                response=FakeResponse(401, {}))]
+                original_write: Callable[..., None] = runner.EvidenceLog.write
+                original_exception: Callable[..., None] = runner.EvidenceLog.exception
+
+                def write(log: runner.EvidenceLog, label: str, value: Any = "", selected: str = target,
+                          original: Callable[..., None] = original_write) -> None:
+                    if selected == "checkpoint" and label == "RESTORATION ATTEMPT":
+                        raise OSError("evidence checkpoint failed")
+                    original(log, label, value)
+
+                def log_exception(log: runner.EvidenceLog, error: BaseException, selected: str = target,
+                                  original: Callable[..., None] = original_exception) -> None:
+                    if selected == "exception":
+                        raise OSError("exception evidence failed")
+                    original(log, error)
+
+                def output(message: str, selected: str = target) -> None:
+                    if (selected == "progress" and "Restoring default" in message
+                            or selected in ("output", "prior-fail") and "restoration:" in message
+                            or selected == "persistent-output" and PROVISION in self.gateway.config_bodies):
+                        raise BrokenPipeError("consumer closed")
+                    self.output.append(message)
+
+                with patch.object(runner.EvidenceLog, "write", write), \
+                        patch.object(runner.EvidenceLog, "exception", log_exception):
+                    result: RunResult = runner.execute_test_5_5_4_2_b(
+                        self.work_dir, self.gateway.session, FixedRandom(), fixed_ecc, fixed_now, output,
+                    )
+                self.assertEqual(result.exit_code, 2)
+                self.assertEqual(result.outcomes[runner.FINAL], "ERROR")
+                self.assertEqual(self.gateway.mode, "lan_auth_default")
+                self.assertEqual((self.gateway.ro_key, self.gateway.rw_key), ("", ""))
+                self.assertEqual(self.gateway.config_bodies[-1], RESTORE)
+                self.assertEqual(self.gateway.calls[-1].bearer_token, RW_KEY)
+                if target == "prior-fail":
+                    self.assertEqual(result.outcomes[runner.RO], "FAIL")
+                if target != "progress":
+                    self.assertEqual(self.gateway.restoration_attempts, ["bearer", "custom"])
 
     def test_initial_malformed_json_and_transport_error_do_not_mutate(self) -> None:
         fault: Fault

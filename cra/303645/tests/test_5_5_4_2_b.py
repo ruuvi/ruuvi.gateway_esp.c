@@ -9,6 +9,7 @@ import secrets
 import sys
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
@@ -83,10 +84,21 @@ class FunctionalTest_5_5_4_2_b:
         self.credentials: Credentials | None = None
         self.mutation_possible: bool = False
         self.recovery_message: str | None = None
+        self.reporting_failed: bool = False
+
+    def _report(self, callback: Callable[[], None]) -> None:
+        # Reporting must never stop credential recovery, including fallback attempts.
+        try:
+            callback()
+        except Exception:  # noqa: BLE001 - Preserve ERROR while allowing independent recovery work.
+            self.reporting_failed = True
+
+    def _log_error(self, error: Exception) -> None:
+        self._report(lambda: self.evidence.exception(error))
 
     def _say(self, message: str) -> None:
-        self.output(message)
-        self.evidence.write_line(message)
+        self._report(lambda: self.output(message))
+        self._report(lambda: self.evidence.write_line(message))
 
     def _require(self, condition: bool, description: str, actual: Any = "", *, setup: bool = False) -> None:
         self.evidence.write("ASSERTION", AssertionEvidence(description, "PASS" if condition else "FAIL", actual))
@@ -152,6 +164,7 @@ class FunctionalTest_5_5_4_2_b:
             if not valid and verified:
                 self.recovery_message = FACTORY_RESET_MESSAGE
             self._require(valid, f"{field} must have its factory-default type and value", actual, setup=True)
+        self._require(type(payload.get("ntp_use")) is bool, "ntp_use must be a boolean", setup=True)
         mode: Any = auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE)
         valid = type(mode) is str and mode == GatewayCfgLanAuthType.DEFAULT
         if not valid and verified:
@@ -207,21 +220,24 @@ class FunctionalTest_5_5_4_2_b:
         return prepared
 
     @staticmethod
-    def _validate_history(payload: dict[str, Any]) -> None:
+    def _validate_history(payload: dict[str, Any], ntp_use: bool) -> None:
         # Validate the required history envelope; sensor values may vary throughout the run.
         data: Any = payload.get("data")
         if not isinstance(data, dict):
             raise GatewayProtocolError("GET /history must contain a data object")
-        if (type(data.get("coordinates")) is not str or type(data.get("timestamp")) is not int
+        if (type(data.get("coordinates")) is not str
+                or (ntp_use and type(data.get("timestamp")) is not int)
+                or (not ntp_use and "timestamp" in data)
                 or type(data.get("gw_mac")) is not str or OCTETS_6_RE.fullmatch(data["gw_mac"]) is None
                 or type(data.get("tags")) is not dict):
             raise GatewayProtocolError("GET /history has missing or mistyped required data fields")
+        record_clock: str = "timestamp" if ntp_use else "counter"
         tags: dict[str, Any] = data["tags"]
         mac: str
         tag: Any
         for mac, tag in tags.items():
             if (OCTETS_6_RE.fullmatch(mac) is None or not isinstance(tag, dict)
-                    or type(tag.get("rssi")) is not int or type(tag.get("timestamp")) is not int
+                    or type(tag.get("rssi")) is not int or type(tag.get(record_clock)) is not int
                     or type(tag.get("ble_chan")) is not int or tag.get("ble_phy") not in ("1M", "2M", "Coded")
                     or type(tag.get("data")) is not str or not tag["data"]
                     or re.fullmatch(r"(?:[0-9A-Fa-f]{2})+", tag["data"]) is None):
@@ -240,7 +256,7 @@ class FunctionalTest_5_5_4_2_b:
         self.active = RO
         self.progress("Checking RO bearer history, status, and configuration reads")
         history: dict[str, Any] = self._read(GatewayApi.HISTORY, token=credentials.ro_key)
-        self._validate_history(history)
+        self._validate_history(history, prepared["ntp_use"])
         self._read(GatewayApi.STATUS, token=credentials.ro_key)
         self._compare_config(self._read(GatewayApi.CONFIG, token=credentials.ro_key), prepared)
         self.outcomes[RO] = "PASS"
@@ -259,7 +275,7 @@ class FunctionalTest_5_5_4_2_b:
         }
         candidate: str
         for candidate in ("RW bearer", "custom interactive", "default interactive"):
-            self.evidence.write("RESTORATION ATTEMPT", candidate)
+            self._report(partial(self.evidence.write, "RESTORATION ATTEMPT", candidate))
             try:
                 session: requests.Session
                 headers: dict[str, str] | None = None
@@ -284,13 +300,15 @@ class FunctionalTest_5_5_4_2_b:
                 return
             except Exception as error:  # noqa: BLE001 - Recovery must try every retained candidate.
                 error: Exception
-                self.evidence.exception(error)
+                self._log_error(error)
                 self._say(f"{candidate} restoration: {type(error).__name__}; trying retained recovery credentials")
         raise InvalidSetup("all restoration credentials failed")
 
     def _finalize(self, baseline: dict[str, Any]) -> bool:
         self.active = FINAL
-        self.progress("Restoring default authentication and verifying full state and credential revocation")
+        self._report(lambda: self.progress(
+            "Restoring default authentication and verifying full state and credential revocation",
+        ))
         failed: bool = False
         credentials: Credentials | None = self.credentials
         error: Exception
@@ -298,13 +316,13 @@ class FunctionalTest_5_5_4_2_b:
             try:
                 self._restore(credentials)
             except Exception as error:  # noqa: BLE001 - Still collect independent final-state evidence.
-                self.evidence.exception(error)
+                self._log_error(error)
                 failed = True
         try:
             auth: InteractiveAuthResult = self._login("Admin", self.config.gw_id)
             self._compare_config(self._read(GatewayApi.CONFIG, session=auth.session), baseline)
         except Exception as error:  # noqa: BLE001 - Keep a proven FAIL and continue revocation checks.
-            self.evidence.exception(error)
+            self._log_error(error)
             failed = True
         if self.mutation_possible and credentials is not None:
             try:
@@ -320,7 +338,7 @@ class FunctionalTest_5_5_4_2_b:
                 self._request(HttpMethod.GET, GatewayApi.CONFIG, session=revoked.session,
                               expected=HttpStatus.C_302_FOUND)
             except Exception as error:  # noqa: BLE001 - Each removed credential requires independent verification.
-                self.evidence.exception(error)
+                self._log_error(error)
                 failed = True
             key: str
             for key in (credentials.ro_key, credentials.rw_key):
@@ -328,13 +346,14 @@ class FunctionalTest_5_5_4_2_b:
                     self._request(HttpMethod.GET, GatewayApi.CONFIG, token=key,
                                   expected=HttpStatus.C_401_UNAUTHORIZED)
                 except Exception as error:  # noqa: BLE001 - Continue checking the other removed credential.
-                    self.evidence.exception(error)
+                    self._log_error(error)
                     failed = True
+        failed = failed or self.reporting_failed
         if failed:
             if self.outcomes[FINAL] != "FAIL":
                 self.outcomes[FINAL] = "ERROR"
             self.recovery_message = (
-                "USER ACTION REQUIRED: Restoration could not be verified. Temporary credentials or changed "
+                "USER ACTION REQUIRED: Restoration or cleanup reporting could not be verified. Temporary credentials or changed "
                 "settings may remain; use the recovery credentials in the local evidence and your backup "
                 "to restore this dedicated gateway. " + FACTORY_RESET_MESSAGE
             )
@@ -363,12 +382,12 @@ class FunctionalTest_5_5_4_2_b:
             verdict = "PASS"
         except SecurityFailure as error:
             error: Exception
-            self.evidence.exception(error)
+            self._log_error(error)
             if self.active == CUSTOM:
                 self.outcomes[PREPARED] = "ERROR"
             verdict = "FAIL"
         except Exception as error:  # noqa: BLE001 - Unexpected exceptions remain ERROR and always trigger recovery.
-            self.evidence.exception(error)
+            self._log_error(error)
             if self.active == CUSTOM and self.outcomes[PREPARED] != "PASS":
                 self.outcomes[PREPARED] = "ERROR"
             if self.outcomes[self.active] != "FAIL":
@@ -382,8 +401,10 @@ class FunctionalTest_5_5_4_2_b:
         check: str
         outcome: str
         for check, outcome in self.outcomes.items():
-            self.evidence.write("FINAL RESULT", MechanismResultEvidence(check, outcome))
+            self._report(partial(self.evidence.write, "FINAL RESULT", MechanismResultEvidence(check, outcome)))
             self._say(f"{check}: {outcome}")
+        if self.reporting_failed:
+            verdict = "ERROR"
         return RunResult(0 if verdict == "PASS" else 1 if verdict == "FAIL" else 2,
                          verdict, dict(self.outcomes), set(self.coverage), self.recovery_message)
 
@@ -406,6 +427,19 @@ def execute_test_5_5_4_2_b(
 
     progress: ProgressReporter = ProgressReporter(progress_output, TOTAL_STEPS)
     result: RunResult = RunResult(2, "ERROR", {check: "NOT RUN" for check in CHECKS}, set())
+    def report(message: str, *, record: bool = True) -> None:
+        try:
+            output(message)
+        except Exception:  # noqa: BLE001 - A closed terminal must not discard the run result.
+            result.exit_code = 2
+            result.verdict = "ERROR"
+        try:
+            if record:
+                log.write_line(message)
+        except Exception:  # noqa: BLE001 - Failed evidence must not discard the run result.
+            result.exit_code = 2
+            result.verdict = "ERROR"
+
     log.write("TEST CASE AND UNIT", TEST_ID)
     log.write("UTC START", log.started_at.isoformat())
     try:
@@ -419,12 +453,12 @@ def execute_test_5_5_4_2_b(
         log.exception(error)  # noqa: TRY401 - EvidenceLog requires the exception object.
         result.outcomes[SETUP] = "ERROR"
         log.write("FINAL RESULTS", result.outcomes)
-        progress_output(f"Setup ERROR — {type(error).__name__}; see evidence for details")
+        report(f"Setup ERROR — {type(error).__name__}; see evidence for details")
     finally:
         if result.recovery_message is not None:
-            progress_output(result.recovery_message)
+            report(result.recovery_message)
         log.finish(result.verdict, now)
-    output(f"Overall verdict: {result.verdict}")
+    report(f"Overall verdict: {result.verdict}", record=False)
     return result
 
 
