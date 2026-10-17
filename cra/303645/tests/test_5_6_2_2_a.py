@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import os
 import re
 import secrets
@@ -31,7 +32,13 @@ from lib.config import (
 )
 from lib.errors import GatewayAuthenticationModeError, GatewayProtocolError, InvalidSetup
 from lib.evidence import AssertionEvidence, EvidenceLog, format_utc, utc_now
-from lib.gateway import GatewayCfgDesc, GatewayCfgLanAuthType, GatewayClient, InteractiveAuthResult
+from lib.gateway import (
+    GatewayCfgDesc,
+    GatewayCfgLanAuthType,
+    GatewayClient,
+    InteractiveAuthResult,
+    InteractiveLoginChallenge,
+)
 from lib.http_api import API_INVENTORY, GatewayApi, HttpHeader, HttpMethod, HttpStatus
 from lib.models import DutConfig, ProgressReporter, RunResult
 from lib.serial_dut import SerialPort, SerialTransport
@@ -66,6 +73,13 @@ SECRET_FIELDS: tuple[str, ...] = (
 SECRET_FIELD_PATTERN: re.Pattern[str] = re.compile(
     r'(?i)["\']?(' + "|".join(re.escape(field) for field in SECRET_FIELDS) +
     r')["\']?\s*[:=]\s*(["\'])((?:(?!\2).)+)\2', re.DOTALL
+)
+HEADER_SECRET_FIELD_PATTERN: re.Pattern[str] = re.compile(
+    r'(?i)(?<![\w.])(' + "|".join(re.escape(field) for field in SECRET_FIELDS) +
+    r')\s*=\s*([^\s;,[\]{}"\']+)'
+)
+TAGS_PATTERN: re.Pattern[str] = re.compile(
+    r'(?i)["\']tags["\']\s*:\s*\{\s*["\'](?:[0-9a-f]{2}:){5}[0-9a-f]{2}["\']\s*:\s*\{'
 )
 PEM_PATTERN: re.Pattern[str] = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 POINTER_PATTERN: re.Pattern[str] = re.compile(r"\b0x[0-9a-fA-F]{6,}\b")
@@ -102,6 +116,8 @@ class Observation:
     headers: tuple[tuple[str, str], ...]
     body: str
     status: int
+    public_header_fragments: tuple[tuple[str, str], ...] = ()
+    challenge_problem: str | None = None
 
 
 @dataclass(frozen=True)
@@ -391,25 +407,27 @@ def scan_observation(
         patterns: tuple[tuple[str, re.Pattern[str]], ...] = (
             ("private key", PEM_PATTERN),
             ("bearer token", BEARER_PATTERN),
-            ("personal telemetry", HISTORY_PATTERN), ("coordinates", COORDINATES_PATTERN),
+            ("personal telemetry", HISTORY_PATTERN), ("sensor tags", TAGS_PATTERN),
+            ("coordinates", COORDINATES_PATTERN),
             ("Wi-Fi PSK", WIFI_PASSWORD_PATTERN), ("runtime backtrace", RUNTIME_BACKTRACE_PATTERN),
         )
         if location == "body" and observation.status == HttpStatus.C_200_OK:
             patterns += (("memory address", POINTER_CONTEXT_PATTERN),)
         else:
             patterns += (("memory address", POINTER_PATTERN),)
-        public_challenge_header: bool = location.lower() in {
-            "header:www-authenticate", "header:set-cookie", "header:ruuvi-ecdh-pub-key",
-        }
-        if (location.startswith("header:") and not public_challenge_header) or (
-            location == "body" and observation.status != HttpStatus.C_200_OK
-        ):
+        if location.startswith("header:") or observation.status != HttpStatus.C_200_OK:
             patterns += (("build identifier", BUILD_PATTERN), ("diagnostic", DIAGNOSTIC_PATTERN))
         category: str
         pattern: re.Pattern[str]
         for category, pattern in patterns:
             hit: re.Match[str]
             scanned_content: str = content
+            if category in {"build identifier", "diagnostic", "memory address"}:
+                public_location: str
+                fragment: str
+                for public_location, fragment in observation.public_header_fragments:
+                    if location.lower() == public_location:
+                        scanned_content = scanned_content.replace(fragment, "", 1)
             if category == "build identifier" and location.lower() == "header:location" and (
                 public_base_url and content.startswith(public_base_url + "/")
             ):
@@ -427,6 +445,11 @@ def scan_observation(
         if gw_id and gw_id.lower() in content.lower():
             findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                               location, "DeviceID password seed", gw_id))
+        if location.startswith("header:"):
+            bare_match: re.Match[str]
+            for bare_match in HEADER_SECRET_FIELD_PATTERN.finditer(content):
+                findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                  location, "credential value", bare_match.group(0)))
         field_match: re.Match[str]
         for field_match in SECRET_FIELD_PATTERN.finditer(content):
             field: str = field_match.group(1)
@@ -518,17 +541,55 @@ class FunctionalTest_5_6_2_2_a:
 
     def _request_probe(self, probe: Probe) -> Observation:
         session: requests.Session = self.gateway.new_session()
+        public_fragments: list[tuple[str, str]] = []
+        challenge_problem: str | None = None
         try:
             response: requests.Response = self.gateway.request(
                 session, probe.method, probe.path, allow_redirects=False,
             )
+            if probe.path == GatewayApi.AUTH and response.status_code == HttpStatus.C_401_UNAUTHORIZED:
+                try:
+                    validated: InteractiveLoginChallenge = self.gateway.interactive_login_challenge_from_response(
+                        session, response, "unauthenticated GET /auth",
+                    )
+                    parameter: str
+                    value: str
+                    for parameter, value in validated.challenge.items():
+                        if parameter in {"challenge", "session_id", "session_cookie"} or (
+                            parameter == "realm" and value == "Ruuvi Gateway"
+                        ):
+                            public_fragments.append(("header:www-authenticate", f'{parameter}="{value}"'))
+                    cookie_header: str = response.headers.get("Set-Cookie", "")
+                    cookie_assignment: str = f"RUUVISESSION={validated.cookie}"
+                    if re.search(r"(?:^|;\s*)" + re.escape(cookie_assignment) + r"(?=;|$)", cookie_header):
+                        public_fragments.append(("header:set-cookie", cookie_assignment))
+                    else:
+                        raise GatewayProtocolError("auth response cookie header disagrees with cookie jar")
+                except GatewayProtocolError as error:
+                    challenge_problem = str(error)
+            if probe.previous_cookie and response.status_code == HttpStatus.C_302_FOUND:
+                previous_url: str = f"RUUVI_PREV_URL={probe.path}"
+                if re.search(r"(?:^|;\s*)" + re.escape(previous_url) + r"(?=;|$)",
+                             response.headers.get("Set-Cookie", "")):
+                    public_fragments.append(("header:set-cookie", previous_url))
+            public_key: str | None = response.headers.get(HttpHeader.RUUVI_ECDH_PUBLIC_KEY)
+            if public_key:
+                try:
+                    raw_key: bytes = base64.b64decode(public_key, validate=True)
+                    if len(raw_key) == 65 and raw_key[0] == 4:
+                        key: ECC.EccKey = ECC.construct(curve="P-256", point_x=int.from_bytes(raw_key[1:33], "big"),
+                                                       point_y=int.from_bytes(raw_key[33:], "big"))
+                        if not key.pointQ.is_point_at_infinity():
+                            public_fragments.append(("header:ruuvi-ecdh-pub-key", public_key))
+                except (ValueError, TypeError):
+                    pass  # Invalid public-key text remains in the disclosure corpus.
         finally:
             session.close()
         raw_version: int | None = getattr(response.raw, "version", None)
         version: str = "1.0" if raw_version == 10 else "1.1" if raw_version == 11 else "unknown"
         self.evidence.write("HTTP STATUS LINE", f"HTTP/{version} {response.status_code} {response.reason}")
         observation: Observation = Observation(probe, tuple(response.headers.items()), response.text,
-                                               response.status_code)
+                                               response.status_code, tuple(public_fragments), challenge_problem)
         self.evidence.write("DISCLOSURE PROBE", observation)
         return observation
 
@@ -594,6 +655,8 @@ class FunctionalTest_5_6_2_2_a:
             if observation.probe.path == GatewayApi.AUTH and observation.probe.method == HttpMethod.GET and (
                 observation.status == HttpStatus.C_401_UNAUTHORIZED
             ):
+                if observation.challenge_problem is not None:
+                    raise GatewayProtocolError(observation.challenge_problem)
                 challenge: dict[str, str] = self.gateway.parse_interactive_challenge(
                     headers.get(HttpHeader.WWW_AUTHENTICATE.lower()),
                 )
@@ -612,7 +675,8 @@ class FunctionalTest_5_6_2_2_a:
             "fields": SECRET_FIELDS, "regexes": (PEM_PATTERN.pattern, POINTER_PATTERN.pattern,
                 DIAGNOSTIC_PATTERN.pattern, BUILD_PATTERN.pattern, BEARER_PATTERN.pattern,
                 POINTER_CONTEXT_PATTERN.pattern,
-                HISTORY_PATTERN.pattern, COORDINATES_PATTERN.pattern, WIFI_PASSWORD_PATTERN.pattern,
+                HISTORY_PATTERN.pattern, TAGS_PATTERN.pattern, HEADER_SECRET_FIELD_PATTERN.pattern,
+                COORDINATES_PATTERN.pattern, WIFI_PASSWORD_PATTERN.pattern,
                 RUNTIME_BACKTRACE_PATTERN.pattern),
             "sources": ("IXIT 10-SecParam sections WebUI/WiFi/remote/custom/bearer/DeviceID",
                         "IXIT 1-AuthMech", "IXIT 21-PersData BLE telemetry",
@@ -723,8 +787,9 @@ class FunctionalTest_5_6_2_2_a:
                     decoded: str = bytes.fromhex(option_value).decode("utf-8", errors="replace")
                     suspicious = suspicious or self.config.gw_id.casefold() in decoded.casefold()
                     suspicious = suspicious or any(pattern.search(decoded) for pattern in
-                                                   (PEM_PATTERN, POINTER_PATTERN, DIAGNOSTIC_PATTERN,
-                                                    BEARER_PATTERN, BUILD_PATTERN))
+                                                   (PEM_PATTERN, POINTER_PATTERN, DIAGNOSTIC_PATTERN, SECRET_FIELD_PATTERN,
+                                                    HEADER_SECRET_FIELD_PATTERN, WIFI_PASSWORD_PATTERN, HISTORY_PATTERN,
+                                                    COORDINATES_PATTERN, TAGS_PATTERN, BEARER_PATTERN, BUILD_PATTERN))
         self.outcomes["DHCP capture"] = "FAIL" if suspicious else "PASS"
         if suspicious:
             self.output("DHCP disclosure FAIL: unexpected or sensitive DHCP option")

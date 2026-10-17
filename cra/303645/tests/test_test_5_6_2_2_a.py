@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from collections.abc import Mapping
 from dataclasses import replace
+from http.cookies import SimpleCookie
 from pathlib import Path
 from typing import Any, BinaryIO, Callable
 from unittest.mock import Mock, patch
@@ -48,6 +49,7 @@ class DisclosureGateway(DefaultAuthGateway):
         self.changed_body: str | None = None
         self.changed_header: tuple[str, str] | None = None
         self.config_override: dict[str, Any] | None = None
+        self.append_header: tuple[str, str] | None = None
 
     def _config_response(self) -> FakeResponse:
         return FakeResponse(200, self.config_override) if self.config_override is not None else super()._config_response()
@@ -83,6 +85,15 @@ class DisclosureGateway(DefaultAuthGateway):
                 response._content = self.changed_body.encode()
             if self.changed_header is not None:
                 response.headers[self.changed_header[0]] = self.changed_header[1]
+                if self.changed_header[0] == "Set-Cookie":
+                    parsed_cookie: SimpleCookie = SimpleCookie()
+                    parsed_cookie.load(self.changed_header[1])
+                    response.cookies.clear()
+                    cookie_name: str
+                    for cookie_name in parsed_cookie:
+                        response.cookies.set(cookie_name, parsed_cookie[cookie_name].value)
+            if self.append_header is not None:
+                response.headers[self.append_header[0]] += self.append_header[1]
         return response
 
 
@@ -235,11 +246,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
         self.setUp()
         self.fake.changed_path = GatewayApi.AUTH
-        self.fake.changed_header = (
-            "WWW-Authenticate",
-            ('x-ruuvi-interactive realm="Ruuvi Gateway", challenge="nonce", '
-             'session_id="session-3", session_cookie="RUUVISESSION", mqtt_pass="leaked-password"'),
-        )
+        self.fake.append_header = ("WWW-Authenticate", ', mqtt_pass="leaked-password"')
         result = self._run()
         self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
         self.assertEqual("PASS", result.outcomes["redirects and challenge"])
@@ -296,6 +303,98 @@ class RunnerTests(unittest.TestCase):
                 expected: str = "FAIL" if option == CONFIG.gw_id.encode().hex() else "PASS"
                 self.assertEqual(expected, result.verdict, self.messages)
                 self.assertEqual(expected, result.outcomes["DHCP capture"])
+
+    def test_unquoted_cookie_secret_is_detected(self) -> None:
+        self.fake.changed_path = "/"
+        self.fake.changed_header = ("Set-Cookie", "mqtt_pass=leaked-password; Path=/")
+        result: RunResult = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
+        self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+
+    def test_actual_history_fixture_in_public_asset_is_detected(self) -> None:
+        fixture: Path = Path(__file__).resolve().parents[3] / "schemas/examples/history.json"
+        self.fake.changed_path = "/app.js"
+        self.fake.changed_body = fixture.read_text(encoding="utf-8")
+        result: RunResult = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
+        self.assertIn("sensor tags", self._log())
+        self.setUp()
+        self.fake.changed_path = "/app.js"
+        self.fake.changed_body = '{"data":{"tags":{}},"properties":{"tags":{"type":"object"}}}'
+        result = self._run()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code))
+
+    def test_handshake_headers_allow_only_public_values(self) -> None:
+        path: str
+        header: str
+        suffix: str
+        for path, header, suffix in (
+            (GatewayApi.CONFIG, "Set-Cookie", "; build=v1.2.3"),
+            (GatewayApi.AUTH, "Set-Cookie", "; build=v1.2.3"),
+            (GatewayApi.AUTH, "WWW-Authenticate", ' build="v1.2.3"'),
+            (GatewayApi.AUTH, "WWW-Authenticate", ' diagnostic="panic"'),
+        ):
+            with self.subTest(path=path, header=header, suffix=suffix):
+                self.setUp()
+                self.fake.changed_path = path
+                self.fake.append_header = (header, suffix)
+                result: RunResult = self._run()
+                self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+                self.assertEqual("PASS", result.outcomes["redirects and challenge"])
+                self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+
+    def test_invalid_challenge_cookie_cannot_pass(self) -> None:
+        header: tuple[str, str]
+        for header in (("Set-Cookie", "RUUVISESSION="), ("Set-Cookie", "RUUVISESSION=other"),
+                       ("WWW-Authenticate", ('x-ruuvi-interactive realm="Ruuvi Gateway" '
+                         'challenge="nonce" session_id="session-4" session_cookie="WRONG"'))):
+            with self.subTest(header=header):
+                self.setUp()
+                self.fake.changed_path = GatewayApi.AUTH
+                self.fake.changed_header = header
+                result: RunResult = self._run()
+                self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code), self.messages)
+                self.assertEqual("ERROR", result.outcomes["redirects and challenge"])
+                self.assertEqual("PASS", result.outcomes["HTTP disclosure matrix"])
+                self.assertEqual("NOT RUN", result.outcomes["sensitive disclosure scan"])
+
+    def test_validated_nonce_and_ecdh_key_are_public_but_extra_key_metadata_is_not(self) -> None:
+        original_response: Callable[..., FakeResponse] = self.fake.response_for
+
+        def public_handshake(session: FakeSession, method: str, path: str,
+                             headers: Mapping[str, str], body: Any,
+                             allow_redirects: bool = False) -> FakeResponse:
+            response: FakeResponse = original_response(session, method, path, headers, body, allow_redirects)
+            if path == GatewayApi.AUTH and len(self.fake.calls) > 3:
+                response.headers["WWW-Authenticate"] = response.headers["WWW-Authenticate"].replace(
+                    f'challenge="{session.challenge}"', 'challenge="0123456789abcdef0123456789abcdef"',
+                )
+                response.headers["Ruuvi-Ecdh-Pub-Key"] = self.fake.server_public_b64
+            return response
+
+        with patch.object(self.fake, "response_for", side_effect=public_handshake):
+            result: RunResult = self._run()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code), self.messages)
+        self.setUp()
+        self.fake.changed_path = GatewayApi.AUTH
+        self.fake.changed_header = ("Ruuvi-Ecdh-Pub-Key", self.fake.server_public_b64 + "; build=v1.2.3")
+        result = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+
+    def test_allowed_dhcp_options_still_scan_sensitive_contents(self) -> None:
+        value: str
+        for value in ('{"mqtt_pass":"abc"}', 'mqtt_pass=abc',
+                      '{"wifi_sta_config":{"password":"abc"}}',
+                      '{"coordinates":"60,24"}',
+                      '{"data":{"tags":{"F4:1F:0C:28:CB:D6":{"rssi":-34}}}}'):
+            with self.subTest(value=value):
+                self.setUp()
+                self.capture = replace(self.capture, hostname=DHCP_HOSTNAME,
+                    option_values=((12, DHCP_HOSTNAME.encode().hex()), (61, value.encode().hex())))
+                result: RunResult = self._run()
+                self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+                self.assertEqual("FAIL", result.outcomes["DHCP capture"])
 
     def test_public_bearer_prose_is_not_a_token(self) -> None:
         self.fake.changed_path = "/"
