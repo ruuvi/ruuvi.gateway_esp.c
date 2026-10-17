@@ -14,42 +14,16 @@ from unittest import mock
 import requests
 
 from lib.models import RunResult
+from test_support import fake_gateway as wire
+from test_support.fake_gateway import FakeResponse as Response
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import test_5_1_4_2_a as target
-import test_test_5_1_5_2_b as wire
 from lib.gateway import GatewayApi, GatewayCfgDesc, GatewayCfgLanAuthType, InteractiveAuthResult
 from lib.http_api import HttpAuthScheme, HttpHeader, HttpMethod, HttpStatus
 
 CONFIG: target.DutConfig = target.DutConfig("00:11:22:33:44:55:66:77", "AA:BB:CC:DD:EE:FF", "gateway.local")
 NOW: datetime = datetime(2026, 9, 6, tzinfo=timezone.utc)
-
-
-class WireGateway(wire.FakeGateway):
-    """Use the independent HTTP login fixture with partial credential updates."""
-
-    def _apply_config(self, body: dict[str, str]) -> None:
-        old_auth: tuple[str, str, str] = (self.mode, self.custom_username, self.custom_ha1)
-        self.mode = body.get(GatewayCfgDesc.LAN_AUTH_TYPE, self.mode)
-        self.custom_username = body.get(GatewayCfgDesc.LAN_AUTH_USER, self.custom_username)
-        self.custom_ha1 = body.get(GatewayCfgDesc.LAN_AUTH_PASS, self.custom_ha1)
-        self.ro_key = body.get(GatewayCfgDesc.LAN_AUTH_API_KEY, self.ro_key)
-        self.rw_key = body.get(GatewayCfgDesc.LAN_AUTH_API_KEY_RW, self.rw_key)
-        if old_auth != (self.mode, self.custom_username, self.custom_ha1):
-            session: wire.FakeSession
-            for session in self.authorized_sessions:
-                session.authorized = False
-            self.authorized_sessions.clear()
-
-
-class Response(requests.Response):
-    def __init__(self, status: int, payload: dict[str, Any] | None = None) -> None:
-        super().__init__()
-        self.status_code: int = status
-        self.payload: dict[str, Any] = payload or {}
-
-    def json(self, **kwargs: Any) -> dict[str, Any]:
-        return self.payload
 
 
 class FakeSession(requests.Session):
@@ -85,7 +59,7 @@ class FakeGatewayClient:
 
     @staticmethod
     def response_json(response: Response, context: str, expected_type: Any) -> dict[str, Any]:
-        if not isinstance(response.payload, expected_type):
+        if not isinstance(response.json(), expected_type):
             raise target.InvalidSetup(context)
         return response.json()
 
@@ -220,7 +194,7 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual(target.FACTORY_RESET_MESSAGE, result.recovery_message)
 
     def test_full_run_uses_real_client_and_independent_wire_login_validation(self) -> None:
-        gateway: WireGateway = WireGateway()
+        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
         runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(
             CONFIG,
             self.log,
@@ -257,7 +231,7 @@ class FunctionalTestCase(unittest.TestCase):
         mac: Any
         for mac in (None, 42, "bad", "11:22:33:44:55:66", CONFIG.gw_mac):
             with self.subTest(mac=mac):
-                gateway: WireGateway = WireGateway()
+                gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
                 original: Callable[..., wire.FakeResponse] = gateway.response_for
 
                 def response(
@@ -300,7 +274,7 @@ class FunctionalTestCase(unittest.TestCase):
                     if args[1:3] == (HttpMethod.GET, GatewayApi.CONFIG) and fixture.mode == GatewayCfgLanAuthType.RUUVI:
                         reads += 1
                         if reads == transition:
-                            reply.payload[GatewayCfgDesc.LAN_AUTH_TYPE] = GatewayCfgLanAuthType.DEFAULT
+                            reply.json()[GatewayCfgDesc.LAN_AUTH_TYPE] = GatewayCfgLanAuthType.DEFAULT
                     return reply
 
                 runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(CONFIG, self.log)
@@ -324,7 +298,7 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertEqual("PASS", result.outcomes["final restoration"])
 
     def test_corrupt_default_login_stops_before_mutation(self) -> None:
-        gateway: WireGateway = WireGateway()
+        gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
         runner: target.FunctionalTest_5_1_4_2_a = target.FunctionalTest_5_1_4_2_a(
             CONFIG,
             self.log,
@@ -341,8 +315,8 @@ class FunctionalTestCase(unittest.TestCase):
         for mode in (GatewayCfgLanAuthType.BASIC, GatewayCfgLanAuthType.DIGEST):
             with self.subTest(mode=mode):
                 root: Path = Path(self.temp_dir.name)
-                (root / ".env").write_text(wire.env_text(), encoding="utf-8")
-                gateway: WireGateway = WireGateway()
+                (root / ".env").write_text(wire.env_text(CONFIG), encoding="utf-8")
+                gateway: wire.FakeGateway = wire.FakeGateway(CONFIG)
                 gateway.mode = mode
                 messages: list[str] = []
                 result: RunResult = target.execute_test_5_1_4_2_a(
@@ -386,7 +360,7 @@ class FunctionalTestCase(unittest.TestCase):
             if args[1] == HttpMethod.POST and kwargs.get("json_body") == {}:
                 noop_count += 1
             if args[1] == HttpMethod.GET and args[2] == GatewayApi.CONFIG and noop_count == 2:
-                response.payload["unexpected"] = True
+                response.json()["unexpected"] = True
                 noop_count += 1
             return response
 
@@ -418,7 +392,7 @@ class FunctionalTestCase(unittest.TestCase):
                 if len(changes) == stage:
                     if applied:
                         original(*args, **kwargs)
-                    raise wire.requests.Timeout("credential write response lost")
+                    raise requests.Timeout("credential write response lost")
             return original(*args, **kwargs)
 
         with mock.patch.object(runner, "gateway", fake), mock.patch.object(fake, "request", side_effect=request):

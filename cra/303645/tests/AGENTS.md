@@ -19,6 +19,21 @@ test case and unit, then read its referenced assessment/IXIT sources and HTTP AP
 where available. If the task specification itself is absent, report that gap; do not invent
 requirements or assume a different unit has the same procedure.
 
+## Documentation ownership
+
+Keep this file and the project README independent of individual tests. They define reusable
+architecture, configuration, evidence, recovery and validation practices. Put case-specific
+setup, endpoint matrices, expected values, phase counts, capture deadlines, fixture filenames,
+workarounds and operator procedures in the matching `task_<id>.md` and, where helpful, in the
+runner's comments or console instructions. A concrete test name may appear only as a clearly
+labeled example, not as a rule that makes a shared document depend on that test.
+
+When moving guidance, retain every applicable requirement in its owning task or script and
+update links; do not merely delete operational instructions. Prefer generic placeholders for
+shared command templates. Explain required equipment, environment fields and operator actions
+before the runner needs them, without printing secrets. Keep the task and runner instructions
+consistent, and do not add input, network access or hardware actions at import time.
+
 ## Purpose and structure
 
 This is a Python 3.8 project for automating selected ETSI EN 303 645 / ETSI TS 103 701 tests against
@@ -122,11 +137,22 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
   task specification explicitly says otherwise.
 - Read DUT identity and address through `lib.config.load_dut_config`; do not parse `.env` again in a
   test script.
+- Treat `.env` `gw_mac` and authenticated `/ruuvi.json` `gw_mac` as the nRF52 identity MAC only.
+  ESP32 Ethernet, Wi-Fi, and any future Bluetooth interface use distinct MACs. For link-layer
+  capture, resolve the verified DUT IP to the active interface MAC using an on-link ARP/neighbor
+  observation; reject routed or ambiguous mappings as setup ERROR. Never filter Ethernet/Wi-Fi
+  frames on `.env` `gw_mac` or infer one interface MAC from another.
 - Use `GatewayClient` for gateway HTTP and authentication instead of duplicating protocol code.
 - Use `EvidenceLog` and structured evidence dataclasses. Log the HTTP request before transmission
   and the response before interpreting it.
 - Preserve the result convention: `0` for PASS, `1` for a test assertion FAIL, and `2` for setup,
   transport, protocol, or recovery ERROR.
+- Make terminal verdicts explainable: print the component and expected/observed values for an
+  assertion failure, or the affected check and exception type/reason for ERROR. Identify skipped
+  checks as NOT RUN, keep earlier FAIL explanations visible after later errors, and label
+  informational observations as unverified rather than PASS. Mirror explanations in evidence,
+  without dumping protocol bodies/secrets or counting result lines as additional progress steps.
+  Preserve each runner's documented final verdict format.
 - Verify restoration in any test that changes DUT state. Attempt restoration after failures and
   exceptions, and never report PASS when restoration cannot be verified.
 - Report factory-reset requirements with `FACTORY_RESET_MESSAGE` where the initial or recovered
@@ -134,7 +160,7 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
 - Mark the reset requirement before raising on a non-200 default `Admin`/`gw_id` login. This
   pre-login failure must remain setup ERROR and retain the recovery message in terminal output
   and evidence. Once configuration is available, validate any exposed MAC against `.env` before
-  checking default fields; never recommend resetting a mismatched or malformed identity. If the
+  checking default fields; never recommend resetting a mismatched or malformed nRF52 identity. If the
   MAC is absent, a non-default baseline is still ERROR but must not prescribe a reset without
   identity confirmation.
 - Attribute security assertion failures to the mechanism that ran, including inventory validation
@@ -173,15 +199,16 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
   authentication scheme. Partition routes once using method/path and handler effects, and share
   that partition between interactive and bearer probes. Finish all safer probes across schemes
   before the first potentially mutating request. Empty POST bodies do not make destructive
-  handlers safe if authentication is bypassed. For 5.1-1-2-B, reads and fresh-session `/auth`
-  writes precede every non-`/auth` POST/DELETE; final authenticated verification follows the matrix.
+  handlers safe if authentication is bypassed. The task must define exceptions for setup and
+  authentication operations, the exact phase order, and final authenticated verification.
   Update progress totals when adding phases, and defer mechanism PASS until all its phases finish.
 - Keep case-specific status expectations and recovery policy in the runner. A successful helper
   return alone does not establish a passing security assertion or successful restoration.
 - Check route expectations against `docs/http_api.md` and the relevant firmware handler, including
-  LAN/hotspot restrictions and authentication precedence. For 5.1-1-2-B, keep `GET /info.json` in
-  the 26-route inventory and allow its LAN-only 404 exception for missing/Basic/Digest credentials;
-  disabled bearer probes still require 401. Do not allow 404 generically for protected routes.
+  LAN/hotspot restrictions and authentication precedence. Distinguish authorization rejection
+  from errors reached only after successful authorization or interface-specific dispatch. The
+  owning task defines required routes, inventory size and accepted statuses; a routing error
+  must not accidentally satisfy a negative authentication assertion.
 - Keep imports free of DUT access and test execution. Put the executable entry point behind
   `if __name__ == "__main__"`; allow execution wrappers to inject work directories, clocks, and
   output callbacks for offline tests.
@@ -189,6 +216,48 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
   configured gateway and can mutate its configuration.
 - Do not alter or commit local `.env` values or generated `logs/`. Evidence may contain credentials,
   authentication material, configuration values, and HTTP bodies.
+
+### Bench transitions, credential proof and recovery
+
+- Require a reachable fixture with known credentials before provisioning a target that must be
+  exercised. Do not assume generated credentials create a network or service. Document fixture
+  reachability from the DUT separately from the host's management or forwarding address.
+- Establish the task's identity/baseline gate before network or hardware actions, and reverify
+  identity after endpoint transitions. Operator prompts must name the action, readiness condition
+  and cancellation behavior. Never treat EOF, cancellation or elapsed time as confirmation.
+- Prove each stored secret through its own mechanism. Accepted writes, redacted readback,
+  anonymous connections or successful use of another credential are not sufficient. Where
+  applicable, use positive/negative controls with saved credentials and independent observations.
+- Validate application-level outcomes as well as transport success. Fixture responses must match
+  the firmware's actual wire schema, not internal variable names or diagnostic text. Offline
+  models must include relevant downstream parsing and rejection paths.
+- Keep authorized workarounds scoped to the owning task. Record their effect on what is tested,
+  retain complete state comparisons and negative controls, and never infer a firmware fix from
+  a passing workaround. Do not silently transfer one task's exception to another.
+- Use the task's authorized recovery method in `finally`, including after partial setup and lost
+  replies. A failed evidence checkpoint must not prevent necessary recovery. Verify the final
+  state and applicable credential revocation; recovery success must not erase earlier failures.
+- Distinguish storage presence, exact readback, operational credential use and forensic erasure.
+  A recovered historical manifest is not a current seeded-device hand-off. Keep evidence of each
+  observation and its limitations explicit; unrelated enable flags are not storage proof.
+
+### Runtime observations and hardware access
+
+- Reuse shared transport, serial discovery and tool-preflight helpers. Keep discovery/reset/capture
+  out of imports and inject these boundaries for offline tests. Reject missing or ambiguous
+  hardware selection instead of guessing a device. The task owns selectors and required wiring.
+- Invoke external tools without a shell, with bounded timeouts and recorded command/result
+  evidence. Respect the shared helper's fallback rules; a broken import is not the same as an
+  unavailable package. Tool availability or a successful reset command does not prove DUT startup.
+- Start observers in the order needed to capture the task's stimulus. Avoid sleeps, buffer flushes
+  or extra resets that discard required startup evidence. Use bounded captures and complete-record
+  predicates; partial input must not establish an observation prematurely.
+- Identify each source and component independently. Do not confuse application runtime values
+  with bootloader banners, stored update images, repository pins or tool versions. A metadata
+  lookup cannot replace a missing runtime observation or erase a demonstrated disagreement.
+- Keep expected versions, exact record formats, deadlines, progress counts, external-resource
+  targets and status-to-verdict rules in the owning task. Preserve the distinction between
+  missing/malformed evidence, observed inconsistencies and unverified provenance information.
 
 ## Host-side implementation tests
 
@@ -226,8 +295,9 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
   immediate abort on unexpected success during the dangerous phase as well.
   Include positive bearer reads before negative writes when the prepared state supports both. Keep
   provisioning and mandatory recovery explicitly identifiable in the recorded sequence; restoration
-  and revoked-key checks must still run after a probe abort. For 5.1-2A-2-B, require all password and
-  RO/RW bearer GETs before password POSTs, then RO denial and the RW no-op POST plus hash check.
+  and revoked-key checks must still run after a probe abort. Assert the owning task's full
+  cross-mechanism order, including final state comparisons, rather than borrowing another case's
+  request matrix.
 - Make fake responses consistent with the state being modeled. A Basic or Digest auth mode must
   advertise the corresponding challenge, not always `x-ruuvi-interactive`; otherwise tests can
   bypass the real shared-library error path. Test both modes and assert ERROR, the reset message,
@@ -235,11 +305,18 @@ does not satisfy this requirement: write `result: RunResult = self.make_runner()
 - Cover applicable failure paths: unexpected success/status, immediate abort, malformed or missing
   response data, timeout/connection errors, partial mutation, failed restoration, and final-state
   mismatch. Verify final verdicts, recovery messages, and required evidence/output behavior.
+- For observation-based tests, keep independent source fixtures and cover disagreement, missing,
+  duplicate and malformed records, wrong identity, delayed/partial input, unrelated records,
+  early completion, timeout and cleanup. Keep runtime observations distinct from provenance.
+  Assert informative terminal reasons and individual outcomes, including a prior FAIL followed
+  by ERROR. Keep direct transport/tool/helper contract tests in `test_lib.py`; inject subprocess
+  execution and serial I/O so no host test can reset a real gateway.
 - Exercise each inventory rejection and final assertion independently, and inspect both the
   per-mechanism result and final evidence. Combine wrong/missing/malformed identity with non-default
   authentication fields to verify that recovery advice does not target an unverified device.
-  Model `/info.json` returning 404 on LAN and verify that this exception cannot spread to other
-  routes or bearer probes.
+  Model authorization and interface dispatch independently. Verify that an unrelated routing
+  error cannot satisfy the task's expected rejection, that failures belong to the responsible
+  mechanism, and that mandatory final verification is still attempted.
 - Keep fixtures small enough to make the tested behavior visible. Reuse a local fake only when it
   remains clear which state transitions and failures it models.
 - Record prepared HTTP requests in a typed structure (for example, a dataclass), and use a typed
@@ -293,17 +370,23 @@ unrelated lint cleanup, report the remaining findings explicitly instead of clai
 run. A Ruff pass does not replace the behavioral regression tests below.
 
 IDE inspection through the MCP server is mandatory for every task in this subtree, including
-documentation-only changes. Use the `get_file_problems` MCP API (exposed by CLion as
-`mcp__clion__get_file_problems`) for each file you create or modify. Inspect existing files before
-editing and inspect every changed file again after its final edit. For shared-library changes,
-also inspect affected callers and their implementation tests.
+documentation-only changes. Use the connected JetBrains IDE's `get_file_problems` operation for
+each file you create or modify. Inspect existing files before editing and inspect every changed
+file again after its final edit. For shared-library changes, also inspect affected callers and
+their implementation tests.
 
 Pass the repository-relative `filePath` and explicitly set `errorsOnly: false` so warnings are
-included. For example:
+included. The current integration exposes `mcp__jetbrains_air_ide__execute_tool`.
+For example, call that MCP tool with:
 
 ```json
-{"filePath": "cra/303645/tests/lib/evidence.py", "errorsOnly": false, "timeout": 20000}
+{"command": "get_file_problems --filePath cra/303645/tests/lib/evidence.py --errorsOnly false --timeout 20000"}
 ```
+
+Discover the available IDE tools in the current session before declaring inspections unavailable.
+Do not rely on an older server/tool name: the generic IDE executor can expose the same operation
+without a separately listed `get_file_problems` tool. If a direct tool is exposed instead, use its
+declared schema with `filePath`, `errorsOnly: false`, and `timeout: 20000`.
 
 Review every returned error, warning, and weak warning. Fix actionable findings and rerun
 `get_file_problems` on the affected files until the fixes are verified. Do not substitute Ruff,
@@ -369,8 +452,9 @@ When adding or refactoring a CRA test case:
    tests.
 4. Extend `lib/` only for generally reusable behavior and add its direct tests to `test_lib.py`.
 5. Update `requirements.txt` only when necessary.
-6. Update the applicable README when commands, structure, public API, or operational expectations
-   change.
+6. Update the task specification and runner instructions for case-specific changes. Update the
+   project README or this file only for reusable practices, and `lib/README.md` for shared API
+   changes. Keep concrete case procedures out of shared guidance.
 7. Run Ruff over the entire subtree and fix its findings, then run the applicable validation above,
    including library coverage when shared code changes and the complete `test_test_*.py` suite for
    runner changes. Always run `get_file_problems` through MCP with `errorsOnly: false`, resolve and

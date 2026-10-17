@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ipaddress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
@@ -15,6 +15,9 @@ class DutConfig:
     gw_id: str
     gw_mac: str
     gw_hostname: str
+    gw_fw: str | None = None
+    wifi_ssid: str | None = None
+    wifi_password: str | None = field(default=None, repr=False)
 
     @property
     def base_url(self) -> str:
