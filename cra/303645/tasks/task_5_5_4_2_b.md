@@ -548,3 +548,9 @@ backups, manifests, and coverage output out of commits.
 Cleanup reporting is best-effort: progress, terminal output, or evidence checkpoint errors must
 not prevent restoration, fallback credentials, or independent final verification. Such errors
 keep the overall result ERROR even when restoration succeeds.
+
+During recovery only, client HTTP request/response and authentication transcripts and runner
+assertion evidence are best-effort as well. A persistent full-disk or flush failure must not
+prevent restoration traffic, retained-credential fallback, or final state and revocation checks.
+Any lost evidence keeps ERROR; actual authorization, protocol, transport and assertion failures
+still control recovery attempts and per-check outcomes.

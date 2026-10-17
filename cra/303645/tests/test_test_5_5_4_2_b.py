@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 from unittest.mock import patch
 
 import requests
@@ -567,6 +567,91 @@ class ImplementationTests(unittest.TestCase):
                     self.assertEqual(result.outcomes[runner.RO], "FAIL")
                 if target != "progress":
                     self.assertEqual(self.gateway.restoration_attempts, ["bearer", "custom"])
+
+    def test_persistent_transcript_failure_cannot_block_recovery_traffic(self) -> None:
+        scenario: str
+        for scenario in ("bearer", "custom", "lost-response", "denied", "unrevoked-key"):
+            with self.subTest(scenario=scenario):
+                self.check_persistent_transcript_failure(scenario)
+
+    def check_persistent_transcript_failure(self, scenario: str) -> None:
+        self.gateway = PositiveGateway()
+        if scenario in ("custom", "denied"):
+            self.gateway.primary_restore_status = 401
+        if scenario == "lost-response":
+            self.gateway.faults = [Fault(FakeRequestKey("Bearer", "POST", "/ruuvi.json"),
+                error=requests.Timeout("restoration response lost"), apply_body=True)]
+        elif scenario == "denied":
+            self.gateway.faults = [Fault(FakeRequestKey("none", "POST", "/auth"), 2,
+                                        response=FakeResponse(401, {}))]
+        elif scenario == "unrevoked-key":
+            self.gateway.faults = [Fault(FakeRequestKey("Bearer", "GET", "/ruuvi.json"),
+                                        response=FakeResponse(200, {}))]
+        original_write: Callable[[runner.EvidenceLog, str, Any], None] = cast(
+            "Callable[[runner.EvidenceLog, str, Any], None]", runner.EvidenceLog.write,
+        )
+        original_line: Callable[[runner.EvidenceLog, str], None] = cast(
+            "Callable[[runner.EvidenceLog, str], None]", runner.EvidenceLog.write_line,
+        )
+        broken: bool = False
+        failures: list[str] = []
+
+        def check_disk(label: str) -> None:
+            nonlocal broken
+            broken = broken or PROVISION in self.gateway.config_bodies
+            if broken:
+                failures.append(label)
+                raise OSError("persistent full disk after provisioning")
+
+        def write(evidence_log: runner.EvidenceLog, label: str, value: Any = "") -> None:
+            check_disk(label)
+            original_write(evidence_log, label, value)
+
+        def write_line(evidence_log: runner.EvidenceLog, message: str) -> None:
+            check_disk("line")
+            original_line(evidence_log, message)
+
+        def finish(_log: runner.EvidenceLog, _verdict: str, _now: Callable[[], datetime]) -> None:
+            check_disk("finish")
+
+        log: runner.EvidenceLog = runner.EvidenceLog.create(self.work_dir / "logs", "persistent", fixed_now)
+        try:
+            with patch.object(runner.EvidenceLog, "create", return_value=log), \
+                    patch.object(runner.EvidenceLog, "write", write), \
+                    patch.object(runner.EvidenceLog, "write_line", write_line), \
+                    patch.object(runner.EvidenceLog, "finish", finish):
+                result: RunResult = runner.execute_test_5_5_4_2_b(
+                    self.work_dir, self.gateway.session, FixedRandom(), fixed_ecc, fixed_now, self.output.append,
+                )
+        finally:
+            log.finish("ERROR", fixed_now)
+        self.assertTrue(broken)
+        self.assertGreater(failures.count("HTTP REQUEST BEGIN"), 4)
+        self.assertIn("ASSERTION", failures)
+        self.assertIn("finish", failures)
+        self.assertIn("INTERACTIVE CHALLENGE", failures)
+        self.assertEqual((result.exit_code, result.verdict), (2, "ERROR"))
+        self.assertIsNotNone(result.recovery_message)
+        self.assertEqual(self.gateway.calls[-1].bearer_token, RW_KEY)
+        if scenario == "denied":
+            self.assertEqual(self.gateway.mode, "lan_auth_ruuvi")
+            self.assertEqual(self.gateway.restoration_attempts, ["bearer"])
+            self.assertEqual(len([call for call in self.gateway.calls
+                                  if call.path == "/auth" and call.method == "POST"]), 5)
+        else:
+            self.assertEqual(self.gateway.mode, "lan_auth_default")
+            self.assertEqual((self.gateway.ro_key, self.gateway.rw_key), ("", ""))
+            self.assertEqual(self.gateway.config_bodies[-1], RESTORE)
+            self.assertEqual(self.gateway.restoration_attempts,
+                             ["bearer", "custom"] if scenario == "custom"
+                             else ["default"] if scenario == "lost-response" else ["bearer"])
+            final_reads: list[RecordedRequest] = [call for call in self.gateway.calls
+                                                 if call.method == "GET" and call.path == "/ruuvi.json"
+                                                 and call.bearer_token is None]
+            self.assertIn(final_reads[-2].session_number,
+                          [session.number for session in self.gateway.authorized_sessions])
+        if scenario == "unrevoked-key":
+            self.assertEqual(result.outcomes[runner.FINAL], "FAIL")
 
     def test_initial_malformed_json_and_transport_error_do_not_mutate(self) -> None:
         fault: Fault
