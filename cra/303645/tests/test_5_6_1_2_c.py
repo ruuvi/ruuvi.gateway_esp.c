@@ -331,7 +331,7 @@ class FunctionalTest_5_6_1_2_c:
     def _assert_setup(self, description: str, passed: bool, actual: Any) -> None:
         self.evidence.write("ASSERTION", AssertionEvidence(description, "PASS" if passed else "ERROR", actual))
         if not passed:
-            raise InvalidSetup(f"{description}: {actual!r}")
+            raise InvalidSetup(description)
 
     def _preflight_gateway(self) -> None:
         self.outcomes["factory-default preflight"] = "ERROR"
@@ -825,6 +825,7 @@ def execute_test_5_6_1_2_c(
         log.finish(result.verdict, now)
         if log.failed:
             result = replace(result, verdict="ERROR", exit_code=2)
+            log.attempt(lambda: output(f"Overall verdict: {result.verdict}"))
     return result
 
 

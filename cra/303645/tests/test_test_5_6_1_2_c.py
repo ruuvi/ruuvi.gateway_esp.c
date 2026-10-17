@@ -584,6 +584,23 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
                     self.assertFalse(any("-sT" in call for call in self.nmap.calls))
                     self.assertIn(FACTORY_RESET_MESSAGE, result.recovery_message or "")
 
+    def test_secret_bearing_http_url_rejection_only_records_value_in_evidence(self) -> None:
+        secret_url: str = "https://secret-user:secret-password@example.com/record?token=secret-token"
+        self.gateway.fields["http_url"] = secret_url
+        before: dict[str, Any] = dict(self.gateway.fields)
+        result: RunResult = self.execute()
+        self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+        console: str = "\n".join(self.lines)
+        secret: str
+        for secret in (secret_url, "secret-user", "secret-password", "secret-token"):
+            self.assertNotIn(secret, console)
+        self.assertIn("http_url has its public factory-default value", console)
+        self.assertIn(secret_url, self.evidence())
+        self.assertEqual(before, self.gateway.fields)
+        self.assertFalse(self.ntp_capture.started)
+        self.assertFalse(any("-sT" in call or "-sU" in call for call in self.nmap.calls))
+        self.assertEqual(FACTORY_RESET_MESSAGE, result.recovery_message)
+
     def test_earlier_finding_survives_later_scan_error(self) -> None:
         self.nmap.tcp_open.add(23)
         self.nmap.fail_udp = True
@@ -662,8 +679,19 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
     def test_failed_finalization_returns_error_and_preserves_check_outcomes(self) -> None:
         with patch.object(target.EvidenceLog, "finish", side_effect=OSError("disk error")):
             result: RunResult = self.execute()
-        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
         self.assertEqual(result.outcomes["NTP configuration restoration"], "PASS")
+        self.assertEqual("Overall verdict: ERROR", self.lines[-1])
+
+    def test_failed_finalization_preserves_earlier_listener_failure(self) -> None:
+        self.nmap.tcp_open.add(23)
+        with patch.object(target.EvidenceLog, "finish", side_effect=OSError("disk error")):
+            result: RunResult = self.execute()
+        self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+        self.assertEqual("FAIL", result.outcomes["TCP undocumented listeners"])
+        self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
+        self.assertIn("undocumented listener FAIL: 23/tcp", "\n".join(self.lines))
+        self.assertEqual("Overall verdict: ERROR", self.lines[-1])
 
     def test_capture_failure_still_restores_applied_change(self) -> None:
         self.ntp_capture.fail_collect = True
