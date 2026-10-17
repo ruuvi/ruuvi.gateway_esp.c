@@ -547,3 +547,16 @@ actionable findings and recheck; report unavailable or timed-out inspections as 
 with `git diff --check` and a clean whole-subtree Ruff run. Guidance-only changes require Ruff, IDE
 inspection, and path/command checks, not rerunning unchanged Python suites. Keep local `.env`, logs,
 backups, manifests, and coverage output out of commits.
+
+### Reporting failures and indeterminate HTTP observations
+
+An indeterminate (for example, filtered) TCP/80 observation is ERROR for the documented HTTP
+listener, rather than an assertion that it is missing. Confirmed closed TCP/80 or an open port
+without an HTTP fingerprint remains FAIL.
+
+A failed progress callback or evidence write aborts ordinary acquisition and makes the overall
+result ERROR. Mandatory NTP restoration still authenticates, sends the scoped restoration POST,
+and compares the complete authenticated configuration against the saved baseline. During recovery
+only, reporting is best effort so persistent transcript failures cannot prevent HTTP transmission.
+Authentication, transport, and final-state errors remain recovery errors; successful restoration
+does not erase the earlier reporting ERROR or any demonstrated per-check FAIL.

@@ -241,6 +241,45 @@ def same_public_value(actual: Any, expected: Any) -> bool:
     return actual == expected
 
 
+class RecoveryEvidence(EvidenceLog):
+    """Abort ordinary acquisition on reporting errors; never let them block recovery."""
+
+    def __init__(self, log: EvidenceLog) -> None:
+        self.log: EvidenceLog = log
+        super().__init__(log.path, log._stream, log.started_at)
+        self.recovering: bool = False
+        self.failed: bool = False
+
+    def attempt(self, operation: Callable[[], None]) -> None:
+        try:
+            operation()
+        except Exception:  # Reporting failures are re-raised until recovery begins.
+            self.failed = True
+            if not self.recovering:
+                raise
+
+    def write(self, label: str, value: Any = "") -> None:
+        self.attempt(lambda: self.log.write(label, value))
+
+    def write_line(self, message: str) -> None:
+        self.attempt(lambda: self.log.write_line(message))
+
+    def write_http_request(self, request: requests.PreparedRequest) -> None:
+        self.attempt(lambda: self.log.write_http_request(request))
+
+    def write_http_response(self, response: requests.Response) -> None:
+        self.attempt(lambda: self.log.write_http_response(response))
+
+    def exception(self, error: BaseException) -> None:
+        self.attempt(lambda: self.log.exception(error))
+
+    def finish(self, verdict: str, now: Callable[[], datetime] = utc_now) -> None:
+        try:
+            self.attempt(lambda: self.log.finish(verdict, now))
+        finally:
+            self.attempt(self._stream.close)
+
+
 class FunctionalTest_5_6_1_2_c:
     def __init__(
         self, config: DutConfig, evidence: EvidenceLog,
@@ -261,10 +300,10 @@ class FunctionalTest_5_6_1_2_c:
     ) -> None:
         self.ixit_directory: Path = Path(__file__).resolve().parent.parent if ixit_directory is None else ixit_directory
         self.config: DutConfig = config
-        self.evidence: EvidenceLog = evidence
+        self.evidence: RecoveryEvidence = evidence if isinstance(evidence, RecoveryEvidence) else RecoveryEvidence(evidence)
         self.gateway: GatewayClient
         self.gateway_factory: Callable[[DutConfig], GatewayClient] = lambda endpoint: GatewayClient(
-            endpoint, evidence, session_factory=session_factory,
+            endpoint, self.evidence, session_factory=session_factory,
             random_bytes=random_bytes, ecc_generate=ecc_generate,
         )
         self.runner: Callable[..., subprocess.CompletedProcess[str]] = runner
@@ -286,7 +325,7 @@ class FunctionalTest_5_6_1_2_c:
         self.auth_session: requests.Session | None = None
 
     def _say(self, message: str) -> None:
-        self.output(message)
+        self.evidence.attempt(lambda: self.output(message))
         self.evidence.write_line(message)
 
     def _assert_setup(self, description: str, passed: bool, actual: Any) -> None:
@@ -461,7 +500,9 @@ class FunctionalTest_5_6_1_2_c:
             (item for item in result.observations if item.port == 80 and item.state == "open"), None,
         )
         http_ok: bool = 80 in declared and http is not None and http.service == "http"
-        self.outcomes["documented HTTP listener"] = "PASS" if http_ok else "FAIL"
+        self.outcomes["documented HTTP listener"] = (
+            "PASS" if http_ok else "FAIL" if http is not None or 80 in result.closed_ports else "ERROR"
+        )
         self.evidence.write("ASSERTION", AssertionEvidence("80/tcp is open and HTTP-fingerprinted",
                             self.outcomes["documented HTTP listener"], http))
         extra: list[int] = sorted(result.open_ports - declared)
@@ -656,10 +697,12 @@ class FunctionalTest_5_6_1_2_c:
             self.progress("Comparing confirmed sockets with enabled IXIT 28 entries")
         except Exception as error:  # noqa: BLE001 - Preserve completed check outcomes on any acquisition error.
             error: Exception
+            self.evidence.recovering = True
             self.evidence.exception(error)
             self._say(f"scan ERROR: {type(error).__name__}: {error}")
             verdict = "ERROR"
         finally:
+            self.evidence.recovering = True
             if capture is not None:
                 try:
                     capture.stop()
@@ -669,7 +712,7 @@ class FunctionalTest_5_6_1_2_c:
                     self._say(f"tcpdump cleanup ERROR: {type(error).__name__}: {error}")
                     verdict = "ERROR"
             if mutation_possible:
-                self.progress("Restoring and verifying the original NTP configuration")
+                self.evidence.attempt(lambda: self.progress("Restoring and verifying the original NTP configuration"))
                 self.outcomes["NTP configuration restoration"] = "ERROR"
                 try:
                     self._restore_ntp_server()
@@ -685,6 +728,8 @@ class FunctionalTest_5_6_1_2_c:
                     verdict = "ERROR"
                 else:
                     self.outcomes["NTP configuration restoration"] = "PASS"
+        if self.evidence.failed:
+            verdict = "ERROR"
         if verdict != "ERROR":
             values: tuple[str, ...] = tuple(self.outcomes.values())
             verdict = "ERROR" if "ERROR" in values or "NOT RUN" in values else (
@@ -704,6 +749,8 @@ class FunctionalTest_5_6_1_2_c:
                 self._say(f"{check} {outcome}")
         self.evidence.write("FINDING TABLE", self.findings)
         self.evidence.write("OVERALL RESULT", verdict)
+        if self.evidence.failed:
+            verdict = "ERROR"
         return RunResult(0 if verdict == "PASS" else 1 if verdict == "FAIL" else 2,
                          verdict, dict(self.outcomes), set(), recovery)
 
@@ -726,23 +773,30 @@ def execute_test_5_6_1_2_c(
     output: Callable[[str], None] = print,
 ) -> RunResult:
     directory: Path = Path.cwd() if work_dir is None else work_dir
-    log: EvidenceLog = EvidenceLog.create(directory / "logs", "test_5_6_1_2_c", now)
-    output(f"Open log file: {log.path}")
+    result: RunResult = RunResult(2, "ERROR", {check: "NOT RUN" for check in CHECKS}, set())
+    try:
+        log: RecoveryEvidence = RecoveryEvidence(EvidenceLog.create(directory / "logs", "test_5_6_1_2_c", now))
+    except Exception:  # noqa: BLE001 - No DUT activity is permitted without an evidence file.
+        try:
+            output("setup ERROR: could not create evidence log")
+        except Exception:  # noqa: BLE001, S110 - Both reporting channels are unavailable; return setup ERROR.
+            pass
+        return result
 
     def report(message: str) -> None:
-        output(message)
+        log.attempt(lambda: output(message))
         log.write_line(message)
 
     progress: ProgressReporter = ProgressReporter(report, TOTAL_STEPS)
-    result: RunResult = RunResult(2, "ERROR", {check: "NOT RUN" for check in CHECKS}, set())
-    log.write("TEST CASE AND UNIT", TEST_ID)
-    log.write("UTC START", format_utc(log.started_at))
-    log.write("PRECONDITIONS", (
-        "Dedicated initialized gateway on same LAN segment, SoftAP inactive; nmap >= 7.40, "
-        "root/CAP_NET_RAW for UDP, tcpdump for outbound NTP capture, "
-        "host mDNS resolution or IPv4 gw_hostname; ntp_server1 is temporarily changed and restored"
-    ))
     try:
+        log.attempt(lambda: output(f"Open log file: {log.path}"))
+        log.write("TEST CASE AND UNIT", TEST_ID)
+        log.write("UTC START", format_utc(log.started_at))
+        log.write("PRECONDITIONS", (
+            "Dedicated initialized gateway on same LAN segment, SoftAP inactive; nmap >= 7.40, "
+            "root/CAP_NET_RAW for UDP, tcpdump for outbound NTP capture, "
+            "host mDNS resolution or IPv4 gw_hostname; ntp_server1 is temporarily changed and restored"
+        ))
         progress.step("Loading and validating .env")
         config: DutConfig = load_dut_config(directory / ".env")
         log.write("DUT CONFIGURATION", config)
@@ -755,15 +809,22 @@ def execute_test_5_6_1_2_c(
         ).run()
     except Exception as error:
         error: Exception
+        log.recovering = True
         log.exception(error)  # noqa: TRY401 - EvidenceLog needs the exception object.
-        report(f"setup ERROR: {type(error).__name__}: {error}")
+        report(f"setup ERROR: {type(error).__name__}")
     finally:
+        log.recovering = True
         if result.recovery_message is not None:
             log.write("USER ACTION REQUIRED", result.recovery_message)
+            log.attempt(lambda: output(result.recovery_message or ""))
+        if log.failed:
+            result = replace(result, verdict="ERROR", exit_code=2)
+        log.attempt(lambda: output(f"Overall verdict: {result.verdict}"))
+        if log.failed:
+            result = replace(result, verdict="ERROR", exit_code=2)
         log.finish(result.verdict, now)
-    output(f"Overall verdict: {result.verdict}")
-    if result.recovery_message is not None:
-        output(result.recovery_message)
+        if log.failed:
+            result = replace(result, verdict="ERROR", exit_code=2)
     return result
 
 

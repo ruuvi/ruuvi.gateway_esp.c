@@ -11,7 +11,7 @@ import unittest
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping, cast
 from unittest.mock import MagicMock, patch
 from urllib.parse import urlsplit
 
@@ -91,6 +91,7 @@ class FakeNmap:
         self.udp_ambiguous: dict[int, str] = {}
         self.targeted_states: dict[int, str] = {}
         self.tcp_filtered: bool = False
+        self.http_filtered: bool = False
         self.fail_udp: bool = False
         self.incomplete_udp: bool = False
         self.version: str = "Nmap version 7.95 ( https://nmap.org )"
@@ -124,6 +125,9 @@ class FakeNmap:
             state: str = self.targeted_states.get(port, "open" if port in open_ports else "closed")
             open_ports = {port} if state == "open" else set()
             ambiguous = {port: state} if state in {"open|filtered", "closed|filtered", "filtered"} else {}
+        if protocol == "tcp" and self.http_filtered:
+            open_ports.discard(80)
+            ambiguous[80] = "filtered"
         remaining: set[int] = ports - open_ports - ambiguous.keys()
         explicit: str = "".join(
             f'<port protocol="{protocol}" portid="{port}"><state state="open" reason="response"/>'
@@ -131,7 +135,7 @@ class FakeNmap:
             for port in sorted(open_ports)
         )
         explicit += "".join(
-            f'<port protocol="udp" portid="{port}"><state state="{state}" reason="no-response"/></port>'
+            f'<port protocol="{protocol}" portid="{port}"><state state="{state}" reason="no-response"/></port>'
             for port, state in sorted(ambiguous.items())
         )
         extras: str = f'<extraports state="closed" count="{len(remaining)}"/>' if remaining else ""
@@ -590,6 +594,76 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         self.assertIn('"result": "FAIL"', self.evidence())
         self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
         self.assertEqual("time.google.com", self.gateway.fields["ntp_server1"])
+
+    def test_filtered_http_is_error_without_missing_listener_failure(self) -> None:
+        self.nmap.http_filtered = True
+        result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes["documented HTTP listener"], "ERROR")
+        self.assertEqual(result.outcomes["TCP coverage"], "ERROR")
+        self.assertNotIn('"result": "FAIL"', self.evidence())
+
+    def assert_restored_after_reporting_error(self, result: RunResult, baseline: dict[str, Any]) -> None:
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes["NTP configuration restoration"], "PASS")
+        self.assertEqual(self.gateway.fields, baseline)
+        self.assertEqual([(call.method, call.path, call.body) for call in self.wire_calls[-2:]], [
+            ("POST", "/ruuvi.json", {"ntp_server1": baseline["ntp_server1"]}),
+            ("GET", "/ruuvi.json", None),
+        ])
+
+    def test_failed_final_progress_still_restores_and_verifies_full_baseline(self) -> None:
+        baseline: dict[str, Any] = dict(self.gateway.fields)
+        original: Callable[[target.ProgressReporter, str], None] = cast(
+            Callable[[target.ProgressReporter, str], None], target.ProgressReporter.step,
+        )
+
+        def step(reporter: target.ProgressReporter, message: str) -> None:
+            if message.startswith("Restoring and verifying"):
+                raise BrokenPipeError("terminal unavailable")
+            original(reporter, message)
+
+        with patch.object(target.ProgressReporter, "step", step):
+            result: RunResult = self.execute()
+        self.assert_restored_after_reporting_error(result, baseline)
+        self.assertIn("OVERALL VERDICT: ERROR", self.evidence())
+
+    def test_persistent_evidence_failure_after_mutation_does_not_block_recovery_http(self) -> None:
+        baseline: dict[str, Any] = dict(self.gateway.fields)
+        original: Callable[[target.EvidenceLog, str, Any], None] = cast(
+            Callable[[target.EvidenceLog, str, Any], None], target.EvidenceLog.write,
+        )
+        failed: bool = False
+
+        def write(log: target.EvidenceLog, label: str, value: Any = "") -> None:
+            nonlocal failed
+            failed = failed or self.gateway.fields["ntp_server1"] != baseline["ntp_server1"]
+            if failed:
+                raise OSError("evidence unavailable")
+            original(log, label, value)
+
+        with patch.object(target.EvidenceLog, "write", write):
+            result: RunResult = self.execute()
+        self.assert_restored_after_reporting_error(result, baseline)
+        self.assertTrue(failed)
+
+    def test_failed_evidence_creation_or_preamble_never_contacts_dut(self) -> None:
+        operation: str
+        for operation in ("create", "write"):
+            with self.subTest(operation=operation), patch.object(
+                target.EvidenceLog, operation, side_effect=OSError("secret path must not appear"),
+            ):
+                result: RunResult = self.execute()
+            self.assertEqual(result.exit_code, 2)
+            self.assertFalse(self.wire_calls)
+            self.assertFalse(self.nmap.calls)
+            self.assertNotIn("secret path", "\n".join(self.lines))
+
+    def test_failed_finalization_returns_error_and_preserves_check_outcomes(self) -> None:
+        with patch.object(target.EvidenceLog, "finish", side_effect=OSError("disk error")):
+            result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes["NTP configuration restoration"], "PASS")
 
     def test_capture_failure_still_restores_applied_change(self) -> None:
         self.ntp_capture.fail_collect = True
