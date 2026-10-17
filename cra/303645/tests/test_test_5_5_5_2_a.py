@@ -77,6 +77,10 @@ class ConfigGateway(DefaultAuthGateway):
         self.restore_started: bool = False
         self.restore_login_fails: bool = False
         self.sessions: list[CheckedSession] = []
+        self.fail_cleanup_save: bool = False
+        self.persisted_ro_key: str = ""
+        self.persisted_rw_key: str = ""
+        self.persisted_coordinates: str = ""
 
     def config(self) -> dict[str, Any]:
         return json.loads(json.dumps({
@@ -113,6 +117,17 @@ class ConfigGateway(DefaultAuthGateway):
             self.stable = "collateral commit"
         if body == KEYS_BODY and self.partial_keys:
             self.rw_key = ""
+        # RAM updates precede persistence; failed saving is invisible in the HTTP reply.
+        if not (body == CLEAR_BODY and self.fail_cleanup_save):
+            self.persisted_ro_key = self.ro_key
+            self.persisted_rw_key = self.rw_key
+            self.persisted_coordinates = self.coordinates
+
+    def power_cycle(self) -> None:
+        self.ro_key = self.persisted_ro_key
+        self.rw_key = self.persisted_rw_key
+        self.coordinates = self.persisted_coordinates
+        self.authorized_sessions.clear()
 
     def _response_override(self, session: FakeSession, call: RecordedRequest) -> FakeResponse | None:
         if call.method == "POST" and call.path == "/ruuvi.json":
@@ -209,9 +224,9 @@ class FunctionalImplementationTests(unittest.TestCase):
             calls.append(self.request("GET", "/ruuvi.json", session, cookie=True))
         return calls
 
-    def test_complete_pass_exact_prepared_requests_bodies_sessions_and_evidence(self) -> None:
+    def test_complete_runtime_checks_report_unverified_persistence_with_exact_requests(self) -> None:
         result: RunResult = self.execute()
-        self.assertEqual((0, "PASS"), (result.exit_code, result.verdict), self.evidence)
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict), self.evidence)
         expected: list[RecordedRequest] = (
             self.login(1) + [self.request("GET", "/ruuvi.json", 1, cookie=True),
                              self.request("GET", "/ruuvi.json", 2), self.request("GET", "/auth", 3),
@@ -230,11 +245,13 @@ class FunctionalImplementationTests(unittest.TestCase):
                                 self.request("GET", "/ruuvi.json", 20, token=RW)]
         )
         self.assertEqual(expected, self.gateway.calls)
-        self.assertEqual({"PASS"}, set(result.outcomes.values()))
+        self.assertEqual("ERROR", result.outcomes[target.RESTORE])
+        self.assertEqual({"PASS"}, {verdict for name, verdict in result.outcomes.items() if name != target.RESTORE})
         self.assert_restored()
-        self.assertIsNone(result.recovery_message)
+        self.assertIn("Flash restoration is unverified", result.recovery_message or "")
+        self.assertIn(result.recovery_message, self.output)
         self.assertIn("Self-assessment claims 403; firmware expects 401; observed status 401", self.evidence)
-        self.assertIn("Final baseline SHA256 non-mutation proof", self.evidence)
+        self.assertIn("Final running baseline SHA256 comparison", self.evidence)
         self.assertIn(RO, self.evidence)
         self.assertIn(RW, self.evidence)
         self.assertNotIn(RO, "\n".join(self.output))
@@ -247,7 +264,7 @@ class FunctionalImplementationTests(unittest.TestCase):
         for index, step in enumerate(steps, 1):
             self.assertTrue(step.startswith(f"[Step {index} out of 11]"))
             self.assertIn(step, self.evidence)
-        self.assertEqual("Overall verdict: PASS", self.output[-1])
+        self.assertEqual("Overall verdict: ERROR", self.output[-1])
 
     def test_invalid_env_creates_evidence_without_network(self) -> None:
         (self.root / ".env").unlink()
@@ -389,7 +406,7 @@ class FunctionalImplementationTests(unittest.TestCase):
             with self.subTest(location=location):
                 self.gateway.redirect_location = location
                 result: RunResult = self.execute()
-                self.assertEqual((0, "PASS"), (result.exit_code, result.verdict), self.evidence)
+                self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict), self.evidence)
                 self.assert_restored()
 
     def test_negative_write_success_aborts_even_without_applied_mutation(self) -> None:
@@ -402,7 +419,7 @@ class FunctionalImplementationTests(unittest.TestCase):
                     self.gateway.calls.clear()
                     self.gateway.write_faults = [WriteFault(body, status=204, apply=apply)]
                     result: RunResult = self.execute()
-                    self.assertEqual(1, result.exit_code)
+                    self.assertEqual(2, result.exit_code)
                     self.assertEqual("FAIL", result.outcomes[mechanism])
                     self.assertEqual("NOT RUN", result.outcomes[AuthMech.M2M_API_BEARER_RW])
                     bodies: list[Any] = [call.body for call in self.config_writes()]
@@ -415,7 +432,7 @@ class FunctionalImplementationTests(unittest.TestCase):
     def test_401_with_mutation_is_fail_and_restored(self) -> None:
         self.gateway.write_faults = [WriteFault(RO_BODY, status=401, apply=True)]
         result: RunResult = self.execute()
-        self.assertEqual(1, result.exit_code)
+        self.assertEqual(2, result.exit_code)
         self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RO])
         self.assertNotIn(RW_BODY, [call.body for call in self.config_writes()])
         self.assert_restored()
@@ -423,14 +440,14 @@ class FunctionalImplementationTests(unittest.TestCase):
     def test_ro_403_fails_documented_firmware_status_expectation(self) -> None:
         self.gateway.write_faults = [WriteFault(RO_BODY, status=403)]
         result: RunResult = self.execute()
-        self.assertEqual(1, result.exit_code)
+        self.assertEqual(2, result.exit_code)
         self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RO])
         self.assert_restored()
 
     def test_rw_lost_commit_is_fail_and_preserves_completed_ro_pass(self) -> None:
         self.gateway.write_faults = [WriteFault(RW_BODY)]
         result: RunResult = self.execute()
-        self.assertEqual(1, result.exit_code)
+        self.assertEqual(2, result.exit_code)
         self.assertEqual("PASS", result.outcomes[AuthMech.M2M_API_BEARER_RO])
         self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RW])
         self.assert_restored()
@@ -459,7 +476,7 @@ class FunctionalImplementationTests(unittest.TestCase):
         result: RunResult = self.execute()
         self.assertEqual(2, result.exit_code)
         self.assertEqual("ERROR", result.outcomes[target.SETUP])
-        self.assertEqual("PASS", result.outcomes[target.RESTORE])
+        self.assertEqual("ERROR", result.outcomes[target.RESTORE])
         restores: list[RecordedRequest] = [call for call in self.config_writes() if call.body == RESTORE_BODY]
         self.assertEqual([RW, None], [call.bearer_token for call in restores])
         self.assert_restored()
@@ -492,7 +509,7 @@ class FunctionalImplementationTests(unittest.TestCase):
                                                           error=requests.Timeout("lost cleanup") if lost else None,
                                                           bearer_only=True)]
                     result: RunResult = self.execute()
-                    self.assertEqual(0, result.exit_code, self.evidence)
+                    self.assertEqual(2, result.exit_code, self.evidence)
                     restores: list[RecordedRequest] = [call for call in self.config_writes() if call.body == body]
                     self.assertEqual([RW, None], [call.bearer_token for call in restores])
                     self.assert_restored()
@@ -622,6 +639,33 @@ class FunctionalImplementationTests(unittest.TestCase):
         self.assertEqual("FAIL", result.outcomes[AuthMech.LAN_WEBUI_DEFAULT])
         self.assertEqual([], self.config_writes())
         self.assertEqual("PASS", result.outcomes[target.RESTORE])
+
+    def test_failed_cleanup_save_is_error_despite_runtime_restoration_and_token_rejection(self) -> None:
+        self.gateway.fail_cleanup_save = True
+        result: RunResult = self.execute()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("ERROR", result.outcomes[target.RESTORE])
+        self.assert_restored()
+        self.assertEqual(RO, self.gateway.persisted_ro_key)
+        self.assertEqual(RW, self.gateway.persisted_rw_key)
+        self.assertIn("Flash restoration is unverified", result.recovery_message or "")
+        self.assertIn(result.recovery_message, self.output)
+        self.assertIn("flash persistence unverified", self.evidence)
+        # The HTTP checks saw revoked keys, but a reboot restores the last saved credentials.
+        log: EvidenceLog = EvidenceLog.create(self.root / "after-reboot", "verify", lambda: NOW)
+        self.addCleanup(log.finish, "ERROR", lambda: NOW)
+        runner: target.FunctionalTest_5_5_5_2_a = target.FunctionalTest_5_5_5_2_a(
+            CONFIG, log, self.gateway.session, output=self.output.append,
+        )
+        token: str
+        response: requests.Response
+        for token in (RO, RW):
+            response = runner._request("GET", "/ruuvi.json", token=token)
+            self.assertEqual(401, response.status_code)
+        self.gateway.power_cycle()
+        for token in (RO, RW):
+            response = runner._request("GET", "/ruuvi.json", token=token)
+            self.assertEqual(200, response.status_code)
 
     def test_main_returns_runner_exit_code(self) -> None:
         code: int

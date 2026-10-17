@@ -273,6 +273,17 @@ Run only on a dedicated test gateway:
 
 Do not reset/reconfigure to manufacture the baseline. A failed precondition is ERROR.
 
+**Persistence limitation:** `gw_cfg_set()` updates RAM before calling the save callback, and
+`settings_save_to_flash()` does not propagate flash-write failures to the HTTP response. HTTP 200,
+configuration readback, and rejected bearer tokens therefore verify only running state. This task
+forbids reset routes and does not automate a power-cycle. After any configuration POST attempt,
+matching runtime cleanup is reported as restoration **ERROR: flash persistence unverified**, with
+operator recovery advice; the runner cannot award overall PASS. Keep the dedicated DUT isolated
+until an independent power-cycle and baseline/key-revocation verification are complete. Temporary
+keys or marker values may return after reboot if cleanup was not saved. Reset/reconfigure the
+verified dedicated DUT if necessary. This follow-up is operator recovery, not an automated PASS
+or a claim of NVS verification. Earlier mechanism FAIL results remain recorded.
+
 **Harmless, reversible field selection.** Use the free-text `coordinates` field of the Ruuvi
 configuration. It is a plain string echoed in `/ruuvi.json`
 ([`gw_cfg_json_generate.c` L817](../../../main/gw_cfg_json_generate.c#L817)) and parsed from
@@ -358,7 +369,7 @@ mandatory restoration.
    `{"coordinates": "<probe-value-RO>"}` -> require **`401`** (prohibited bearer). Record the
    self-assessment `403` discrepancy.
 3. Post-read `coordinates` (fresh authenticated read) -> require it to be **unchanged** from the
-   pre-read value, proving flash is untouched and the destructive handler was not reached.
+   pre-read value, proving the exposed running field is unchanged. Flash contents remain unverified.
 
 Any change to `coordinates` from the RO write is FAIL (authorization bypass) and stops the test.
 
@@ -369,7 +380,7 @@ Any change to `coordinates` from the RO write is FAIL (authorization bypass) and
 2. `POST /ruuvi.json` with `Authorization: Bearer <temporary-RW-key>` and body
    `{"coordinates": "<probe-value-RW>"}` -> require `200`.
 3. Verify the commit: fetch `/ruuvi.json` (authenticated) and require
-   `coordinates == "<probe-value-RW>"` (the change was validated and committed to NVS).
+   `coordinates == "<probe-value-RW>"` (the running configuration changed; NVS persistence is unverified).
 4. Confirm no other configured field changed: compare against the verified state after temporary key
    provisioning, allowing only the intended `coordinates` transition. Keep the original
    pre-provisioning baseline for final restoration; do not misclassify deliberately enabled key
@@ -396,14 +407,19 @@ Verify restoration by authenticating as `Admin`/`gw_id`, fetching `/ruuvi.json`,
 - the canonical full-config hash matches the initial baseline;
 - the temporary RO and RW keys no longer authorize access.
 
-The test cannot PASS unless restoration is verified. If security assertions passed but restoration
-failed, return ERROR with a concise operator warning pointing to the evidence log.
+The test cannot PASS unless persistent restoration is verified. The HTTP checks above verify
+running state only. When they succeed after any POST attempt, mark restoration ERROR and report
+flash persistence as unverified with the isolation, power-cycle, and independent verification
+advice above. This also applies when HTTP replies claim success for cleanup. Preserve observed
+configuration differences or usable temporary keys as restoration FAIL; transport/recovery errors
+remain ERROR. Always point to the evidence log.
 
 ### 7. Non-mutation proof
 
-The final baseline comparison in step 6 is the non-mutation proof: after restoration, every
-configured field, including `coordinates`, matches the initial baseline. Any persistent difference
-caused by the test is FAIL and must be listed in the evidence log.
+The final baseline comparison in step 6 proves only running-state non-mutation: every exposed
+field, including `coordinates`, matches the initial baseline. It does not prove flash restoration
+or persistence of key revocation. Any observed difference is FAIL and must be listed in evidence;
+a matching comparison after writes leaves persistent restoration unverified/ERROR.
 
 ## Verdict and exit codes
 
@@ -416,7 +432,9 @@ Emit separate results for:
 - temporary-state setup;
 - final restoration and non-mutation verification.
 
-Overall PASS requires every result to pass and restoration to be verified.
+Overall PASS requires every result to pass and persistent restoration to be verified. The current
+HTTP-only procedure cannot meet that persistence requirement after writes, so even a successful
+runtime campaign returns ERROR with explicit recovery advice.
 
 | Exit code | Meaning                                                                                                                       |
 | :-------- | :---------------------------------------------------------------------------------------------------------------------------- |
@@ -434,7 +452,7 @@ at least:
 
 - runner integration with invalid-setup errors and evidence/progress (direct config parsing and log
   collision tests belong only in `test_lib.py`);
-- the complete PASS path with fakes: unauth `GET` `302`, `GET /auth` `401`, unauth `POST` `401`, RO
+- the complete successful runtime campaign with fakes, ending in persistence-unverified ERROR: unauth `GET` `302`, `GET /auth` `401`, unauth `POST` `401`, RO
   `POST` `401`, RW `POST` `200`, and pre/post reads showing only the RW write changed `coordinates`;
 - the firmware `401` expectation for the RO-on-write scenario and the recorded `403` discrepancy
   note;
@@ -445,6 +463,9 @@ at least:
 - temporary-key and restoration bodies are exact; restoration attempted after PASS, FAIL, ERROR, and
   raised exceptions;
 - restoration failure or final-config mismatch prevents PASS;
+- separate fake running/persisted states model a failed cleanup save: running readback and token
+  rejection succeed, persisted temporary keys return after a simulated reboot, and the runner
+  reports restoration ERROR and operator recovery advice;
 - timeout, connection failure, malformed JSON, and missing baseline fields produce ERROR;
 - custom MQTT format/prefix/client-ID baselines stop before writes, using fixtures that model
   omitted-field resets on partial POSTs;
@@ -463,10 +484,13 @@ validation** below, including the paired suite created by this task.
   target field; the authorized read/write commit succeeds and is verified by an exact post-read.
 - The RO-on-write firmware `401` is expected and the self-assessment `403` claim is recorded as a
   discrepancy.
-- Only the harmless `coordinates` field is mutated; the original value and full configuration are
-  restored and verified in a mandatory `finally` path.
-- A compliant DUT produces PASS; an authorization bypass or lost commit produces FAIL; setup or
-  infrastructure failures or unverified restoration produce ERROR, never PASS.
+- Only the harmless `coordinates` field and temporary authentication keys are deliberately mutated;
+  original running values are restored and checked in a mandatory `finally` path. Persistent
+  restoration remains explicitly unverified until separate operator recovery checks.
+- A successful HTTP-only campaign records its mechanism results but returns ERROR because flash
+  restoration is unverified. An authorization bypass or lost runtime commit remains a per-mechanism
+  FAIL, preserved alongside any restoration ERROR. Setup/infrastructure failures remain ERROR.
+  Observed final runtime mismatches or usable temporary keys remain restoration FAIL.
 - The implementation and host-side tests run on Python 3.8.
 
 ## Implementation references

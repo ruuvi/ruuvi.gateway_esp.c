@@ -346,7 +346,7 @@ class FunctionalTest_5_5_5_2_a:
                     self.evidence.exception(error)
                     self.had_error = True
         final: dict[str, Any] = self._read("Final restored configuration", session=self._login())
-        matches: bool = self._compare(self.baseline, final, "Final baseline SHA256 non-mutation proof")
+        matches: bool = self._compare(self.baseline, final, "Final running baseline SHA256 comparison")
         if not matches:
             self._result(RESTORE, "FAIL", "Final full configuration differs from baseline; see changed fields in evidence")
         revoked: bool = True
@@ -361,7 +361,20 @@ class FunctionalTest_5_5_5_2_a:
                     self._require(response.status_code == HttpStatus.C_401_UNAUTHORIZED,
                                   "Revoked bearer check must return 401; restoration is unverified", setup=True)
         if matches and revoked and not any(item.name == RESTORE and item.verdict == "FAIL" for item in self.results):
-            self._result(RESTORE, "PASS", "Original full configuration verified; temporary keys revoked")
+            if self.mutation_possible:
+                # GET and bearer rejection inspect RAM; settings_save_to_flash() returns no status.
+                # This task forbids reset routes, so it cannot verify the persisted configuration.
+                self.had_error = True
+                self._result(RESTORE, "ERROR", "Running baseline restored and keys rejected; flash persistence unverified")
+                self.recovery_message = (
+                    "USER ACTION REQUIRED: Flash restoration is unverified; temporary keys or coordinates may "
+                    "return after reboot. Keep the dedicated DUT isolated. After this run, power-cycle it and "
+                    "independently verify the baseline and temporary-key revocation. Confirm physical DUT identity "
+                    "before any reset/reconfiguration if needed. "
+                    f"See {self.evidence.path}"
+                )
+            else:
+                self._result(RESTORE, "PASS", "Original running configuration verified; no writes attempted")
         else:
             self.recovery_message = f"USER ACTION REQUIRED: DUT restoration differs from baseline; inspect {self.evidence.path}"
 
@@ -385,7 +398,7 @@ class FunctionalTest_5_5_5_2_a:
                 self.had_error = True
                 if not any(item.name == RESTORE and item.verdict == "FAIL" for item in self.results):
                     self._result(RESTORE, "ERROR", "Restoration could not be verified")
-            if self.had_error and self.mutation_possible and not any(
+            if self.recovery_message is None and self.had_error and self.mutation_possible and not any(
                 item.name == RESTORE and item.verdict == "PASS" for item in self.results
             ):
                 self.recovery_message = f"USER ACTION REQUIRED: Check DUT recovery and configuration in {self.evidence.path}"
