@@ -68,7 +68,7 @@ CHECKS: tuple[str, ...] = ("factory-default preflight", "HTTP disclosure matrix"
                            "redirects and challenge", "sensitive disclosure scan", "public metadata", "DHCP capture")
 SECRET_FIELDS: tuple[str, ...] = (
     GatewayCfgDesc.LAN_AUTH_USER, GatewayCfgDesc.LAN_AUTH_PASS, GatewayCfgDesc.LAN_AUTH_API_KEY,
-    GatewayCfgDesc.LAN_AUTH_API_KEY_RW, "wifi_sta_config.password",
+    GatewayCfgDesc.LAN_AUTH_API_KEY_RW, "wifi_sta_config.password", "wifi_ap_config.password",
     "remote_cfg_auth_bearer_token", "remote_cfg_auth_basic_pass", "http_user", "http_pass",
     "http_bearer_token", "http_api_key", "mqtt_user", "mqtt_pass", "mqtt_cli_key",
     "http_stat_pass", "stat_cli_key",
@@ -105,7 +105,7 @@ BEARER_PATTERN: re.Pattern[str] = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/-]{
 HISTORY_PATTERN: re.Pattern[str] = re.compile(r'(?i)["\'](?:history|sensor_data|ble_mac)["\']\s*:\s*(?:\[\s*\{|\[\s*["\']|\{\s*["\'])')
 QUOTED_LITERAL: str = r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
 WIFI_PASSWORD_PATTERN: re.Pattern[str] = re.compile(
-    r"(?is)[\"']wifi_sta_config[\"']\s*:\s*\{" +
+    r"(?is)[\"']wifi_(?:sta|ap)_config[\"']\s*:\s*\{" +
     r"(?:" + QUOTED_LITERAL + r"|[^{}\"'])*?" +
     r"[\"']password[\"']\s*:\s*(?:\"(?:\\.|[^\"\\])+\"|'(?:\\.|[^'\\])+')"
 )
@@ -472,7 +472,7 @@ def scan_observation(
         )
         if location != "body" or not rendered_body:
             patterns += (("runtime backtrace", RUNTIME_BACKTRACE_PATTERN),)
-            if location in {"body", "rendered body"} and observation.status == HttpStatus.C_200_OK:
+            if location == "body" and observation.status == HttpStatus.C_200_OK:
                 patterns += (("memory address", POINTER_CONTEXT_PATTERN),)
             else:
                 patterns += (("memory address", POINTER_PATTERN),)

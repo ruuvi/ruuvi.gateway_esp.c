@@ -224,6 +224,11 @@ class RunnerTests(unittest.TestCase):
             ("text/html", '<pre>{"stack":"0x3ffb5678"}</pre>', "FAIL"),
             ("text/html", '<pre>{&quot;stack&quot;:&quot;0x3ffb5678&quot;}</pre>', "FAIL"),
             ("text/html", "<pre>abort() called</pre>", "FAIL"),
+            ("text/html", "<pre>0x400d1234</pre>", "FAIL"),
+            ("text/html", "<pre>0x400d&#49;234</pre>", "FAIL"),
+            ("text/plain", "0x400d1234", "FAIL"),
+            ("text/html", "<script>const mask=0xffffffff;</script>", "PASS"),
+            ("text/html", '<style>p:after{content:"0x400d1234"}</style>', "PASS"),
             ("text/html", "<pre>abort() was called at PC 0x400d1234 on core 0</pre>", "FAIL"),
             ("text/plain", "abort() called", "FAIL"),
             ("text/plain", '{"stack":"0x3ffb5678"}', "FAIL"),
@@ -281,6 +286,8 @@ class RunnerTests(unittest.TestCase):
             (r'{"m\u0071tt_pass":"","lan_auth_us\u0065r":"Admin","hist\u006fry":[]}', "PASS"),
             (r'{"properties":{"m\u0071tt_pass":{"type":"string"},"ta\u0067s":{"type":"object"}}}', "PASS"),
             (r'{"label":"Bearer authentication"}', "PASS"),
+            ('{"wifi_ap_config":{"password":""}}', "PASS"),
+            ('{"wifi_ap_config.password":""}', "PASS"),
         ):
             with self.subTest(body=body):
                 self.setUp()
@@ -316,6 +323,9 @@ class RunnerTests(unittest.TestCase):
         expected: str
         for name, value, expected in (
             ("mqtt_pass", "leaked-password", "FAIL"),
+            ("wifi_ap_config.password", "softap-secret", "FAIL"),
+            ("WIFI-AP-CONFIG.PASSWORD", "softap-secret", "FAIL"),
+            ("wifi_ap_config.password", "", "PASS"),
             ("lan_auth_api_key", "qrstuvwxyz012345", "FAIL"),
             ("MQTT-PASS", "leaked-password", "FAIL"),
             ("mqtt_pass", "", "PASS"),
@@ -335,6 +345,11 @@ class RunnerTests(unittest.TestCase):
         text: str
         for path, text in (
             ("/app.js", '{"wifi_sta_config":{"password":"\'secretpass"}}'),
+            ("/app.js", '{"wifi_ap_config":{"password":"softap-secret"}}'),
+            ("/app.js", "window.config = {'wifi_ap_config':{'password':'softap-secret'}};"),
+            ("/app.js", r'{"wifi_ap_co\u006efig":{"pass\u0077ord":"softap-secret"}}'),
+            ("/app.js", '{"wifi_ap_config.password":"softap-secret"}'),
+            ("/", '<pre>{&quot;wifi_ap_config&quot;:{&quot;password&quot;:&quot;softap-secret&quot;}}</pre>'),
             ("/app.js", '{"wifi_sta_config":{"ssid":"office}net","password":"ordinarysecret"}}'),
             ("/app.js", r'{"wifi_sta_config":{"ssid":"office\"}net","password":"\"secret"}}'),
             ("/app.js", r'{"wifi_sta_config":{"pass\u0077ord":"secret"}}'),
