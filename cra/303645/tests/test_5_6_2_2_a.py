@@ -190,7 +190,7 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     hostname_values: tuple[str, ...] = tuple(
         bytes.fromhex(value).decode("ascii", errors="replace") for code, value in options if code == 12
     )
-    hostname: str = hostname_values[0] if hostname_values else ""
+    hostname: str = hostname_values[-1] if hostname_values else ""
     codes: str = ", ".join(f"{code:d}" for code, _ in options)
     summary: str = f"{source_mac} DHCP Hostname {hostname}; option codes {codes}"
     return CaptureResult(summary, interface, option_values=tuple(options), raw_hex=frame.hex(),

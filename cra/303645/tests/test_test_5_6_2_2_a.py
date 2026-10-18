@@ -1045,6 +1045,44 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
         self.assertEqual("FAIL", result.outcomes["DHCP capture"])
 
+    def test_last_option_12_controls_hostname_even_when_empty_or_malformed(self) -> None:
+        cases: tuple[tuple[tuple[bytes, ...], str, str], ...] = (
+            ((b"espressif", DHCP_HOSTNAME.encode("ascii")), DHCP_HOSTNAME, "PASS"),
+            ((DHCP_HOSTNAME.encode("ascii"), b"espressif"), "espressif", "ERROR"),
+            ((DHCP_HOSTNAME.encode("ascii"), b""), "", "ERROR"),
+            ((DHCP_HOSTNAME.encode("ascii"), b"\xff"), "\ufffd", "ERROR"),
+            ((), "", "ERROR"),
+        )
+        hostnames: tuple[bytes, ...]
+        expected_hostname: str
+        expected_verdict: str
+        for hostnames, expected_hostname, expected_verdict in cases:
+            with self.subTest(hostnames=hostnames):
+                self.setUp()
+                bootp: bytearray = bytearray(240)
+                bootp[236:240] = b"\x63\x82\x53\x63"
+                ip_header: bytearray = bytearray(20)
+                ip_header[0] = 0x45
+                ip_header[9] = 17
+                options: bytes = b"".join(bytes((12, len(value))) + value for value in hostnames)
+                frame: bytes = (
+                    bytes.fromhex("ffffffffffff0211223344550800") + ip_header + bytes(8)
+                    + bootp + options + bytes((255,))
+                )
+                pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+                pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+                self.capture = replace(
+                    decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                    uart_hostname=DHCP_HOSTNAME,
+                )
+                self.assertEqual(expected_hostname, self.capture.hostname)
+                self.assertEqual(tuple((12, value.hex()) for value in hostnames), self.capture.option_values)
+                result: RunResult = self._run()
+                self.assertEqual(expected_verdict, result.verdict)
+                self.assertEqual(expected_verdict, result.outcomes["DHCP capture"])
+                if expected_verdict == "ERROR":
+                    self.assertIn("last Option 12 hostname", "\n".join(self.messages))
+
     def test_dhcp_option_12_requires_firmware_short_hostname(self) -> None:
         observed: str
         for observed in ("OtherGateway", ""):
