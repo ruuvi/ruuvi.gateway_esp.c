@@ -154,6 +154,13 @@ where possible, including recursively serialized strings inside containers, and 
 configuration literals. Check DeviceID seeds in raw and decoded JSON text, including the equivalent
 contiguous hexadecimal representation; do not match a substring of a longer hexadecimal value.
 Nonempty headers named for known credentials also fail the scan, independent of their value syntax.
+Accept both `:` and `=` for bare credential assignments in rendered/plain text and headers.
+Inspect decoded JSON credential fields structurally: numbers (including zero), booleans, and
+populated arrays/objects are values even when they are not quoted strings. Null, empty strings,
+empty containers, and string-type schema descriptors remain public controls. Preserve the public
+static asset's default `Admin` username exception. Exempt only the exact UI phrase
+`Bearer authentication` without an Authorization label; short alphabetic bearer values such as
+`Bearer abc` are disclosures in both raw and decoded text.
 Empty controls and ordinary JavaScript expressions are not credentials.
 The known-field inventory includes all remote-config token/API-key variants and Basic usernames,
 HTTP statistics usernames, and all four client private-key storage names (`http_cli_key`,
@@ -325,7 +332,9 @@ host can capture and reset the dedicated DUT**. Specify it as a precondition-gat
   indication, and only then call public `SerialTransport.reset()` and observe UART until the
   complete configured `### Start mDNS: Hostname:` line, for at most 30 seconds after reset; an early
   `espressif` mDNS line does not end the wait. The reset must not flash or erase the DUT. Continue
-  `tcpdump` for three seconds after the marker, then select the last complete DUT DHCP packet. On a
+  `tcpdump` for three seconds after the marker, then select the last complete DUT DHCP packet.
+  The capture process must still be running before intentional termination; an earlier exit,
+  including exit zero, is acquisition ERROR even if the partial file contains parseable packets. On a
   switched LAN, use a router-side capture, switch mirror, or TAP if the host cannot see DUT
   broadcasts.
 - **Behavior:**
@@ -340,6 +349,8 @@ host can capture and reset the dedicated DUT**. Specify it as a precondition-gat
     frame. Require matching pcap captured/original frame lengths for every record; a snaplen-truncated
     record or impossible length mismatch is acquisition ERROR even if a later packet is complete.
     Validate the IPv4 version and minimum 20-byte header before decoding UDP/BOOTP.
+    Require UDP source/destination ports `(68, 67)` or `(67, 68)`; a DHCP-shaped payload on other
+    ports is acquisition ERROR.
     Require the DHCP option end marker (`255`) in every captured packet; exhaustion of
     option bytes or zero padding without that marker is incomplete acquisition and ERROR.
     Bound option decoding by the declared UDP length within the complete IPv4 datagram;

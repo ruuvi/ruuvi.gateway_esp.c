@@ -80,7 +80,7 @@ SECRET_FIELD_PATTERN: re.Pattern[str] = re.compile(
 )
 HEADER_SECRET_FIELD_PATTERN: re.Pattern[str] = re.compile(
     r'(?i)(?<![\w.])(' + "|".join(re.escape(field) for field in SECRET_FIELDS) +
-    r')\s*=\s*([^\s;,[\]{}"\']+)'
+    r')\s*[:=]\s*([^\s;,[\]{}"\']+)'
 )
 TAGS_PATTERN: re.Pattern[str] = re.compile(
     r'(?i)["\']tags["\']\s*:\s*\{\s*["\'](?:[0-9a-f]{2}:){5}[0-9a-f]{2}["\']\s*:\s*\{'
@@ -175,6 +175,11 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     if ip_length < ip_header_length + 8 or ip_end > len(frame):
         return CaptureResult(None, interface, "captured IPv4 datagram length was invalid or truncated")
     udp_offset: int = ip_offset + ip_header_length
+    source_port: int
+    destination_port: int
+    source_port, destination_port = struct.unpack_from("!HH", frame, udp_offset)
+    if (source_port, destination_port) not in {(68, 67), (67, 68)}:
+        return CaptureResult(None, interface, "captured UDP ports were not the DHCP client/server pair")
     udp_length: int = struct.unpack_from("!H", frame, udp_offset + 4)[0]
     udp_end: int = udp_offset + udp_length
     bootp_offset: int = udp_offset + 8
@@ -341,7 +346,7 @@ def capture_dhcp(
                     if process.poll() is not None:
                         stderr: bytes = process.communicate()[1]
                         return CaptureResult(None, interface,
-                                             f"tcpdump exited before UART mDNS marker (exit {process.returncode}): "
+                                             f"tcpdump exited before intentional capture stop (exit {process.returncode}): "
                                              f"{stderr.decode('utf-8', errors='replace').strip()}",
                                              ethernet_mac=ethernet_mac)
                     process.terminate()
@@ -492,6 +497,46 @@ def decoded_json_fragments(content: str) -> Iterator[str]:
                 pending.append(normalized)
 
 
+def is_public_bearer_phrase(hit: re.Match[str], content: str) -> bool:
+    """Exempt the UI's exact phrase, while retaining labeled authorization values."""
+    candidate: str = hit.group(0).split()[-1]
+    context: str = content[max(0, hit.start() - 24):hit.start()].lower()
+    return candidate.lower() == "authentication" and "authorization" not in context
+
+
+def json_credential_fields(content: str) -> Iterator[tuple[str, Any]]:
+    """Find populated credential fields without treating empty defaults or type schemas as secrets."""
+    try:
+        decoded: Any = json.loads(content)
+    except json.JSONDecodeError:
+        return
+    pending: list[tuple[str, Any]] = [("", decoded)]
+    while pending:
+        prefix: str
+        value: Any
+        prefix, value = pending.pop()
+        if isinstance(value, dict):
+            key: str
+            child: Any
+            for key, child in value.items():
+                field: str = f"{prefix}.{key}" if prefix else key
+                canonical: str | None = next((known for known in SECRET_FIELDS
+                    if field.lower() == known or field.lower().endswith("." + known)), None)
+                if canonical is not None:
+                    # Public field descriptors are type declarations, not configured values.
+                    schema: bool = (isinstance(child, dict) and child.get("type") == "string"
+                                    and set(child) <= {"type", "title", "description", "default"}
+                                    and child.get("default", "") == ""
+                                    and isinstance(child.get("title", ""), str)
+                                    and isinstance(child.get("description", ""), str))
+                    empty: bool = child is None or child == "" or child == [] or child == {}
+                    if not empty and not schema:
+                        yield canonical, child
+                pending.append((field, child))
+        elif isinstance(value, list):
+            pending.extend((prefix, child) for child in value)
+
+
 def scan_observation(
     observation: Observation, gw_id: str, default_username: str, public_base_url: str = "",
 ) -> tuple[DisclosureFinding, ...]:
@@ -569,12 +614,9 @@ def scan_observation(
                 # Exempt only complete standard numeric metadata, never appended build/custom fields.
                 scanned_content = ""
             for hit in pattern.finditer(scanned_content):
-                if category == "bearer token" and location in {"body", "rendered body"}:
-                    candidate: str = hit.group(0).split()[-1]
-                    context: str = content[max(0, hit.start() - 24):hit.start()].lower()
-                    if candidate.isalpha() and len(candidate) < 24 and "authorization" not in context:
-                        # Public UI prose such as "Bearer authentication" is not a credential.
-                        continue
+                if (category == "bearer token" and location in {"body", "rendered body"}
+                        and is_public_bearer_phrase(hit, content)):
+                    continue
                 findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                                   location, category, hit.group(0)))
         if gw_id and seed_pattern.search(content):
@@ -594,6 +636,14 @@ def scan_observation(
         # This handles escaped property names/values without interpreting JavaScript expressions.
         normalized: str
         for normalized in decoded_json_fragments(content):
+            decoded_name: str
+            decoded_value: Any
+            for decoded_name, decoded_value in json_credential_fields(normalized):
+                if not (location == "body" and observation.probe.path.endswith((".js", ".css"))
+                        and decoded_name == GatewayCfgDesc.LAN_AUTH_USER and decoded_value == default_username):
+                    findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                      location, "credential value",
+                                                      json.dumps({decoded_name: decoded_value}, ensure_ascii=False)))
             if gw_id and seed_pattern.search(normalized):
                 findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                                   location, "DeviceID password seed", gw_id))
@@ -610,11 +660,8 @@ def scan_observation(
                 for decoded_category, decoded_pattern in decoded_patterns:
                     decoded_hit: re.Match[str]
                     for decoded_hit in decoded_pattern.finditer(normalized):
-                        if decoded_category == "bearer token":
-                            decoded_candidate: str = decoded_hit.group(0).split()[-1]
-                            decoded_context: str = normalized[max(0, decoded_hit.start() - 24):decoded_hit.start()].lower()
-                            if decoded_candidate.isalpha() and len(decoded_candidate) < 24 and "authorization" not in decoded_context:
-                                continue
+                        if decoded_category == "bearer token" and is_public_bearer_phrase(decoded_hit, normalized):
+                            continue
                         findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                                           location, decoded_category, decoded_hit.group(0)))
                 decoded_field: re.Match[str]

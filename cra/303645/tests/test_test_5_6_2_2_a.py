@@ -64,6 +64,7 @@ def _dhcp_record(frame: bytes, ethernet_padding: bytes = b"") -> bytes:
     packet: bytearray = bytearray(frame)
     ip_header_length: int = (packet[14] & 0x0F) * 4
     struct.pack_into("!H", packet, 16, len(packet) - 14)
+    struct.pack_into("!HH", packet, 14 + ip_header_length, 68, 67)
     struct.pack_into("!H", packet, 14 + ip_header_length + 4, len(packet) - 14 - ip_header_length)
     packet.extend(ethernet_padding)
     return struct.pack("<IIII", 0, 0, len(packet), len(packet)) + packet
@@ -296,6 +297,56 @@ class RunnerTests(unittest.TestCase):
                 result: RunResult = self._run()
                 self.assertEqual(expected, result.verdict, self.messages)
                 self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_non_string_json_credentials_and_empty_schema_controls(self) -> None:
+        value: Any
+        expected: str
+        for value, expected in ((123, "FAIL"), (True, "FAIL"), (False, "FAIL"), (0, "FAIL"),
+                                ([123], "FAIL"), ({"secret": 123}, "FAIL"), (None, "PASS"),
+                                ("", "PASS"), ([], "PASS"), ({}, "PASS"),
+                                ({"type": "string"}, "PASS"),
+                                ({"title": "Password", "type": "string", "default": ""}, "PASS"),
+                                ({"type": "string", "default": "secret"}, "FAIL"),
+                                ({"type": "string", "secret": 123}, "FAIL")):
+            field: str
+            for field in ("mqtt_pass", "lan_auth_api_key", "wifi_sta_config.password", "wifi_sta_config"):
+                with self.subTest(value=value, field=field):
+                    self.setUp()
+                    self.fake.changed_path = "/app.js"
+                    payload: dict[str, Any] = ({field: {"password": value}} if field == "wifi_sta_config"
+                                               else {field: value})
+                    self.fake.changed_body = json.dumps({"dump": json.dumps({"nested": payload})})
+                    result: RunResult = self._run()
+                    self.assertEqual(expected, result.outcomes["sensitive disclosure scan"], self.messages)
+
+    def test_colon_credentials_in_rendered_text_and_headers(self) -> None:
+        header: bool
+        for header in (False, True):
+            with self.subTest(header=header):
+                self.setUp()
+                self.fake.changed_path = "/"
+                if header:
+                    self.fake.changed_header = ("X-Diagnostic", "mqtt_pass: leaked")
+                else:
+                    self.fake.changed_body = '<script src="/app.js"></script><pre>mqtt_pass: leaked</pre>'
+                result: RunResult = self._run()
+                self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+                self.assertNotIn("leaked", "\n".join(self.messages))
+
+    def test_short_alphabetic_bearers_without_authorization_label(self) -> None:
+        payload: str
+        expected: str
+        for payload, expected in (("Bearer abc", "FAIL"), ("Bearer a", "FAIL"),
+                                  ("Bearer authentication", "PASS")):
+            encoded: bool
+            for encoded in (False, True):
+                with self.subTest(payload=payload, encoded=encoded):
+                    self.setUp()
+                    self.fake.changed_path = "/app.js" if encoded else "/"
+                    self.fake.changed_body = (json.dumps({"dump": json.dumps({"value": payload})}) if encoded else
+                                              '<script src="/app.js"></script><span>' + payload + '</span>')
+                    result: RunResult = self._run()
+                    self.assertEqual(expected, result.outcomes["sensitive disclosure scan"], self.messages)
 
     def test_escaped_json_disclosures_and_public_defaults(self) -> None:
         body: str
@@ -749,6 +800,7 @@ class RunnerTests(unittest.TestCase):
         for path, content_type, body, expected in (
             (GatewayApi.AUTH, "text/plain; charset=utf-8", "mqtt_pass=abc", "FAIL"),
             (GatewayApi.AUTH, "text/plain", "http_pass=a&b", "FAIL"),
+            (GatewayApi.AUTH, "text/plain", "mqtt_pass: leaked", "FAIL"),
             (GatewayApi.AUTH, "text/plain", "mqtt_pass=", "PASS"),
             ("/app.js", "application/javascript", "mqtt_pass=config.mqtt_pass;", "PASS"),
             ("/app.js", "text/javascript", "mqtt_pass=config.mqtt_pass;", "PASS"),
@@ -1152,6 +1204,54 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(DHCP_HOSTNAME, result.uart_hostname)
         self.assertEqual(("espressif",), tuple(frame.hostname for frame in result.prior_frames))
 
+    def test_unexpected_capture_exit_cannot_accept_parseable_pcap(self) -> None:
+        route: subprocess.CompletedProcess[str] = subprocess.CompletedProcess(
+            ["ip", "route", "get"], 0, "192.0.2.10 dev eth0 src 192.0.2.20\n", "",
+        )
+        neighbor: subprocess.CompletedProcess[str] = subprocess.CompletedProcess(
+            ["ip", "neigh"], 0, f"192.0.2.10 dev eth0 lladdr {ETHERNET_MAC} REACHABLE\n", "",
+        )
+        bootp: bytearray = bytearray(240)
+        bootp[236:240] = b"\x63\x82\x53\x63"
+        ip_header: bytearray = bytearray(20)
+        ip_header[0] = 0x45
+        ip_header[9] = 17
+        hostname: bytes = DHCP_HOSTNAME.encode("ascii")
+        frame: bytes = (bytes.fromhex("ffffffffffff0211223344550800") + ip_header + bytes(8)
+                        + bootp + bytes((12, len(hostname))) + hostname + b"\xff")
+        pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1) + _dhcp_record(frame)
+        self.assertEqual(DHCP_HOSTNAME, decode_dhcp_pcap(pcap, "eth0").hostname)
+        exit_code: int
+        for exit_code in (0, 1, -15):
+            with self.subTest(exit_code=exit_code):
+                process: Mock = Mock()
+                process.poll.return_value = exit_code
+                process.returncode = exit_code
+                process.communicate.return_value = (b"", b"unexpected exit")
+
+                def launch(_command: list[str], *, stdout: BinaryIO, stderr: int,
+                           captured_process: Mock = process) -> Mock:
+                    self.assertEqual(subprocess.PIPE, stderr)
+                    stdout.write(pcap)
+                    return captured_process
+
+                with patch("test_5_6_2_2_a.shutil.which", side_effect=lambda tool: f"/usr/bin/{tool}"), \
+                        patch("test_5_6_2_2_a.socket.gethostbyname", return_value="192.0.2.10"), \
+                        patch("test_5_6_2_2_a.subprocess.run", side_effect=(route, neighbor)), \
+                        patch("test_5_6_2_2_a.subprocess.Popen", side_effect=launch), \
+                        patch("test_5_6_2_2_a._wait_for_tcpdump_ready", return_value=None), \
+                        patch("test_5_6_2_2_a.time.sleep") as sleep, \
+                        patch("test_5_6_2_2_a.decode_dhcp_pcap") as decode:
+                    result: CaptureResult = capture_dhcp(CONFIG.gw_hostname, 30, lambda: DHCP_HOSTNAME)
+                self.assertIsNone(result.frame)
+                self.assertIn("exited before intentional capture stop", result.problem or "")
+                self.assertIn(f"exit {exit_code}", result.problem or "")
+                process.terminate.assert_not_called()
+                process.kill.assert_not_called()
+                process.communicate.assert_called_once_with()
+                decode.assert_not_called()
+                sleep.assert_called_once_with(3.0)
+
     def test_boot_capture_does_not_reset_until_ready_and_cleans_up_on_failure(self) -> None:
         route: subprocess.CompletedProcess[str] = subprocess.CompletedProcess(
             ["ip", "route", "get"], 0, "192.0.2.10 dev eth0 src 192.0.2.20\n", "",
@@ -1463,6 +1563,29 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(expected, result.outcomes["DHCP capture"])
                 if expected == "ERROR":
                     self.assertIn("IPv4", self.capture.problem or "")
+
+    def test_dhcp_udp_ports_must_be_the_client_server_pair(self) -> None:
+        ports: tuple[int, int]
+        for ports in ((68, 67), (67, 68), (0, 0), (1234, 5678), (67, 67), (68, 68)):
+            with self.subTest(ports=ports):
+                bootp: bytearray = bytearray(240)
+                bootp[236:240] = b"\x63\x82\x53\x63"
+                ip_header: bytearray = bytearray(20)
+                ip_header[0] = 0x45
+                ip_header[9] = 17
+                hostname: bytes = DHCP_HOSTNAME.encode("ascii")
+                frame: bytes = (bytes.fromhex("ffffffffffff0211223344550800") + ip_header + bytes(8)
+                                + bootp + bytes((12, len(hostname))) + hostname + b"\xff")
+                record: bytearray = bytearray(_dhcp_record(frame))
+                struct.pack_into("!HH", record, 16 + 14 + 20, *ports)
+                pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1) + record
+                result: CaptureResult = decode_dhcp_pcap(pcap, "eth0")
+                if ports in {(68, 67), (67, 68)}:
+                    self.assertIsNone(result.problem)
+                    self.assertEqual(DHCP_HOSTNAME, result.hostname)
+                else:
+                    self.assertIsNone(result.frame)
+                    self.assertIn("UDP ports", result.problem or "")
 
     def test_dhcp_option_end_marker_is_required_in_every_packet(self) -> None:
         suffix: bytes
