@@ -27,6 +27,7 @@ from test_5_6_2_2_a import (
     CAPTURE_VISIBILITY_INSTRUCTION,
     CAPTURE_WINDOW_SECONDS,
     CaptureResult,
+    DisclosureFinding,
     Observation,
     Probe,
     _wait_for_tcpdump_ready,
@@ -44,6 +45,18 @@ DHCP_HOSTNAME: str = "RuuviGatewayEEFF"
 GET_PATHS: tuple[str, ...] = (GatewayApi.AUTH, GatewayApi.AP, GatewayApi.STATUS, GatewayApi.CONFIG,
     GatewayApi.FIRMWARE_UPDATE, GatewayApi.INFO, GatewayApi.METRICS, GatewayApi.HISTORY,
     GatewayApi.VALIDATE_URL, GatewayApi.EXTRA_CFG)
+
+
+# Independently authored from gw_cfg_json_generate{,_remote}.c, gw_cfg_storage.h,
+# and IXIT 10 SecParam credential sections; never derive this oracle from the runner.
+CANONICAL_CREDENTIAL_FIELDS: tuple[str, ...] = (
+    "lan_auth_user", "lan_auth_pass", "lan_auth_api_key", "lan_auth_api_key_rw",
+    "wifi_sta_config.password", "wifi_ap_config.password",
+    "remote_cfg_auth_basic_user", "remote_cfg_auth_basic_pass", "remote_cfg_auth_bearer_token",
+    "remote_cfg_auth_token", "remote_cfg_auth_apikey", "http_user", "http_pass",
+    "http_bearer_token", "http_api_key", "http_stat_user", "http_stat_pass", "mqtt_user", "mqtt_pass",
+    "http_cli_key", "stat_cli_key", "mqtt_cli_key", "rcfg_cli_key",
+)
 
 
 def _dhcp_record(frame: bytes, ethernet_padding: bytes = b"") -> bytes:
@@ -338,10 +351,22 @@ class RunnerTests(unittest.TestCase):
                     self.assertEqual(expected, result.verdict, self.messages)
                     self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
 
+    def test_remote_config_password_disclosure_preserves_exact_evidence(self) -> None:
+        # The review's literal example already matched SECRET_FIELDS before this regression.
+        payload: str
+        for payload in ('{"remote_cfg_auth_basic_pass":"leaked"}',
+                        '{"remote_cfg_auth_basic_\\u0070ass":"leaked"}',
+                        json.dumps({"diagnostic": json.dumps({"remote_cfg_auth_basic_pass": "leaked"})})):
+            with self.subTest(payload=payload):
+                observation: Observation = Observation(Probe("GET", "/app.js", 200), (), payload, 200)
+                findings: tuple[DisclosureFinding, ...] = scan_observation(observation, CONFIG.gw_id, "Admin")
+                self.assertTrue(any(finding.category == "credential value" and
+                                    "remote_cfg_auth_basic_pass" in finding.token and
+                                    "leaked" in finding.token for finding in findings), findings)
+
     def test_canonical_remote_and_file_credentials_fail_without_pem_markers(self) -> None:
         field: str
-        for field in ("remote_cfg_auth_token", "remote_cfg_auth_apikey", "http_cli_key",
-                      "rcfg_cli_key", "remote_cfg_auth_basic_user", "http_stat_user"):
+        for field in CANONICAL_CREDENTIAL_FIELDS:
             surface: str
             for surface in ("JSON", "header", "HTML input"):
                 with self.subTest(field=field, surface=surface):
@@ -364,8 +389,7 @@ class RunnerTests(unittest.TestCase):
 
     def test_canonical_credential_empty_schema_and_public_certificate_controls(self) -> None:
         field: str
-        for field in ("remote_cfg_auth_token", "remote_cfg_auth_apikey", "http_cli_key",
-                      "rcfg_cli_key", "remote_cfg_auth_basic_user", "http_stat_user"):
+        for field in CANONICAL_CREDENTIAL_FIELDS:
             with self.subTest(field=field):
                 self.setUp()
                 self.fake.changed_path = "/"
