@@ -333,7 +333,9 @@ host can capture and reset the dedicated DUT**. Specify it as a precondition-gat
     default `espressif` ([`sdkconfig`](../../../sdkconfig)); that frame does not satisfy the final
     check. `.env` `gw_hostname` may be an mDNS name ending in `.local` or an IP address and is not
     the DHCP Option 12 value. Permit Option 60 only when its value repeats Option 12 in its own
-    frame. Validate the IPv4 version and minimum 20-byte header before decoding UDP/BOOTP.
+    frame. Require matching pcap captured/original frame lengths for every record; a snaplen-truncated
+    record or impossible length mismatch is acquisition ERROR even if a later packet is complete.
+    Validate the IPv4 version and minimum 20-byte header before decoding UDP/BOOTP.
     Require the DHCP option end marker (`255`) in every captured packet; exhaustion of
     option bytes or zero padding without that marker is incomplete acquisition and ERROR.
     Bound option decoding by the declared UDP length within the complete IPv4 datagram;
@@ -341,7 +343,8 @@ host can capture and reset the dedicated DUT**. Specify it as a precondition-gat
     that UDP payload: any nonzero byte is unassessed data and ERROR, never PASS. Ethernet
     trailer bytes outside the declared datagram are not DHCP options. A later valid packet
     must not conceal an earlier malformed payload.
-    Scan all captured frames and reject other unexpected or sensitive options; contribute
+    Scan all captured frames, including colon-separated, contiguous ASCII, and binary DeviceID
+    password-seed representations, and reject other unexpected or sensitive options; contribute
     PASS/FAIL to the verdict.
   - If prerequisites are **not** present (no root/capture tool/interface), the UART marker is
     absent, or no post-configuration DHCP hostname is observed: record **ERROR / undetermined** with

@@ -234,6 +234,9 @@ def decode_dhcp_pcap(data: bytes, interface: str) -> CaptureResult:
         if len(data) - offset < 16:
             return CaptureResult(None, interface, "truncated pcap record header")
         frame_length: int = struct.unpack_from(f"{endian}I", data, offset + 8)[0]
+        original_length: int = struct.unpack_from(f"{endian}I", data, offset + 12)[0]
+        if frame_length != original_length:
+            return CaptureResult(None, interface, "pcap captured/original frame lengths differ")
         offset += 16
         if len(data) - offset < frame_length:
             return CaptureResult(None, interface, "truncated pcap Ethernet frame")
@@ -941,7 +944,11 @@ class FunctionalTest_5_6_2_2_a:
         expected_dhcp_hostname: str = (
             f"{DHCP_HOSTNAME_PREFIX}{nrf52_mac_octets[-2]}{nrf52_mac_octets[-1]}"
         )
-        if result.uart_hostname is not None and result.uart_hostname.casefold() != expected_dhcp_hostname.casefold():
+        if not result.uart_hostname:
+            self.outcomes["DHCP capture"] = "ERROR"
+            self.output("DHCP capture ERROR: post-reset UART mDNS hostname marker is missing")
+            return
+        if result.uart_hostname.casefold() != expected_dhcp_hostname.casefold():
             self.outcomes["DHCP capture"] = "ERROR"
             self.output(
                 f"DHCP capture ERROR: UART mDNS hostname {result.uart_hostname} "
@@ -992,6 +999,7 @@ class FunctionalTest_5_6_2_2_a:
                     decoded: str = raw_option.decode("utf-8", errors="replace")
                     suspicious = suspicious or bytes.fromhex(self.config.gw_id.replace(":", "")) in raw_option
                     suspicious = suspicious or self.config.gw_id.casefold() in decoded.casefold()
+                    suspicious = suspicious or self.config.gw_id.replace(":", "").casefold() in decoded.casefold()
                     suspicious = suspicious or any(pattern.search(decoded) for pattern in
                                                    (PEM_PATTERN, POINTER_PATTERN, DIAGNOSTIC_PATTERN, SECRET_FIELD_PATTERN,
                                                     HEADER_SECRET_FIELD_PATTERN, WIFI_PASSWORD_PATTERN, HISTORY_PATTERN,

@@ -122,7 +122,7 @@ class RunnerTests(unittest.TestCase):
         self.messages: list[str] = []
         self.capture: CaptureResult = CaptureResult(
             f"02:11:22:33:44:55 > ff:ff:ff:ff:ff:ff DHCP Hostname {DHCP_HOSTNAME}", "eth0",
-            source_mac=ETHERNET_MAC, ethernet_mac=ETHERNET_MAC,
+            source_mac=ETHERNET_MAC, ethernet_mac=ETHERNET_MAC, uart_hostname=DHCP_HOSTNAME,
         )
         self.capture_calls: list[tuple[str, int]] = []
 
@@ -571,10 +571,68 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("INCOMPLETE CHECK", self._log())
         self.assertEqual([], self.capture_calls)
 
+    def test_sensitive_findings_keep_tokens_in_local_evidence_only(self) -> None:
+        secret: str = "private-canary-credential-9"
+        body: str
+        header: tuple[str, str] | None
+        for body, header in (
+            (json.dumps({"mqtt_pass": secret}), None),
+            (f'<input name="http_pass" value="{secret}">', ("Content-Type", "text/html")),
+            ("", ("Authorization", f"Bearer {secret}")),
+        ):
+            with self.subTest(body=body, header=header):
+                self.setUp()
+                self.fake.changed_path = "/"
+                self.fake.changed_body = body + '<script src="/app.js"></script>'
+                self.fake.changed_header = header
+                result: RunResult = self._run()
+                self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+                self.assertNotIn(secret, "\n".join(self.messages))
+                self.assertIn(secret, self._log())
+                self.assertIn("sensitive disclosure FAIL:", "\n".join(self.messages))
+
+    def test_dhcp_requires_post_reset_uart_hostname_marker(self) -> None:
+        marker: str | None
+        for marker in (None, "", " \t"):
+            with self.subTest(marker=marker):
+                self.setUp()
+                self.capture = replace(self.capture, uart_hostname=marker)
+                result: RunResult = self._run()
+                self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+                self.assertEqual("ERROR", result.outcomes["DHCP capture"])
+                self.assertTrue(all(state == "PASS" for check, state in result.outcomes.items()
+                                    if check != "DHCP capture"))
+                self.assertIn("UART mDNS hostname", "\n".join(self.messages))
+
+    def test_pcap_length_mismatch_cannot_be_hidden_by_later_complete_packet(self) -> None:
+        bootp: bytearray = bytearray(240)
+        bootp[236:240] = b"\x63\x82\x53\x63"
+        ip_header: bytearray = bytearray(20)
+        ip_header[0] = 0x45
+        ip_header[9] = 17
+        hostname: bytes = DHCP_HOSTNAME.encode()
+        frame: bytes = (bytes.fromhex("ffffffffffff0211223344550800") + ip_header + bytes(8)
+                        + bootp + bytes((12, len(hostname))) + hostname + b"\xff")
+        complete: bytes = _dhcp_record(frame)
+        delta: int
+        for delta in (-1, 1):
+            with self.subTest(original_length_delta=delta):
+                self.setUp()
+                record: bytearray = bytearray(complete)
+                struct.pack_into("<I", record, 12, len(frame) + delta)
+                pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+                self.capture = replace(decode_dhcp_pcap(pcap + record + complete, "eth0"),
+                                       ethernet_mac=ETHERNET_MAC, uart_hostname=DHCP_HOSTNAME)
+                result: RunResult = self._run()
+                self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+                self.assertEqual("ERROR", result.outcomes["DHCP capture"])
+                self.assertIn("captured/original frame lengths differ", "\n".join(self.messages))
+
     def test_dhcp_device_id_seed_in_allowed_option_fails(self) -> None:
         option: str
         for option in ("01" + ETHERNET_MAC.replace(":", ""), CONFIG.gw_mac.replace(":", ""),
-                       CONFIG.gw_id.encode().hex(), CONFIG.gw_id.replace(":", ""),
+                       CONFIG.gw_id.encode().hex(), CONFIG.gw_id.replace(":", "").encode().hex(),
+                       CONFIG.gw_id.replace(":", "").lower().encode().hex(), CONFIG.gw_id.replace(":", ""),
                        "01" + CONFIG.gw_id.replace(":", "")):
             with self.subTest(option=option):
                 self.setUp()
@@ -679,7 +737,8 @@ class RunnerTests(unittest.TestCase):
                             bootp[44:236] = bytes(192)
                             frame = ethernet + ip_header + bytes(8) + bootp + options
                             pcap += _dhcp_record(frame)
-                        self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                        self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                                               uart_hostname=DHCP_HOSTNAME)
                         result: RunResult = self._run()
                         expected: str = "FAIL" if payload else "PASS"
                         self.assertEqual(expected, result.verdict, self.messages)
@@ -1171,7 +1230,7 @@ class RunnerTests(unittest.TestCase):
         self.setUp()
         self.capture = CaptureResult(
             f"02:11:22:33:44:55 DHCP Hostname {DHCP_HOSTNAME} vendor-specific token=secret", "eth0",
-            source_mac=ETHERNET_MAC, ethernet_mac=ETHERNET_MAC,
+            source_mac=ETHERNET_MAC, ethernet_mac=ETHERNET_MAC, uart_hostname=DHCP_HOSTNAME,
         )
         result = self._run()
         self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
@@ -1289,7 +1348,8 @@ class RunnerTests(unittest.TestCase):
                                    + bytes((12, len(hostname))) + hostname + b"\xff")
                 # A later valid packet cannot erase a malformed earlier observation.
                 pcap += _dhcp_record(complete)
-                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                                       uart_hostname=DHCP_HOSTNAME)
                 result: RunResult = self._run()
                 expected: str = "PASS" if version_ihl in {0x45, 0x46} else "ERROR"
                 self.assertEqual(expected, result.verdict, self.messages)
@@ -1320,7 +1380,8 @@ class RunnerTests(unittest.TestCase):
                 # A later complete record must not hide an earlier incomplete packet.
                 complete: bytes = prefix + b"\xff"
                 pcap += _dhcp_record(complete)
-                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                                       uart_hostname=DHCP_HOSTNAME)
                 result: RunResult = self._run()
                 self.assertEqual("PASS" if valid else "ERROR", result.verdict)
                 self.assertEqual("PASS" if valid else "ERROR", result.outcomes["DHCP capture"])
@@ -1352,7 +1413,8 @@ class RunnerTests(unittest.TestCase):
                 pcap += _dhcp_record(prefix + suffix, padding)
                 # Final valid packet cannot erase an earlier unassessed payload.
                 pcap += _dhcp_record(prefix)
-                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                                       uart_hostname=DHCP_HOSTNAME)
                 result: RunResult = self._run()
                 self.assertEqual(expected, result.verdict, self.messages)
                 self.assertEqual(expected, result.outcomes["DHCP capture"])
@@ -1379,7 +1441,8 @@ class RunnerTests(unittest.TestCase):
                 struct.pack_into("!H", record, 16 + field_offset, declared_length)
                 pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
                 pcap += record + _dhcp_record(frame)
-                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                                       uart_hostname=DHCP_HOSTNAME)
                 result: RunResult = self._run()
                 self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
                 self.assertEqual("ERROR", result.outcomes["DHCP capture"])
@@ -1403,7 +1466,8 @@ class RunnerTests(unittest.TestCase):
                                 + bytes((12, len(hostname))) + hostname + suffix)
                 pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
                 pcap += _dhcp_record(frame, b"\x01a\xff")
-                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                                       uart_hostname=DHCP_HOSTNAME)
                 result: RunResult = self._run()
                 self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
                 self.assertEqual("ERROR", result.outcomes["DHCP capture"])
@@ -1424,7 +1488,8 @@ class RunnerTests(unittest.TestCase):
         frame: bytes = ethernet + ip_header + bytes(8) + bootp + options
         pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
         pcap += _dhcp_record(frame)
-        self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+        self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                               uart_hostname=DHCP_HOSTNAME)
         self.assertEqual((53, 12, 60), tuple(code for code, _ in self.capture.option_values or ()))
         self.assertEqual("PASS", self._run().verdict)
         self.setUp()
@@ -1436,7 +1501,8 @@ class RunnerTests(unittest.TestCase):
         )
         pcap = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
         pcap += _dhcp_record(frame)
-        self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+        self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                               uart_hostname=DHCP_HOSTNAME)
         result: RunResult = self._run()
         self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
         self.assertIn("DHCP disclosure FAIL", "\n".join(self.messages))
@@ -1445,7 +1511,8 @@ class RunnerTests(unittest.TestCase):
         frame = ethernet + ip_header + bytes(8) + bootp + options[:-1] + extra + bytes((255,))
         pcap = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
         pcap += _dhcp_record(frame)
-        self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+        self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                               uart_hostname=DHCP_HOSTNAME)
         result: RunResult = self._run()
         self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
         self.assertEqual("FAIL", result.outcomes["DHCP capture"])
@@ -1495,7 +1562,7 @@ class RunnerTests(unittest.TestCase):
                 self.setUp()
                 self.capture = CaptureResult(
                     f"{ETHERNET_MAC} DHCP Hostname {observed}", "eth0",
-                    source_mac=ETHERNET_MAC, ethernet_mac=ETHERNET_MAC,
+                    source_mac=ETHERNET_MAC, ethernet_mac=ETHERNET_MAC, uart_hostname=DHCP_HOSTNAME,
                     hostname=observed, option_values=((12, observed.encode().hex()),) if observed else (),
                 )
                 result: RunResult = self._run()
