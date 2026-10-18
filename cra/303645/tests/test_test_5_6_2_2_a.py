@@ -821,9 +821,9 @@ class RunnerTests(unittest.TestCase):
                 self.capture = replace(self.capture, hostname=DHCP_HOSTNAME,
                     option_values=((12, DHCP_HOSTNAME.encode().hex()), (61, option)))
                 result: RunResult = self._run()
-                expected: str = "PASS" if option in {
-                    "01" + ETHERNET_MAC.replace(":", ""), CONFIG.gw_mac.replace(":", ""),
-                } else "FAIL"
+                # A bare nRF52 MAC is not a valid source-interface client ID;
+                # only hardware type 1 plus the verified Ethernet MAC is public here.
+                expected: str = "PASS" if option == "01" + ETHERNET_MAC.replace(":", "") else "FAIL"
                 self.assertEqual(expected, result.verdict, self.messages)
                 self.assertEqual(expected, result.outcomes["DHCP capture"])
 
@@ -1877,6 +1877,100 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
                 self.assertEqual("ERROR", result.outcomes["DHCP capture"])
                 self.assertIn(expected_problem, self.capture.problem or "")
+
+    def test_dhcp_option_values_require_declared_protocol_semantics(self) -> None:
+        cases: tuple[tuple[int, bytes, str], ...] = (
+            (1, bytes.fromhex("ffffff00"), "PASS"), (1, b"abcd", "FAIL"),
+            (3, bytes.fromhex("c0000201"), "PASS"), (3, b"opaque-secret", "FAIL"),
+            (6, bytes.fromhex("c0000201c0000202"), "PASS"), (6, b"", "FAIL"),
+            (12, b"opaque-secret", "FAIL"), (15, b"opaque-secret", "FAIL"),
+            (28, bytes.fromhex("c00002ff"), "PASS"), (28, b"abc", "FAIL"),
+            (50, bytes.fromhex("c0000201"), "PASS"), (50, b"abc", "FAIL"),
+            (51, bytes.fromhex("00000e10"), "PASS"), (51, b"opaque-secret", "FAIL"),
+            (53, b"\x03", "PASS"), (53, b"\x09", "FAIL"), (53, b"\x01\x03", "FAIL"),
+            (54, bytes.fromhex("c0000201"), "PASS"), (54, b"opaque-secret", "FAIL"),
+            (55, bytes.fromhex("01031c2b062a"), "PASS"), (55, b"opaque-secret", "FAIL"),
+            (55, b"\x01\x01", "FAIL"), (55, b"", "FAIL"),
+            (57, bytes.fromhex("05dc"), "PASS"), (57, bytes.fromhex("0100"), "FAIL"),
+            (57, b"abc", "FAIL"),
+            (58, bytes.fromhex("00000708"), "PASS"), (58, b"abc", "FAIL"),
+            (59, bytes.fromhex("00000c4e"), "PASS"), (59, b"opaque-secret", "FAIL"),
+            (60, DHCP_HOSTNAME.encode(), "PASS"), (60, b"opaque-secret", "FAIL"),
+            (61, bytes.fromhex("01021122334455"), "PASS"), (61, b"opaque-secret", "FAIL"),
+            (61, bytes.fromhex("01021122334456"), "FAIL"),
+            (61, bytes.fromhex("02021122334455"), "FAIL"),
+            (61, bytes.fromhex("021122334455"), "FAIL"),
+        )
+        code: int
+        value: bytes
+        expected: str
+        for code, value, expected in cases:
+            with self.subTest(code=code, value=value):
+                self.setUp()
+                self.capture = replace(self.capture, option_values=(
+                    (12, DHCP_HOSTNAME.encode().hex()), (code, value.hex()),
+                ))
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["DHCP capture"])
+                self.assertIn("DHCP DISCLOSURE ASSERTION", self._log())
+
+    def test_prior_dhcp_invalid_client_identifier_cannot_be_hidden(self) -> None:
+        self.capture = replace(self.capture, prior_frames=(replace(
+            self.capture, option_values=((12, DHCP_HOSTNAME.encode().hex()), (61, b"opaque-secret".hex())),
+        ),))
+        result: RunResult = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
+        self.assertEqual("FAIL", result.outcomes["DHCP capture"])
+
+    def test_entire_dhcp_wire_image_is_scanned_for_device_id_seeds(self) -> None:
+        representation: bytes
+        prior: bool
+        for representation in (bytes.fromhex("aabbccddeeff0011"), b"aa:bb:cc:dd:ee:ff:00:11", b"AABBCCDDEEFF0011"):
+            for prior in (False, True):
+                with self.subTest(representation=representation, prior=prior):
+                    self.setUp()
+                    bootp: bytearray = bytearray(240)
+                    bootp[236:240] = b"\x63\x82\x53\x63"
+                    # Place the binary seed across xid/secs/flags, outside option and
+                    # zero-padding/sname/file checks. Text variants live in Ethernet trailers.
+                    if len(representation) == 8:
+                        bootp[4:12] = representation
+                    ip_header: bytearray = bytearray(20)
+                    ip_header[0] = 0x45
+                    ip_header[9] = 17
+                    hostname: bytes = DHCP_HOSTNAME.encode()
+                    frame: bytes = (bytes.fromhex("ffffffffffff0211223344550800") + ip_header
+                                    + bytes(8) + bootp + bytes((12, len(hostname))) + hostname + b"\xff")
+                    record: bytes = _dhcp_record(frame, representation if len(representation) != 8 else b"")
+                    if prior:
+                        bootp[4:12] = bytes(8)
+                        clean_frame: bytes = (frame[:42] + bootp + bytes((12, len(hostname))) + hostname + b"\xff")
+                        record += _dhcp_record(clean_frame)
+                    pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1) + record
+                    self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                                           uart_hostname=DHCP_HOSTNAME)
+                    self.assertIsNone(self.capture.problem)
+                    result: RunResult = self._run()
+                    self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+                    self.assertEqual("FAIL", result.outcomes["DHCP capture"])
+                    self.assertNotIn(CONFIG.gw_id, "\n".join(self.messages))
+
+    def test_raw_dhcp_protocol_numbers_are_not_pointer_disclosures(self) -> None:
+        bootp: bytearray = bytearray(240)
+        bootp[4:8] = bytes.fromhex("deadbeef")
+        bootp[236:240] = b"\x63\x82\x53\x63"
+        ip_header: bytearray = bytearray(20)
+        ip_header[0] = 0x45
+        ip_header[9] = 17
+        hostname: bytes = DHCP_HOSTNAME.encode()
+        frame: bytes = (bytes.fromhex("ffffffffffff0211223344550800") + ip_header + bytes(8)
+                        + bootp + bytes((12, len(hostname))) + hostname + b"\xff")
+        pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1) + _dhcp_record(frame)
+        self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                               uart_hostname=DHCP_HOSTNAME)
+        result: RunResult = self._run()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code), self.messages)
 
     def test_decoded_dhcp_options_are_checked(self) -> None:
         bootp: bytearray = bytearray(240)

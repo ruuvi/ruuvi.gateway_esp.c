@@ -369,9 +369,20 @@ host can capture and reset the dedicated DUT**. Specify it as a precondition-gat
     that UDP payload: any nonzero byte is unassessed data and ERROR, never PASS. Ethernet
     trailer bytes outside the declared datagram are not DHCP options. A later valid packet
     must not conceal an earlier malformed payload.
-    Scan all captured frames, including colon-separated, contiguous ASCII, and binary DeviceID
-    password-seed representations, and reject other unexpected or sensitive options; contribute
-    PASS/FAIL to the verdict.
+    Validate option values rather than trusting option codes: Option 61 must be Ethernet hardware
+    type 1 plus the verified source MAC; every Option 12 must be the early `espressif` or expected
+    firmware hostname, with the existing last-hostname/UART requirement still mandatory. Option 60
+    must repeat its frame's hostname. Network addresses, subnet masks, timers, message types,
+    maximum-message-size and requested-option lists must have their RFC 2132 shapes and permitted
+    client values. Permit requested codes 1/3/6/28/42/43 (lwIP address/router/DNS/broadcast/NTP and
+    ESP-IDF vendor-option requests); reject empty, duplicate or undeclared request codes. Arbitrary
+    client identifiers, domain-name payloads, vendor values and other undeclared values are FAIL,
+    even when their option number is standard. Framing/truncation remains acquisition ERROR.
+    Scan the complete captured wire image, including IP/BOOTP fields and Ethernet trailers, for
+    colon-separated, contiguous ASCII, and binary DeviceID seeds in every prior/final frame.
+    Keep structured option/fixed-field scans; do not interpret arbitrary binary protocol integers
+    as textual memory pointers.
+    Reject unexpected or sensitive options; contribute PASS/FAIL to the verdict.
   - If prerequisites are **not** present (no root/capture tool/interface), the UART marker is
     absent, or no post-configuration DHCP hostname is observed: record **ERROR / undetermined** with
     the exact unmet precondition. This is **not** a PASS (absence of a captured frame is not proof

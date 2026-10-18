@@ -158,9 +158,40 @@ class CaptureResult:
     bootp_fixed_values: tuple[tuple[str, str], ...] = ()
 
 
-STANDARD_DHCP_OPTIONS: frozenset[int] = frozenset({1, 3, 6, 12, 15, 28, 50, 51, 53, 54, 55, 57, 58, 59, 61})
 DHCP_HOSTNAME_PREFIX: str = "RuuviGateway"
 EARLY_BOOT_HOSTNAME: str = "espressif"
+# lwIP dhcp_discover_request_options plus the ESP-IDF vendor-option request.
+DHCP_PARAMETER_CODES: frozenset[int] = frozenset({1, 3, 6, 28, 42, 43})
+
+
+def _public_dhcp_option(code: int, value: bytes, source_mac: str, hostname: str,
+                        expected_hostname: str) -> bool:
+    """Accept protocol-shaped values, never an option number alone (RFC 2132)."""
+    if code == 12:
+        return value.lower() in {EARLY_BOOT_HOSTNAME.encode(), expected_hostname.lower().encode()}
+    if code == 60:
+        return bool(hostname) and value.lower() == hostname.lower().encode("ascii", errors="replace")
+    if code == 61:
+        return value == b"\x01" + bytes.fromhex(source_mac.replace(":", ""))
+    if code == 1:
+        if len(value) != 4:
+            return False
+        inverse_mask: int = int.from_bytes(value, "big") ^ 0xFFFFFFFF
+        return inverse_mask & (inverse_mask + 1) == 0
+    if code in {3, 6}:
+        return bool(value) and len(value) % 4 == 0
+    if code in {28, 50, 51, 54, 58, 59}:
+        return len(value) == 4
+    if code == 53:
+        return value in {b"\x01", b"\x03", b"\x04", b"\x07", b"\x08"}
+    if code == 55:
+        return bool(value) and len(set(value)) == len(value) and set(value) <= DHCP_PARAMETER_CODES
+    if code == 57:
+        return len(value) == 2 and int.from_bytes(value, "big") >= 576
+    # Domain names and arbitrary/vendor payloads are not declared client metadata.
+    return False
+
+
 def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     """Decode one Ethernet/IPv4/UDP/BOOTP frame."""
     if len(frame) < 14 or frame[12:14] != b"\x08\x00":
@@ -1048,14 +1079,19 @@ class FunctionalTest_5_6_2_2_a:
                                             BEARER_PATTERN, BUILD_PATTERN))
             suspicious = suspicious or re.search(r"(?i)(?:vendor-specific|option 43|option 125|password|token|secret)",
                                                   observed_text) is not None
+            # Inspect the complete wire image, including fixed IP/BOOTP fields and
+            # Ethernet trailers. Do not run pointer regexes over arbitrary binary headers.
+            raw_frame: bytes = bytes.fromhex(observed.raw_hex) if observed.raw_hex is not None else b""
+            seed: bytes = bytes.fromhex(self.config.gw_id.replace(":", ""))
+            raw_text: str = raw_frame.decode("utf-8", errors="replace").casefold()
+            suspicious = suspicious or seed in raw_frame
+            suspicious = suspicious or self.config.gw_id.casefold() in raw_text
+            suspicious = suspicious or self.config.gw_id.replace(":", "").casefold() in raw_text
             if observed.option_values is not None:
                 observed_hostname: str = observed.hostname or ""
                 suspicious = suspicious or any(
-                    code not in STANDARD_DHCP_OPTIONS and not (
-                        code == 60 and observed_hostname and
-                        bytes.fromhex(value).decode("ascii", errors="replace").casefold()
-                        == observed_hostname.casefold()
-                    )
+                    not _public_dhcp_option(code, bytes.fromhex(value), observed.source_mac or "",
+                                            observed_hostname, expected_dhcp_hostname)
                     for code, value in observed.option_values
                 )
                 option_value: str
