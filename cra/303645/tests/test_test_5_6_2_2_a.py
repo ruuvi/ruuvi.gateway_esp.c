@@ -724,6 +724,37 @@ class RunnerTests(unittest.TestCase):
         result = self._run()
         self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
 
+    def test_short_bearer_credentials_fail_in_headers_and_bodies(self) -> None:
+        path: str
+        body: str | None
+        header: tuple[str, str] | None
+        scenarios: tuple[tuple[str, str | None, tuple[str, str] | None], ...] = (
+            (GatewayApi.STATUS, None, ("Authorization", "Bearer abc")),
+            (GatewayApi.STATUS, None, ("X-Token", "Bearer a")),
+            ("/", '<script src="/app.js"></script><span>Authorization: Bearer abc</span>', None),
+            ("/", '<script src="/app.js"></script><span>Authorization: Bearer a</span>', None),
+            ("/", '<script src="/app.js"></script><span>Authorization: Bearer a1</span>', None),
+            ("/app.js", r'{"Authorization":"Bear\u0065r abc"}', None),
+        )
+        for path, body, header in scenarios:
+            with self.subTest(path=path, body=body, header=header):
+                self.setUp()
+                self.fake.changed_path = path
+                self.fake.changed_body = body
+                self.fake.changed_header = header
+                result: RunResult = self._run()
+                self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+                self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+                self.assertIn("bearer token", self._log())
+
+    def test_short_bearer_credentials_fail_in_dhcp_options(self) -> None:
+        self.capture = replace(self.capture, option_values=(
+            (12, DHCP_HOSTNAME.encode().hex()), (61, b"Authorization: Bearer a".hex()),
+        ))
+        result: RunResult = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual("FAIL", result.outcomes["DHCP capture"])
+
     def test_static_default_username_is_public_but_custom_value_fails(self) -> None:
         result: RunResult = self._run()
         self.assertEqual(("PASS", 0), (result.verdict, result.exit_code))
