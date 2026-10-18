@@ -17,6 +17,7 @@ import tempfile
 import time
 from dataclasses import dataclass, replace
 from datetime import datetime
+from html import unescape
 from html.parser import HTMLParser
 from http.cookies import SimpleCookie
 from pathlib import Path
@@ -550,9 +551,10 @@ def scan_observation(
     media_type: str = next((value.split(";", 1)[0].strip().lower()
                             for name, value in observation.headers if name.lower() == "content-type"), "")
     rendered_body: bool = media_type in {"text/html", "text/plain"}
+    asset_path: str = urlparse(observation.probe.path).path
     executable_body: bool = media_type in {
         "application/javascript", "text/javascript", "application/ecmascript", "text/ecmascript", "text/css",
-    } or (not media_type and observation.probe.path.endswith((".js", ".css")))
+    } or (not media_type and asset_path.endswith((".js", ".css")))
     if media_type == "text/html":
         html_text: PublicHtmlText = PublicHtmlText()
         html_text.feed(observation.body)
@@ -639,7 +641,7 @@ def scan_observation(
             decoded_name: str
             decoded_value: Any
             for decoded_name, decoded_value in json_credential_fields(normalized):
-                if not (location == "body" and observation.probe.path.endswith((".js", ".css"))
+                if not (location == "body" and asset_path.endswith((".js", ".css"))
                         and decoded_name == GatewayCfgDesc.LAN_AUTH_USER and decoded_value == default_username):
                     findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                                       location, "credential value",
@@ -667,7 +669,7 @@ def scan_observation(
                 decoded_field: re.Match[str]
                 for decoded_field in SECRET_FIELD_PATTERN.finditer(normalized):
                     if not (
-                        location == "body" and observation.probe.path.endswith((".js", ".css"))
+                        location == "body" and asset_path.endswith((".js", ".css"))
                         and decoded_field.group(1) == GatewayCfgDesc.LAN_AUTH_USER
                         and decoded_field.group(3) == default_username
                     ):
@@ -678,7 +680,7 @@ def scan_observation(
             field: str = field_match.group(1)
             value: str = field_match.group(3)
             public_ui_default: bool = (
-                location == "body" and observation.probe.path.endswith((".js", ".css"))
+                location == "body" and asset_path.endswith((".js", ".css"))
                 and field == GatewayCfgDesc.LAN_AUTH_USER and value == default_username
             )
             if not public_ui_default:
@@ -833,10 +835,11 @@ class FunctionalTest_5_6_2_2_a:
             raise GatewayProtocolError("public root is not 200 text/html")
         candidate: re.Match[str]
         for candidate in STATIC_REF_PATTERN.finditer(root.body):
-            resolved: str = urljoin(self.config.base_url + "/", candidate.group(1))
+            resolved: str = urljoin(self.config.base_url + "/", unescape(candidate.group(1)))
             parsed: ParseResult = urlparse(resolved)
-            if parsed.netloc.lower() == urlparse(self.config.base_url).netloc.lower():
-                return parsed.path
+            if (parsed.scheme.lower() == urlparse(self.config.base_url).scheme.lower()
+                    and parsed.netloc.lower() == urlparse(self.config.base_url).netloc.lower()):
+                return parsed._replace(scheme="", netloc="", fragment="").geturl()
         raise GatewayProtocolError("public HTML contains no same-origin JS/CSS asset")
 
     def _matrix(self) -> None:
@@ -849,7 +852,7 @@ class FunctionalTest_5_6_2_2_a:
             observation: Observation = self._request_probe(probe)
             self.observations.append(observation)
             self._assert("HTTP disclosure matrix", observation.status == probe.expected_status,
-                         f"{probe.method} {probe.path} expected {probe.expected_status}", observation.status)
+                         f"{probe.method} {urlparse(probe.path).path} expected {probe.expected_status}", observation.status)
             if probe.expected_status in {HttpStatus.C_302_FOUND, HttpStatus.C_401_UNAUTHORIZED} and (
                 observation.status == HttpStatus.C_200_OK
             ):
@@ -865,7 +868,7 @@ class FunctionalTest_5_6_2_2_a:
             headers: dict[str, str] = {name.lower(): value for name, value in observation.headers}
             if observation.probe.method == HttpMethod.GET:
                 self._assert("generic banner", headers.get("server") == "Ruuvi Gateway",
-                             f"generic Server banner on {observation.probe.path}", headers.get("server"))
+                             f"generic Server banner on {urlparse(observation.probe.path).path}", headers.get("server"))
         if self.outcomes["generic banner"] == "NOT RUN":
             self.outcomes["generic banner"] = "PASS"
 
@@ -876,7 +879,7 @@ class FunctionalTest_5_6_2_2_a:
             if observation.probe.expected_status == HttpStatus.C_302_FOUND:
                 expected_location: str = f"{self.config.base_url}/#auth"
                 self._assert("redirects and challenge", headers.get("location") == expected_location,
-                             f"auth Location on {observation.probe.path}", headers.get("location"))
+                             f"auth Location on {urlparse(observation.probe.path).path}", headers.get("location"))
                 cookie: str = headers.get("set-cookie", "")
                 expected_cookie: bool = bool(observation.probe.previous_cookie)
                 parsed_cookie: SimpleCookie = SimpleCookie()
@@ -887,9 +890,9 @@ class FunctionalTest_5_6_2_2_a:
                     if expected_cookie else not previous_cookie
                 )
                 self._assert("redirects and challenge", correct_cookie,
-                             f"previous URL cookie on {observation.probe.path}", cookie)
+                             f"previous URL cookie on {urlparse(observation.probe.path).path}", cookie)
                 self._assert("redirects and challenge", not observation.body.strip(),
-                             f"empty redirect body on {observation.probe.path}", observation.body)
+                             f"empty redirect body on {urlparse(observation.probe.path).path}", observation.body)
             if observation.probe.path == GatewayApi.AUTH and observation.probe.method == HttpMethod.GET and (
                 observation.status == HttpStatus.C_401_UNAUTHORIZED
             ):
@@ -933,7 +936,7 @@ class FunctionalTest_5_6_2_2_a:
         self.outcomes["sensitive disclosure scan"] = "FAIL" if self.findings else "PASS"
         finding: DisclosureFinding
         for finding in self.findings:
-            self.output(f"sensitive disclosure FAIL: {finding.method} {finding.path} {finding.location} {finding.category}")
+            self.output(f"sensitive disclosure FAIL: {finding.method} {urlparse(finding.path).path} {finding.location} {finding.category}")
             self.evidence.write("DISCLOSURE FINDING", finding)
 
     def _public(self) -> None:

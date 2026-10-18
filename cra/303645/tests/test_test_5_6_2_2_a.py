@@ -187,6 +187,82 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("SENSITIVE SCAN RESULT", evidence)
         self.assertIn("OVERALL VERDICT: PASS", evidence)
 
+    def test_generated_hex_probe_cookie_is_public_but_redirect_hashes_are_not(self) -> None:
+        result: RunResult = execute_test_5_6_2_2_a(
+            self.work_dir, session_factory=lambda: FakeSession(self.fake), capturer=self._capture,
+            output=self.messages.append, random_bytes=lambda count: b"\xab" * count,
+        )
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual("/cra-abababababababab.json", self.fake.calls[-2].path)
+        evidence: str = self._log()
+        self.assertIn("RUUVI_PREV_URL=/cra-abababababababab.json", evidence)
+        location: str
+        for location in (f"{CONFIG.base_url}/cra-abababababababab.json",
+                         f"{CONFIG.base_url}/#auth?build=abababababababab"):
+            observation: Observation = Observation(
+                Probe(HttpMethod.GET, "/cra-abababababababab.json", 302),
+                (("Location", location),), "", 302,
+            )
+            findings: tuple[DisclosureFinding, ...] = scan_observation(
+                observation, CONFIG.gw_id, "Admin", CONFIG.base_url,
+            )
+            self.assertIn("build identifier", [finding.category for finding in findings])
+
+    def test_query_dependent_asset_preserves_request_and_static_exceptions(self) -> None:
+        asset: str = "/app.js?ticket=private-query-value&mode=%2Fcompact"
+        original: Callable[..., FakeResponse] = self.fake.response_for
+        disclose: bool = False
+
+        def response_for(session: FakeSession, method: str, path: str, headers: Mapping[str, str],
+                         body: Any, allow_redirects: bool = False) -> FakeResponse:
+            response: FakeResponse = original(session, method, path, headers, body, allow_redirects)
+            if path == "/" and method == HttpMethod.GET:
+                response._content = (
+                    '<script src="http://other.invalid/app.js?x=1"></script>'
+                    '<script src="https://gateway.local/app.js?x=1"></script>'
+                    f'<script src="{asset.replace("&", "&amp;")}#client-only"></script>'
+                ).encode()
+            elif path == asset:
+                response.status_code = 200
+                response._content = (b'const x={lan_auth_pass:"leaked"};' if disclose else
+                                     b'this.lan_auth_user="Admin"; const panic="static diagnostic";')
+            elif path == "/app.js":
+                response.status_code = 404
+            return response
+
+        class QuerySession(FakeSession):
+            def send(self, request: requests.PreparedRequest, **kwargs: Any) -> FakeResponse:
+                if request.url == CONFIG.base_url + asset:
+                    if kwargs.get("allow_redirects") is not False or request.method != HttpMethod.GET:
+                        raise AssertionError("asset probe must be an isolated GET")
+                    return self.gateway.response_for(self, HttpMethod.GET, asset, request.headers, None)
+                return super().send(request, **kwargs)
+
+        def run_query_asset() -> RunResult:
+            return execute_test_5_6_2_2_a(
+                self.work_dir, session_factory=lambda: QuerySession(self.fake),
+                capturer=self._capture, output=self.messages.append,
+            )
+
+        with patch.object(self.fake, "response_for", side_effect=response_for):
+            result: RunResult = run_query_asset()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual([(HttpMethod.GET, "/"), (HttpMethod.GET, asset)] +
+                         [(HttpMethod.GET, path) for path in GET_PATHS] +
+                         [(HttpMethod.GET, self.fake.calls[-2].path), ("HEAD", "/")],
+                         [(call.method, call.path) for call in self.fake.calls[3:]])
+        self.assertIn(asset, self._log())
+        self.assertNotIn("private-query-value", "\n".join(self.messages))
+        self.setUp()
+        disclose = True
+        original = self.fake.response_for
+        with patch.object(self.fake, "response_for", side_effect=response_for):
+            result = run_query_asset()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+        self.assertIn("credential value", self._log())
+        self.assertNotIn("private-query-value", "\n".join(self.messages))
+
     def test_disclosures_and_status_fail(self) -> None:
         scenarios: tuple[tuple[str, int | None, str | None, tuple[str, str] | None], ...] = (
             (GatewayApi.CONFIG, 200, '{"lan_auth_pass":"1234567890abcdef"}', None),

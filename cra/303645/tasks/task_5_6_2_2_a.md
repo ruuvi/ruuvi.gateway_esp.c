@@ -226,6 +226,11 @@ redirects are **captured, not followed**. Enumerate every source-relevant GET pa
 canonical [`lib.http_api`](../tests/lib/http_api.py) inventory, plus the static root, a
 representative static asset, an unknown `*.json`, and a single `HEAD /` discrepancy probe:
 
+Select the linked same-origin asset with its query string intact, decoding HTML attribute entities
+and excluding any client-only fragment. Preserve percent-encoded query bytes. Classify JS/CSS by
+its URL path so cache-busting queries retain the narrow public UI defaults. Preserve the exact request target in local evidence; omit query values from terminal
+assertions and disclosure summaries.
+
 | Probe                                                           | Expected unauthenticated status | Notes                                                                                                                                        |
 | :-------------------------------------------------------------- | :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /`                                                         | `200`, `text/html`              | Public Web-UI (`ruuvi.html`/`index.html`), served without auth ([static fallback](../../../docs/http_api.md#static-web-assets-and-fallback)) |
