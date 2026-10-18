@@ -172,10 +172,12 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     source_mac: str = ":".join(f"{octet:02x}" for octet in frame[6:12])
     options: list[tuple[int, str]] = []
     offset: int = bootp_offset + 240
+    end_seen: bool = False
     while offset < len(frame):
         code: int = frame[offset]
         offset += 1
         if code == 255:
+            end_seen = True
             break
         if code == 0:
             continue
@@ -187,6 +189,8 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
             return CaptureResult(None, interface, "truncated DHCP option value")
         options.append((code, frame[offset:offset + length].hex()))
         offset += length
+    if not end_seen:
+        return CaptureResult(None, interface, "DHCP options are missing the end marker")
     hostname_values: tuple[str, ...] = tuple(
         bytes.fromhex(value).decode("ascii", errors="replace") for code, value in options if code == 12
     )
@@ -614,6 +618,7 @@ class FunctionalTest_5_6_2_2_a:
         self.observations: list[Observation] = []
         self.findings: list[DisclosureFinding] = []
         self.default_username: str | None = None
+        self.verified_mac: str | None = None
 
     def _assert(self, check: str, condition: bool, description: str, actual: Any) -> None:
         self.evidence.write("ASSERTION", AssertionEvidence(description, "PASS" if condition else "FAIL", actual))
@@ -654,6 +659,7 @@ class FunctionalTest_5_6_2_2_a:
         expected_user: Any = defaults[GatewayCfgDesc.LAN_AUTH_USER]
         if not isinstance(expected_user, str):
             raise InvalidSetup("generated default LAN username is not a string")
+        self.verified_mac = mac if isinstance(mac, str) else None
         self.default_username = expected_user
         self.evidence.write("AUTHENTICATED PREFLIGHT", {"identity_verified": mac is not None,
                                                         "default_fields": defaults})
@@ -848,6 +854,12 @@ class FunctionalTest_5_6_2_2_a:
             self.outcomes["public metadata"] = "PASS"
 
     def _dhcp(self) -> None:
+        if self.verified_mac is None:
+            self.outcomes["DHCP capture"] = "ERROR"
+            identity_problem: str = "authenticated DUT MAC identity is unavailable; capture not started"
+            self.evidence.write("DHCP CAPTURE ERROR", identity_problem)
+            self.output(f"DHCP capture ERROR: {identity_problem}")
+            return
         result: CaptureResult = self.capturer(self.config.gw_hostname, CAPTURE_WINDOW_SECONDS)
         self.evidence.write("DHCP CAPTURE", result)
         if result.problem or not result.frame:
@@ -878,7 +890,7 @@ class FunctionalTest_5_6_2_2_a:
             self.outcomes["DHCP capture"] = "ERROR"
             self.output("DHCP capture ERROR: frame source is not the verified DUT Ethernet MAC")
             return
-        nrf52_mac_octets: list[str] = self.config.gw_mac.split(":")
+        nrf52_mac_octets: list[str] = self.verified_mac.split(":")
         expected_dhcp_hostname: str = (
             f"{DHCP_HOSTNAME_PREFIX}{nrf52_mac_octets[-2]}{nrf52_mac_octets[-1]}"
         )

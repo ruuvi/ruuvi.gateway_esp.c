@@ -1117,6 +1117,58 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
         self.assertIsNone(result.recovery_message)
 
+    def test_default_baseline_without_identity_cannot_start_dhcp_capture(self) -> None:
+        from lib.config import AUTHENTICATION_DEFAULT_FIELDS, default_config_values
+
+        earlier_failure: bool
+        for earlier_failure in (False, True):
+            with self.subTest(earlier_failure=earlier_failure):
+                self.setUp()
+                self.fake.config_override = default_config_values(AUTHENTICATION_DEFAULT_FIELDS)
+                if earlier_failure:
+                    self.fake.changed_path = "/"
+                    self.fake.changed_header = ("Server", "Ruuvi Gateway v1.2.3")
+                result: RunResult = self._run()
+                self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+                self.assertEqual("PASS", result.outcomes["factory-default preflight"])
+                self.assertEqual("FAIL" if earlier_failure else "PASS", result.outcomes["generic banner"])
+                self.assertEqual("ERROR", result.outcomes["DHCP capture"])
+                self.assertEqual([], self.capture_calls)
+                self.assertIsNone(result.recovery_message)
+                self.assertIn("authenticated DUT MAC identity is unavailable", "\n".join(self.messages))
+                self.assertIn("authenticated DUT MAC identity is unavailable", self._log())
+
+    def test_dhcp_option_end_marker_is_required_in_every_packet(self) -> None:
+        suffix: bytes
+        valid: bool
+        for suffix, valid in ((b"", False), (bytes(8), False), (b"\x3c\x01\xff", False),
+                              (b"\xff" + bytes(8), True)):
+            with self.subTest(suffix=suffix):
+                self.setUp()
+                bootp: bytearray = bytearray(240)
+                bootp[236:240] = b"\x63\x82\x53\x63"
+                ip_header: bytearray = bytearray(20)
+                ip_header[0] = 0x45
+                ip_header[9] = 17
+                hostname: bytes = DHCP_HOSTNAME.encode("ascii")
+                prefix: bytes = (
+                    bytes.fromhex("ffffffffffff0211223344550800") + ip_header + bytes(8)
+                    + bootp + bytes((12, len(hostname))) + hostname
+                )
+                frame: bytes = prefix + suffix
+                pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+                pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+                # A later complete record must not hide an earlier incomplete packet.
+                complete: bytes = prefix + b"\xff"
+                pcap += struct.pack("<IIII", 0, 0, len(complete), len(complete)) + complete
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                result: RunResult = self._run()
+                self.assertEqual("PASS" if valid else "ERROR", result.verdict)
+                self.assertEqual("PASS" if valid else "ERROR", result.outcomes["DHCP capture"])
+                if not valid:
+                    self.assertIsNone(self.capture.frame)
+                    self.assertIn("missing the end marker", "\n".join(self.messages))
+
     def test_decoded_dhcp_options_are_checked(self) -> None:
         bootp: bytearray = bytearray(240)
         bootp[236:240] = b"\x63\x82\x53\x63"

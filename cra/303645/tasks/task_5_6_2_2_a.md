@@ -302,7 +302,10 @@ host can capture and reset the dedicated DUT**. Specify it as a precondition-gat
   the DUT's LAN segment; and observation of a DHCP frame **from the DUT's active Ethernet or Wi-Fi
   MAC**, resolved from its verified IP through an on-link ARP/neighbor entry or equivalent trusted
   observation, within a finite capture window (named production constant). `.env` `gw_mac` is the
-  nRF52 identity MAC and must not be used as the frame-source filter. After the authenticated
+  nRF52 identity MAC and must not be used as the frame-source filter. Retain the matching MAC
+  returned by authenticated `/ruuvi.json`; if it is absent, mark DHCP ERROR before serial discovery,
+  capture, or reset. Never derive the expected DHCP hostname from an unverified `.env` MAC.
+  After the authenticated
   baseline and HTTP probes, discover the serial port, start `tcpdump`, wait for its listening
   indication, and only then call public `SerialTransport.reset()` and observe UART until the
   complete configured `### Start mDNS: Hostname:` line, for at most 30 seconds after reset; an early
@@ -313,13 +316,15 @@ host can capture and reset the dedicated DUT**. Specify it as a precondition-gat
 - **Behavior:**
   - If prerequisites are present and DHCP frames from the DUT are captured: assert the _last_ Option
     12 matches both the UART mDNS hostname and the short firmware hostname, `RuuviGateway` plus the
-    final two nRF52 MAC octets ([`generate_hostname()`](../../../main/ruuvi_gateway_main.c#L144)).
+    final two authenticated nRF52 MAC octets ([`generate_hostname()`](../../../main/ruuvi_gateway_main.c#L144)).
     Ethernet starts before setting the firmware hostname
     ([`ethernet_start()`](../../../main/ethernet.c#L382)), so an earlier frame can carry the lwIP
     default `espressif` ([`sdkconfig`](../../../sdkconfig)); that frame does not satisfy the final
     check. `.env` `gw_hostname` may be an mDNS name ending in `.local` or an IP address and is not
     the DHCP Option 12 value. Permit Option 60 only when its value repeats Option 12 in its own
-    frame. Scan all captured frames and reject other unexpected or sensitive options; contribute
+    frame. Require the DHCP option end marker (`255`) in every captured packet; exhaustion of
+    option bytes or zero padding without that marker is incomplete acquisition and ERROR.
+    Scan all captured frames and reject other unexpected or sensitive options; contribute
     PASS/FAIL to the verdict.
   - If prerequisites are **not** present (no root/capture tool/interface), the UART marker is
     absent, or no post-configuration DHCP hostname is observed: record **ERROR / undetermined** with
