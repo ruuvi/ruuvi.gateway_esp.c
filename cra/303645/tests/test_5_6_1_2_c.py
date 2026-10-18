@@ -63,7 +63,7 @@ MDNS_TIMEOUT: float = 3.0
 TCPDUMP_START_TIMEOUT: float = 10.0
 NTP_REQUEST_TIMEOUT: float = 25.0
 NTP_CAPTURE_FILTER: str = "udp dst port 123 and udp[4:2] = 56 and (udp[8] & 7) = 3"
-TOTAL_STEPS: int = 12
+TOTAL_STEPS: int = 12  # Wrapper .env phase, ten acquisition phases, and finally-block restoration.
 DEFAULT_FIELDS: tuple[str, ...] = AUTHENTICATION_DEFAULT_FIELDS + (
     "use_http", "http_url", "http_data_format", "http_auth", "use_mqtt", "mqtt_data_format", "remote_cfg_use",
     "ntp_use", "ntp_use_dhcp", "ntp_server1", "ntp_server2", "ntp_server3", "ntp_server4",
@@ -472,6 +472,7 @@ class FunctionalTest_5_6_1_2_c:
         self.baseline_config = payload
         self.original_ntp_server1 = payload["ntp_server1"]
         self.auth_session = login.session
+        # Local evidence retains the full HTTP/configuration contract; only terminal output is secret-free.
         self.evidence.write("FULL CONFIGURATION BASELINE", payload)
         self.outcomes["factory-default preflight"] = "PASS"
 

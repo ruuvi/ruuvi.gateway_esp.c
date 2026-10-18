@@ -12,7 +12,8 @@ Read the [automation assessment](../Functional_Test_Automation_Assessment.md),
 [test README](../tests/README.md), [CRA test rules](../tests/AGENTS.md), and
 [shared-library API](../tests/lib/README.md) before implementing this task. The assessment
 classifies this unit as AUTO; that is feasibility, not an implemented test or a recorded live
-verdict. The runner and paired implementation suite named below are future deliverables.
+verdict. The runner and paired implementation suite named below are implemented; their offline
+tests verify automation behavior, while live execution remains necessary for functional evidence.
 
 - Use Python 3.8 and explicit, accurate annotations for every variable, parameter, return value,
   constant, attribute, fixture, and local binding. Follow the rules for loop, unpacking, context,
@@ -433,7 +434,7 @@ Follow the `FunctionalTest_5_6_1_2_c` dependency-injection pattern with an
 
 ## Execution and configuration
 
-Live execution after implementing this task (not host-side validation):
+Live execution (not host-side validation):
 
 ```text
 cd cra/303645/tests
@@ -455,7 +456,19 @@ lines; raw XML; parsed open/closed/filtered sets; `tcpdump` command/output, capt
 port, UDP coverage comparison, NTP change/read-back and final restoration verification; mDNS and
 transient-interface probe request/responses; the computed expected model from IXIT 28/15;
 per-finding comparison including the disablement checks; re-confirmation probes; per-check and
-overall verdicts; and exception types/tracebacks. Keep terminal output concise.
+overall verdicts; and exception types/tracebacks. Keep terminal output concise and secret-free.
+
+As required by the shared [evidence contract](../tests/lib/README.md#evidence), local HTTP evidence
+records complete requests/responses before interpretation, and the baseline record retains the full
+authenticated configuration for preservation/recovery auditing. These local artifacts can contain
+credentials, cookies, authentication material and credential-bearing URLs, including when preflight
+rejects a non-default configuration. Keep generated logs local and out of commits; handle them as
+DUT credentials. The prohibition on dumping protocol bodies/secrets applies to terminal explanations;
+it does not redact the complete local protocol evidence. Do not share these logs as public reports.
+
+A completed run emits 12 numbered progress phases: `.env` loading, ten acquisition phases, and
+the restoration phase in `finally`. The last phase runs after mutation even when acquisition fails;
+setup failures can stop before all phases. Each emitted numbered line is mirrored in evidence.
 
 ## DUT preconditions
 

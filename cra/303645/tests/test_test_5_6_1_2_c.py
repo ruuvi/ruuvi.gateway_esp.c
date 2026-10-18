@@ -373,7 +373,26 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         self.assertIn('"only_sntp_source_is_closed_filtered": true', evidence)
         self.assertIn('"full_baseline_verified": true', evidence)
         self.assertIn("OVERALL VERDICT: PASS", evidence)
-        self.assertEqual(12, sum(line.startswith("[Step ") for line in self.lines))
+        progress: list[str] = [line for line in self.lines if line.startswith("[Step ")]
+        expected_phases: tuple[str, ...] = (
+            "Loading and validating .env",
+            "Resolving DUT LAN IPv4 address",
+            "Checking nmap version and UDP privilege",
+            "Authenticating and checking factory-default identity and configuration",
+            "Scanning full TCP range and confirming unexpected listeners",
+            "Starting tcpdump for the gateway NTP client request",
+            "Temporarily setting ntp_server1 and capturing its UDP source port",
+            "Scanning full privileged UDP range",
+            "Probing documented mDNS responder",
+            "Confirming UDP listeners and hotspot-server disablement",
+            "Comparing confirmed sockets with enabled IXIT 28 entries",
+            "Restoring and verifying the original NTP configuration",
+        )
+        self.assertEqual([
+            f"[Step {index} out of 12] {phase}" for index, phase in enumerate(expected_phases, 1)
+        ], progress)
+        self.assertEqual(progress, [line.split("] ", 1)[1] for line in evidence.splitlines()
+                                    if "] [Step " in line])
         self.assertIn("Overall verdict: PASS", self.lines)
 
     def test_enumerated_full_range_udp_xml_supports_exact_sntp_coverage(self) -> None:
@@ -770,6 +789,33 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
                     self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
                     self.assertFalse(any("-sT" in call for call in self.nmap.calls))
                     self.assertIn(FACTORY_RESET_MESSAGE, result.recovery_message or "")
+
+    def test_complete_local_baseline_and_http_evidence_keep_terminal_secret_free(self) -> None:
+        secret_url: str = "https://secret-user:secret-password@example.com/record?token=secret-token"
+        # An unrelated saved value is not a default-field gate, but must survive scoped NTP writes.
+        self.gateway.fields["saved_service_url"] = secret_url
+        baseline: dict[str, Any] = dict(self.gateway.fields)
+        result: RunResult = self.execute()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code))
+        self.assertEqual(baseline, self.gateway.fields)
+        console: str = "\n".join(self.lines)
+        secret: str
+        for secret in (secret_url, "secret-user", "secret-password", "secret-token"):
+            self.assertNotIn(secret, console)
+        evidence: str = self.evidence()
+        baseline_lines: list[str] = [line for line in evidence.splitlines()
+                                     if "FULL CONFIGURATION BASELINE: " in line]
+        self.assertEqual(1, len(baseline_lines))
+        self.assertIn(secret_url, baseline_lines[0])
+        # Inspect actual serialized HTTP sections, not just the runner's duplicate baseline record.
+        responses: list[str] = [block.split("HTTP RESPONSE END", 1)[0]
+                               for block in evidence.split("HTTP RESPONSE BEGIN")[1:]]
+        self.assertEqual(10, len(responses))
+        self.assertEqual(4, sum(secret_url in response for response in responses))
+        first_response: int = evidence.index(secret_url)
+        baseline_offset: int = evidence.index("FULL CONFIGURATION BASELINE")
+        self.assertLess(first_response, baseline_offset)
+        self.assertIn("OVERALL VERDICT: PASS", evidence)
 
     def test_secret_bearing_http_url_rejection_only_records_value_in_evidence(self) -> None:
         secret_url: str = "https://secret-user:secret-password@example.com/record?token=secret-token"
