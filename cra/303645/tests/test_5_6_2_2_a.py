@@ -446,6 +446,9 @@ def scan_observation(
     media_type: str = next((value.split(";", 1)[0].strip().lower()
                             for name, value in observation.headers if name.lower() == "content-type"), "")
     rendered_body: bool = media_type in {"text/html", "text/plain"}
+    executable_body: bool = media_type in {
+        "application/javascript", "text/javascript", "application/ecmascript", "text/ecmascript", "text/css",
+    } or (not media_type and observation.probe.path.endswith((".js", ".css")))
     if media_type == "text/html":
         html_text: PublicHtmlText = PublicHtmlText()
         html_text.feed(observation.body)
@@ -476,7 +479,9 @@ def scan_observation(
         if location.startswith("header:") or (location == "body" and observation.status != HttpStatus.C_200_OK):
             patterns += (("build identifier", BUILD_PATTERN),)
         if location.startswith("header:") or location == "rendered body" or (
-            location == "body" and not rendered_body and observation.status != HttpStatus.C_200_OK
+            location == "body" and not rendered_body and (
+                not executable_body or observation.status != HttpStatus.C_200_OK
+            )
         ):
             patterns += (("diagnostic", DIAGNOSTIC_PATTERN),)
         category: str
@@ -532,15 +537,40 @@ def scan_observation(
         for opening in re.finditer(r"\{", content):
             try:
                 decoded: Any
-                end: int
-                decoded, end = decoder.raw_decode(content, opening.start())
+                _end: int
+                decoded, _end = decoder.raw_decode(content, opening.start())
             except json.JSONDecodeError:
                 continue
             if isinstance(decoded, dict):
-                wifi: Any = decoded.get("wifi_sta_config")
-                if isinstance(wifi, dict) and isinstance(wifi.get("password"), str) and wifi["password"]:
-                    findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
-                                                      location, "Wi-Fi PSK", content[opening.start():end]))
+                # Canonical serialization exposes escaped keys at every nesting depth while
+                # retaining value types: empty defaults and JSON schemas remain public.
+                normalized: str = json.dumps(decoded, ensure_ascii=False)
+                decoded_patterns: tuple[tuple[str, re.Pattern[str]], ...] = (
+                    ("Wi-Fi PSK", WIFI_PASSWORD_PATTERN), ("personal telemetry", HISTORY_PATTERN),
+                    ("sensor tags", TAGS_PATTERN), ("coordinates", COORDINATES_PATTERN),
+                    ("private key", PEM_PATTERN), ("bearer token", BEARER_PATTERN),
+                )
+                decoded_category: str
+                decoded_pattern: re.Pattern[str]
+                for decoded_category, decoded_pattern in decoded_patterns:
+                    decoded_hit: re.Match[str]
+                    for decoded_hit in decoded_pattern.finditer(normalized):
+                        if decoded_category == "bearer token":
+                            decoded_candidate: str = decoded_hit.group(0).split()[-1]
+                            decoded_context: str = normalized[max(0, decoded_hit.start() - 24):decoded_hit.start()].lower()
+                            if decoded_candidate.isalpha() and len(decoded_candidate) < 24 and "authorization" not in decoded_context:
+                                continue
+                        findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                          location, decoded_category, decoded_hit.group(0)))
+                decoded_field: re.Match[str]
+                for decoded_field in SECRET_FIELD_PATTERN.finditer(normalized):
+                    if not (
+                        location == "body" and observation.probe.path.endswith((".js", ".css"))
+                        and decoded_field.group(1) == GatewayCfgDesc.LAN_AUTH_USER
+                        and decoded_field.group(3) == default_username
+                    ):
+                        findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                          location, "credential value", decoded_field.group(0)))
         field_match: re.Match[str]
         for field_match in SECRET_FIELD_PATTERN.finditer(content):
             field: str = field_match.group(1)
@@ -763,6 +793,8 @@ class FunctionalTest_5_6_2_2_a:
                 challenge: dict[str, str] = self.gateway.parse_interactive_challenge(
                     headers.get(HttpHeader.WWW_AUTHENTICATE.lower()),
                 )
+                self._assert("redirects and challenge", challenge["realm"] == "Ruuvi Gateway",
+                             "ephemeral challenge has declared Ruuvi Gateway realm", challenge["realm"])
                 self._assert("redirects and challenge", bool(challenge["challenge"] and challenge["session_id"]),
                              "ephemeral challenge has nonce and session id", challenge)
                 self._assert("redirects and challenge", "RUUVISESSION=" in headers.get("set-cookie", ""),

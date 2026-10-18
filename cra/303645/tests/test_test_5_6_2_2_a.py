@@ -243,6 +243,73 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(expected, result.verdict, self.messages)
                 self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
 
+    def test_successful_non_script_diagnostics_and_executable_controls(self) -> None:
+        content_type: str
+        body: str
+        expected: str
+        for content_type, body, expected in (
+            ("application/json", '{"error":"panic"}', "FAIL"),
+            ("application/json", '{"error":"abort()"}', "FAIL"),
+            ("application/octet-stream", "abort() called", "FAIL"),
+            ("application/json", '{"status":"ready"}', "PASS"),
+            ("application/javascript", 'const label="panic abort()";', "PASS"),
+            ("text/css", 'p:after{content:"panic abort()"}', "PASS"),
+        ):
+            with self.subTest(content_type=content_type, body=body):
+                self.setUp()
+                self.fake.changed_path = "/app.js"
+                self.fake.changed_header = ("Content-Type", content_type)
+                self.fake.changed_body = body
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_escaped_json_disclosures_and_public_defaults(self) -> None:
+        body: str
+        expected: str
+        for body, expected in (
+            (r'{"m\u0071tt_pass":"leaked"}', "FAIL"),
+            (r'{"nested":{"lan_auth_pa\u0073s":"leaked"}}', "FAIL"),
+            (r'{"lan_auth_api_ke\u0079":"qrstuvwxyz012345"}', "FAIL"),
+            (r'{"remote_cfg_auth_bearer_to\u006ben":"leaked"}', "FAIL"),
+            (r'{"hist\u006fry":[{"temperature":25}]}', "FAIL"),
+            (r'{"sensor_da\u0074a":["telemetry"]}', "FAIL"),
+            (r'{"ble_m\u0061c":{"address":"AA:BB:CC:DD:EE:FF"}}', "FAIL"),
+            (r'{"ta\u0067s":{"AA:BB:CC:DD:EE:FF":{"data":"telemetry"}}}', "FAIL"),
+            (r'{"coordina\u0074es":"office"}', "FAIL"),
+            (r'{"wifi_sta_co\u006efig":{"pass\u0077ord":"secret"}}', "FAIL"),
+            (r'{"m\u0071tt_pass":"","lan_auth_us\u0065r":"Admin","hist\u006fry":[]}', "PASS"),
+            (r'{"properties":{"m\u0071tt_pass":{"type":"string"},"ta\u0067s":{"type":"object"}}}', "PASS"),
+            (r'{"label":"Bearer authentication"}', "PASS"),
+        ):
+            with self.subTest(body=body):
+                self.setUp()
+                self.fake.changed_path = "/app.js"
+                # An array and an embedded object exercise nested decoded JSON in public assets.
+                self.fake.changed_body = "window.fixture = [" + body + "];"
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_public_challenge_requires_exact_declared_realm(self) -> None:
+        original_response: Callable[..., FakeResponse] = self.fake.response_for
+
+        def wrong_realm(session: FakeSession, method: str, path: str,
+                        headers: Mapping[str, str], body: Any,
+                        allow_redirects: bool = False) -> FakeResponse:
+            response: FakeResponse = original_response(session, method, path, headers, body, allow_redirects)
+            if path == GatewayApi.AUTH and len(self.fake.calls) > 3:
+                response.headers["WWW-Authenticate"] = response.headers["WWW-Authenticate"].replace(
+                    'realm="Ruuvi Gateway"', 'realm="attacker-realm"',
+                )
+            return response
+
+        with patch.object(self.fake, "response_for", side_effect=wrong_realm):
+            result: RunResult = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual("FAIL", result.outcomes["redirects and challenge"])
+        self.assertIn("declared Ruuvi Gateway realm", self._log())
+
     def test_credential_header_names_are_scanned_with_public_header_controls(self) -> None:
         name: str
         value: str
@@ -447,7 +514,7 @@ class RunnerTests(unittest.TestCase):
         payload: bytes
         early: bool
         for field_offset in (44, 108):
-            for payload in (b"mqtt_pass=abc", CONFIG.gw_id.encode(), bytes.fromhex(CONFIG.gw_id.replace(":", "")), b""):
+            for payload in (b"mqtt_pass=abc", CONFIG.gw_id.encode(), bytes.fromhex(CONFIG.gw_id.replace(":", "")), b"\x00\x01", b""):
                 for early in (False, True):
                     with self.subTest(field_offset=field_offset, payload=payload, early=early):
                         self.setUp()
