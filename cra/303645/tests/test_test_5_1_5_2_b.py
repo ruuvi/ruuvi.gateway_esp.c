@@ -620,6 +620,7 @@ class FunctionalTestCase(unittest.TestCase):
         payload: dict[str, Any] = json.loads(
             json.dumps(
                 {
+                    GatewayCfgDesc.GW_MAC: CONFIG.gw_mac,
                     GatewayCfgDesc.LAN_AUTH_TYPE: GatewayCfgLanAuthType.DEFAULT,
                     GatewayCfgDesc.LAN_AUTH_USER: target.ADMIN_USERNAME,
                     GatewayCfgDesc.LAN_AUTH_API_KEY_USE: False,
@@ -628,6 +629,90 @@ class FunctionalTestCase(unittest.TestCase):
             )
         )
         self.make_runner()._validate_baseline(payload)
+
+    def test_missing_authenticated_identity_stops_before_second_read_and_mutation(self) -> None:
+        original: Callable[..., FakeResponse] = self.gateway._config_response
+
+        def config_response() -> FakeResponse:
+            response: FakeResponse = original()
+            response._payload.pop(GatewayCfgDesc.GW_MAC, None)
+            return response
+
+        with mock.patch.object(self.gateway, "_config_response", side_effect=config_response):
+            result: RunResult = self.make_runner().run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertIsNone(result.recovery_message)
+        self.assertEqual([], self.gateway.config_bodies)
+        self.assertEqual(
+            [("GET", GatewayApi.AUTH), ("POST", GatewayApi.AUTH), ("GET", GatewayApi.CONFIG)],
+            [(call.method, call.path) for call in self.gateway.calls],
+        )
+
+    def test_deny_retains_explicit_rw_recovery_and_checks_exact_noop(self) -> None:
+        runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=2)
+        result: RunResult = runner.run()
+        self.assertEqual((0, "PASS"), (result.exit_code, result.verdict))
+        transition: int = next(
+            index for index, call in enumerate(self.gateway.calls)
+            if isinstance(call.body, dict) and call.body.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DENY
+        )
+        calls: list[RecordedRequest] = self.gateway.calls[transition:transition + 7]
+        rw: str = runner.temporary_rw_key or ""
+        self.assertTrue(rw)
+        self.assertEqual(rw, calls[0].body[GatewayCfgDesc.LAN_AUTH_API_KEY_RW])
+        self.assertEqual(
+            [("POST", GatewayApi.CONFIG, rw), ("GET", GatewayApi.STATUS, None),
+             ("GET", GatewayApi.STATUS, None), ("GET", GatewayApi.CONFIG, rw),
+             ("POST", GatewayApi.CONFIG, rw), ("GET", GatewayApi.CONFIG, rw),
+             ("POST", GatewayApi.CONFIG, rw)],
+            [(call.method, call.path, call.bearer_token) for call in calls],
+        )
+        self.assertTrue(all(call.cookie is None for call in calls))
+        self.assertEqual({}, calls[4].body)
+        self.assertEqual(GatewayCfgLanAuthType.RUUVI, calls[6].body[GatewayCfgDesc.LAN_AUTH_TYPE])
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+
+    def test_lost_deny_transition_reply_restores_with_retained_rw_key(self) -> None:
+        runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
+        original: Callable[..., requests.Response] = runner._post_config
+
+        def post(session: requests.Session, body: dict[str, Any], bearer_key: str | None = None) -> requests.Response:
+            response: requests.Response = original(session, body, bearer_key)
+            if body.get(GatewayCfgDesc.LAN_AUTH_TYPE) == GatewayCfgLanAuthType.DENY:
+                self.assertEqual(GatewayCfgLanAuthType.DENY, self.gateway.mode)
+                raise target.GatewayConnectionError("DENY reply lost after application")
+            return response
+
+        with mock.patch.object(runner, "_post_config", side_effect=post):
+            result: RunResult = runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("ERROR", result.outcomes[AuthMech.LAN_WEBUI_DISABLED])
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertIsNone(result.recovery_message)
+        self.assertEqual(["bearer"], self.gateway.restoration_attempts)
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, self.gateway.mode)
+        writes: list[RecordedRequest] = [
+            call for call in self.gateway.calls if call.method == "POST" and call.path == GatewayApi.CONFIG
+        ]
+        self.assertEqual(GatewayCfgLanAuthType.DENY, writes[-2].body[GatewayCfgDesc.LAN_AUTH_TYPE])
+        self.assertEqual(GatewayCfgLanAuthType.DEFAULT, writes[-1].body[GatewayCfgDesc.LAN_AUTH_TYPE])
+        self.assertEqual(runner.temporary_rw_key, writes[-1].bearer_token)
+
+    def test_blocked_rw_in_deny_is_error_with_unverified_restoration(self) -> None:
+        runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=1)
+
+        def block(_session: FakeSession, call: RecordedRequest) -> FakeResponse | None:
+            if self.gateway.mode == GatewayCfgLanAuthType.DENY and call.bearer_token is not None:
+                return FakeResponse(403, {})
+            return None
+
+        with mock.patch.object(self.gateway, "_response_override", side_effect=block):
+            result: RunResult = runner.run()
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
+        self.assertEqual("ERROR", result.outcomes[AuthMech.LAN_WEBUI_DISABLED])
+        self.assertEqual("ERROR", result.outcomes["final restoration"])
+        self.assertEqual(target.FACTORY_RESET_MESSAGE, result.recovery_message)
+        self.assertEqual(GatewayCfgLanAuthType.DENY, self.gateway.mode)
 
     def test_complete_reduced_sequence_passes_and_restores(self) -> None:
         runner: target.FunctionalTest_5_1_5_2_b = self.make_runner()

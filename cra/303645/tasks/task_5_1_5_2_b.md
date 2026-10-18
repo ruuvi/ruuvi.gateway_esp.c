@@ -201,7 +201,17 @@ sessions for guesses and scope checks. RO on the POST route must return HTTP `40
 Within the prepared custom state, complete the interactive and bearer read controls, custom password
 campaign, and RO guess campaign before configuration probes. Then check RO denial on POST, verify an
 RW no-op and its unchanged hash, run the RW guess campaign, and repeat the RW no-op/hash control.
-Basic/Digest/ALLOW/DENY campaigns follow in their own explicitly configured states. Timing-only
+Basic/Digest/ALLOW/DENY campaigns follow in their own explicitly configured states.
+DENY disables interactive access, while explicit API keys retain precedence on ordinary LAN
+routes (see [bearer authorization](../../../docs/http_api.md#bearer-api-key-ro-vs-rw)).
+Keep the temporary RW key enabled in every mode transition, including DENY. After its cookie-free,
+bearer-free denial campaign, verify an RW-bearing GET/no-op POST/GET sequence and an unchanged
+configuration hash before the RW-bearing transition back to RUUVI. The no-op POST body is exactly
+`{}`. If this recovery control fails, stop further probes and attempt mandatory restoration;
+report ERROR and the reset instruction if restoration cannot be verified. Do not assume
+interactive, Basic, Digest, or ALLOW credentials can bypass DENY. A lost DENY-transition reply
+still requires trying the retained RW key in restoration and verifying the final baseline.
+Timing-only
 failures may be collected while testing continues, but **any unexpected `2xx` from a negative probe
 aborts all later probes and transitions**. Run mandatory restoration after that abort.
 

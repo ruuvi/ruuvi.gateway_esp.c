@@ -606,19 +606,18 @@ class FunctionalTest_5_1_5_2_b:
         raise AssertionError("unreachable")
 
     def _validate_baseline(self, payload: dict[str, Any], auth_payload: dict[str, Any] | None = None) -> None:
-        if GatewayCfgDesc.GW_MAC in payload:
-            actual_mac: Any = payload[GatewayCfgDesc.GW_MAC]
-            self._require_setup(isinstance(actual_mac, str), "gw_mac is a string", actual_mac)
-            self._require_setup(
-                OCTETS_6_RE.fullmatch(actual_mac) is not None,
-                "gw_mac is a six-octet MAC",
-                actual_mac,
-            )
-            self._require_setup(
-                self._normalize_mac(actual_mac) == self._normalize_mac(self.config.gw_mac),
-                "DUT gw_mac matches .env",
-                actual_mac,
-            )
+        actual_mac: Any = payload.get(GatewayCfgDesc.GW_MAC)
+        self._require_setup(isinstance(actual_mac, str), "gw_mac is a string", actual_mac)
+        self._require_setup(
+            OCTETS_6_RE.fullmatch(actual_mac) is not None,
+            "gw_mac is a six-octet MAC",
+            actual_mac,
+        )
+        self._require_setup(
+            self._normalize_mac(actual_mac) == self._normalize_mac(self.config.gw_mac),
+            "DUT gw_mac matches .env",
+            actual_mac,
+        )
         if auth_payload is not None:
             auth_type: Any = auth_payload.get(GatewayCfgDesc.LAN_AUTH_TYPE)
             if auth_type != GatewayCfgLanAuthType.DEFAULT:
@@ -1227,6 +1226,14 @@ class FunctionalTest_5_1_5_2_b:
                 True,
             ),
         )
+        # The firmware checks explicit bearer keys before the DENY interactive
+        # mode. Keep the provisioned RW key enabled throughout this transition;
+        # prove its read/write access and unchanged state before using it to exit.
+        try:
+            self._verify_rw_noop()
+        except Exception:
+            self._set_outcome(AuthMech.LAN_WEBUI_DISABLED, "ERROR")
+            raise
         self._configure_auth_mode(GatewayCfgLanAuthType.RUUVI, username, digest_ha1)
         if failures:
             raise failures[0]
