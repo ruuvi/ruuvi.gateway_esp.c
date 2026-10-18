@@ -26,11 +26,14 @@ from test_5_6_2_2_a import (
     CAPTURE_VISIBILITY_INSTRUCTION,
     CAPTURE_WINDOW_SECONDS,
     CaptureResult,
+    Observation,
+    Probe,
     _wait_for_tcpdump_ready,
     capture_dhcp,
     capture_dhcp_after_reset,
     decode_dhcp_pcap,
     execute_test_5_6_2_2_a,
+    scan_observation,
 )
 from test_support.fake_gateway import DefaultAuthGateway, FakeResponse, FakeSession, RecordedRequest, env_text
 
@@ -294,6 +297,48 @@ class RunnerTests(unittest.TestCase):
                 self.fake.changed_path = "/app.js"
                 # An array and an embedded object exercise nested decoded JSON in public assets.
                 self.fake.changed_body = "window.fixture = [" + body + "];"
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_escaped_credential_quotes_preserve_complete_finding(self) -> None:
+        assignment: str
+        for assignment in (r'"mqtt_pass":"abc\"def"', r"'mqtt_pass':'abc\'def'",
+                           r'"mqtt_pass":"\""', r'"mqtt_pass":"abc\\"'):
+            with self.subTest(assignment=assignment):
+                self.setUp()
+                self.fake.changed_path = "/app.js"
+                body: str = "{" + assignment + "}"
+                self.fake.changed_body = body
+                result: RunResult = self._run()
+                self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+                observation: Observation = Observation(
+                    Probe(HttpMethod.GET, "/app.js", 200), (), body, 200,
+                )
+                tokens: list[str] = [finding.token for finding in scan_observation(observation, CONFIG.gw_id, "Admin")
+                                     if finding.category == "credential value"]
+                self.assertIn(assignment, tokens)
+
+    def test_decoded_and_contiguous_device_id_seeds_are_detected(self) -> None:
+        text: str
+        in_header: bool
+        expected: str
+        for text, in_header, expected in (
+            (r'{"nested":{"value":"AA\u003ABB\u003ACC\u003ADD\u003AEE\u003AFF\u003A00\u003A11"}}', False, "FAIL"),
+            (r'["AA\u003ABB\u003ACC\u003ADD\u003AEE\u003AFF\u003A00\u003A11"]', False, "FAIL"),
+            ('{"value":"aabbccddeeff0011"}', False, "FAIL"),
+            ("seed=AABBCCDDEEFF0011", True, "FAIL"),
+            (CONFIG.gw_id.lower(), True, "FAIL"),
+            ('{"value":"0aabbccddeeff0011f"}', False, "PASS"),
+            ('{"value":"aabbccddeeff0012"}', False, "PASS"),
+        ):
+            with self.subTest(text=text, in_header=in_header):
+                self.setUp()
+                self.fake.changed_path = "/app.js"
+                if in_header:
+                    self.fake.changed_header = ("X-Public-Value", text)
+                else:
+                    self.fake.changed_body = "window.fixture = [" + text + "];"
                 result: RunResult = self._run()
                 self.assertEqual(expected, result.verdict, self.messages)
                 self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
@@ -1137,6 +1182,36 @@ class RunnerTests(unittest.TestCase):
                 self.assertIsNone(result.recovery_message)
                 self.assertIn("authenticated DUT MAC identity is unavailable", "\n".join(self.messages))
                 self.assertIn("authenticated DUT MAC identity is unavailable", self._log())
+
+    def test_dhcp_rejects_invalid_ipv4_version_and_header_length(self) -> None:
+        version_ihl: int
+        for version_ihl in (0x65, 0x05, 0x40, 0x41, 0x44, 0x45, 0x46):
+            with self.subTest(version_ihl=version_ihl):
+                self.setUp()
+                ip_header: bytearray = bytearray((version_ihl & 0x0F) * 4)
+                if len(ip_header) < 10:
+                    ip_header.extend(bytes(10 - len(ip_header)))
+                ip_header[0] = version_ihl
+                ip_header[9] = 17
+                bootp: bytearray = bytearray(240)
+                bootp[236:240] = b"\x63\x82\x53\x63"
+                hostname: bytes = DHCP_HOSTNAME.encode("ascii")
+                frame: bytes = (bytes.fromhex("ffffffffffff0211223344550800") + ip_header + bytes(8)
+                                + bootp + bytes((12, len(hostname))) + hostname + b"\xff")
+                pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+                pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+                complete: bytes = (bytes.fromhex("ffffffffffff021122334455080045000000000000000011")
+                                   + bytes(10) + bytes(8) + bootp
+                                   + bytes((12, len(hostname))) + hostname + b"\xff")
+                # A later valid packet cannot erase a malformed earlier observation.
+                pcap += struct.pack("<IIII", 0, 0, len(complete), len(complete)) + complete
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                result: RunResult = self._run()
+                expected: str = "PASS" if version_ihl in {0x45, 0x46} else "ERROR"
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["DHCP capture"])
+                if expected == "ERROR":
+                    self.assertIn("IPv4", self.capture.problem or "")
 
     def test_dhcp_option_end_marker_is_required_in_every_packet(self) -> None:
         suffix: bytes

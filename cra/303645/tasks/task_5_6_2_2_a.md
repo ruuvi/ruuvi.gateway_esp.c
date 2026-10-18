@@ -148,7 +148,9 @@ Disclosure scanning includes nonempty credential input values identified by a kn
 `name` or `id`, including hidden inputs, as well as literal assignments in rendered HTML and
 `text/plain` responses. Scan decoded rendered text for quoted configuration dumps and runtime
 diagnostics at every HTTP status, excluding script/style text from the rendered scan. Decode JSON
-where possible and preserve quote/escape boundaries in embedded Wi-Fi configuration literals.
+where possible and preserve quote/escape boundaries in quoted credential and embedded Wi-Fi
+configuration literals. Check DeviceID seeds in raw and decoded JSON text, including the equivalent
+contiguous hexadecimal representation; do not match a substring of a longer hexadecimal value.
 Nonempty headers named for known credentials also fail the scan, independent of their value syntax.
 Empty controls and ordinary JavaScript expressions are not credentials.
 For every captured DHCP packet, inspect BOOTP's fixed `sname` and `file` fields as well as DHCP
@@ -322,7 +324,8 @@ host can capture and reset the dedicated DUT**. Specify it as a precondition-gat
     default `espressif` ([`sdkconfig`](../../../sdkconfig)); that frame does not satisfy the final
     check. `.env` `gw_hostname` may be an mDNS name ending in `.local` or an IP address and is not
     the DHCP Option 12 value. Permit Option 60 only when its value repeats Option 12 in its own
-    frame. Require the DHCP option end marker (`255`) in every captured packet; exhaustion of
+    frame. Validate the IPv4 version and minimum 20-byte header before decoding UDP/BOOTP.
+    Require the DHCP option end marker (`255`) in every captured packet; exhaustion of
     option bytes or zero padding without that marker is incomplete acquisition and ERROR.
     Scan all captured frames and reject other unexpected or sensitive options; contribute
     PASS/FAIL to the verdict.

@@ -75,7 +75,7 @@ SECRET_FIELDS: tuple[str, ...] = (
 )
 SECRET_FIELD_PATTERN: re.Pattern[str] = re.compile(
     r'(?i)["\']?(' + "|".join(re.escape(field) for field in SECRET_FIELDS) +
-    r')["\']?\s*[:=]\s*(["\'])((?:(?!\2).)+)\2', re.DOTALL
+    r')["\']?\s*[:=]\s*(["\'])((?:\\.|(?!\2)[^\\])+)\2', re.DOTALL
 )
 HEADER_SECRET_FIELD_PATTERN: re.Pattern[str] = re.compile(
     r'(?i)(?<![\w.])(' + "|".join(re.escape(field) for field in SECRET_FIELDS) +
@@ -163,8 +163,10 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     if len(frame) < 14 or frame[12:14] != b"\x08\x00":
         return CaptureResult(None, interface, "captured frame was not Ethernet IPv4")
     ip_offset: int = 14
+    if len(frame) < ip_offset + 20 or frame[ip_offset] >> 4 != 4:
+        return CaptureResult(None, interface, "captured frame was not complete IPv4")
     ip_header_length: int = (frame[ip_offset] & 0x0F) * 4
-    if len(frame) < ip_offset + ip_header_length + 8 or frame[ip_offset + 9] != 17:
+    if ip_header_length < 20 or len(frame) < ip_offset + ip_header_length + 8 or frame[ip_offset + 9] != 17:
         return CaptureResult(None, interface, "captured frame was not complete IPv4 UDP")
     bootp_offset: int = ip_offset + ip_header_length + 8
     if len(frame) < bootp_offset + 240 or frame[bootp_offset + 236:bootp_offset + 240] != b"\x63\x82\x53\x63":
@@ -445,6 +447,10 @@ def scan_observation(
     observation: Observation, gw_id: str, default_username: str, public_base_url: str = "",
 ) -> tuple[DisclosureFinding, ...]:
     findings: list[DisclosureFinding] = []
+    seed_pattern: re.Pattern[str] = re.compile(
+        r"(?<![0-9a-f])(?:" + re.escape(gw_id) + "|" + re.escape(gw_id.replace(":", "")) + r")(?![0-9a-f])",
+        re.IGNORECASE,
+    )
     parts: list[tuple[str, str]] = [(f"header:{name}", value) for name, value in observation.headers]
     parts.append(("body", observation.body))
     media_type: str = next((value.split(";", 1)[0].strip().lower()
@@ -521,7 +527,7 @@ def scan_observation(
                         continue
                 findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                                   location, category, hit.group(0)))
-        if gw_id and gw_id.lower() in content.lower():
+        if gw_id and seed_pattern.search(content):
             findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                               location, "DeviceID password seed", gw_id))
         if location.startswith("header:"):
@@ -534,21 +540,24 @@ def scan_observation(
             for bare_match in HEADER_SECRET_FIELD_PATTERN.finditer(content):
                 findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                                   location, "credential value", bare_match.group(0)))
-        # Decode complete JSON objects even when embedded in a public asset or rendered dump.
+        # Decode JSON containers and strings embedded in a public asset or rendered dump.
         # This handles escaped property names/values without interpreting JavaScript expressions.
         decoder: json.JSONDecoder = json.JSONDecoder()
         opening: re.Match[str]
-        for opening in re.finditer(r"\{", content):
+        for opening in re.finditer(r'[\[{"]', content):
             try:
                 decoded: Any
                 _end: int
                 decoded, _end = decoder.raw_decode(content, opening.start())
             except json.JSONDecodeError:
                 continue
+            normalized: str = json.dumps(decoded, ensure_ascii=False)
+            if gw_id and seed_pattern.search(normalized):
+                findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
+                                                  location, "DeviceID password seed", gw_id))
             if isinstance(decoded, dict):
                 # Canonical serialization exposes escaped keys at every nesting depth while
                 # retaining value types: empty defaults and JSON schemas remain public.
-                normalized: str = json.dumps(decoded, ensure_ascii=False)
                 decoded_patterns: tuple[tuple[str, re.Pattern[str]], ...] = (
                     ("Wi-Fi PSK", WIFI_PASSWORD_PATTERN), ("personal telemetry", HISTORY_PATTERN),
                     ("sensor tags", TAGS_PATTERN), ("coordinates", COORDINATES_PATTERN),
