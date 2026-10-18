@@ -80,6 +80,8 @@ class EncryptedGateway(DefaultAuthGateway):
         self.restore_error: bool = False
         self.restore_reply_lost: bool = False
         self.mutation_status: int = 200
+        self.challenge_status: int = 401
+        self.restoration_status: int = 200
 
     def session(self) -> requests.Session:
         session: EncryptedSession = EncryptedSession(self)
@@ -168,11 +170,12 @@ class EncryptedGateway(DefaultAuthGateway):
             # The real partial parser resets these omitted fields for every accepted POST.
             self.state.update({"mqtt_data_format": "ruuvi_raw", "mqtt_prefix": f"ruuvi/{CONFIG.gw_mac}/",
                                "mqtt_client_id": CONFIG.gw_mac})
-            return FakeResponse(200, {})
+            return FakeResponse(200 if self.posts == 1 else self.restoration_status, {})
         return None
 
     def _interactive_challenge_response(self, session: FakeSession, include_ecdh_public_key: bool) -> FakeResponse:
         response: FakeResponse = super()._interactive_challenge_response(session, include_ecdh_public_key)
+        response.status_code = self.challenge_status
         if self.corrupt_cookie:
             response.cookies.set("RUUVISESSION", "wrong")
         return response
@@ -268,6 +271,39 @@ class UnitCImplementationTests(unittest.TestCase):
         self.assertNotIn(CONFIG.gw_id, "\n".join(self.output))
         self.assertNotIn(AES_KEY.hex(), "\n".join(self.output))
         self.assertEqual("Overall verdict: PASS", self.output[-1])
+
+    def test_initial_challenge_requires_unauthorized_status_before_mutation(self) -> None:
+        status: int
+        for status in (200, 302, 403, 500):
+            with self.subTest(status=status):
+                self.gateway = EncryptedGateway()
+                self.gateway.challenge_status = status
+                result: RunResult = self.execute()
+                self.assertEqual((1, "FAIL"), (result.exit_code, result.outcomes[runner.CHALLENGE]))
+                self.assertEqual("NOT RUN", result.outcomes[runner.ENVELOPE])
+                self.assertEqual(0, self.gateway.posts)
+                self.assertEqual(self.gateway.original, self.gateway.state)
+                self.assertIn("HTTP 401 challenge", "\n".join(self.output))
+
+    def test_rejected_restoration_response_is_error_even_when_baseline_matches(self) -> None:
+        status: int
+        earlier_failure: bool
+        for status in (201, 302, 400, 401, 403, 500):
+            for earlier_failure in (False, True):
+                with self.subTest(status=status, earlier_failure=earlier_failure):
+                    self.gateway = EncryptedGateway()
+                    self.gateway.restoration_status = status
+                    self.gateway.reject_mutation = earlier_failure
+                    result: RunResult = self.execute()
+                    self.assertEqual((2, "ERROR"), (result.exit_code, result.outcomes[runner.RESTORE]))
+                    self.assertEqual("FAIL" if earlier_failure else "PASS", result.outcomes[runner.ENVELOPE])
+                    self.assertEqual(self.gateway.original, self.gateway.state)
+                    self.assertEqual(1, self.gateway.restore_attempts)
+                    self.assertEqual(("GET", "/ruuvi.json"),
+                                     (self.gateway.calls[-1].method, self.gateway.calls[-1].path))
+                    self.assertIn(f"expected HTTP 200, observed {status}", "\n".join(self.output))
+                    self.assertIn("baseline verified, but a cleanup POST returned non-200", self.log)
+                    self.assertIn("OVERALL VERDICT: ERROR", self.log)
 
     def test_invalid_env_has_evidence_without_network(self) -> None:
         (self.work_dir / ".env").unlink()
@@ -717,7 +753,7 @@ class UnitCImplementationTests(unittest.TestCase):
     def test_restore_reauth_and_cleartext_fallback_exact_scope(self) -> None:
         self.gateway.restore_from_attempt = 3
         result: RunResult = self.execute()
-        self.assertEqual(0, result.exit_code)
+        self.assertEqual((2, "ERROR"), (result.exit_code, result.outcomes[runner.RESTORE]))
         self.assertEqual([1, 1, 2, 2], [call.session_number for call in self.gateway.calls if call.method == "POST"
                                       and call.path == "/ruuvi.json"])
         self.assertEqual([MUTATION, RESTORATION, RESTORATION, {"coordinates": "original"}],
@@ -741,7 +777,8 @@ class UnitCImplementationTests(unittest.TestCase):
                 self.gateway.restore_from_attempt = attempt
                 self.gateway.restore_reply_lost = True
                 result: RunResult = self.execute()
-                self.assertEqual((0, "PASS"), (result.exit_code, result.outcomes[runner.RESTORE]))
+                self.assertEqual((0, "PASS") if attempt == 1 else (2, "ERROR"),
+                                 (result.exit_code, result.outcomes[runner.RESTORE]))
                 self.assertEqual(attempt, self.gateway.restore_attempts)
                 self.assertEqual(self.gateway.original, self.gateway.state)
                 self.assertEqual(("GET", "/ruuvi.json"),

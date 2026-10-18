@@ -210,10 +210,11 @@ class FunctionalTest_5_5_4_2_c:
         self.evidence.write("PARSED CHALLENGE", auth.challenge)
         self.evidence.write("RUUVISESSION COOKIE", auth.cookie)
         parsed: dict[str, str] = self.gateway.parse_interactive_challenge(auth.auth_header)
-        self._require(parsed == auth.challenge and parsed["session_cookie"] == "RUUVISESSION"
+        self._require(auth.challenge_response.status_code == HttpStatus.C_401_UNAUTHORIZED
+                      and parsed == auth.challenge and parsed["session_cookie"] == "RUUVISESSION"
                       and parsed["session_id"] == auth.cookie
                       and auth.challenge_response.cookies.get("RUUVISESSION") == auth.cookie,
-                      "quoted challenge fields must bind the issued session cookie")
+                      "HTTP 401 challenge with quoted fields must bind the issued session cookie")
         self.outcomes[CHALLENGE] = "PASS"
         self.active = ECDH
         self.progress("Verifying P-256 public keys and the shared-key derivation")
@@ -279,6 +280,7 @@ class FunctionalTest_5_5_4_2_c:
         self.progress("Restoring coordinates and verifying every baseline configuration field")
         candidate: int
         error: Exception
+        rejected_response: bool = False
         for candidate in range(3):
             self.evidence.write("RESTORATION ATTEMPT", candidate + 1)
             try:
@@ -296,18 +298,23 @@ class FunctionalTest_5_5_4_2_c:
                             )
                         else:
                             response = self.gateway.request(auth.session, HttpMethod.POST, GatewayApi.CONFIG, json_body=body)
+                        if response.status_code != HttpStatus.C_200_OK:
+                            rejected_response = True
+                            self._say(f"Restoration write {candidate + 1}: expected HTTP 200, observed {response.status_code}")
                         self.evidence.write("RESTORATION HTTP STATUS", response.status_code)
                     except Exception as error:  # noqa: BLE001 - A lost write reply must not skip recovery read-back.
                         self.evidence.exception(error)
                         self._say(f"Restoration write {candidate + 1}: {type(error).__name__}; verifying read-back")
-                    # A response can be lost/rejected after application: always read back.
+                    # Always read back, including after a lost reply or explicit rejection.
                 final: dict[str, Any] = self._read(auth)
                 if candidate < 2 and config_hash(final) != config_hash(baseline):
                     self.evidence.write("RESTORATION MISMATCH", final)
                     raise InvalidSetup("restoration read-back differs; retrying with retained default credentials")
                 self._compare(final, baseline)
-                self.outcomes[RESTORE] = "PASS"
-                return True
+                self.outcomes[RESTORE] = "ERROR" if rejected_response else "PASS"
+                if rejected_response:
+                    self._say("Restoration: ERROR — baseline verified, but a cleanup POST returned non-200")
+                return not rejected_response
             except ProtectionFailure as error:
                 self.evidence.exception(error)
                 # Do not hide unrelated parser side effects by adding fields to a cleanup POST.

@@ -332,6 +332,7 @@ Missing/mistyped fields, failed login, or incorrect baseline is ERROR. Record "T
 
 From the captured `GET /auth` response (in the `InteractiveAuthResult`):
 
+- the initial unauthenticated `GET /auth` returns HTTP `401`;
 - the `WWW-Authenticate` header begins with `x-ruuvi-interactive` and contains quoted `realm`,
   `challenge`, `session_cookie`, and `session_id`;
 - a `RUUVISESSION` cookie was set;
@@ -379,6 +380,9 @@ a fresh `Admin`/`gw_id` session if needed), send an encrypted (or, as a fallback
 `POST /ruuvi.json` with `{"coordinates": "<original-value>"}`. Verify by fetching `/ruuvi.json` that
 `coordinates` equals the original value and that the canonical full-config hash matches the baseline
 (non-mutation of every other field). Log every restoration attempt; never suppress cleanup errors.
+Require HTTP `200` from every received restoration POST response. An explicit non-200 response
+remains recovery ERROR even if a subsequent read-back or retry verifies the baseline; still attempt
+read-back and any necessary retries. A genuinely lost reply may be recovered by matching read-back.
 The test cannot PASS unless restoration is verified; if aspects passed but restoration failed,
 return ERROR with a concise operator warning.
 
