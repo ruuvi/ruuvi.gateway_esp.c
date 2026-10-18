@@ -457,11 +457,12 @@ Provision temporary keys only because this probe requires an active read-only ke
    demonstrates the `403` status without side effects, because the LAN-forbidden check returns `403`
    before any WPS action runs
    ([`http_server_handle_req.c` L563-569](../../../components/esp32-wifi-manager/src/http_server_handle_req.c#L563)).
-   Classify as `403`. If firmware returns `401` here instead (auth evaluated before the
-   LAN-forbidden check for this route/state), record the observed status and treat the `403`
-   demonstration as informational rather than a hard failure; document the outcome in the evidence
-   log. (Resolve the exact order from the firmware during implementation and pin the expectation
-   accordingly.)
+   Authentication is evaluated first: `http_server_handle_req_post()` requires RW authorization
+   and returns an authentication failure before dispatching to the LAN-forbidden check. After the
+   positive RW control above has verified the key, this probe must reach the LAN restriction and
+   return `403`. Classify as `403`; `401` or any other status is a failed probe, not an
+   informational substitute. Record the expected and observed statuses in the evidence log and
+   still perform mandatory restoration.
 
 Test read-only/less-dangerous probes before the RW/LAN-forbidden probe. Stop immediately on any
 unexpected `2xx`.
