@@ -1035,17 +1035,37 @@ class TcpdumpCaptureTests(unittest.TestCase):
         self.process.kill.assert_not_called()
         self.assertIsNone(self.capture.process)
 
-    def test_startup_early_exit_and_both_timeout_paths_cleanup(self) -> None:
+    def test_startup_early_exit_and_elapsed_deadline_cleanup(self) -> None:
         scenario: str
-        for scenario in ("early_exit", "select_timeout", "deadline"):
+        for scenario in ("early_exit", "deadline"):
             with self.subTest(scenario=scenario):
                 self.setUp()
                 with self.assertRaises(target.ScanError):
-                    self.start(chunks=(b"permission denied\n", b""), ready=scenario != "select_timeout",
+                    self.start(chunks=(b"permission denied\n", b""),
                                times=(0.0, 11.0) if scenario == "deadline" else (0.0, 1.0, 2.0))
                 self.process.terminate.assert_called_once_with()
                 self.process.communicate.assert_called_once_with(timeout=3)
                 self.assertIsNone(self.capture.process)
+
+    def test_selector_timeout_raises_scan_error_without_another_clock_read(self) -> None:
+        select_ready: MagicMock
+        monotonic: MagicMock
+        read: MagicMock
+        with patch.object(target.shutil, "which", return_value="/usr/bin/tcpdump"), \
+                patch.object(target.subprocess, "Popen", return_value=self.process), \
+                patch.object(target.select, "select", return_value=([], [], [])) as select_ready, \
+                patch.object(target.time, "monotonic", side_effect=(0.0, 1.0)) as monotonic, \
+                patch.object(target.os, "read") as read:
+            # An empty selector result consumes the remaining wait and must abort immediately.
+            with self.assertRaisesRegex(target.ScanError, "did not become ready before the NTP configuration change"):
+                self.capture.start("192.0.2.10", "192.0.2.20")
+            select_ready.assert_called_once_with([self.process.stderr], [], [], 9.0)
+            self.assertEqual(2, monotonic.call_count)
+            read.assert_not_called()
+        self.process.terminate.assert_called_once_with()
+        self.process.communicate.assert_called_once_with(timeout=3)
+        self.process.kill.assert_not_called()
+        self.assertIsNone(self.capture.process)
 
     def test_missing_tool_and_missing_stderr(self) -> None:
         spawn: MagicMock
