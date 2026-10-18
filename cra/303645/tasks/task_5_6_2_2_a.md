@@ -169,6 +169,10 @@ public certificate field names, empty defaults, and schema declarations remain p
 For every captured DHCP packet, inspect BOOTP's fixed `sname` and `file` fields as well as DHCP
 options. These client fields must be zero-filled; any nonempty payload is undeclared information
 and fails the DHCP check, including ASCII or binary DeviceID password seeds in an earlier packet.
+Require Ethernet hardware type 1 and address length 6, with BOOTP `chaddr` matching the frame
+source MAC; inspect its remaining ten padding bytes as zero-filled fixed fields. Only Ethernet
+broadcast / IPv4 limited-broadcast destinations satisfy this scenario, both in the capture filter
+and independent PCAP decoder.
 
 ## Normative source and interpretation
 
@@ -292,8 +296,10 @@ declarations (cite them in the evidence log):
   ([`LogIntf-HTTP-Server` Disclosed Information](../ixit_28-LogIntf.md) lines 27-37; 5.6-2-1 Unit B
   lines 36-46). Define objective regexes (e.g. semantic-version patterns like `v?\d+\.\d+\.\d+`,
   40/7+ hex git hashes, `esp-idf`/`v4.2` build tokens) and assert none appear in **headers**
-  (especially `Server`) or error bodies.
-- **Internal memory pointers / diagnostics** — hex addresses (`0x[0-9a-fA-F]{6,}`), backtrace/stack
+  (especially `Server`) and non-executable response bodies at every status. Scan rendered HTML
+  text, excluding script/style content; retain the public executable JS/CSS exception.
+- **Internal memory pointers / diagnostics** — use generic pointer detection in non-executable
+  bodies at every status; require pointer context only for successful executable JS/CSS. Hex addresses (`0x[0-9a-fA-F]{6,}`), backtrace/stack
   markers, `abort()`/panic strings.
 
 ### Deliberately public metadata (must be allowed, and positively verified)

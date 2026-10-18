@@ -66,6 +66,10 @@ def _dhcp_record(frame: bytes, ethernet_padding: bytes = b"") -> bytes:
     struct.pack_into("!H", packet, 16, len(packet) - 14)
     struct.pack_into("!HH", packet, 14 + ip_header_length, 68, 67)
     struct.pack_into("!H", packet, 14 + ip_header_length + 4, len(packet) - 14 - ip_header_length)
+    packet[30:34] = b"\xff" * 4
+    bootp_offset: int = 14 + ip_header_length + 8
+    packet[bootp_offset:bootp_offset + 3] = b"\x01\x01\x06"
+    packet[bootp_offset + 28:bootp_offset + 34] = packet[6:12]
     packet.extend(ethernet_padding)
     return struct.pack("<IIII", 0, 0, len(packet), len(packet)) + packet
 
@@ -1184,6 +1188,8 @@ class RunnerTests(unittest.TestCase):
                          run_command.call_args_list[1].args[0])
         self.assertEqual("/usr/bin/tcpdump", run_command.call_args_list[2].args[0][0])
         self.assertEqual(ETHERNET_MAC, run_command.call_args_list[2].args[0][-1])
+        self.assertIn("ether broadcast and dst host 255.255.255.255",
+                      run_command.call_args_list[2].args[0][-2])
         self.assertEqual("eth0", result.interface)
         self.assertEqual(ETHERNET_MAC, result.ethernet_mac)
         self.assertIn("permission denied", result.problem or "")
@@ -1639,6 +1645,99 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(expected, result.outcomes["DHCP capture"])
                 if expected == "ERROR":
                     self.assertIn("IPv4", self.capture.problem or "")
+
+    def test_bootp_hardware_identity_and_padding_are_checked(self) -> None:
+        field_offset: int
+        value: bytes
+        expected: str
+        for field_offset, value, expected in (
+            (1, b"\x02", "ERROR"), (2, b"\x00", "ERROR"),
+            (2, b"\x10", "ERROR"), (28, bytes.fromhex("aabbccddeeff"), "ERROR"),
+            (34, bytes.fromhex("aabbccddeeff0011"), "FAIL"), (43, b"x", "FAIL"),
+            (34, bytes(10), "PASS"),
+        ):
+            with self.subTest(field_offset=field_offset, value=value):
+                self.setUp()
+                bootp: bytearray = bytearray(240)
+                bootp[236:240] = b"\x63\x82\x53\x63"
+                ip_header: bytearray = bytearray(20)
+                ip_header[0] = 0x45
+                ip_header[9] = 17
+                hostname: bytes = DHCP_HOSTNAME.encode("ascii")
+                frame: bytes = (bytes.fromhex("ffffffffffff0211223344550800") + ip_header + bytes(8)
+                                + bootp + bytes((12, len(hostname))) + hostname + b"\xff")
+                valid_record: bytes = _dhcp_record(frame)
+                record: bytearray = bytearray(valid_record)
+                offset: int = 16 + 14 + 20 + 8 + field_offset
+                record[offset:offset + len(value)] = value
+                # Later valid traffic must not hide an earlier malformed or leaking packet.
+                pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+                pcap += record + valid_record
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                                       uart_hostname=DHCP_HOSTNAME)
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["DHCP capture"])
+
+    def test_dhcp_requires_ethernet_and_ipv4_broadcast_destinations(self) -> None:
+        destination_offset: int
+        destination: bytes
+        for destination_offset, destination in ((0, bytes.fromhex("021122334466")),
+                                                 (30, bytes((192, 0, 2, 1)))):
+            with self.subTest(destination_offset=destination_offset):
+                self.setUp()
+                bootp: bytearray = bytearray(240)
+                bootp[236:240] = b"\x63\x82\x53\x63"
+                ip_header: bytearray = bytearray(20)
+                ip_header[0] = 0x45
+                ip_header[9] = 17
+                hostname: bytes = DHCP_HOSTNAME.encode("ascii")
+                frame: bytes = (bytes.fromhex("ffffffffffff0211223344550800") + ip_header + bytes(8)
+                                + bootp + bytes((12, len(hostname))) + hostname + b"\xff")
+                valid_record: bytes = _dhcp_record(frame)
+                record: bytearray = bytearray(valid_record)
+                offset: int = 16 + destination_offset
+                record[offset:offset + len(destination)] = destination
+                pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+                pcap += record + valid_record
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
+                                       uart_hostname=DHCP_HOSTNAME)
+                result: RunResult = self._run()
+                self.assertEqual("ERROR", result.outcomes["DHCP capture"])
+                self.assertIn("broadcast", self.capture.problem or "")
+
+    def test_successful_nonexecutable_bodies_reject_bare_pointers(self) -> None:
+        media_type: str
+        body: str
+        for media_type, body in (("application/json", '{"value":"0x400d1234"}'),
+                                 ("text/plain", "0x400d1234"),
+                                 ("text/html", "<p>0x400d1234</p>"),
+                                 ("", "0x400d1234")):
+            with self.subTest(media_type=media_type):
+                observation: Observation = Observation(Probe("GET", "/app.js?v=1" if media_type else "/", 200),
+                    (("Content-Type", media_type),), body, 200)
+                findings: tuple[DisclosureFinding, ...] = scan_observation(observation, CONFIG.gw_id, "Admin")
+                self.assertIn("memory address", [finding.category for finding in findings])
+        control: Observation = Observation(Probe("GET", "/app.js?v=1", 200), (),
+                                           "const mask = 0x400d1234;", 200)
+        self.assertEqual((), scan_observation(control, CONFIG.gw_id, "Admin"))
+
+    def test_successful_nonexecutable_bodies_reject_build_identifiers(self) -> None:
+        media_type: str
+        value: str
+        for media_type in ("application/json", "text/plain", "text/html", ""):
+            for value in ("v1.2.3", "deadbeef", "a" * 40):
+                with self.subTest(media_type=media_type, value=value):
+                    observation: Observation = Observation(Probe("GET", "/app.js?v=1" if media_type else "/", 200),
+                        (("Content-Type", media_type),), json.dumps({"value": value}), 200)
+                    findings: tuple[DisclosureFinding, ...] = scan_observation(observation, CONFIG.gw_id, "Admin")
+                    self.assertIn("build identifier", [finding.category for finding in findings])
+        path: str
+        for media_type, path in (("application/javascript", "/app"), ("text/css", "/style"),
+                                 ("", "/app.js?v=1"), ("", "/app.css?v=1")):
+            control: Observation = Observation(Probe("GET", path, 200), (("Content-Type", media_type),),
+                                               'const version = "1.2.3";', 200)
+            self.assertEqual((), scan_observation(control, CONFIG.gw_id, "Admin"))
 
     def test_dhcp_udp_ports_must_be_the_client_server_pair(self) -> None:
         ports: tuple[int, int]

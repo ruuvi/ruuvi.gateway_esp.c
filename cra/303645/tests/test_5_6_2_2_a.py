@@ -165,6 +165,8 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     """Decode one Ethernet/IPv4/UDP/BOOTP frame."""
     if len(frame) < 14 or frame[12:14] != b"\x08\x00":
         return CaptureResult(None, interface, "captured frame was not Ethernet IPv4")
+    if frame[:6] != b"\xff" * 6:
+        return CaptureResult(None, interface, "captured Ethernet destination was not broadcast")
     ip_offset: int = 14
     if len(frame) < ip_offset + 20 or frame[ip_offset] >> 4 != 4:
         return CaptureResult(None, interface, "captured frame was not complete IPv4")
@@ -175,6 +177,8 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     ip_end: int = ip_offset + ip_length
     if ip_length < ip_header_length + 8 or ip_end > len(frame):
         return CaptureResult(None, interface, "captured IPv4 datagram length was invalid or truncated")
+    if frame[ip_offset + 16:ip_offset + 20] != b"\xff" * 4:
+        return CaptureResult(None, interface, "captured IPv4 destination was not limited broadcast")
     udp_offset: int = ip_offset + ip_header_length
     source_port: int
     destination_port: int
@@ -189,6 +193,10 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     if frame[bootp_offset + 236:bootp_offset + 240] != b"\x63\x82\x53\x63":
         return CaptureResult(None, interface, "captured UDP payload was not complete DHCP")
     source_mac: str = ":".join(f"{octet:02x}" for octet in frame[6:12])
+    if frame[bootp_offset + 1:bootp_offset + 3] != b"\x01\x06":
+        return CaptureResult(None, interface, "BOOTP hardware type/length was not Ethernet MAC-48")
+    if frame[bootp_offset + 28:bootp_offset + 34] != frame[6:12]:
+        return CaptureResult(None, interface, "BOOTP client hardware address did not match Ethernet source")
     options: list[tuple[int, str]] = []
     offset: int = bootp_offset + 240
     end_seen: bool = False
@@ -222,7 +230,8 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     summary: str = f"{source_mac} DHCP Hostname {hostname}; option codes {codes}"
     return CaptureResult(summary, interface, option_values=tuple(options), raw_hex=frame.hex(),
                          source_mac=source_mac, hostname=hostname,
-                         bootp_fixed_values=(("sname", frame[bootp_offset + 44:bootp_offset + 108].hex()),
+                         bootp_fixed_values=(("chaddr padding", frame[bootp_offset + 34:bootp_offset + 44].hex()),
+                                             ("sname", frame[bootp_offset + 44:bootp_offset + 108].hex()),
                                              ("file", frame[bootp_offset + 108:bootp_offset + 236].hex())))
 
 
@@ -317,7 +326,8 @@ def capture_dhcp(
                                  f"{neighbor.stderr.strip()}")
         ethernet_mac = neighbor_match.group(1)
         command: list[str] = [tool, "-i", interface, "-n", "-s", "0", "-U", "-w", "-",
-                              "udp and (port 67 or port 68) and ether src", ethernet_mac]
+                              "udp and (port 67 or port 68) and ether broadcast and dst host 255.255.255.255 and ether src",
+                              ethernet_mac]
         if rebooter is None:
             packet = subprocess.run(
                 command[:6] + ["-c", "1"] + command[6:], capture_output=True, timeout=duration, check=False,
@@ -579,11 +589,15 @@ def scan_observation(
         # Rendered fragments get the generic pointer scan; only raw HTML is excluded.
         if location != "body" or not rendered_body:
             patterns += (("runtime backtrace", RUNTIME_BACKTRACE_PATTERN),)
-            if location == "body" and observation.status == HttpStatus.C_200_OK:
+            if location == "body" and executable_body and observation.status == HttpStatus.C_200_OK:
                 patterns += (("memory address", POINTER_CONTEXT_PATTERN),)
             else:
                 patterns += (("memory address", POINTER_PATTERN),)
-        if location.startswith("header:") or (location == "body" and observation.status != HttpStatus.C_200_OK):
+        if location.startswith("header:") or location == "rendered body" or (
+            location == "body" and not rendered_body and (
+                not executable_body or observation.status != HttpStatus.C_200_OK
+            )
+        ):
             patterns += (("build identifier", BUILD_PATTERN),)
         if location.startswith("header:") or location == "rendered body" or (
             location == "body" and not rendered_body and (
@@ -1023,7 +1037,7 @@ class FunctionalTest_5_6_2_2_a:
         observed: CaptureResult
         for observed in observed_frames:
             # RFC 2131 BOOTP fixed fields are not DHCP options. This client should send
-            # zero-filled server-name/boot-file fields; any payload is undeclared data,
+            # zero-filled chaddr padding/server-name/boot-file fields; any payload is undeclared data,
             # including binary DeviceID seeds and option-overload contents.
             suspicious = suspicious or any(
                 any(bytes.fromhex(value)) for _, value in observed.bootp_fixed_values
