@@ -469,8 +469,8 @@ unexpected `2xx`.
 
 ### 5. Restore the DUT in a `finally` path
 
-Restoration is mandatory before sending any configuration POST, including denied probes with
-`{}`: an authorization bypass or lost reply may hide parser side effects before temporary keys
+Establish the mandatory final-restoration obligation before sending any configuration POST,
+including denied probes with `{}`: an authorization bypass or lost reply may hide parser side effects before temporary keys
 exist. Mark that obligation before transmission. Clear both key fields even after an early abort,
 then compare the complete retained baseline. Check revocation only for nonempty saved key
 candidates; no temporary-key check is claimed when provisioning never ran. Changes outside the
