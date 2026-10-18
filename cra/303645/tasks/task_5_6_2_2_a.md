@@ -57,7 +57,9 @@ A non-200 default login must mark the shared `FACTORY_RESET_MESSAGE` before rais
 Catch Basic/Digest `GatewayAuthenticationModeError` even when interactive login raises before
 returning. Retain recovery advice in both `RunResult.recovery_message` and terminal/evidence output.
 Once configuration is available, validate any exposed MAC before default fields: a wrong or
-malformed identity is ERROR without reset advice. If MAC is absent, a non-default baseline is ERROR
+malformed identity is ERROR without reset advice. Reject an all-zero nRF52 MAC even if it matches
+`.env`: firmware treats it as invalid and uses the `RuuviGatewayXXXX` fallback; it cannot verify
+identity or authorize DHCP capture/reset. If MAC is absent, a non-default baseline is ERROR
 without reset advice for an unverified device. Missing, wrongly typed, or non-default required
 fields stop the run before probes or mutations; only a verified identity permits baseline reset
 advice.
@@ -259,8 +261,10 @@ declarations (cite them in the evidence log):
 - **M2M bearer / API keys** — `lan_auth_api_key`, `lan_auth_api_key_rw`
   ([`SecParam-LAN-Bearer-Tokens`](../ixit_10-SecParam.md) lines 591-641) and any
   `Authorization: Bearer` value.
-- **Wi-Fi credentials** — `wifi_sta_config.password` / PSK
-  ([`SecParam-WiFi-STA-Credentials`](../ixit_10-SecParam.md) lines 307-336).
+- **Wi-Fi credentials** — `wifi_sta_config.password` / `wifi_ap_config.password` PSKs
+  ([`SecParam-WiFi-STA-Credentials`](../ixit_10-SecParam.md) lines 307-336). Scan nested JSON and
+  JavaScript object literals with quoted, unquoted identifier, or mixed keys. Keep identifier
+  boundaries exact, handle escaped strings, and permit empty passwords and schema descriptions.
 - **Remote-config / custom-telemetry secrets** — `remote_cfg_auth_bearer_token`,
   `remote_cfg_auth_basic_pass`, `http_user`/`http_pass`, `http_bearer_token`, `http_api_key`,
   `mqtt_user`/`mqtt_pass`, `mqtt_cli_key`, `http_stat_pass`, `stat_cli_key`, and any client private

@@ -519,6 +519,32 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
                 self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
 
+    def test_javascript_wifi_identifier_keys_and_benign_controls(self) -> None:
+        key: str
+        body: str
+        expected: str
+        for key in ("wifi_sta_config", "wifi_ap_config"):
+            for body, expected in (
+                (f'{key}: {{password: "secret"}}', "FAIL"),
+                (f'"{key}": {{password: "secret"}}', "FAIL"),
+                (f'{key}: {{"password": "secret"}}', "FAIL"),
+                (key + r''': {ssid: 'office}net', password: 'escaped\'secret'}''', "FAIL"),
+                (f'{key}: {{password: ""}}', "PASS"),
+                (f'{key}: {{password: {{type: "string"}}}}', "PASS"),
+                (f'{key}: {{password_hint: "public"}}', "PASS"),
+                (f'{key}: {{$password: "public"}}', "PASS"),
+                (f'other_{key}: {{password: "public"}}', "PASS"),
+                (f'${key}: {{password: "public"}}', "PASS"),
+                (f'{key}_schema: {{password: "public"}}', "PASS"),
+            ):
+                with self.subTest(key=key, body=body):
+                    self.setUp()
+                    self.fake.changed_path = "/app.js"
+                    self.fake.changed_body = "window.config = {" + body + "};"
+                    result: RunResult = self._run()
+                    self.assertEqual(expected, result.verdict, self.messages)
+                    self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
     def test_empty_defaults_and_coordinate_schema_are_public(self) -> None:
         self.fake.changed_path = "/app.js"
         self.fake.changed_body = (
@@ -1352,6 +1378,30 @@ class RunnerTests(unittest.TestCase):
                     self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
                     self.assertEqual(3, len(self.fake.calls))
                     self.assertIsNotNone(result.recovery_message)
+
+    def test_all_zero_identity_rejected_even_when_it_matches_env(self) -> None:
+        nondefault: bool
+        for nondefault in (False, True):
+            with self.subTest(nondefault=nondefault):
+                self.setUp()
+                config: DutConfig = replace(CONFIG, gw_mac="00:00:00:00:00:00")
+                (self.work_dir / ".env").write_text(env_text(config), encoding="utf-8")
+                self.fake = DisclosureGateway(config)
+                if nondefault:
+                    self.fake.config_override = {
+                        GatewayCfgDesc.GW_MAC: config.gw_mac,
+                        GatewayCfgDesc.LAN_AUTH_TYPE: "changed",
+                    }
+                result: RunResult = self._run()
+                self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code), self.messages)
+                self.assertEqual("ERROR", result.outcomes["factory-default preflight"])
+                self.assertEqual("NOT RUN", result.outcomes["HTTP disclosure matrix"])
+                self.assertEqual("NOT RUN", result.outcomes["DHCP capture"])
+                self.assertIsNone(result.recovery_message)
+                self.assertEqual(3, len(self.fake.calls))
+                self.assertEqual([], self.capture_calls)
+                self.assertIn("DUT MAC identity is malformed", self._log())
+                self.assertNotIn("AUTHENTICATED PREFLIGHT", self._log())
 
     def test_missing_identity_cannot_receive_reset_advice(self) -> None:
         self.fake.config_override = {

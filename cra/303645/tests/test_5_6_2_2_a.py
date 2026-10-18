@@ -106,9 +106,10 @@ BEARER_PATTERN: re.Pattern[str] = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/-]+
 HISTORY_PATTERN: re.Pattern[str] = re.compile(r'(?i)["\'](?:history|sensor_data|ble_mac)["\']\s*:\s*(?:\[\s*\{|\[\s*["\']|\{\s*["\'])')
 QUOTED_LITERAL: str = r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
 WIFI_PASSWORD_PATTERN: re.Pattern[str] = re.compile(
-    r"(?is)[\"']wifi_(?:sta|ap)_config[\"']\s*:\s*\{" +
+    r"(?is)(?:[\"']wifi_(?:sta|ap)_config[\"']|(?<![\w.$])wifi_(?:sta|ap)_config\b)\s*:\s*\{" +
     r"(?:" + QUOTED_LITERAL + r"|[^{}\"'])*?" +
-    r"[\"']password[\"']\s*:\s*(?:\"(?:\\.|[^\"\\])+\"|'(?:\\.|[^'\\])+')"
+    r"(?:[\"']password[\"']|(?<![\w.$])password\b)\s*:\s*" +
+    r"(?:\"(?:\\.|[^\"\\])+\"|'(?:\\.|[^'\\])+')"
 )
 STATIC_REF_PATTERN: re.Pattern[str] = re.compile(r'''(?:src|href)\s*=\s*["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']''', re.IGNORECASE)
 
@@ -695,6 +696,7 @@ class FunctionalTest_5_6_2_2_a:
         mac: Any = payload.get(GatewayCfgDesc.GW_MAC)
         if mac is not None and (
             not isinstance(mac, str) or OCTETS_6_RE.fullmatch(mac) is None or
+            mac.replace(":", "") == "000000000000" or
             mac.replace(":", "").lower() != self.config.gw_mac.replace(":", "").lower()
         ):
             raise InvalidSetup("DUT MAC identity is malformed or differs from .env")
