@@ -22,6 +22,7 @@ from lib.gateway import (
     GatewayCfgLanAuthType,
 )
 from lib.http_api import (
+    HttpHeader,
     HttpMethod,
     HttpStatus,
 )
@@ -752,7 +753,19 @@ class FunctionalTestCase(unittest.TestCase):
 
     def test_basic_stored_token_fits_firmware_password_buffer(self) -> None:
         runner: target.FunctionalTest_5_1_5_2_b = self.make_runner()
-        self.assertEqual(0, runner.run().exit_code)
+        original_apply: Callable[[dict[str, str]], None] = self.gateway._apply_config
+
+        def apply_with_persisted_limit(update: dict[str, str]) -> None:
+            original_apply(update)
+            if self.gateway.mode == GatewayCfgLanAuthType.BASIC:
+                # A blob round-trip cannot retain more than char[51] including NUL.
+                self.gateway.custom_ha1 = self.gateway.custom_ha1[:50]
+
+        with mock.patch.object(self.gateway, "_apply_config", side_effect=apply_with_persisted_limit):
+            result: RunResult = runner.run()
+        self.assertEqual((0, "PASS"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes[AuthMech.LAN_WEBUI_BASIC])
+        self.assertEqual("PASS", result.outcomes["final restoration"])
         body: dict[str, Any] = next(
             body
             for body in self.gateway.config_bodies
@@ -760,8 +773,31 @@ class FunctionalTestCase(unittest.TestCase):
         )
         token: str = body[GatewayCfgDesc.LAN_AUTH_PASS]
         decoded: str = base64.b64decode(token).decode("utf-8")
-        self.assertLessEqual(len(token), 64)
+        self.assertLessEqual(len(token), 50)
         self.assertEqual(body[GatewayCfgDesc.LAN_AUTH_USER], decoded.split(":", 1)[0])
+        self.assertEqual(8, len(body[GatewayCfgDesc.LAN_AUTH_USER]))
+        self.assertEqual(16, len(base64.b64decode(decoded.split(":", 1)[1], validate=True)))
+
+    def test_complete_run_accepts_live_space_separated_digest_challenge(self) -> None:
+        original: Callable[..., FakeResponse] = self.gateway._credentials_response
+        challenges: list[str] = []
+
+        def credentials_response(headers: Any, method: str, path: str) -> FakeResponse:
+            response: FakeResponse = original(headers, method, path)
+            challenge: str = response.headers.get(HttpHeader.WWW_AUTHENTICATE, "")
+            if challenge.startswith("Digest "):
+                challenge = challenge.replace(", ", " ")
+                response.headers[HttpHeader.WWW_AUTHENTICATE] = challenge
+                challenges.append(challenge)
+            return response
+
+        with mock.patch.object(self.gateway, "_credentials_response", side_effect=credentials_response):
+            result: RunResult = self.make_runner().run()
+        self.assertEqual((0, "PASS"), (result.exit_code, result.verdict))
+        self.assertEqual("PASS", result.outcomes[AuthMech.LAN_WEBUI_DIGEST])
+        self.assertEqual("PASS", result.outcomes["final restoration"])
+        self.assertTrue(challenges)
+        self.assertTrue(all(', ' not in challenge for challenge in challenges))
 
     def test_host_runner_uses_injected_attempt_count_not_production_count(self) -> None:
         runner: target.FunctionalTest_5_1_5_2_b = self.make_runner(attempt_count=2)
@@ -912,7 +948,7 @@ class FunctionalTestCase(unittest.TestCase):
         self.assertGreaterEqual(paths.count(GatewayApi.HISTORY), 2)
         self.assertGreaterEqual(paths.count(GatewayApi.CONFIG), 2)
         self.assertNotIn(GatewayApi.AP, paths)
-        self.assertTrue(all(size in {8, 12, 16, 32} for size in self.random.calls))
+        self.assertTrue(all(size in {6, 8, 12, 16, 32} for size in self.random.calls))
         self.assertGreaterEqual(self.random.calls.count(32), 4)
 
     def test_campaign_evidence_records_actual_request_routes(self) -> None:

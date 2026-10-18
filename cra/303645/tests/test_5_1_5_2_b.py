@@ -1123,11 +1123,14 @@ class FunctionalTest_5_1_5_2_b:
                 failures.append(error)
                 self.evidence.exception(error)
 
+        # The persisted char[51] field must include the terminating NUL. An
+        # eight-character username plus the 128-bit password encodes to 44 chars.
+        basic_username: str = self._random_secret(6)
         basic_password: str = self._random_secret(16)
-        basic_authorization: str = self.gateway.authorization_header_basic(username, basic_password)
+        basic_authorization: str = self.gateway.authorization_header_basic(basic_username, basic_password)
         basic_token: str = basic_authorization[len(f"{HttpAuthScheme.BASIC} ") :]
         self.progress("Testing Basic authentication")
-        self._configure_auth_mode(GatewayCfgLanAuthType.BASIC, username, basic_token, basic_password)
+        self._configure_auth_mode(GatewayCfgLanAuthType.BASIC, basic_username, basic_token, basic_password)
         basic_session: requests.Session = self.gateway.new_session()
         basic_headers: dict[str, str] = {HttpHeader.AUTHORIZATION: basic_authorization}
         observe(
@@ -1155,7 +1158,7 @@ class FunctionalTest_5_1_5_2_b:
                     GatewayApi.STATUS,
                     headers={
                         HttpHeader.AUTHORIZATION: self.gateway.authorization_header_basic(
-                            username,
+                            basic_username,
                             self._random_distinct_secret(basic_password, size=16),
                         )
                     },

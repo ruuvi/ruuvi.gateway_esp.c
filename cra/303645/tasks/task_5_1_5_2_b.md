@@ -218,9 +218,11 @@ aborts all later probes and transitions**. Run mandatory restoration after that 
 ### Basic authentication
 
 The firmware compares the Base64 token following `Basic ` directly with `lan_auth_pass`.
-`lan_auth_pass` can store at most 64 characters. Generate a dedicated 128-bit Basic password so the
-complete Base64 encoding of `username:password` fits that limit. Do not reuse the longer temporary
-Ruuvi password. Keep the configured username for every negative Basic probe and use a
+The persisted `char[51]` field can store at most 50 characters plus its terminating NUL.
+Generate a dedicated eight-character Basic username from 48 random bits and a dedicated 128-bit
+Basic password, encoded as 24 Base64 characters. The complete Base64 encoding of `username:password`
+is 44 characters and fits that limit. Do not reuse the longer temporary Ruuvi credentials.
+Keep the configured Basic username for every negative Basic probe and use a
 guaranteed-distinct password generated with the same 128-bit size. Unknown-user rejection does
 not prove password validation.
 
