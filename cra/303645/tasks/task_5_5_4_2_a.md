@@ -469,7 +469,13 @@ unexpected `2xx`.
 
 ### 5. Restore the DUT in a `finally` path
 
-Restoration is mandatory once temporary keys may have been applied.
+Restoration is mandatory before sending any configuration POST, including denied probes with
+`{}`: an authorization bypass or lost reply may hide parser side effects before temporary keys
+exist. Mark that obligation before transmission. Clear both key fields even after an early abort,
+then compare the complete retained baseline. Check revocation only for nonempty saved key
+candidates; no temporary-key check is claimed when provisioning never ran. Changes outside the
+two key fields are not repaired by sending the baseline back: preserve their evidence and return
+ERROR with operator recovery advice when restoration cannot be verified.
 
 Primary restoration: authenticate as `Admin`/`gw_id`, then `POST /ruuvi.json`:
 

@@ -953,6 +953,69 @@ class DenialRunnerTests(unittest.TestCase):
                 self.assertEqual(self.gateway.config_bodies, [])
                 self.assertIn("EXCEPTION TYPE", self.log)
 
+    def test_early_configuration_probe_abort_still_restores_without_candidate_keys(self) -> None:
+        scheme: str
+        status: int | None
+        for scheme in ("none", "Basic", "Digest"):
+            for status in (200, 204, None):
+                with self.subTest(scheme=scheme, status=status):
+                    self.gateway = DenialGateway()
+                    self.gateway.faults = [Fault(
+                        FakeRequestKey(scheme, "POST", "/ruuvi.json"), 1,
+                        FakeResponse(status) if status is not None else None,
+                        requests.Timeout("lost early write response") if status is None else None,
+                    )]
+                    original: Callable[[FakeSession, RecordedRequest], FakeResponse | None] = (
+                        self.gateway._response_override
+                    )
+
+                    def side_effect(
+                        session: FakeSession, call: RecordedRequest, selected_scheme: str = scheme,
+                        original_override: Callable[[FakeSession, RecordedRequest], FakeResponse | None] = original,
+                    ) -> FakeResponse | None:
+                        if call.key == FakeRequestKey(selected_scheme, "POST", "/ruuvi.json") and call.body == {}:
+                            # Model a bypass that activates unrelated keys before replying or timing out.
+                            self.gateway.ro_key = "unexpected-ro-key"
+                            self.gateway.rw_key = "unexpected-rw-key"
+                        return original_override(session, call)
+
+                    with patch.object(self.gateway, "_response_override", side_effect=side_effect):
+                        result: RunResult = self.execute()
+                    owner: str = runner.UNAUTHENTICATED if scheme == "none" else runner.INVALID
+                    self.assertEqual((result.exit_code, result.outcomes[owner]),
+                                     (2, "ERROR") if status is None else (1, "FAIL"))
+                    self.assertEqual(result.outcomes[runner.FINAL], "PASS", self.log[-1500:])
+                    self.assertEqual(result.outcomes[runner.PREPARED], "NOT RUN")
+                    self.assertEqual((self.gateway.ro_key, self.gateway.rw_key), ("", ""))
+                    self.assertEqual(self.gateway.config_bodies, [CLEAR_BODY])
+                    writes: list[RecordedRequest] = [
+                        call for call in self.gateway.calls if call.method == "POST" and call.path == "/ruuvi.json"
+                    ]
+                    self.assertEqual(writes[-1].body, CLEAR_BODY)
+                    self.assertEqual(writes[-2].key, FakeRequestKey(scheme, "POST", "/ruuvi.json"))
+                    self.assertFalse(any(call.scheme == "Bearer" and not call.bearer_token
+                                         for call in self.gateway.calls))
+                    self.assertIsNone(result.recovery_message)
+
+    def test_early_bypass_with_unrepairable_side_effect_requires_operator_recovery(self) -> None:
+        self.fault("none", "POST", "/ruuvi.json", 200)
+
+        def edit(payload: dict[str, Any], _number: int) -> None:
+            if any(call.method == "POST" and call.path == "/ruuvi.json" and call.body == {}
+                   for call in self.gateway.calls):
+                payload["mqtt"]["port"] = 1884
+
+        self.gateway.config_edit = edit
+        result: RunResult = self.execute()
+        self.assertEqual((result.exit_code, result.outcomes[runner.UNAUTHENTICATED]), (2, "FAIL"))
+        self.assertEqual(result.outcomes[runner.FINAL], "FAIL")
+        self.assertEqual(self.gateway.config_bodies, [CLEAR_BODY])
+        self.assertIsNotNone(result.recovery_message)
+        self.assertIn("Restoration could not be verified", result.recovery_message or "")
+        self.assertIn(FACTORY_RESET_MESSAGE, result.recovery_message or "")
+        self.assertIn('"mqtt"', self.log)
+        self.assertEqual(self.output[-1], "Overall verdict: ERROR")
+
     def test_partial_provisioning_timeout_or_denial_always_restores(self) -> None:
         failure: Exception | None
         for failure in (requests.Timeout("lost provisioning response"), RuntimeError("unexpected"), None):

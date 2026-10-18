@@ -47,7 +47,7 @@ LAN_FORBIDDEN: str = "LAN-forbidden 403 distinction"
 FINAL: str = "final restoration and non-mutation"
 CHECKS: tuple[str, ...] = (SETUP, UNAUTHENTICATED, INVALID, PREPARED, INSUFFICIENT, LAN_FORBIDDEN, FINAL)
 READ_PATHS: tuple[str, ...] = (GatewayApi.CONFIG, GatewayApi.STATUS, GatewayApi.HISTORY, GatewayApi.INFO)
-TOTAL_STEPS: int = 13
+TOTAL_STEPS: int = 13  # Includes execute_test_5_5_4_2_a() loading .env before the 12 runner phases.
 
 
 class SecurityFailure(Exception):
@@ -206,6 +206,10 @@ class FunctionalTest_5_5_4_2_a:
         route: ApiRoute = next((item for item in API_INVENTORY if item.method == method and item.path == path),
                                ApiRoute(method, path))
         self._require(route in API_INVENTORY, f"required route {method} {path} must exist", setup=True)
+        # Even an empty body can change settings if authorization is bypassed, including
+        # when the reply is lost. Record the recovery obligation before transmission.
+        if method == HttpMethod.POST and path == GatewayApi.CONFIG:
+            self.mutation_possible = True
         response: requests.Response = self.gateway.request(
             session if session is not None else self.gateway.new_session(), method, path,
             headers={HttpHeader.AUTHORIZATION: authorization} if authorization else None,
@@ -441,6 +445,8 @@ class FunctionalTest_5_5_4_2_a:
         if self.mutation_possible:
             key: str
             for key in (self.ro_key, self.rw_key):
+                if not key:
+                    continue  # An early baseline probe can abort before any key is generated.
                 try:
                     self._probe(HttpMethod.GET, GatewayApi.HISTORY, HttpStatus.C_401_UNAUTHORIZED,
                                 f"{HttpAuthScheme.BEARER} {key}")
