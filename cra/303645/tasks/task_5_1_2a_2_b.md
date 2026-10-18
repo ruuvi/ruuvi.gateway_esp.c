@@ -142,6 +142,23 @@ Therefore the **observable compliance criterion** is:
 Record the exact status code observed for every probe, assert against the firmware-derived matrix
 below, and never assert the idealized `401` where the firmware demonstrably returns `302`.
 
+The firmware's `http_server_fill_auth_json()` returns public authentication metadata in HTTP `401`
+denials: a string `gateway_name`, `lan_auth_type` (`lan_auth_bearer` for rejected bearers, or
+`lan_auth_default` for cookie-free password POSTs), and `lan: true`. Firmware version strings may
+also occur. These top-level authentication fields do not establish access to protected endpoint
+data. Recognize this envelope only in a complete JSON object with the expected status, values and
+types; continue checking all additional fields and nested values for protected configuration,
+credentials and sensor data. Do not globally exempt `gateway_name` or `lan_auth_type` from leak
+checks, or exempt truncated/HTML-wrapped JSON.
+
+The 2026-10-18 live run exposed a false positive introduced by commits `1688b6b9` and `34b8a8f8`:
+field-name-only leak detection classified the normal bearer-denial envelope as protected data,
+including during revoked-key verification. The log showed configuration restoration matching the
+baseline before this false positive produced an ERROR and factory-reset warning. The runner's
+offline gateway fixture now returns the firmware-shaped denials throughout the full request matrix,
+including restoration checks; regression tests cover public versions and protected fields added to
+the envelope. A new live run is still required for a DUT verdict.
+
 ## Firmware-derived route and status matrix
 
 Authoritative reference: [`docs/http_api.md`](../../../docs/http_api.md), specifically

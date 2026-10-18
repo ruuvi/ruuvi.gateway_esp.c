@@ -495,6 +495,22 @@ class FunctionalTest_5_1_2a_2_b:
                     leaked = True
                     break
         else:
+            # http_server_fill_auth_json() uses these configuration field names
+            # in public 401 metadata too. Exempt only the top-level auth fields
+            # in its LAN denial envelope; keep scanning every other field/value.
+            if (
+                response.status_code == HttpStatus.C_401_UNAUTHORIZED
+                and isinstance(payload, dict)
+                and isinstance(payload.get("gateway_name"), str)
+                and payload.get(GatewayCfgDesc.LAN_AUTH_TYPE) in (
+                    GatewayCfgLanAuthType.BEARER, GatewayCfgLanAuthType.DEFAULT,
+                )
+                and payload.get("lan") is True
+                and all(isinstance(payload.get(field, ""), str)
+                        for field in (GatewayCfgDesc.FW_VER, GatewayCfgDesc.NRF52_FW_VER))
+            ):
+                payload = {key: value for key, value in payload.items()
+                           if key not in {"gateway_name", GatewayCfgDesc.LAN_AUTH_TYPE}}
             leaked = contains_protected_fields(payload)
         self._require_security(
             not leaked,

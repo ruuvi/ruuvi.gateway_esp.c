@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Any, Callable, Mapping, cast
 from unittest import mock
 from urllib.parse import urlsplit
 
@@ -76,6 +76,30 @@ class BearerGateway(DefaultAuthGateway):
         self.malformed_config: bool = False
         self.mutate_after_positive: bool = False
         self.ntp_use: bool = True
+
+    def response_for(
+        self,
+        session: FakeSession,
+        method: str,
+        path: str,
+        headers: Mapping[str, str],
+        body: Any,
+        allow_redirects: bool = False,
+    ) -> FakeResponse:
+        response: FakeResponse = super().response_for(session, method, path, headers, body, allow_redirects)
+        if (
+            path in (GatewayApi.HISTORY, GatewayApi.CONFIG)
+            and response.status_code == HttpStatus.C_401_UNAUTHORIZED
+            and response.text == '{"error": "unauthorized"}'
+        ):
+            # Firmware http_server_fill_auth_json() emits public metadata for
+            # invalid/revoked bearers, RO-on-RW denial, and password-only POSTs.
+            return FakeResponse(401, {
+                "gateway_name": "RuuviGatewayEEFF",
+                "lan_auth_type": "lan_auth_bearer" if self._bearer(headers) is not None else "lan_auth_default",
+                "lan": True,
+            })
+        return response
 
     def config(self) -> dict[str, Any]:
         return {
@@ -755,6 +779,55 @@ class FunctionalTestCase(unittest.TestCase):
         response._content = b"<html>Please authenticate</html>"
         self.gateway.override[(HttpAuthScheme.BASIC, HttpMethod.GET, GatewayApi.HISTORY)] = response
         self.assertEqual(0, self.runner().run().exit_code)
+
+    def test_firmware_auth_denials_allow_optional_public_versions(self) -> None:
+        versions: dict[str, str]
+        for versions in ({}, {"fw_ver": "public-fw", "nrf52_fw_ver": "public-nrf"}):
+            with self.subTest(versions=versions):
+                self.gateway = BearerGateway(CONFIG)
+                deterministic_random.calls = 0
+                payload: dict[str, Any] = {
+                    "gateway_name": "RuuviGatewayEEFF", "lan_auth_type": "lan_auth_bearer", "lan": True,
+                    **versions,
+                }
+                self.gateway.override[(f"Bearer {CONFIG.gw_id}", "GET", "/history")] = FakeResponse(401, payload)
+                result: RunResult = self.runner().run()
+                self.assertEqual((0, "PASS"), (result.exit_code, result.verdict))
+                self.assertTrue(all(outcome == "PASS" for outcome in result.outcomes.values()))
+                self.assertIsNone(result.recovery_message)
+                self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
+                self.assertEqual(
+                    [("GET", "/history"), ("POST", "/ruuvi.json")],
+                    [(call.method, call.path) for call in self.gateway.calls[-2:]],
+                )
+
+    def test_public_auth_envelope_does_not_hide_protected_data(self) -> None:
+        envelope: dict[str, Any] = {
+            "gateway_name": "RuuviGatewayEEFF", "lan_auth_type": "lan_auth_bearer", "lan": True,
+        }
+        payload: dict[str, Any]
+        cases: tuple[dict[str, Any], ...] = (
+            {**envelope, "ssid": "private-network"},
+            {**envelope, "nested": [{"mqtt_pass": "secret"}]},
+            {**envelope, "data": {"tags": {}}},
+            {**envelope, "nested": {"lan_auth_type": "lan_auth_default"}},
+            {**envelope, "gateway_name": {"ssid": "private-network"}},
+            {**envelope, "lan_auth_type": "lan_auth_ruuvi"},
+            {**envelope, "lan": 1},
+            {**envelope, "fw_ver": {"mqtt_pass": "secret"}},
+            {"lan_auth_type": "lan_auth_bearer", "lan": True},
+            {"nested": envelope},
+        )
+        for payload in cases:
+            with self.subTest(payload=payload):
+                self.gateway = BearerGateway(CONFIG)
+                deterministic_random.calls = 0
+                self.gateway.override[(f"Bearer {CONFIG.gw_id}", "GET", "/history")] = FakeResponse(401, payload)
+                result: RunResult = self.runner().run()
+                self.assertEqual((1, "FAIL"), (result.exit_code, result.verdict))
+                self.assertEqual("FAIL", result.outcomes[AuthMech.M2M_API_BEARER_RO])
+                self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+                self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
 
     def test_positive_bearer_responses_require_json_objects(self) -> None:
         cases: tuple[tuple[str, str, str], ...] = (
