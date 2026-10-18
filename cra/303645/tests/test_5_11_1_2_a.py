@@ -93,7 +93,8 @@ CHECKS: tuple[str, ...] = ("baseline", *CATEGORIES, "state preservation", "facto
 CERTIFICATE_FILES: tuple[str, ...] = (
     StorageFile.HTTP_CLI_CERT, StorageFile.HTTP_CLI_KEY, StorageFile.HTTP_SRV_CERT,
     StorageFile.MQTT_CLI_CERT, StorageFile.MQTT_CLI_KEY, StorageFile.MQTT_SRV_CERT,
-    StorageFile.STAT_CLI_CERT, StorageFile.STAT_CLI_KEY, StorageFile.RCFG_CLI_CERT, StorageFile.RCFG_CLI_KEY,
+    StorageFile.STAT_CLI_CERT, StorageFile.STAT_CLI_KEY, StorageFile.STAT_SRV_CERT,
+    StorageFile.RCFG_CLI_CERT, StorageFile.RCFG_CLI_KEY, StorageFile.RCFG_SRV_CERT,
 )
 # Device metadata and MAC-derived MQTT defaults differ from the generator's
 # placeholder device. Check MAC-derived defaults separately after identity verification.
@@ -748,8 +749,7 @@ class FunctionalTest_5_11_1_2_a:
             finally:
                 self._return_to_lan()
         else:
-            self._ok(response, "Wi-Fi provisioning")
-            observed = self._read(self.gateway, self.session)
+            raise InvalidSetup(f"LAN Wi-Fi provisioning must return 403, received {response.status_code}")
         wifi: Any = observed.get(Cfg.WIFI_STA_CONFIG)
         if not isinstance(wifi, dict):
             raise InvalidSetup("Wi-Fi readback missing or malformed")
@@ -762,6 +762,13 @@ class FunctionalTest_5_11_1_2_a:
                 "were observed. A matching test access point is required; /connect.json acceptance is asynchronous."
             )
             field: str
+            for field in (Cfg.SSID, Cfg.PASSWORD):
+                self._mark(f"{Cfg.WIFI_STA_CONFIG}.{field}", False, "unverified", reason)
+            raise InvalidSetup(reason)
+        if wifi.get(Cfg.SSID) != self.fixtures.ssid:
+            self._field(wifi, Cfg.SSID, self.fixtures.ssid, item_field=f"{Cfg.WIFI_STA_CONFIG}.{Cfg.SSID}")
+        if not self.wifi_connection_verified:
+            reason = "Wi-Fi station association was not verified by fresh successful status; credentials remain uncommitted"
             for field in (Cfg.SSID, Cfg.PASSWORD):
                 self._mark(f"{Cfg.WIFI_STA_CONFIG}.{field}", False, "unverified", reason)
             raise InvalidSetup(reason)

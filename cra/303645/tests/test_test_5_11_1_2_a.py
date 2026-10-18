@@ -34,7 +34,8 @@ CONFIG: DutConfig = DutConfig("00:11:22:33:44:55:66:77", "AA:BB:CC:DD:EE:FF", "g
 NOW: datetime = datetime(2026, 9, 27, 12, 0, 0, tzinfo=timezone.utc)
 FILES: tuple[str, ...] = (
     "http_cli_cert", "http_cli_key", "http_srv_cert", "mqtt_cli_cert", "mqtt_cli_key",
-    "mqtt_srv_cert", "stat_cli_cert", "stat_cli_key", "rcfg_cli_cert", "rcfg_cli_key",
+    "mqtt_srv_cert", "stat_cli_cert", "stat_cli_key", "stat_srv_cert",
+    "rcfg_cli_cert", "rcfg_cli_key", "rcfg_srv_cert",
 )
 CATEGORIES: tuple[str, ...] = (
     "Wi-Fi STA credentials", "Web-UI admin password", "M2M API keys RO + RW",
@@ -163,6 +164,7 @@ class CreationGateway(FakeGateway):
         self.delayed_wifi_reads: int = 0
         self.wifi_association_succeeds: bool = True
         self.wifi_status_override: dict[str, Any] | None = None
+        self.lan_connect_status: int = 403
         self.wifi_status_http: int = 200
         self.retain_saved_wifi_on_clear: bool = False
         self.wrong_wifi_ssid: str | None = None
@@ -355,7 +357,7 @@ class CreationGateway(FakeGateway):
                     raise requests.Timeout("Ethernet applied but response lost")
                 return FakeResponse(200, {})
         if call.path == "/connect.json":
-            return FakeResponse(403, {})
+            return FakeResponse(self.lan_connect_status, {})
         if call.path == "/auth" and call.method == "POST":
             if self.default_login_status is not None and not self.config_bodies:
                 return FakeResponse(self.default_login_status, {})
@@ -578,25 +580,25 @@ class CreationTests(unittest.TestCase):
         ])
         self.assertEqual([(w.method, w.path, w.filename, w.scheme) for w in self.gateway.wire], expected)
         sessions: list[int] = (
-            [1] * 5 + [2] * 8 + [3] * 4 + [4] * 10 + [5, 6] + [4] * 20
+            [1] * 5 + [2] * 8 + [3] * 4 + [4] * 10 + [5, 6] + [4] * 24
             + [4, 4, 7, 4] + [8] * 5 + [9] * 4 + [10] * 2 + [11, 12]
         )
         self.assertEqual([w.session for w in self.gateway.wire], sessions)
-        self.assertEqual([count for _, count in self.confirmations], [5, 13, 53, 58])
+        self.assertEqual([count for _, count in self.confirmations], [5, 13, 57, 62])
         self.assertEqual([w.host for w in self.gateway.wire],
                          ["gateway.local"] * 5 + ["10.10.0.1"] * 8
-                         + ["gateway.local"] * 40 + ["10.10.0.1"] * 5 + ["gateway.local"] * 8)
+                         + ["gateway.local"] * 44 + ["10.10.0.1"] * 5 + ["gateway.local"] * 8)
         self.assertEqual(self.gateway.wire[11].body, {"ssid": None, "password": None})
         self.assertFalse([w for w in self.gateway.wire if w.method == "DELETE"])
-        self.assertEqual(self.gateway.wire[56].body, {"ssid": None, "password": None})
+        self.assertEqual(self.gateway.wire[60].body, {"ssid": None, "password": None})
         network: dict[str, Any] = {"use_eth": True, "eth_dhcp": True, "eth_static_ip": "", "eth_netmask": "", "eth_gw": "", "eth_dns1": "", "eth_dns2": ""}
         self.assertEqual(self.gateway.wire[10].body, network)
-        self.assertEqual(self.gateway.wire[55].body, network)
+        self.assertEqual(self.gateway.wire[59].body, network)
         self.assertEqual(self.gateway.wire[12].body, {
             "mqtt_prefix": "ruuvi/AA:BB:CC:DD:EE:FF/", "mqtt_client_id": CONFIG.gw_mac,
             "mqtt_data_format": "ruuvi_raw",
         })
-        self.assertEqual(self.gateway.wire[57].body, {
+        self.assertEqual(self.gateway.wire[61].body, {
             "mqtt_prefix": "ruuvi/AA:BB:CC:DD:EE:FF/", "mqtt_client_id": CONFIG.gw_mac,
             "mqtt_data_format": "ruuvi_raw",
         })
@@ -923,6 +925,33 @@ class CreationTests(unittest.TestCase):
                 self.assertEqual(self.elapsed, 30.0)
                 password: dict[str, Any] = next(i for i in self.manifest()["items"] if i["field_or_file"] == "wifi_sta_config.password")
                 self.assertFalse(password["committed"])
+                self.assert_restored()
+
+    def test_exposed_wifi_password_never_bypasses_failed_association(self) -> None:
+        self.gateway.wifi_status_override = {"ssid": self.fixtures.ssid, "urc": 1, "ip": "192.0.2.10"}
+        result: RunResult = self.execute()
+        self.assertEqual(result.exit_code, 2)
+        self.assertEqual(result.outcomes[runner.WIFI], "ERROR")
+        items: list[dict[str, Any]] = [item for item in self.manifest()["items"] if item["category"] == runner.WIFI]
+        self.assertEqual(len(items), 2)
+        self.assertTrue(all(not item["committed"] for item in items))
+        self.assertEqual(self.elapsed, 30.0)
+        self.assert_restored()
+
+    def test_unexpected_lan_connect_status_aborts_provisioning(self) -> None:
+        status: int
+        for status in (200, 201, 302, 401, 500):
+            with self.subTest(status=status):
+                self.setUp()
+                self.gateway.lan_connect_status = status
+                result: RunResult = self.execute()
+                self.assertEqual(result.exit_code, 2)
+                self.assertEqual(result.outcomes[runner.WIFI], "ERROR")
+                self.assertIn(f"must return 403, received {status}", "\n".join(self.output))
+                items: list[dict[str, Any]] = [item for item in self.manifest()["items"] if item["category"] == runner.WIFI]
+                self.assertEqual(len(items), 2)
+                self.assertTrue(all(not item["committed"] for item in items))
+                self.assertFalse([w for w in self.gateway.wire if w.host == "10.10.0.1" and w.path == "/connect.json" and w.body["ssid"]])
                 self.assert_restored()
 
     def test_malformed_or_rejected_wifi_status_never_proves_password(self) -> None:
