@@ -223,9 +223,29 @@ that responder. The test must:
 The checked-in IXIT 28 currently lists 15 interfaces and does **not** declare
 `LogIntf-mDNS-Responder`. The model and mDNS PASS contributions described above are conditional
 on a separately reviewed IXIT update declaring that interface. The runner checks the authoritative
-IXIT ID heading before scanning or mutation; a missing declaration is setup **ERROR**, never an
+complete ID inventory and every authoritative summary row (ID, role/port, protocol, access and
+status) against the reviewed model before scanning or mutation. Whitespace-normalized
+Description/Access/Status text is pinned by per-interface SHA-256 digests, so prose contradicting
+the summary also stops setup; wording changes require explicit review and digest/model updates. Missing, duplicate, renamed,
+unexpected or changed declarations are setup **ERROR**, never an
 implicit allowlist or inventory-completeness PASS. Offline success fixtures explicitly supply the
-future declaration; they are not evidence that the current IXIT contains it.
+future heading and matching summary declaration; they are not evidence that the current IXIT contains it.
+An IXIT change requires a reviewed update of the model and declaration expectations, rather than
+automatically allowing new listeners. A heading alone is insufficient. The pending mDNS model
+expects Description `Inbound mDNS responder, UDP 5353, on LAN/WLAN.`, Access bullets
+`PhyIntf-Ethernet` (LAN) and `PhyIntf-WiFi` (WLAN), Status `Enabled.`, and summary
+`Server / 5353`, `mDNS / UDP`, `Yes (LAN / WLAN)`, `Enabled`. These are future prerequisites;
+a separately reviewed declaration with different wording requires updating the pinned model.
+
+Record a separate `COVERAGE LIMITATION` for `LogIntf-WiFi-WPS-Client`: transient 802.11 management
+traffic is outside this TCP/UDP LAN scan, and WPS inactivity remains unverified even when all LAN
+checks PASS. Do not treat an inactive hotspot statement as an observation of WPS frames.
+
+When targeted hotspot probes conclusively resolve ambiguous UDP 53/67/68 to closed or open,
+remove those ports from each unresolved ambiguity set and its count, including `closed|filtered`,
+before the SNTP-only comparison. Retain original scan observations and the independently resolved
+ports alongside the unresolved values in evidence. A confirmed open hotspot port still FAILs its
+security checks; unresolved hotspot ambiguity still prevents PASS.
 
 Before scanning, capture, or mutation, require public factory-default `http_data_format` and
 `http_auth` along with `use_http` and `http_url`, using the generated defaults. Firmware exposes

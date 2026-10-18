@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import secrets
@@ -111,11 +112,92 @@ EXPECTED_INTERFACES: tuple[ExpectedInterface, ...] = (
 )
 
 
+# Reviewed authoritative summary fields: ID, type/port, protocol, access and status.
+# Future IXIT changes require a reviewed model update; no new declaration is auto-allowlisted.
+IXIT_SUMMARY_DECLARATIONS: tuple[tuple[str, ...], ...] = (
+    ('LogIntf-HTTP-Server', 'Server / 80', 'HTTP', 'Yes (LAN / WLAN)', 'Enabled'),
+    ('LogIntf-mDNS-Responder', 'Server / 5353', 'mDNS / UDP', 'Yes (LAN / WLAN)', 'Enabled'),
+    ('LogIntf-Cloud-HTTPS-Telemetry', 'Client / 443', 'HTTPS', 'Yes (WAN Network)', 'Enabled'),
+    ('LogIntf-Custom-HTTP-Telemetry', 'Client / Config', 'HTTP/HTTPS', 'Yes (Local Network)', 'Disabled'),
+    ('LogIntf-Custom-Stream-Telemetry', 'Client / Config', 'MQTT/MQTTS/WS/WSS', 'Yes (Local Network)', 'Disabled'),
+    ('LogIntf-Cloud-HTTPS-Status', 'Client / 443', 'HTTPS', 'Yes (WAN Network)', 'Enabled'),
+    ('LogIntf-FW-Update-Client', 'Client / 443', 'HTTPS', 'Yes (WAN Network)', 'Enabled'),
+    ('LogIntf-Time-NTP-Client', 'Client / 123', 'NTP / UDP', 'Yes (WAN Network)', 'Enabled'),
+    ('LogIntf-Network-DHCP-Client', 'Client / 67, 68', 'DHCP / UDP', 'Yes (Local Network)', 'Enabled'),
+    ('LogIntf-Hotspot-DHCP-Server', 'Server / 67, 68', 'DHCP / UDP', 'No (Local Media Only)', 'Transient'),
+    ('LogIntf-Network-DNS-Client', 'Client / 53', 'DNS / UDP', 'Yes (Local Network)', 'Enabled'),
+    ('LogIntf-Hotspot-DNS-Server', 'Server / 53', 'DNS / UDP', 'No (Local Media Only)', 'Transient'),
+    ('LogIntf-WiFi-WPS-Client', 'Client / Mgmt', '802.11 / WPS', 'No (Local Media Only)', 'Transient'),
+    ('LogIntf-USB-UART-Log-Stream', 'Stream / Serial', 'UART / Text', 'No (Local Port Only)', 'Enabled'),
+    ('LogIntf-USB-Boot-Flasher', 'Server / ROM', 'ROM Bootloader', 'No (Local Port Only)', 'Enabled'),
+    ('LogIntf-Internal-SWD-Bus', 'Master-Target Link', 'SWD', 'No (Internal Only)', 'Enabled'),
+)
+
+
+# Reviewed Description/Access/Status text, whitespace-normalized; disagreement with the
+# summary must fail closed too. Pending mDNS text is an explicit future prerequisite,
+# not an assertion that the checked-in IXIT already declares it.
+IXIT_DECLARATION_DIGESTS: dict[str, str] = {
+    "LogIntf-HTTP-Server": "644c2a3fe9558d65f062384f08f64dbcfc1972dfe04e291f6238512bc172fbf4",
+    "LogIntf-Cloud-HTTPS-Telemetry": "9b82f31ce0cee35021362906558f13f62606549fbd207484891bcab93852342e",
+    "LogIntf-Custom-HTTP-Telemetry": "b146e3f5a7a87ab150df40d6a1d083503d589f6d8f312929830cb70b57ae6fe8",
+    "LogIntf-Custom-Stream-Telemetry": "b7d3ada6d0ff132c2fd0dfd6b55e6ecba105b4df0654d9f28165ddd7a4644034",
+    "LogIntf-Cloud-HTTPS-Status": "b4fc595d02b409f718f7d57865c3c60bbdcc37463fc6a07037aada950f4d5c20",
+    "LogIntf-FW-Update-Client": "f7810b6d770abcc9281ac2068819f1afbe460ba2d5b88d6ae99ea80230f7736e",
+    "LogIntf-Time-NTP-Client": "cb0ea4e2cb1c71b8181fe1c5aaa5b3da7165c75957b1bbfec71c8e4f1cfe36f0",
+    "LogIntf-Network-DHCP-Client": "a80db05a263e8e000fceb65843646d8de9d601ead15aabd6421b6460b175c093",
+    "LogIntf-Hotspot-DHCP-Server": "1a1db6435a3dc53a996a74a82233bfdf69c50f0c0db491ba1eb1edc53c5e73aa",
+    "LogIntf-Network-DNS-Client": "b553aac6e8b522e5e3d3157d4ae286461f0c82b2807cbea2ff611b6c92d534a8",
+    "LogIntf-Hotspot-DNS-Server": "4237540a8424692c617ebec81521a48f592e3004aacacb326d62b9fd2acb3302",
+    "LogIntf-WiFi-WPS-Client": "d6cfcb434b483914b3f384318e00c8982d4369266079c4499af1f28ed0969710",
+    "LogIntf-USB-UART-Log-Stream": "cabbba57cfb83d6620b7eab7ebfa34eccc747a6f816e1443172671201734d800",
+    "LogIntf-USB-Boot-Flasher": "93ca1dcf8c3b7a74a581cfbb954010827eee8c16d58e3db30d10090d5324b4b0",
+    "LogIntf-Internal-SWD-Bus": "fe70c1aac65f0b5733d65a760e58842b596b1da6dfa101062d2e741f2da8460e",
+    "LogIntf-mDNS-Responder": "baca75b49931c2169353e62c1b159399ff79b82016e03c8c65e5e0b52a59bf2e",
+}
+
+
 def validate_interface_declarations(directory: Path) -> None:
-    """Reject the pending mDNS model until the authoritative IXIT declares it."""
+    """Require every reviewed IXIT declaration before using the fixed scan model."""
     text: str = (directory / "ixit_28-LogIntf.md").read_text(encoding="utf-8")
-    if re.search(r"^### \*\*ID\*\*: LogIntf-mDNS-Responder\s*$", text, re.MULTILINE) is None:
-        raise InvalidSetup("IXIT documentation gap: ixit_28-LogIntf.md must declare LogIntf-mDNS-Responder")
+    headings: list[str] = re.findall(r"^### \*\*ID\*\*: (LogIntf-\S+)\s*$", text, re.MULTILINE)
+    expected_ids: set[str] = {entry.ixit_28 for entry in EXPECTED_INTERFACES}
+    if len(headings) != len(expected_ids) or set(headings) != expected_ids:
+        raise InvalidSetup("IXIT documentation gap: missing, duplicate, renamed or unexpected interface declaration")
+    section: re.Match[str]
+    for section in re.finditer(
+        r"^### \*\*ID\*\*: (LogIntf-\S+)\s*\n(.*?)(?=^### \*\*ID\*\*:|^## Summary Matrix|\Z)",
+        text, re.MULTILINE | re.DOTALL,
+    ):
+        fields: list[str] = []
+        field: str
+        for field in ("Description", "Access", "Status"):
+            matches: list[str] = re.findall(
+                rf"^#### {field}\s*\n(.*?)(?=^#### |\Z)", section[2], re.MULTILINE | re.DOTALL,
+            )
+            if len(matches) != 1:
+                raise InvalidSetup("IXIT documentation gap: missing or duplicate interface declaration field")
+            normalized: str = " ".join(matches[0].split())
+            if normalized.endswith(" ---"):
+                normalized = normalized[:-4]
+            fields.append(normalized)
+        digest: str = hashlib.sha256("\n".join(fields).encode("utf-8")).hexdigest()
+        if digest != IXIT_DECLARATION_DIGESTS[section[1]]:
+            raise InvalidSetup("IXIT documentation gap: reviewed description, access or status changed")
+    summary_parts: list[str] = text.split("## Summary Matrix for the Technical File\n")
+    if len(summary_parts) != 2:
+        raise InvalidSetup("IXIT documentation gap: missing or ambiguous authoritative summary matrix")
+    rows: list[tuple[str, ...]] = []
+    line: str
+    for line in summary_parts[1].splitlines():
+        if not line.strip().startswith("| `LogIntf-"):
+            continue
+        cells: tuple[str, ...] = tuple(cell.strip().strip("`") for cell in line.strip().strip("|").split("|"))
+        if len(cells) != 6:
+            raise InvalidSetup("IXIT documentation gap: malformed interface summary declaration")
+        rows.append(cells[:5])
+    if len(rows) != len(expected_ids) or set(rows) != set(IXIT_SUMMARY_DECLARATIONS):
+        raise InvalidSetup("IXIT documentation gap: interface ID, role/port, protocol, access or status changed")
 
 
 @dataclass(frozen=True)
@@ -569,9 +651,13 @@ class FunctionalTest_5_6_1_2_c:
                             self.outcomes["hotspot servers disabled"], hotspot_states))
         unresolved_open_filtered: frozenset[int] = result.open_filtered - independently_resolved
         unresolved_filtered_count: int = result.filtered_count - len(result.filtered_ports & independently_resolved)
+        unresolved_closed_filtered: frozenset[int] = result.closed_filtered - independently_resolved
+        unresolved_closed_filtered_count: int = (
+            result.closed_filtered_count - len(result.closed_filtered & independently_resolved)
+        )
         exact_sntp_only: bool = (
-            result.closed_filtered == frozenset({ntp_source_port})
-            and result.closed_filtered_count == 1
+            unresolved_closed_filtered == frozenset({ntp_source_port})
+            and unresolved_closed_filtered_count == 1
             and not unresolved_open_filtered
             and unresolved_filtered_count == 0
         )
@@ -584,6 +670,8 @@ class FunctionalTest_5_6_1_2_c:
             "open_filtered_count": result.open_filtered_count,
             "filtered_count": result.filtered_count,
             "independently_resolved": sorted(independently_resolved),
+            "unresolved_closed_filtered": sorted(unresolved_closed_filtered),
+            "unresolved_closed_filtered_count": unresolved_closed_filtered_count,
             "unresolved_open_filtered": sorted(unresolved_open_filtered),
             "unresolved_filtered_count": unresolved_filtered_count,
             "only_sntp_source_is_closed_filtered": exact_sntp_only,
@@ -595,7 +683,7 @@ class FunctionalTest_5_6_1_2_c:
         if not exact_sntp_only:
             self._say(
                 f"UDP coverage ERROR: expected only captured SNTP source {ntp_source_port}/udp "
-                f"as closed|filtered; observed {result.closed_filtered_count} closed|filtered, "
+                f"as closed|filtered; observed {unresolved_closed_filtered_count} unresolved closed|filtered, "
                 f"{len(unresolved_open_filtered)} unresolved open|filtered, "
                 f"{unresolved_filtered_count} unresolved filtered"
             )
@@ -646,6 +734,12 @@ class FunctionalTest_5_6_1_2_c:
             self.outcomes["IXIT declaration prerequisite"] = "PASS"
             self.evidence.write("EXPECTED IXIT 28 / IXIT 15 INTERFACE MODEL", EXPECTED_INTERFACES)
             self.evidence.write("PHYSICAL CONTEXT", "IXIT 15: Ethernet or Wi-Fi STA LAN; hotspot inactive")
+            self.evidence.write("COVERAGE LIMITATION", {
+                "interface": "LogIntf-WiFi-WPS-Client",
+                "status": "NOT OBSERVED / OUT OF SCOPE",
+                "reason": "Transient 802.11 management frames cannot be observed by this TCP/UDP LAN scan; "
+                          "WPS inactivity is unverified. LAN scan PASS does not establish complete logical-interface coverage.",
+            })
             self.progress("Scanning full TCP range and confirming unexpected listeners")
             self.outcomes["TCP coverage"] = "ERROR"
             tcp: ScanResult = run_tcp_connect_scan(

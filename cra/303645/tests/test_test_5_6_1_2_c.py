@@ -255,9 +255,17 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         )
         self.ixit_directory: Path = self.directory / "ixit"
         self.ixit_directory.mkdir()
-        (self.ixit_directory / "ixit_28-LogIntf.md").write_text(
-            "### **ID**: LogIntf-mDNS-Responder\n", encoding="utf-8",
+        # Preserve all actual declarations; only this offline fixture adds the pending mDNS entry.
+        self.ixit_text: str = Path(__file__).resolve().parents[1].joinpath("ixit_28-LogIntf.md").read_text(encoding="utf-8")
+        self.ixit_text = self.ixit_text.replace(
+            "## Summary Matrix for the Technical File",
+            "### **ID**: LogIntf-mDNS-Responder\n\n"
+            "#### Description\n\nInbound mDNS responder, UDP 5353, on LAN/WLAN.\n\n"
+            "#### Access\n\n* `PhyIntf-Ethernet` (LAN)\n* `PhyIntf-WiFi` (WLAN)\n\n"
+            "#### Status\n\nEnabled.\n\n## Summary Matrix for the Technical File",
         )
+        self.ixit_text += "\n| `LogIntf-mDNS-Responder` | Server / 5353 | mDNS / UDP | Yes (LAN / WLAN) | Enabled | None |\n"
+        (self.ixit_directory / "ixit_28-LogIntf.md").write_text(self.ixit_text, encoding="utf-8")
         self.gateway: ScanGateway = ScanGateway()
         self.nmap: FakeNmap = FakeNmap()
         self.nmap.udp_ambiguous[62922] = "closed|filtered"
@@ -338,6 +346,10 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         evidence: str = self.evidence()
         self.assertIn("EXPECTED IXIT 28 / IXIT 15 INTERFACE MODEL", evidence)
         self.assertIn("hotspot DNS/DHCP servers on UDP 53/67/68 inactive", evidence)
+        self.assertIn("COVERAGE LIMITATION", evidence)
+        self.assertIn("LogIntf-WiFi-WPS-Client", evidence)
+        self.assertIn("NOT OBSERVED / OUT OF SCOPE", evidence)
+        self.assertIn("WPS inactivity is unverified", evidence)
         self.assertIn("FINAL CHECK RESULT", evidence)
         self.assertIn('"only_sntp_source_is_closed_filtered": true', evidence)
         self.assertIn('"full_baseline_verified": true', evidence)
@@ -390,6 +402,89 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         self.assertFalse(self.gateway.config_bodies)
         self.assertFalse(self.ntp_capture.started)
         self.assertIn("IXIT documentation gap", self.evidence())
+
+    def test_every_ixit_summary_declaration_is_required_unchanged(self) -> None:
+        lines: list[str] = self.ixit_text.splitlines()
+        row: str
+        variant: str
+        for row in lines:
+            if not row.startswith("| `LogIntf-"):
+                continue
+            for variant in ("missing", "renamed", "port", "protocol", "access", "status", "duplicate"):
+                with self.subTest(interface=row.split("|")[1], variant=variant):
+                    self.setUp()
+                    cells: list[str] = row.split("|")
+                    if variant == "missing":
+                        replacement: str = ""
+                    elif variant == "duplicate":
+                        replacement = f"{row}\n{row}"
+                    else:
+                        index: int = {"renamed": 1, "port": 2, "protocol": 3, "access": 4, "status": 5}[variant]
+                        cells[index] = " changed "
+                        replacement = "|".join(cells)
+                    changed: str = self.ixit_text.replace(row, replacement)
+                    (self.ixit_directory / "ixit_28-LogIntf.md").write_text(changed, encoding="utf-8")
+                    result: RunResult = self.execute()
+                    self.assertEqual("ERROR", result.verdict)
+                    self.assertEqual("ERROR", result.outcomes["IXIT declaration prerequisite"])
+                    self.assertFalse(any("-sT" in call for call in self.nmap.calls))
+                    self.assertFalse(self.gateway.config_bodies)
+                    self.assertFalse(self.ntp_capture.started)
+
+    def test_ixit_prose_cannot_contradict_valid_summary(self) -> None:
+        original: str
+        changed: str
+        for original, changed in (
+            ("UDP 5353", "UDP 5354"), ("Enabled.", "Disabled."),
+            ("Inbound mDNS responder", "Outbound mDNS client"),
+        ):
+            with self.subTest(original=original):
+                self.setUp()
+                self.assertIn(original, self.ixit_text)
+                path: Path = self.ixit_directory / "ixit_28-LogIntf.md"
+                path.write_text(self.ixit_text.replace(original, changed), encoding="utf-8")
+                result: RunResult = self.execute()
+                self.assertEqual("ERROR", result.verdict)
+                self.assertEqual("ERROR", result.outcomes["IXIT declaration prerequisite"])
+                self.assertFalse(self.gateway.config_bodies)
+                self.assertFalse(any("-sT" in call for call in self.nmap.calls))
+
+    def test_ixit_changed_heading_is_rejected_even_with_valid_summary(self) -> None:
+        path: Path = self.ixit_directory / "ixit_28-LogIntf.md"
+        path.write_text(self.ixit_text.replace(
+            "### **ID**: LogIntf-HTTP-Server", "### **ID**: LogIntf-Renamed-Server",
+        ), encoding="utf-8")
+        result: RunResult = self.execute()
+        self.assertEqual("ERROR", result.verdict)
+        self.assertFalse(self.gateway.config_bodies)
+        self.assertFalse(any("-sT" in call for call in self.nmap.calls))
+
+    def test_ixit_heading_alone_cannot_enable_mdns_allowlist(self) -> None:
+        path: Path = self.ixit_directory / "ixit_28-LogIntf.md"
+        path.write_text("### **ID**: LogIntf-mDNS-Responder\n", encoding="utf-8")
+        result: RunResult = self.execute()
+        self.assertEqual("ERROR", result.verdict)
+        self.assertFalse(self.gateway.config_bodies)
+        self.assertFalse(any("-sT" in call for call in self.nmap.calls))
+
+    def test_closed_filtered_hotspot_ports_resolved_closed_allow_complete_udp_coverage(self) -> None:
+        self.nmap.udp_ambiguous.update({53: "closed|filtered", 67: "closed|filtered", 68: "closed|filtered"})
+        result: RunResult = self.execute()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code))
+        self.assertEqual("PASS", result.outcomes["UDP coverage"])
+        self.assertEqual("PASS", result.outcomes["hotspot servers disabled"])
+        evidence: str = self.evidence()
+        self.assertIn('"unresolved_closed_filtered_count": 1', evidence)
+        self.assertIn('"closed_filtered_count": 4', evidence)
+        self.assertIn('"independently_resolved": [', evidence)
+
+    def test_unresolved_closed_filtered_hotspot_port_still_prevents_pass(self) -> None:
+        self.nmap.udp_ambiguous[53] = "closed|filtered"
+        self.nmap.targeted_states[53] = "closed|filtered"
+        result: RunResult = self.execute()
+        self.assertEqual("ERROR", result.verdict)
+        self.assertEqual("ERROR", result.outcomes["UDP coverage"])
+        self.assertEqual("ERROR", result.outcomes["hotspot servers disabled"])
 
     def test_unsafe_mqtt_baselines_are_rejected_before_mutation(self) -> None:
         field: str
