@@ -268,7 +268,11 @@ reboot loop by a previous run can be recovered. Before initial firmware installa
 After installation, write validated OTA metadata, reboot, and capture UART. Parse the printed
 partition table and running slot; confirm the table matches `partitions.csv` and the signed active
 app/FATFS pair booted successfully. Then authenticate, validate factory-default identity, and read
-the stable configuration baseline before running any mutation case.
+the stable configuration baseline before running any mutation case. An authenticated configuration
+must contain a well-formed `gw_mac` matching `.env`; missing, malformed, or mismatched identity
+is setup ERROR before scenario preparation or corruption writes. Do not recommend factory reset
+for an unverified identity. Initial installation and mandatory recovery retain their documented
+pre-baseline order so an already reboot-looping dedicated DUT can be restored.
 
 If any preflight step fails, emit `ERROR` and do not corrupt anything. If installation has started,
 still attempt automatic recovery. Before preflight, print the destructive-test notice and ask for
@@ -408,7 +412,9 @@ always makes the overall verdict ERROR. A proven per-case FAIL remains FAIL if e
 interruption subsequently raises, while the overall verdict becomes ERROR and recovery still runs.
 Initial log creation, preamble, diagnostics and finalization failures return setup ERROR (exit 2);
 failed preflight evidence prevents any DUT access. Terminal diagnostics omit raw infrastructure
-exception text and retain recovery instructions even when the configured output destination fails.
+exception text: show only its type and direct the operator to the evidence log, which retains
+the exception and traceback. This applies to step errors, setup diagnostics, and recovery errors.
+Retain recovery instructions even when the configured output destination fails.
 For single-slot RSA cases, require both the damaged slot name and its reported address to match the
 selected partition. Case 9 requires a reset after both apps have been declared unbootable; banners
 before the rejection pair cannot establish a continuing reboot loop. Host regressions must exercise the real release-artifact

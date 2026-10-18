@@ -670,8 +670,88 @@ class RunnerTests(unittest.TestCase):
         result: RunResult = self.execute(case_number=1)
         self.assertEqual(2, result.exit_code)
         self.assertEqual(4, gateway.reads)
-        self.assertIn("differs from the pre-corruption baseline", result.recovery_message or "")
+        text: str = max((self.work_dir / "logs").glob("*.log")).read_text()
+        self.assertIn("differs from the pre-corruption baseline", text)
+        self.assertIn("Automatic recovery failed: InvalidSetup", result.recovery_message or "")
         self.assertNotIn("Gateway recovery verified", result.recovery_message or "")
+
+    def test_unverified_identity_blocks_all_corruption_and_reset_advice(self) -> None:
+        identity: Any
+        non_default: bool
+        for identity in (None, 42, "malformed", "00:11:22:33:44:55"):
+            for non_default in (False, True):
+                with self.subTest(identity=identity, non_default=non_default):
+                    class IdentityGateway(DefaultAuthGateway):
+                        def __init__(self, mac: Any, changed: bool) -> None:
+                            super().__init__(CONFIG)
+                            self.mac: Any = mac
+                            self.changed: bool = changed
+
+                        def _config_response(self) -> FakeResponse:
+                            payload: dict[str, Any] = dict(super()._config_response().json())
+                            if self.mac is None:
+                                payload.pop("gw_mac")
+                            else:
+                                payload["gw_mac"] = self.mac
+                            if self.changed:
+                                payload["lan_auth_api_key_rw_use"] = True
+                            return FakeResponse(200, payload)
+
+                    self.gateway = IdentityGateway(identity, non_default)
+                    self.installer = FakeInstaller()
+                    self.flash = FakeFlash()
+                    self.output = []
+                    self.serial = FakeSerial((baseline(0), baseline(0)))
+                    result: RunResult = self.execute(case_number=1)
+                    self.assertEqual(2, result.exit_code)
+                    self.assertEqual("NOT RUN", result.outcomes[target.SCENARIOS[0].name])
+                    self.assertEqual([OTADATA_OFFSET, OTADATA_OFFSET],
+                                     [offset for offset, _data in self.flash.writes])
+                    self.assertFalse(any("Step 01 begin" in line for line in self.output))
+                    self.assertNotIn(FACTORY_RESET_MESSAGE, result.recovery_message or "")
+                    self.assertFalse(any(FACTORY_RESET_MESSAGE in line for line in self.output))
+                    self.assertIn("--flash_both_slots", result.recovery_message or "")
+
+    def test_transport_exception_text_is_evidence_only_during_case_and_recovery(self) -> None:
+        case: target.Scenario = target.SCENARIOS[0]
+        for prior_fail in (False, True):
+            with self.subTest(prior_fail=prior_fail):
+                self.installer = FakeInstaller()
+                self.flash = FakeFlash()
+                self.output = []
+                self.serial = FakeSerial((baseline(0), baseline(0), baseline(0), baseline(0)))
+                original_write: Callable[..., None] = EvidenceLog.write
+                def write(log: EvidenceLog, label: str, value: Any = "", *,
+                          fail: bool = prior_fail,
+                          base_write: Callable[..., None] = original_write) -> None:
+                    if fail and label == "BOOT MATCH":
+                        raise OSError("secret-case-diagnostic")
+                    base_write(log, label, value)
+                inject: mock.MagicMock
+                with mock.patch.object(EvidenceLog, "write", write), mock.patch.object(
+                    self.installer, "flash_both", side_effect=(None, InvalidSetup("secret-recovery-diagnostic")),
+                ), mock.patch.object(
+                    target.FunctionalTest_5_7_1_2_a, "_inject_case",
+                ) as inject:
+                    if prior_fail:
+                        inject.side_effect = lambda *_args: ()
+                    else:
+                        inject.side_effect = OSError("secret-case-diagnostic")
+                    result: RunResult = self.execute(case_number=1)
+                self.assertEqual(2, result.exit_code)
+                self.assertEqual("FAIL" if prior_fail else "ERROR", result.outcomes[case.name])
+                terminal: str = "\n".join(self.output) + (result.recovery_message or "")
+                self.assertNotIn("secret-case-diagnostic", terminal)
+                self.assertNotIn("secret-recovery-diagnostic", terminal)
+                self.assertIn("--flash_both_slots", terminal)
+                if prior_fail:
+                    self.assertIn("expected", terminal)
+                else:
+                    self.assertIn("finished: ERROR — OSError", terminal)
+                text: str = max((self.work_dir / "logs").glob("*.log")).read_text()
+                self.assertIn("secret-case-diagnostic", text)
+                self.assertIn("secret-recovery-diagnostic", text)
+                self.assertIn("Traceback", text)
 
     def test_baseline_failure_after_installation_keeps_factory_reset_advice(self) -> None:
         self.gateway.mode = GatewayCfgLanAuthType.BASIC

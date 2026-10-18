@@ -802,10 +802,10 @@ class FunctionalTest_5_7_1_2_a:
             raise InvalidSetup(f"default Admin login returned {auth.login_response.status_code}")
         self.session = auth.session
         first: dict[str, Any] = self._configuration()
-        if GatewayCfgDesc.GW_MAC in first:
-            mac: Any = first[GatewayCfgDesc.GW_MAC]
-            if not isinstance(mac, str) or OCTETS_6_RE.fullmatch(mac) is None or mac.replace(":", "").upper() != self.config.gw_mac.replace(":", "").upper():
-                raise InvalidSetup("authenticated gateway MAC does not match .env")
+        mac: Any = first.get(GatewayCfgDesc.GW_MAC)
+        if not isinstance(mac, str) or OCTETS_6_RE.fullmatch(mac) is None or mac.replace(":", "").upper() != self.config.gw_mac.replace(":", "").upper():
+            self.reset_advice = False
+            raise InvalidSetup("authenticated gateway MAC is missing, malformed, or does not match .env")
         expected: dict[str, Any] = default_config_values(AUTHENTICATION_DEFAULT_FIELDS)
         field: str
         value: Any
@@ -1089,7 +1089,7 @@ class FunctionalTest_5_7_1_2_a:
             self.evidence.exception(caught_error)
             if self.active_case is not None and self.outcomes[self.active_case.name] != "FAIL":
                 self.outcomes[self.active_case.name] = "ERROR"
-                self.report(f"Step {self.active_case.number:02d} finished: ERROR — {caught_error}")
+                self.report(f"Step {self.active_case.number:02d} finished: ERROR — {type(caught_error).__name__}; see evidence log")
         except KeyboardInterrupt as interrupted:
             interrupted: KeyboardInterrupt
             error = interrupted
@@ -1122,10 +1122,10 @@ class FunctionalTest_5_7_1_2_a:
                     self.evidence.write("AUTOMATIC RECOVERY", f"unverified: {caught_recovery_error}")
         recovery: str | None = FACTORY_RESET_MESSAGE if self.reset_advice else None
         if recovery is None and isinstance(error, InvalidSetup) and not self.touched:
-            recovery = f"Setup error: {error}. See {self.evidence.path} for details."
+            recovery = f"Setup error: {type(error).__name__}. See {self.evidence.path} for details."
         if self.touched:
             if error is not None:
-                diagnostic: str = f"{type(error).__name__}: {error}. See {self.evidence.path} for details."
+                diagnostic: str = f"{type(error).__name__}. See {self.evidence.path} for details."
                 recovery = f"{recovery}\n{diagnostic}" if recovery else diagnostic
             if self.failure_details:
                 failures: str = "\n".join(self.failure_details)
@@ -1135,7 +1135,7 @@ class FunctionalTest_5_7_1_2_a:
                 recovery = f"{recovery}\n{restored}" if recovery else restored
             else:
                 if recovery_error is not None:
-                    failure: str = f"Automatic recovery failed: {type(recovery_error).__name__}: {recovery_error}."
+                    failure: str = f"Automatic recovery failed: {type(recovery_error).__name__}; see evidence log."
                     recovery = f"{recovery}\n{failure}" if recovery else failure
                 recovery = f"{recovery}\n{self.recovery_notice}" if recovery else self.recovery_notice
                 self.evidence.write("MANUAL RECOVERY REQUIRED", self.recovery_notice)
