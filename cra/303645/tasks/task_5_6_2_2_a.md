@@ -148,7 +148,7 @@ Disclosure scanning includes nonempty credential input values identified by a kn
 `name` or `id`, including hidden inputs, as well as literal assignments in rendered HTML and
 `text/plain` responses. Scan decoded rendered text for quoted configuration dumps and runtime
 diagnostics at every HTTP status, excluding script/style text from the rendered scan. Decode JSON
-where possible and preserve quote/escape boundaries in quoted credential and embedded Wi-Fi
+where possible, including recursively serialized strings inside containers, and preserve quote/escape boundaries in quoted credential and embedded Wi-Fi
 configuration literals. Check DeviceID seeds in raw and decoded JSON text, including the equivalent
 contiguous hexadecimal representation; do not match a substring of a longer hexadecimal value.
 Nonempty headers named for known credentials also fail the scan, independent of their value syntax.
@@ -176,6 +176,11 @@ unit **AUTO**: "Unauthenticated HTTP requests plus local capture analysis can be
 objective assertions on banners/redirects/disclosure." Implement the **HTTP-disclosure assessment as
 the mandatory, fully-AUTO core**; treat the L2 DHCP capture as a **precondition-gated sub-check**
 (see below), because it is only automatable under documented host conditions.
+
+This runner assesses HTTP responses and DHCP broadcasts, matching the source Unit A table.
+The UART `### Start mDNS` line is used only to correlate the configured hostname after reset;
+it is not an mDNS packet observation. UDP 5353 traffic and mDNS disclosure assessment are outside
+this task's implemented coverage and are not implied by a PASS here.
 
 ### Firmware reality vs source wording (must be handled, not copied blindly)
 

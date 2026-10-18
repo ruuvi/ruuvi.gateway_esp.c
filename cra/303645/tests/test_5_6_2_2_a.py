@@ -20,7 +20,7 @@ from datetime import datetime
 from html.parser import HTMLParser
 from http.cookies import SimpleCookie
 from pathlib import Path
-from typing import Any, BinaryIO, Callable
+from typing import Any, BinaryIO, Callable, Iterator
 from urllib.parse import ParseResult, urljoin, urlparse
 
 import requests
@@ -456,6 +456,37 @@ class PublicHtmlText(HTMLParser):
             self.fragments.append(data)
 
 
+def decoded_json_fragments(content: str) -> Iterator[str]:
+    """Inspect nested JSON-string encodings iteratively without recursive calls.
+
+    Each decoded string is shorter than its quoted source; deduplication avoids
+    rescanning canonical containers and repeated strings in the same fragment.
+    """
+    pending: list[str] = [content]
+    scanned: set[str] = set()
+    emitted: set[str] = set()
+    decoder: json.JSONDecoder = json.JSONDecoder()
+    while pending:
+        candidate: str = pending.pop()
+        if candidate in scanned:
+            continue
+        scanned.add(candidate)
+        opening: re.Match[str]
+        for opening in re.finditer(r'[\[{"]', candidate):
+            try:
+                decoded: Any
+                _end: int
+                decoded, _end = decoder.raw_decode(candidate, opening.start())
+            except json.JSONDecodeError:
+                continue
+            normalized: str = decoded if isinstance(decoded, str) else json.dumps(decoded, ensure_ascii=False)
+            if normalized not in emitted:
+                emitted.add(normalized)
+                yield normalized
+            if normalized not in scanned:
+                pending.append(normalized)
+
+
 def scan_observation(
     observation: Observation, gw_id: str, default_username: str, public_base_url: str = "",
 ) -> tuple[DisclosureFinding, ...]:
@@ -493,6 +524,7 @@ def scan_observation(
             ("coordinates", COORDINATES_PATTERN),
             ("Wi-Fi PSK", WIFI_PASSWORD_PATTERN),
         )
+        # Rendered fragments get the generic pointer scan; only raw HTML is excluded.
         if location != "body" or not rendered_body:
             patterns += (("runtime backtrace", RUNTIME_BACKTRACE_PATTERN),)
             if location == "body" and observation.status == HttpStatus.C_200_OK:
@@ -555,22 +587,14 @@ def scan_observation(
                                                   location, "credential value", bare_match.group(0)))
         # Decode JSON containers and strings embedded in a public asset or rendered dump.
         # This handles escaped property names/values without interpreting JavaScript expressions.
-        decoder: json.JSONDecoder = json.JSONDecoder()
-        opening: re.Match[str]
-        for opening in re.finditer(r'[\[{"]', content):
-            try:
-                decoded: Any
-                _end: int
-                decoded, _end = decoder.raw_decode(content, opening.start())
-            except json.JSONDecodeError:
-                continue
-            normalized: str = json.dumps(decoded, ensure_ascii=False)
+        normalized: str
+        for normalized in decoded_json_fragments(content):
             if gw_id and seed_pattern.search(normalized):
                 findings.append(DisclosureFinding(observation.probe.method, observation.probe.path,
                                                   location, "DeviceID password seed", gw_id))
-            if isinstance(decoded, dict):
-                # Canonical serialization exposes escaped keys at every nesting depth while
-                # retaining value types: empty defaults and JSON schemas remain public.
+            if normalized:
+                # Scan decoded containers and strings, including serialized dumps.
+                # Empty defaults and JSON schemas retain their original value types.
                 decoded_patterns: tuple[tuple[str, re.Pattern[str]], ...] = (
                     ("Wi-Fi PSK", WIFI_PASSWORD_PATTERN), ("personal telemetry", HISTORY_PATTERN),
                     ("sensor tags", TAGS_PATTERN), ("coordinates", COORDINATES_PATTERN),

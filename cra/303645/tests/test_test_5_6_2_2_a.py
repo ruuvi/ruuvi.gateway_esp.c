@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import os
 import struct
 import subprocess
@@ -310,6 +311,31 @@ class RunnerTests(unittest.TestCase):
                 result: RunResult = self._run()
                 self.assertEqual(expected, result.verdict, self.messages)
                 self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
+
+    def test_nested_serialized_json_disclosures_and_public_controls(self) -> None:
+        payload: Any
+        expected: str
+        for payload, expected in (
+            ('{"mqtt_pass":"leaked"}', "FAIL"),
+            ({"dump": '{"mqtt_pass":"leaked"}'}, "FAIL"),
+            ([{"dump": ['{"wifi_sta_config":{"password":"secret"}}']}], "FAIL"),
+            ('{"nested":{"remote_cfg_auth_bearer_token":"leaked"}}', "FAIL"),
+            ('{"mqtt_pass":"","lan_auth_user":"Admin"}', "PASS"),
+            ({"dump": '{"properties":{"mqtt_pass":{"type":"string"}}}'}, "PASS"),
+            (["Bearer authentication", "mqtt_pass"], "PASS"),
+        ):
+            depth: int
+            for depth in (1, 2, 4):
+                with self.subTest(payload=payload, depth=depth):
+                    self.setUp()
+                    encoded: str = json.dumps(payload)
+                    for _ in range(depth - 1):
+                        encoded = json.dumps(encoded)
+                    self.fake.changed_path = "/app.js"
+                    self.fake.changed_body = "window.fixture = " + encoded + ";"
+                    result: RunResult = self._run()
+                    self.assertEqual(expected, result.verdict, self.messages)
+                    self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
 
     def test_escaped_credential_quotes_preserve_complete_finding(self) -> None:
         assignment: str
