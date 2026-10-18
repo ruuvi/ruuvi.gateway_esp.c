@@ -102,7 +102,7 @@ PUBLIC_CACHE_CONTROL_PATTERN: re.Pattern[str] = re.compile(
     r"(?i)\s*(?:(?:max-age|s-maxage|stale-while-revalidate|stale-if-error)\s*=\s*[0-9]+|"
     r"public|private|no-cache|no-store|must-revalidate|proxy-revalidate|immutable|no-transform)\s*"
 )
-BEARER_PATTERN: re.Pattern[str] = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/-]+")
+BEARER_PATTERN: re.Pattern[str] = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/-]+=*")
 HISTORY_PATTERN: re.Pattern[str] = re.compile(r'(?i)["\'](?:history|sensor_data|ble_mac)["\']\s*:\s*(?:\[\s*\{|\[\s*["\']|\{\s*["\'])')
 QUOTED_LITERAL: str = r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
 WIFI_PASSWORD_PATTERN: re.Pattern[str] = re.compile(
@@ -956,12 +956,11 @@ class FunctionalTest_5_6_2_2_a:
             )
             return
         hostname_matches: bool = (
-            result.hostname.casefold() == expected_dhcp_hostname.casefold() if result.hostname is not None else
-            expected_dhcp_hostname.casefold() in frame.casefold()
+            result.hostname is not None and
+            result.hostname.casefold() == expected_dhcp_hostname.casefold() and
+            result.hostname.casefold() == result.uart_hostname.casefold()
         )
-        if not hostname_matches or (result.uart_hostname is not None and
-                                    result.hostname is not None and
-                                    result.hostname.casefold() != result.uart_hostname.casefold()):
+        if not hostname_matches:
             self.outcomes["DHCP capture"] = "ERROR"
             self.output(
                 f"DHCP capture ERROR: last Option 12 hostname {result.hostname or '<missing>'} "

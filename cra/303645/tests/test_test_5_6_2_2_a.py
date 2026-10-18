@@ -123,6 +123,7 @@ class RunnerTests(unittest.TestCase):
         self.capture: CaptureResult = CaptureResult(
             f"02:11:22:33:44:55 > ff:ff:ff:ff:ff:ff DHCP Hostname {DHCP_HOSTNAME}", "eth0",
             source_mac=ETHERNET_MAC, ethernet_mac=ETHERNET_MAC, uart_hostname=DHCP_HOSTNAME,
+            hostname=DHCP_HOSTNAME, option_values=((12, DHCP_HOSTNAME.encode().hex()),),
         )
         self.capture_calls: list[tuple[str, int]] = []
 
@@ -935,6 +936,37 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
                 self.assertIn("bearer token", self._log())
 
+    def test_padded_bearer_credentials_fail_and_retain_complete_evidence(self) -> None:
+        path: str
+        body: str | None
+        header: tuple[str, str] | None
+        token: str
+        scenarios: tuple[tuple[str, str | None, tuple[str, str] | None, str], ...] = (
+            (GatewayApi.STATUS, None, ("Authorization", "Bearer abc="), "Bearer abc="),
+            ("/", '<script src="/app.js"></script><span>Bearer abc==</span>', None, "Bearer abc=="),
+            ("/app.js", r'{"value":"Bear\u0065r abc="}', None, "Bearer abc="),
+        )
+        for path, body, header, token in scenarios:
+            with self.subTest(path=path, token=token):
+                self.setUp()
+                self.fake.changed_path = path
+                self.fake.changed_body = body
+                self.fake.changed_header = header
+                result: RunResult = self._run()
+                self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+                self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+                self.assertIn("bearer token", self._log())
+                self.assertIn(token, self._log())
+                self.assertNotIn(token, "\n".join(self.messages))
+
+    def test_padded_bearer_credentials_fail_in_dhcp_options(self) -> None:
+        self.capture = replace(self.capture, option_values=(
+            (12, DHCP_HOSTNAME.encode().hex()), (61, b"Bearer abc==".hex()),
+        ))
+        result: RunResult = self._run()
+        self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual("FAIL", result.outcomes["DHCP capture"])
+
     def test_short_bearer_credentials_fail_in_dhcp_options(self) -> None:
         self.capture = replace(self.capture, option_values=(
             (12, DHCP_HOSTNAME.encode().hex()), (61, b"Authorization: Bearer a".hex()),
@@ -1231,6 +1263,7 @@ class RunnerTests(unittest.TestCase):
         self.capture = CaptureResult(
             f"02:11:22:33:44:55 DHCP Hostname {DHCP_HOSTNAME} vendor-specific token=secret", "eth0",
             source_mac=ETHERNET_MAC, ethernet_mac=ETHERNET_MAC, uart_hostname=DHCP_HOSTNAME,
+            hostname=DHCP_HOSTNAME, option_values=((12, DHCP_HOSTNAME.encode().hex()),),
         )
         result = self._run()
         self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
@@ -1568,6 +1601,16 @@ class RunnerTests(unittest.TestCase):
                 result: RunResult = self._run()
                 self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
                 self.assertIn("Option 12 hostname", "\n".join(self.messages))
+
+    def test_dhcp_summary_hostname_cannot_replace_missing_option_12(self) -> None:
+        self.capture = replace(self.capture, hostname=None, option_values=((53, "01"),))
+        result: RunResult = self._run()
+        self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code), self.messages)
+        self.assertEqual("ERROR", result.outcomes["DHCP capture"])
+        self.assertEqual("PASS", result.outcomes["sensitive disclosure scan"])
+        self.assertIn(f"DHCP Hostname {DHCP_HOSTNAME}", self.capture.frame or "")
+        self.assertIn("last Option 12 hostname <missing>", "\n".join(self.messages))
+        self.assertIn("OVERALL VERDICT: ERROR", self._log())
 
     def test_early_boot_espressif_never_satisfies_final_hostname_check(self) -> None:
         early_hostname: str = "espressif"
