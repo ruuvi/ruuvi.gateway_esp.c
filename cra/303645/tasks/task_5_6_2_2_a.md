@@ -153,6 +153,10 @@ configuration literals. Check DeviceID seeds in raw and decoded JSON text, inclu
 contiguous hexadecimal representation; do not match a substring of a longer hexadecimal value.
 Nonempty headers named for known credentials also fail the scan, independent of their value syntax.
 Empty controls and ordinary JavaScript expressions are not credentials.
+The known-field inventory includes all remote-config token/API-key variants and Basic usernames,
+HTTP statistics usernames, and all four client private-key storage names (`http_cli_key`,
+`stat_cli_key`, `mqtt_cli_key`, `rcfg_cli_key`). A nonempty value fails even without PEM syntax;
+public certificate field names, empty defaults, and schema declarations remain permitted.
 For every captured DHCP packet, inspect BOOTP's fixed `sname` and `file` fields as well as DHCP
 options. These client fields must be zero-filled; any nonempty payload is undeclared information
 and fails the DHCP check, including ASCII or binary DeviceID password seeds in an earlier packet.

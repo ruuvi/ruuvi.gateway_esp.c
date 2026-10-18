@@ -69,9 +69,10 @@ CHECKS: tuple[str, ...] = ("factory-default preflight", "HTTP disclosure matrix"
 SECRET_FIELDS: tuple[str, ...] = (
     GatewayCfgDesc.LAN_AUTH_USER, GatewayCfgDesc.LAN_AUTH_PASS, GatewayCfgDesc.LAN_AUTH_API_KEY,
     GatewayCfgDesc.LAN_AUTH_API_KEY_RW, "wifi_sta_config.password", "wifi_ap_config.password",
-    "remote_cfg_auth_bearer_token", "remote_cfg_auth_basic_pass", "http_user", "http_pass",
+    "remote_cfg_auth_bearer_token", "remote_cfg_auth_token", "remote_cfg_auth_apikey",
+    "remote_cfg_auth_basic_user", "remote_cfg_auth_basic_pass", "http_user", "http_pass",
     "http_bearer_token", "http_api_key", "mqtt_user", "mqtt_pass", "mqtt_cli_key",
-    "http_stat_pass", "stat_cli_key",
+    "http_stat_user", "http_stat_pass", "http_cli_key", "stat_cli_key", "rcfg_cli_key",
 )
 SECRET_FIELD_PATTERN: re.Pattern[str] = re.compile(
     r'(?i)["\']?(' + "|".join(re.escape(field) for field in SECRET_FIELDS) +

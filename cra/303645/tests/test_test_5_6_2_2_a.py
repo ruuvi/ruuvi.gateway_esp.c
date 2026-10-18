@@ -337,6 +337,54 @@ class RunnerTests(unittest.TestCase):
                     self.assertEqual(expected, result.verdict, self.messages)
                     self.assertEqual(expected, result.outcomes["sensitive disclosure scan"])
 
+    def test_canonical_remote_and_file_credentials_fail_without_pem_markers(self) -> None:
+        field: str
+        for field in ("remote_cfg_auth_token", "remote_cfg_auth_apikey", "http_cli_key",
+                      "rcfg_cli_key", "remote_cfg_auth_basic_user", "http_stat_user"):
+            surface: str
+            for surface in ("JSON", "header", "HTML input"):
+                with self.subTest(field=field, surface=surface):
+                    self.setUp()
+                    self.fake.changed_path = "/app.js"
+                    if surface == "JSON":
+                        self.fake.changed_body = json.dumps({field: "opaque-value"})
+                    elif surface == "header":
+                        self.fake.changed_header = (field, "opaque-value")
+                    else:
+                        self.fake.changed_path = "/"
+                        self.fake.changed_body = (
+                            '<script src="/app.js"></script>'
+                            f'<input type="hidden" name="{field}" value="opaque-value">'
+                        )
+                    result: RunResult = self._run()
+                    self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code), self.messages)
+                    self.assertEqual("FAIL", result.outcomes["sensitive disclosure scan"])
+                    self.assertNotIn("opaque-value", "\n".join(self.messages))
+
+    def test_canonical_credential_empty_schema_and_public_certificate_controls(self) -> None:
+        field: str
+        for field in ("remote_cfg_auth_token", "remote_cfg_auth_apikey", "http_cli_key",
+                      "rcfg_cli_key", "remote_cfg_auth_basic_user", "http_stat_user"):
+            with self.subTest(field=field):
+                self.setUp()
+                self.fake.changed_path = "/"
+                self.fake.changed_body = (
+                    '<script src="/app.js"></script>'
+                    f'<input type="hidden" name="{field}" value="">'
+                )
+                self.fake.changed_header = (field, "")
+                result: RunResult = self._run()
+                self.assertEqual(("PASS", 0), (result.verdict, result.exit_code), self.messages)
+                self.setUp()
+                self.fake.changed_path = "/app.js"
+                self.fake.changed_body = json.dumps({
+                    field: "", "properties": {field: {"type": "string"}},
+                    "http_cli_cert": "public-certificate", "rcfg_cli_cert": "public-certificate",
+                    "mqtt_cli_cert": "public-certificate", "stat_cli_cert": "public-certificate",
+                })
+                result = self._run()
+                self.assertEqual(("PASS", 0), (result.verdict, result.exit_code), self.messages)
+
     def test_escaped_credential_quotes_preserve_complete_finding(self) -> None:
         assignment: str
         for assignment in (r'"mqtt_pass":"abc\"def"', r"'mqtt_pass':'abc\'def'",
