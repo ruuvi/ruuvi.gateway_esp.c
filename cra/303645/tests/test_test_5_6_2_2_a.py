@@ -45,6 +45,16 @@ GET_PATHS: tuple[str, ...] = (GatewayApi.AUTH, GatewayApi.AP, GatewayApi.STATUS,
     GatewayApi.VALIDATE_URL, GatewayApi.EXTRA_CFG)
 
 
+def _dhcp_record(frame: bytes, ethernet_padding: bytes = b"") -> bytes:
+    """Give authored wire fixtures real datagram lengths before adding Ethernet padding."""
+    packet: bytearray = bytearray(frame)
+    ip_header_length: int = (packet[14] & 0x0F) * 4
+    struct.pack_into("!H", packet, 16, len(packet) - 14)
+    struct.pack_into("!H", packet, 14 + ip_header_length + 4, len(packet) - 14 - ip_header_length)
+    packet.extend(ethernet_padding)
+    return struct.pack("<IIII", 0, 0, len(packet), len(packet)) + packet
+
+
 class DisclosureGateway(DefaultAuthGateway):
     def __init__(self, config: DutConfig) -> None:
         super().__init__(config)
@@ -590,11 +600,11 @@ class RunnerTests(unittest.TestCase):
                         ethernet: bytes = bytes.fromhex("ffffffffffff0211223344550800")
                         frame: bytes = ethernet + ip_header + bytes(8) + bootp + options
                         pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
-                        pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+                        pcap += _dhcp_record(frame)
                         if early:
                             bootp[44:236] = bytes(192)
                             frame = ethernet + ip_header + bytes(8) + bootp + options
-                            pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+                            pcap += _dhcp_record(frame)
                         self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
                         result: RunResult = self._run()
                         expected: str = "FAIL" if payload else "PASS"
@@ -889,7 +899,7 @@ class RunnerTests(unittest.TestCase):
             hostname: bytes = name.encode("ascii")
             frame: bytes = (ethernet + ip_header + bytes(8) + bootp
                             + bytes((12, len(hostname))) + hostname + bytes((255,)))
-            pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+            pcap += _dhcp_record(frame)
         process: Mock = Mock()
         process.returncode = -15
         process.poll.side_effect = [None, -15]
@@ -1199,12 +1209,12 @@ class RunnerTests(unittest.TestCase):
                 frame: bytes = (bytes.fromhex("ffffffffffff0211223344550800") + ip_header + bytes(8)
                                 + bootp + bytes((12, len(hostname))) + hostname + b"\xff")
                 pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
-                pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+                pcap += _dhcp_record(frame)
                 complete: bytes = (bytes.fromhex("ffffffffffff021122334455080045000000000000000011")
                                    + bytes(10) + bytes(8) + bootp
                                    + bytes((12, len(hostname))) + hostname + b"\xff")
                 # A later valid packet cannot erase a malformed earlier observation.
-                pcap += struct.pack("<IIII", 0, 0, len(complete), len(complete)) + complete
+                pcap += _dhcp_record(complete)
                 self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
                 result: RunResult = self._run()
                 expected: str = "PASS" if version_ihl in {0x45, 0x46} else "ERROR"
@@ -1232,10 +1242,10 @@ class RunnerTests(unittest.TestCase):
                 )
                 frame: bytes = prefix + suffix
                 pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
-                pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+                pcap += _dhcp_record(frame)
                 # A later complete record must not hide an earlier incomplete packet.
                 complete: bytes = prefix + b"\xff"
-                pcap += struct.pack("<IIII", 0, 0, len(complete), len(complete)) + complete
+                pcap += _dhcp_record(complete)
                 self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
                 result: RunResult = self._run()
                 self.assertEqual("PASS" if valid else "ERROR", result.verdict)
@@ -1243,6 +1253,87 @@ class RunnerTests(unittest.TestCase):
                 if not valid:
                     self.assertIsNone(self.capture.frame)
                     self.assertIn("missing the end marker", "\n".join(self.messages))
+
+    def test_dhcp_end_marker_rejects_non_padding_payload_in_every_packet(self) -> None:
+        suffix: bytes
+        padding: bytes
+        expected: str
+        for suffix, padding, expected in (
+            (b"", b"", "PASS"),
+            (bytes(32), b"", "PASS"),
+            (bytes(8), b"\x0c\x01\xff", "PASS"),
+            (b'lan_auth_pass="secret"', b"", "ERROR"),
+            (bytes(8) + b"Authorization: Bearer a", b"", "ERROR"),
+            (bytes.fromhex(CONFIG.gw_id.replace(":", "")), b"", "ERROR"),
+        ):
+            with self.subTest(suffix=suffix, padding=padding):
+                self.setUp()
+                bootp: bytearray = bytearray(240)
+                bootp[236:240] = b"\x63\x82\x53\x63"
+                hostname: bytes = DHCP_HOSTNAME.encode("ascii")
+                prefix: bytes = (bytes.fromhex("ffffffffffff021122334455080045000000000000000011")
+                                 + bytes(10) + bytes(8) + bootp
+                                 + bytes((12, len(hostname))) + hostname + b"\xff")
+                pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+                pcap += _dhcp_record(prefix + suffix, padding)
+                # Final valid packet cannot erase an earlier unassessed payload.
+                pcap += _dhcp_record(prefix)
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                result: RunResult = self._run()
+                self.assertEqual(expected, result.verdict, self.messages)
+                self.assertEqual(expected, result.outcomes["DHCP capture"])
+                if expected == "ERROR":
+                    self.assertIn("non-padding bytes after the end marker", "\n".join(self.messages))
+                    self.assertNotIn("secret", "\n".join(self.messages))
+
+    def test_dhcp_datagram_lengths_reject_incomplete_or_invalid_payloads(self) -> None:
+        field_offset: int
+        declared_length: int
+        for field_offset, declared_length in (
+            (16, 0), (16, 27), (16, 65535),
+            (38, 0), (38, 247), (38, 248), (38, 65535),
+        ):
+            with self.subTest(field_offset=field_offset, declared_length=declared_length):
+                self.setUp()
+                bootp: bytearray = bytearray(240)
+                bootp[236:240] = b"\x63\x82\x53\x63"
+                hostname: bytes = DHCP_HOSTNAME.encode("ascii")
+                frame: bytes = (bytes.fromhex("ffffffffffff021122334455080045000000000000000011")
+                                + bytes(10) + bytes(8) + bootp
+                                + bytes((12, len(hostname))) + hostname + b"\xff")
+                record: bytearray = bytearray(_dhcp_record(frame))
+                struct.pack_into("!H", record, 16 + field_offset, declared_length)
+                pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+                pcap += record + _dhcp_record(frame)
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                result: RunResult = self._run()
+                self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+                self.assertEqual("ERROR", result.outcomes["DHCP capture"])
+                self.assertIn("datagram length", self.capture.problem or "")
+
+    def test_dhcp_does_not_borrow_option_bytes_from_ethernet_trailer(self) -> None:
+        suffix: bytes
+        expected_problem: str
+        for suffix, expected_problem in (
+            (b"", "missing the end marker"),
+            (b"\x3c", "truncated DHCP option length"),
+            (b"\x3c\x02a", "truncated DHCP option value"),
+        ):
+            with self.subTest(suffix=suffix):
+                self.setUp()
+                bootp: bytearray = bytearray(240)
+                bootp[236:240] = b"\x63\x82\x53\x63"
+                hostname: bytes = DHCP_HOSTNAME.encode("ascii")
+                frame: bytes = (bytes.fromhex("ffffffffffff021122334455080045000000000000000011")
+                                + bytes(10) + bytes(8) + bootp
+                                + bytes((12, len(hostname))) + hostname + suffix)
+                pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
+                pcap += _dhcp_record(frame, b"\x01a\xff")
+                self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
+                result: RunResult = self._run()
+                self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+                self.assertEqual("ERROR", result.outcomes["DHCP capture"])
+                self.assertIn(expected_problem, self.capture.problem or "")
 
     def test_decoded_dhcp_options_are_checked(self) -> None:
         bootp: bytearray = bytearray(240)
@@ -1258,7 +1349,7 @@ class RunnerTests(unittest.TestCase):
         ethernet: bytes = bytes.fromhex("ffffffffffff0211223344550800")
         frame: bytes = ethernet + ip_header + bytes(8) + bootp + options
         pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
-        pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+        pcap += _dhcp_record(frame)
         self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
         self.assertEqual((53, 12, 60), tuple(code for code, _ in self.capture.option_values or ()))
         self.assertEqual("PASS", self._run().verdict)
@@ -1270,7 +1361,7 @@ class RunnerTests(unittest.TestCase):
             + bytes((60, len(changed_vendor))) + changed_vendor + bytes((255,))
         )
         pcap = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
-        pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+        pcap += _dhcp_record(frame)
         self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
         result: RunResult = self._run()
         self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
@@ -1279,7 +1370,7 @@ class RunnerTests(unittest.TestCase):
         extra: bytes = bytes((43, 4)) + b"leak"
         frame = ethernet + ip_header + bytes(8) + bootp + options[:-1] + extra + bytes((255,))
         pcap = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
-        pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+        pcap += _dhcp_record(frame)
         self.capture = replace(decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC)
         result: RunResult = self._run()
         self.assertEqual(("FAIL", 1), (result.verdict, result.exit_code))
@@ -1310,7 +1401,7 @@ class RunnerTests(unittest.TestCase):
                     + bootp + options + bytes((255,))
                 )
                 pcap: bytes = struct.pack("<IHHIIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1)
-                pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+                pcap += _dhcp_record(frame)
                 self.capture = replace(
                     decode_dhcp_pcap(pcap, "eth0"), ethernet_mac=ETHERNET_MAC,
                     uart_hostname=DHCP_HOSTNAME,
@@ -1380,7 +1471,7 @@ class RunnerTests(unittest.TestCase):
             hostname: bytes = name.encode("ascii")
             options: bytes = bytes((53, 1, 1, 12, len(hostname))) + hostname + bytes((255,))
             frame: bytes = ethernet + ip_header + bytes(8) + bootp + options
-            pcap += struct.pack("<IIII", 0, 0, len(frame), len(frame)) + frame
+            pcap += _dhcp_record(frame)
         capture: CaptureResult = decode_dhcp_pcap(pcap, "eth0")
         self.assertEqual(DHCP_HOSTNAME, capture.hostname)
         self.assertEqual(("espressif",), tuple(frame.hostname for frame in capture.prior_frames))

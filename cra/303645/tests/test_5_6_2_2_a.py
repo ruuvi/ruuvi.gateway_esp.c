@@ -168,14 +168,23 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
     ip_header_length: int = (frame[ip_offset] & 0x0F) * 4
     if ip_header_length < 20 or len(frame) < ip_offset + ip_header_length + 8 or frame[ip_offset + 9] != 17:
         return CaptureResult(None, interface, "captured frame was not complete IPv4 UDP")
-    bootp_offset: int = ip_offset + ip_header_length + 8
-    if len(frame) < bootp_offset + 240 or frame[bootp_offset + 236:bootp_offset + 240] != b"\x63\x82\x53\x63":
+    ip_length: int = struct.unpack_from("!H", frame, ip_offset + 2)[0]
+    ip_end: int = ip_offset + ip_length
+    if ip_length < ip_header_length + 8 or ip_end > len(frame):
+        return CaptureResult(None, interface, "captured IPv4 datagram length was invalid or truncated")
+    udp_offset: int = ip_offset + ip_header_length
+    udp_length: int = struct.unpack_from("!H", frame, udp_offset + 4)[0]
+    udp_end: int = udp_offset + udp_length
+    bootp_offset: int = udp_offset + 8
+    if udp_length < 8 + 240 or udp_end != ip_end:
+        return CaptureResult(None, interface, "captured UDP datagram length was invalid or truncated")
+    if frame[bootp_offset + 236:bootp_offset + 240] != b"\x63\x82\x53\x63":
         return CaptureResult(None, interface, "captured UDP payload was not complete DHCP")
     source_mac: str = ":".join(f"{octet:02x}" for octet in frame[6:12])
     options: list[tuple[int, str]] = []
     offset: int = bootp_offset + 240
     end_seen: bool = False
-    while offset < len(frame):
+    while offset < udp_end:
         code: int = frame[offset]
         offset += 1
         if code == 255:
@@ -183,16 +192,20 @@ def _decode_dhcp_frame(frame: bytes, interface: str) -> CaptureResult:
             break
         if code == 0:
             continue
-        if offset >= len(frame):
+        if offset >= udp_end:
             return CaptureResult(None, interface, "truncated DHCP option length")
         length: int = frame[offset]
         offset += 1
-        if offset + length > len(frame):
+        if offset + length > udp_end:
             return CaptureResult(None, interface, "truncated DHCP option value")
         options.append((code, frame[offset:offset + length].hex()))
         offset += length
     if not end_seen:
         return CaptureResult(None, interface, "DHCP options are missing the end marker")
+    # Only zero DHCP padding may follow END inside the UDP payload. Ethernet
+    # trailer bytes outside the declared datagram are not DHCP option data.
+    if any(frame[offset:udp_end]):
+        return CaptureResult(None, interface, "DHCP payload contains non-padding bytes after the end marker")
     hostname_values: tuple[str, ...] = tuple(
         bytes.fromhex(value).decode("ascii", errors="replace") for code, value in options if code == 12
     )

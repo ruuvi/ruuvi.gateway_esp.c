@@ -327,6 +327,11 @@ host can capture and reset the dedicated DUT**. Specify it as a precondition-gat
     frame. Validate the IPv4 version and minimum 20-byte header before decoding UDP/BOOTP.
     Require the DHCP option end marker (`255`) in every captured packet; exhaustion of
     option bytes or zero padding without that marker is incomplete acquisition and ERROR.
+    Bound option decoding by the declared UDP length within the complete IPv4 datagram;
+    invalid or truncated lengths are ERROR. After END, permit only zero DHCP padding inside
+    that UDP payload: any nonzero byte is unassessed data and ERROR, never PASS. Ethernet
+    trailer bytes outside the declared datagram are not DHCP options. A later valid packet
+    must not conceal an earlier malformed payload.
     Scan all captured frames and reject other unexpected or sensitive options; contribute
     PASS/FAIL to the verdict.
   - If prerequisites are **not** present (no root/capture tool/interface), the UART marker is
