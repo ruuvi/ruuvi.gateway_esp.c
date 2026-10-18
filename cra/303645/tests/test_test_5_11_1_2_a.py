@@ -952,6 +952,39 @@ class CreationTests(unittest.TestCase):
                 self.assertEqual(len(items), 2)
                 self.assertTrue(all(not item["committed"] for item in items))
                 self.assertFalse([w for w in self.gateway.wire if w.host == "10.10.0.1" and w.path == "/connect.json" and w.body["ssid"]])
+                self.assertFalse([w for w in self.gateway.wire if w.body and w.body.get("lan_auth_type") == "lan_auth_ruuvi"])
+                self.assertFalse([w for w in self.gateway.wire if w.method == "POST" and w.path in ("/ssl_cert", "/extra_cfg")])
+                self.assertEqual(result.outcomes[runner.ADMIN], "NOT RUN")
+                self.assertEqual(result.outcomes[runner.CERTS], "NOT RUN")
+                self.assertTrue(any("factory reset verified Gateway" in instruction for instruction, _ in self.confirmations))
+                self.assert_restored()
+
+    def test_lan_connect_transport_failure_stops_provisioning_and_still_recovers(self) -> None:
+        error: requests.RequestException
+        for error in (requests.Timeout("LAN preflight timeout"), requests.ConnectionError("LAN preflight connection lost")):
+            with self.subTest(error=type(error).__name__):
+                self.setUp()
+                original: Callable[[FakeSession, RecordedRequest], FakeResponse | None] = self.gateway._response_override
+
+                def fail_preflight(
+                        session: FakeSession, call: RecordedRequest,
+                        failure: requests.RequestException = error,
+                        delegate: Callable[[FakeSession, RecordedRequest], FakeResponse | None] = original,
+                ) -> FakeResponse | None:
+                    assert self.gateway.current is not None
+                    if self.gateway.current.host != "10.10.0.1" and call.path == "/connect.json":
+                        raise failure
+                    return delegate(session, call)
+
+                self.gateway._response_override = fail_preflight
+                result: RunResult = self.execute()
+                self.assertEqual(result.exit_code, 2)
+                self.assertEqual(result.outcomes[runner.WIFI], "ERROR")
+                self.assertEqual(result.outcomes[runner.ADMIN], "NOT RUN")
+                self.assertEqual(result.outcomes[runner.CERTS], "NOT RUN")
+                self.assertFalse([w for w in self.gateway.wire if w.body and w.body.get("lan_auth_type") == "lan_auth_ruuvi"])
+                self.assertFalse([w for w in self.gateway.wire if w.method == "POST" and w.path in ("/ssl_cert", "/extra_cfg")])
+                self.assertTrue(any("factory reset verified Gateway" in instruction for instruction, _ in self.confirmations))
                 self.assert_restored()
 
     def test_malformed_or_rejected_wifi_status_never_proves_password(self) -> None:

@@ -383,6 +383,7 @@ class FunctionalTest_5_11_1_2_a:
         self.http_fixture: HttpFixture | None = None
         self.identity_conflict: bool = False
         self.lan_ready: bool = True
+        self.wifi_transition_complete: bool = False
         self.input_closed: bool = False
 
     def _ecc_generate(self, *, curve: str) -> ECC.EccKey:
@@ -730,6 +731,7 @@ class FunctionalTest_5_11_1_2_a:
 
     def _wifi(self) -> None:
         assert self.fixtures is not None and self.session is not None
+        self.wifi_transition_complete = False
         body: dict[str, str] = {Cfg.SSID: self.fixtures.ssid, Cfg.PASSWORD: self.fixtures.wifi_password}
         # Retain the possibly applied write before sending, including a lost response.
         self.wifi_attempted = True
@@ -747,7 +749,11 @@ class FunctionalTest_5_11_1_2_a:
                 self._ok(response, "Wi-Fi provisioning")
                 observed: dict[str, Any] = self._read_wifi_after_connect()
             finally:
-                self._return_to_lan()
+                try:
+                    self._return_to_lan()
+                finally:
+                    # A lost transition reply is recoverable only after authenticated LAN verification.
+                    self.wifi_transition_complete = self.lan_ready
         else:
             raise InvalidSetup(f"LAN Wi-Fi provisioning must return 403, received {response.status_code}")
         wifi: Any = observed.get(Cfg.WIFI_STA_CONFIG)
@@ -1110,7 +1116,7 @@ class FunctionalTest_5_11_1_2_a:
             self._checkpoint()
             self.progress("Provision Wi-Fi using operator-confirmed hotspot access")
             self._perform(WIFI, self._wifi)
-            if not self.lan_ready:
+            if not self.wifi_transition_complete or not self.lan_ready:
                 raise InvalidSetup("LAN transition incomplete; stopping normal checks and attempting recovery")
             self.progress("Provision custom authentication and local target assets")
             self.active = ADMIN
