@@ -646,7 +646,7 @@ class FunctionalTest_5_1_2a_2_b:
                 or not isinstance(report, dict)
                 or type(report.get("rssi")) is not int
                 or type(report.get("ble_chan")) is not int
-                or ("ble_phy" in report and report["ble_phy"] not in ("1M", "2M", "Coded"))
+                or report.get("ble_phy") not in ("1M", "2M", "Coded")
                 or not isinstance(report.get("data"), str)
                 or re.fullmatch(r"(?:[0-9A-Fa-f]{2})+", report["data"]) is None
                 or type(report.get("timestamp" if self.prepared_config.get("ntp_use", True) else "counter")) is not int
@@ -677,14 +677,19 @@ class FunctionalTest_5_1_2a_2_b:
             except SecurityFailure:
                 self.outcomes[probe.mechanism] = "FAIL"
                 raise
-            if response.status_code == HttpStatus.C_200_OK:
-                payload: dict[str, Any] = self.gateway.response_json(
-                    response, f"{probe.name} {probe.method} {probe.path}", dict
-                )
-                if probe.method == HttpMethod.POST and payload != {}:
-                    raise GatewayProtocolError("successful RW POST /ruuvi.json must return an empty JSON object")
-                if probe.method == HttpMethod.GET:
-                    self._validate_positive_read(payload, probe)
+            try:
+                if response.status_code == HttpStatus.C_200_OK:
+                    payload: dict[str, Any] = self.gateway.response_json(
+                        response, f"{probe.name} {probe.method} {probe.path}", dict
+                    )
+                    if probe.method == HttpMethod.POST and payload != {}:
+                        raise GatewayProtocolError("successful RW POST /ruuvi.json must return an empty JSON object")
+                    if probe.method == HttpMethod.GET:
+                        self._validate_positive_read(payload, probe)
+            except GatewayProtocolError:
+                if self.outcomes[probe.mechanism] != "FAIL":
+                    self.outcomes[probe.mechanism] = "ERROR"
+                raise
             self.evidence.write(
                 "PER-PROBE RESULT",
                 RouteResultEvidence(

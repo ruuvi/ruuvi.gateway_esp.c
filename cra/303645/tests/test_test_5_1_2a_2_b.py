@@ -465,6 +465,9 @@ class FunctionalTestCase(unittest.TestCase):
                 with self.subTest(config_mode=config_mode, mac=mac):
                     self.gateway = BearerGateway(CONFIG)
                     self.gateway.mode = GatewayCfgLanAuthType.RUUVI
+                    self.gateway.custom_ha1 = hashlib.md5(
+                        f"Admin:Ruuvi Gateway:{CONFIG.gw_id}".encode()
+                    ).hexdigest()
                     payload: dict[str, Any] = self.gateway.config()
                     payload[GatewayCfgDesc.LAN_AUTH_TYPE] = config_mode
                     if mac is None:
@@ -498,6 +501,9 @@ class FunctionalTestCase(unittest.TestCase):
             with self.subTest(fault=fault):
                 self.gateway = BearerGateway(CONFIG)
                 self.gateway.mode = GatewayCfgLanAuthType.RUUVI
+                self.gateway.custom_ha1 = hashlib.md5(
+                    f"Admin:Ruuvi Gateway:{CONFIG.gw_id}".encode()
+                ).hexdigest()
                 self.gateway.override[("", "GET", "/ruuvi.json")] = fault
                 result: RunResult = self.runner().run()
                 self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
@@ -786,7 +792,7 @@ class FunctionalTestCase(unittest.TestCase):
                     self.assertEqual((2, "ERROR"), (result.exit_code, result.verdict))
                     self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
                     self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
-                    self.assertNotEqual("PASS", result.outcomes[
+                    self.assertEqual("ERROR", result.outcomes[
                         AuthMech.M2M_API_BEARER_RO if key == RO_KEY else AuthMech.M2M_API_BEARER_RW
                     ])
 
@@ -833,7 +839,7 @@ class FunctionalTestCase(unittest.TestCase):
         fault: str
         ntp_use: bool
         for ntp_use in (False, True):
-            for fault in ("none", "wrong-mac", "coordinates", "tags", "timestamp", "report"):
+            for fault in ("none", "wrong-mac", "coordinates", "tags", "timestamp", "report", "missing-phy", "invalid-phy"):
                 with self.subTest(ntp_use=ntp_use, fault=fault):
                     self.gateway = BearerGateway(CONFIG)
                     self.gateway.ntp_use = ntp_use
@@ -858,6 +864,10 @@ class FunctionalTestCase(unittest.TestCase):
                         data["timestamp"] = True
                     elif fault == "report":
                         report["rssi"] = "-60"
+                    if fault == "missing-phy":
+                        del report["ble_phy"]
+                    elif fault == "invalid-phy":
+                        report["ble_phy"] = "invalid"
                     self.gateway.override[(f"Bearer {RO_KEY}", HttpMethod.GET, GatewayApi.HISTORY)] = FakeResponse(
                         200, {"data": data}
                     )
@@ -874,6 +884,8 @@ class FunctionalTestCase(unittest.TestCase):
                         (result.exit_code, result.verdict),
                     )
                     self.assertEqual("PASS", result.outcomes["final restoration and non-mutation"])
+                    self.assertEqual("PASS" if fault == "none" else "ERROR",
+                                     result.outcomes[AuthMech.M2M_API_BEARER_RO])
                     self.assertEqual(("", ""), (self.gateway.ro_key, self.gateway.rw_key))
 
     def test_empty_history_passes_with_ntp_disabled(self) -> None:
