@@ -650,6 +650,9 @@ class FunctionalTest_5_6_1_2_c:
         self.evidence.write("ASSERTION", AssertionEvidence("hotspot DNS/DHCP servers on UDP 53/67/68 inactive",
                             self.outcomes["hotspot servers disabled"], hotspot_states))
         unresolved_open_filtered: frozenset[int] = result.open_filtered - independently_resolved
+        unresolved_open_filtered_count: int = (
+            result.open_filtered_count - len(result.open_filtered & independently_resolved)
+        )
         unresolved_filtered_count: int = result.filtered_count - len(result.filtered_ports & independently_resolved)
         unresolved_closed_filtered: frozenset[int] = result.closed_filtered - independently_resolved
         unresolved_closed_filtered_count: int = (
@@ -659,6 +662,7 @@ class FunctionalTest_5_6_1_2_c:
             unresolved_closed_filtered == frozenset({ntp_source_port})
             and unresolved_closed_filtered_count == 1
             and not unresolved_open_filtered
+            and unresolved_open_filtered_count == 0
             and unresolved_filtered_count == 0
         )
         self.outcomes["UDP coverage"] = "PASS" if exact_sntp_only else "ERROR"
@@ -673,6 +677,7 @@ class FunctionalTest_5_6_1_2_c:
             "unresolved_closed_filtered": sorted(unresolved_closed_filtered),
             "unresolved_closed_filtered_count": unresolved_closed_filtered_count,
             "unresolved_open_filtered": sorted(unresolved_open_filtered),
+            "unresolved_open_filtered_count": unresolved_open_filtered_count,
             "unresolved_filtered_count": unresolved_filtered_count,
             "only_sntp_source_is_closed_filtered": exact_sntp_only,
         }
@@ -684,7 +689,7 @@ class FunctionalTest_5_6_1_2_c:
             self._say(
                 f"UDP coverage ERROR: expected only captured SNTP source {ntp_source_port}/udp "
                 f"as closed|filtered; observed {unresolved_closed_filtered_count} unresolved closed|filtered, "
-                f"{len(unresolved_open_filtered)} unresolved open|filtered, "
+                f"{unresolved_open_filtered_count} unresolved open|filtered, "
                 f"{unresolved_filtered_count} unresolved filtered"
             )
 

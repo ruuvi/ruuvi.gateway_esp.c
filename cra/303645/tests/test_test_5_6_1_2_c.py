@@ -22,7 +22,7 @@ from lib.config import FACTORY_RESET_MESSAGE, default_config_values
 from lib.gateway import GatewayCfgDesc, GatewayCfgLanAuthType, GatewayClient
 from lib.http_api import HttpMethod
 from lib.models import DutConfig, RunResult
-from lib.netscan import DatagramSocket
+from lib.netscan import DatagramSocket, ExtraportsGroup, PortObservation, ScanResult
 from test_support.fake_gateway import DefaultAuthGateway, FakeResponse, FakeSession, RecordedRequest
 
 CONFIG: DutConfig = DutConfig("00:11:22:33:44:55:66:77", "AA:BB:CC:DD:EE:FF", "gateway.local")
@@ -98,6 +98,8 @@ class FakeNmap:
         self.http_service: str = "http"
         self.unstable_tcp: bool = False
         self.failed_confirmation: tuple[str, int] | None = None
+        self.udp_xml_layout: str = "compact_closed"
+        self.last_xml: str = ""
 
     def __call__(self, command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
         self.calls.append(tuple(command))
@@ -139,6 +141,22 @@ class FakeNmap:
             for port, state in sorted(ambiguous.items())
         )
         extras: str = f'<extraports state="closed" count="{len(remaining)}"/>' if remaining else ""
+        if protocol == "udp" and full and self.udp_xml_layout == "enumerated":
+            # Nmap -d3 disables isIgnoredState, including for closed ports.
+            explicit += "".join(
+                f'<port protocol="udp" portid="{port}"><state state="closed" reason="port-unreach"/></port>'
+                for port in sorted(remaining)
+            )
+            extras = ""
+        elif protocol == "udp" and full and self.udp_xml_layout == "compressed_ambiguous":
+            # Model an unsupported wrapper/build that ignores -d3 and compresses ambiguity.
+            explicit = "".join(
+                f'<port protocol="udp" portid="{port}"><state state="open" reason="response"/></port>'
+                for port in sorted(open_ports)
+            )
+            state: str
+            for state in sorted(set(ambiguous.values())):
+                extras += f'<extraports state="{state}" count="{sum(value == state for value in ambiguous.values())}"/>'
         if protocol == "tcp" and full and self.tcp_filtered:
             extras = f'<extraports state="closed" count="{len(remaining) - 1}"/><extraports state="filtered" count="1"/>'
         xml: str = (
@@ -148,6 +166,7 @@ class FakeNmap:
             '</runstats></nmaprun>'
         )
         Path(command[command.index("-oX") + 1]).write_text(xml, encoding="utf-8")
+        self.last_xml = xml
         return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
 
@@ -356,6 +375,79 @@ class NetworkInterfaceRunnerTests(unittest.TestCase):
         self.assertIn("OVERALL VERDICT: PASS", evidence)
         self.assertEqual(12, sum(line.startswith("[Step ") for line in self.lines))
         self.assertIn("Overall verdict: PASS", self.lines)
+
+    def test_enumerated_full_range_udp_xml_supports_exact_sntp_coverage(self) -> None:
+        self.nmap.udp_xml_layout = "enumerated"
+        before: dict[str, Any] = dict(self.gateway.fields)
+        result: RunResult = self.execute()
+        self.assertEqual(("PASS", 0), (result.verdict, result.exit_code))
+        self.assertEqual("PASS", result.outcomes["UDP coverage"])
+        self.assertEqual(before, self.gateway.fields)
+        udp_command: tuple[str, ...] = self.nmap.calls[2]
+        self.assertIn("-d3", udp_command)
+        self.assertEqual("1-65535", udp_command[udp_command.index("-p") + 1])
+        evidence: str = self.evidence()
+        self.assertIn('portid="1"', evidence)
+        self.assertIn('portid="65535"', evidence)
+        self.assertIn('"unresolved_open_filtered_count": 0', evidence)
+
+    def test_compressed_full_range_udp_ambiguity_aborts_and_restores(self) -> None:
+        self.nmap.udp_xml_layout = "compressed_ambiguous"
+        self.nmap.udp_ambiguous.update({
+            port: "open|filtered" for port in range(1, 65536) if port not in {5353, 62922}
+        })
+        before: dict[str, Any] = dict(self.gateway.fields)
+        result: RunResult = self.execute()
+        self.assertEqual(("ERROR", 2), (result.verdict, result.exit_code))
+        self.assertEqual("ERROR", result.outcomes["UDP coverage"])
+        self.assertEqual("NOT RUN", result.outcomes["hotspot servers disabled"])
+        self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
+        self.assertEqual(before, self.gateway.fields)
+        self.assertIn("nmap did not enumerate indeterminate port states with -d3", self.evidence())
+        self.assertIn('<extraports state="open|filtered" count="65533"/>', self.nmap.last_xml)
+        self.assertEqual(3, len(self.nmap.calls))
+
+    def test_mixed_scan_counts_cannot_hide_unresolved_open_filtered_ports(self) -> None:
+        hidden_count: int
+        for hidden_count in (0, 2):
+            with self.subTest(hidden_count=hidden_count):
+                self.setUp()
+                # Independently authored acquisition result: 53 is resolved by a targeted
+                # probe, but omitted IDs in mixed groups cannot be attributed to that probe.
+                scan: ScanResult = ScanResult(
+                    open_ports=frozenset({5353}), closed_ports=frozenset(), filtered_ports=frozenset(),
+                    closed_count=65533 - max(1, hidden_count), filtered_count=0,
+                    open_filtered=frozenset({53}) if hidden_count == 0 else frozenset(),
+                    open_filtered_count=1 if hidden_count == 0 else hidden_count,
+                    closed_filtered=frozenset({62922}), closed_filtered_count=1,
+                    raw_xml="independently authored mixed-group acquisition result", elapsed=1.0,
+                    command=("nmap", "-sU", "-p", "1-65535"),
+                    observations=(PortObservation(5353, "open", "mdns", "", "response"),
+                                  PortObservation(62922, "closed|filtered", "", "", "no-response")) + (
+                        (PortObservation(53, "open|filtered", "domain", "", "no-response"),)
+                        if hidden_count == 0 else ()
+                    ),
+                    extraports=(ExtraportsGroup("closed", 65533 - max(1, hidden_count)),) + (
+                        (ExtraportsGroup("open|filtered", hidden_count),) if hidden_count else ()
+                    ),
+                )
+                real_scan: Callable[..., ScanResult] = target.run_udp_scan
+
+                def acquire(ip: str, ports: str, *, scan_result: ScanResult = scan,
+                            scan_function: Callable[..., ScanResult] = real_scan, **kwargs: Any) -> ScanResult:
+                    return scan_result if ports == "1-65535" else scan_function(ip, ports, **kwargs)
+
+                with patch("test_5_6_1_2_c.run_udp_scan", side_effect=acquire):
+                    result: RunResult = self.execute()
+                expected: str = "PASS" if hidden_count == 0 else "ERROR"
+                self.assertEqual(expected, result.verdict)
+                self.assertEqual(expected, result.outcomes["UDP coverage"])
+                self.assertEqual("PASS", result.outcomes["hotspot servers disabled"])
+                self.assertEqual("PASS", result.outcomes["NTP configuration restoration"])
+                evidence: str = self.evidence()
+                self.assertIn(f'"unresolved_open_filtered_count": {hidden_count}', evidence)
+                if hidden_count:
+                    self.assertIn("2 unresolved open|filtered", "\n".join(self.lines))
 
     def test_env_mac_case_does_not_change_device_derived_mqtt_defaults(self) -> None:
         spelling: str

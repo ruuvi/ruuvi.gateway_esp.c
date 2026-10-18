@@ -307,9 +307,21 @@ Scan the **resolved LAN IP** with `-Pn -n --reason -oX`, parsing `nmap` **XML** 
 ### UDP (source-declared full range, privileged, honest interpretation)
 
 - Target the **full `1-65535` UDP range** to match the source, using
-  `nmap -sU -sV -Pn -n --reason --defeat-icmp-ratelimit -p 1-65535 -oX <file> <ip>` with small,
+  `nmap -sU -sV -Pn -n --reason -d3 --defeat-icmp-ratelimit -p 1-65535 -oX <file> <ip>` with small,
   documented `--max-retries` and a **finite `--host-timeout`** (named production constant) plus an
   outer subprocess timeout. Requires privilege.
+- Require Nmap's `-d3` XML enumeration behavior. In the
+  [7.40 release source, `PortList::isIgnoredState()`](https://github.com/nmap/nmap/blob/eb0ba33394e93107a7b6497c5005878d6caf5f46/portlist.cc#L834)
+  returns false when debugging exceeds 2; the
+  [XML output path](https://github.com/nmap/nmap/blob/eb0ba33394e93107a7b6497c5005878d6caf5f46/output.cc#L770)
+  emits each port when its state is not ignored. This is a deliberate enumeration mechanism,
+  not a claim that arbitrary debug output contains parseable port states. The runner uses the
+  shared helper's `enumerate_ports=True` contract and checks completed XML, including full-range
+  totals. An installation or wrapper that still compresses indeterminate states is unsupported:
+  report ERROR, restore NTP configuration, and use a standard Nmap build honoring `-d3` before
+  retrying. Never infer individual IDs from multiple compressed state groups, silently drop their
+  counts, or mark compressed ambiguity closed. No additional full-range scan or per-port process
+  is needed.
 - **If the UDP scan cannot complete within the budget → ERROR** (an incomplete scan is not proof of
   absence). Do not silently reduce the range; any reduced range must be an explicitly logged,
   documented limitation, never a hidden default.
@@ -364,6 +376,9 @@ Build the expected model from IXIT 28 (with IXIT 15 as physical context) in code
    unresolved UDP port is ERROR. A direct mDNS answer or a conclusive targeted hotspot probe can
    resolve `open|filtered` or `filtered` observations. Record the separate 802.11-management WPS
    scope limitation.
+   Compare both sets and counts for indeterminate states, subtracting independently resolved ports
+   only when their membership in that specific state is known. Empty explicit port sets with
+   nonzero compressed counts remain unresolved.
 7. **NTP restoration**: verify the full final configuration equals the saved baseline; an unverified
    or changed final state is ERROR with operator recovery advice.
 
@@ -500,6 +515,10 @@ clock. No real `nmap`/DNS/mDNS calls. Cover at least:
 - UDP host-timeout/incomplete → ERROR/exit 2 (not PASS);
 - captured SNTP port as sole `closed|filtered` UDP port → PASS contribution; a different or extra
   indeterminate port → ERROR/exit 2;
+- fully enumerated full-range XML with `-d3` reaches the exact SNTP-only comparison; a compressed
+  full-range `open|filtered` result from an unsupported build fails closed and still restores NTP;
+- mixed compressed-state counts cannot hide unresolved `open|filtered` ports, including when direct
+  probes resolve known hotspot ports; subtract a resolved port only from its known original state;
 - lost NTP-change response, capture failure, scan failure, restoration failure, and full final
   configuration mismatch all exercise restoration and ERROR/exit 2;
 - runner handling of independently authored parsed scan results; direct XML parsing and reusable
