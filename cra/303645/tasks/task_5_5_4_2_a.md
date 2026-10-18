@@ -392,10 +392,11 @@ Use fresh sessions **without** the authorized baseline cookie and with redirects
    as `302`. (SoftServ-Local-Programmatic-API / SoftServ-Local-Management-WebUI.)
 2. `GET /history` -> require `302` (corroborating read endpoint).
 3. `GET /status.json` -> require `302` (previous-URL cookie omitted).
-4. `GET /auth` -> require `401`; the `WWW-Authenticate` header must begin with `x-ruuvi-interactive`
+4. `GET /info.json` -> require `302`; LAN `404` requires authorization and must fail this denial check.
+5. `GET /auth` -> require `401`; the `WWW-Authenticate` header must begin with `x-ruuvi-interactive`
    and the JSON must report `lan_auth_default`. Classify as `401`.
-5. `DELETE /auth` without an authorized session -> require `401` (fresh-session auth-only probe).
-6. Defer the missing-credential `POST /ruuvi.json` with exactly `{}` until all baseline-state
+6. `DELETE /auth` without an authorized session -> require `401` (fresh-session auth-only probe).
+7. Defer the missing-credential `POST /ruuvi.json` with exactly `{}` until all baseline-state
    invalid-credential reads in the next phase have finished; require `401`.
 
 ### 3. Invalid-credential probes
@@ -407,10 +408,13 @@ Use fresh sessions **without** the authorized baseline cookie and with redirects
    separately send each cookie on a follow-up `GET /auth` and require `401` with default interactive
    authentication. Neither cookie may authorize access. Keep both attempts within the existing
    invalid-interactive-credentials progress phase. Classify as `401`.
-2. Complete invalid Basic and Digest GETs on `/ruuvi.json`, `/status.json`, and `/history` using the
-   shared authorization builders before any configuration POST probe. Require the route-specific
+2. Complete invalid Basic and Digest GETs on `/ruuvi.json`, `/status.json`, `/history`, and `/info.json` using
+   the shared authorization builders before any configuration POST probe. Require the route-specific
    `302`/`401` denial expectations; `GET /auth` must not advertise Basic or Digest.
-3. Then send the deferred missing-credential POST and invalid Basic/Digest `POST /ruuvi.json`
+3. With API keys still disabled, send a fresh rejected bearer token on `GET /info.json` and
+   require `401`. A `404` is not authentication denial. Complete this separate safer progress phase
+   before any configuration POST probe; the runner has thirteen progress steps.
+4. Then send the deferred missing-credential POST and invalid Basic/Digest `POST /ruuvi.json`
    probes, each with exactly `{}` and expected `401`. Verify the full configuration hash afterward.
    Keep the cross-scheme read-before-write sequence explicit in fake-transport assertions.
 

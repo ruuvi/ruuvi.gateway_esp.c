@@ -46,8 +46,8 @@ INSUFFICIENT: str = AuthMech.M2M_API_BEARER_RO
 LAN_FORBIDDEN: str = "LAN-forbidden 403 distinction"
 FINAL: str = "final restoration and non-mutation"
 CHECKS: tuple[str, ...] = (SETUP, UNAUTHENTICATED, INVALID, PREPARED, INSUFFICIENT, LAN_FORBIDDEN, FINAL)
-READ_PATHS: tuple[str, ...] = (GatewayApi.CONFIG, GatewayApi.STATUS, GatewayApi.HISTORY)
-TOTAL_STEPS: int = 12
+READ_PATHS: tuple[str, ...] = (GatewayApi.CONFIG, GatewayApi.STATUS, GatewayApi.HISTORY, GatewayApi.INFO)
+TOTAL_STEPS: int = 13
 
 
 class SecurityFailure(Exception):
@@ -260,7 +260,7 @@ class FunctionalTest_5_5_4_2_a:
         self.active = UNAUTHENTICATED
         self.progress("Checking unauthenticated reads and session denial")
         path: str
-        for path in (GatewayApi.CONFIG, GatewayApi.HISTORY, GatewayApi.STATUS):
+        for path in (GatewayApi.CONFIG, GatewayApi.HISTORY, GatewayApi.STATUS, GatewayApi.INFO):
             response: requests.Response = self._probe(HttpMethod.GET, path, HttpStatus.C_302_FOUND)
             if path == GatewayApi.CONFIG:
                 self._require(self._auth_location_valid(response.headers.get(HttpHeader.LOCATION, "")),
@@ -327,6 +327,9 @@ class FunctionalTest_5_5_4_2_a:
             for path in READ_PATHS:
                 self._probe(HttpMethod.GET, path, HttpStatus.C_302_FOUND,
                             self._invalid_header(scheme, HttpMethod.GET, path))
+        self.progress("Checking rejected bearer access to the hotspot-only info route")
+        self._probe(HttpMethod.GET, GatewayApi.INFO, HttpStatus.C_401_UNAUTHORIZED,
+                    f"{HttpAuthScheme.BEARER} {self.gateway.random_text(24)}")
         # Every safer phase across every baseline scheme completes before these writes.
         for scheme in ("", HttpAuthScheme.BASIC, HttpAuthScheme.DIGEST):
             self.active = INVALID if scheme else UNAUTHENTICATED

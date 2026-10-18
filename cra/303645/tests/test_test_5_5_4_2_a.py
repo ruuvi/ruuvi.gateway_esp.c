@@ -96,6 +96,14 @@ class DenialGateway(DefaultAuthGateway):
                 if fault.error is not None:
                     raise fault.error
                 return fault.response
+        if call.path == GatewayApi.INFO and call.method == HttpMethod.GET:
+            authorized: bool = self._is_real_bearer(call.bearer_token, call.path)
+            if call.bearer_token is None:
+                active: FakeSession
+                for active in self.authorized_sessions:
+                    authorized |= self._has_session_cookie(active, {HttpHeader.COOKIE: call.cookie or ""})
+            if authorized:
+                return FakeResponse(404)
         if call.path == GatewayApi.CONNECT_WPS and call.method == HttpMethod.POST:
             return FakeResponse(403 if call.bearer_token == self.rw_key and self.rw_key else 401)
         return None
@@ -215,42 +223,46 @@ class DenialRunnerTests(unittest.TestCase):
             ExpectedRequest("none", "GET", "/ruuvi.json", 2),
             ExpectedRequest("none", "GET", "/history", 3),
             ExpectedRequest("none", "GET", "/status.json", 4),
-            ExpectedRequest("none", "GET", "/auth", 5),
-            ExpectedRequest("none", "DELETE", "/auth", 6),
-            ExpectedRequest("none", "GET", "/auth", 7),
-            ExpectedRequest("none", "POST", "/auth", 7, login_body(7, invalid=True)),
-            ExpectedRequest("none", "GET", "/auth", 7),
+            ExpectedRequest("none", "GET", "/info.json", 5),
+            ExpectedRequest("none", "GET", "/auth", 6),
+            ExpectedRequest("none", "DELETE", "/auth", 7),
             ExpectedRequest("none", "GET", "/auth", 8),
-            ExpectedRequest("none", "POST", "/auth", 8, login_body(8, wrong_password=True)),
+            ExpectedRequest("none", "POST", "/auth", 8, login_body(8, invalid=True)),
             ExpectedRequest("none", "GET", "/auth", 8),
-            ExpectedRequest("Basic", "GET", "/ruuvi.json", 9),
-            ExpectedRequest("Basic", "GET", "/status.json", 10),
-            ExpectedRequest("Basic", "GET", "/history", 11),
-            ExpectedRequest("Digest", "GET", "/ruuvi.json", 12),
-            ExpectedRequest("Digest", "GET", "/status.json", 13),
-            ExpectedRequest("Digest", "GET", "/history", 14),
-            ExpectedRequest("none", "POST", "/ruuvi.json", 15, {}),
+            ExpectedRequest("none", "GET", "/auth", 9),
+            ExpectedRequest("none", "POST", "/auth", 9, login_body(9, wrong_password=True)),
+            ExpectedRequest("none", "GET", "/auth", 9),
+            ExpectedRequest("Basic", "GET", "/ruuvi.json", 10),
+            ExpectedRequest("Basic", "GET", "/status.json", 11),
+            ExpectedRequest("Basic", "GET", "/history", 12),
+            ExpectedRequest("Basic", "GET", "/info.json", 13),
+            ExpectedRequest("Digest", "GET", "/ruuvi.json", 14),
+            ExpectedRequest("Digest", "GET", "/status.json", 15),
+            ExpectedRequest("Digest", "GET", "/history", 16),
+            ExpectedRequest("Digest", "GET", "/info.json", 17),
+            ExpectedRequest("Bearer", "GET", "/info.json", 18),
+            ExpectedRequest("none", "POST", "/ruuvi.json", 19, {}),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
-            ExpectedRequest("Basic", "POST", "/ruuvi.json", 16, {}),
+            ExpectedRequest("Basic", "POST", "/ruuvi.json", 20, {}),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
-            ExpectedRequest("Digest", "POST", "/ruuvi.json", 17, {}),
+            ExpectedRequest("Digest", "POST", "/ruuvi.json", 21, {}),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
             ExpectedRequest("none", "POST", "/ruuvi.json", 1, KEY_BODY),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
-            ExpectedRequest("Bearer", "GET", "/history", 18),
-            ExpectedRequest("Bearer", "GET", "/history", 19),
-            ExpectedRequest("Bearer", "POST", "/ruuvi.json", 20, {}),
+            ExpectedRequest("Bearer", "GET", "/history", 22),
+            ExpectedRequest("Bearer", "GET", "/history", 23),
+            ExpectedRequest("Bearer", "POST", "/ruuvi.json", 24, {}),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
-            ExpectedRequest("Bearer", "POST", "/connect_wps", 21),
+            ExpectedRequest("Bearer", "POST", "/connect_wps", 25),
             ExpectedRequest("none", "GET", "/ruuvi.json", 1),
-            ExpectedRequest("none", "GET", "/auth", 22),
-            ExpectedRequest("none", "POST", "/auth", 22, login_body(22)),
-            ExpectedRequest("none", "POST", "/ruuvi.json", 22, CLEAR_BODY),
-            ExpectedRequest("none", "GET", "/auth", 23),
-            ExpectedRequest("none", "POST", "/auth", 23, login_body(23)),
-            ExpectedRequest("none", "GET", "/ruuvi.json", 23),
-            ExpectedRequest("Bearer", "GET", "/history", 24),
-            ExpectedRequest("Bearer", "GET", "/history", 25),
+            ExpectedRequest("none", "GET", "/auth", 26),
+            ExpectedRequest("none", "POST", "/auth", 26, login_body(26)),
+            ExpectedRequest("none", "POST", "/ruuvi.json", 26, CLEAR_BODY),
+            ExpectedRequest("none", "GET", "/auth", 27),
+            ExpectedRequest("none", "POST", "/auth", 27, login_body(27)),
+            ExpectedRequest("none", "GET", "/ruuvi.json", 27),
+            ExpectedRequest("Bearer", "GET", "/history", 28),
+            ExpectedRequest("Bearer", "GET", "/history", 29),
         ]
         observed: list[ExpectedRequest] = [
             ExpectedRequest(call.scheme, call.method, call.path, call.session_number, call.body)
@@ -260,8 +272,8 @@ class DenialRunnerTests(unittest.TestCase):
         call: RecordedRequest
         for call in self.gateway.calls:
             self.assertFalse(call.allow_redirects)
-            if call.session_number in (1, 22, 23) and call.method != "GET" or (
-                call.path == "/ruuvi.json" and call.session_number in (1, 23)
+            if call.session_number in (1, 26, 27) and call.method != "GET" or (
+                call.path == "/ruuvi.json" and call.session_number in (1, 27)
             ):
                 self.assertEqual(call.cookie, f"RUUVISESSION=session-{call.session_number}")
             if call.scheme != "none":
@@ -277,7 +289,7 @@ class DenialRunnerTests(unittest.TestCase):
                 self.assertEqual(parameters["response"], digest)
                 self.assertEqual(parameters["uri"], call.path)
         number: int
-        for number in (7, 8):
+        for number in (8, 9):
             self.assertEqual([
                 (call.method, call.path, call.cookie) for call in self.gateway.calls
                 if call.session_number == number
@@ -287,7 +299,7 @@ class DenialRunnerTests(unittest.TestCase):
                 ("GET", "/auth", f"RUUVISESSION=session-{number}"),
             ])
         bearers: list[str | None] = [call.bearer_token for call in self.gateway.calls if call.scheme == "Bearer"]
-        self.assertEqual(bearers, [RO, RW, RO, RW, RO, RW])
+        self.assertEqual(bearers, ["eHh4" * 8, RO, RW, RO, RW, RO, RW])
         self.assertEqual(set(result.outcomes.values()), {"PASS"})
         self.assertEqual(result.outcomes["AuthMech-LAN-WebUI-Default: unauthenticated-denial check"], "PASS")
         self.assertNotIn("AuthMech-LAN-WebUI-Unauthenticated", result.outcomes)
@@ -298,10 +310,10 @@ class DenialRunnerTests(unittest.TestCase):
         for status in (302, 401, 403):
             self.assertIn(f'"expected_status": {status}', self.log)
         steps: list[str] = [line for line in self.output if line.startswith("[Step")]
-        self.assertEqual(len(steps), 12)
+        self.assertEqual(len(steps), 13)
         step: str
         for number, step in enumerate(steps, 1):
-            self.assertTrue(step.startswith(f"[Step {number} out of 12]"))
+            self.assertTrue(step.startswith(f"[Step {number} out of 13]"))
             self.assertIn(step, self.log)
         self.assertEqual(sum(line.startswith("Open log file: ") for line in self.output), 1)
         self.assertEqual(self.output[-1], "Overall verdict: PASS")
@@ -432,11 +444,47 @@ class DenialRunnerTests(unittest.TestCase):
                 ]
                 self.assertEqual(writes, [])
 
+    def test_info_denials_require_scheme_specific_status_before_any_write(self) -> None:
+        scheme: str
+        status: int
+        for scheme in ("none", "Basic", "Digest", "Bearer"):
+            for status in (200, 302, 401, 403, 404):
+                if status == (401 if scheme == "Bearer" else 302):
+                    continue
+                with self.subTest(scheme=scheme, status=status):
+                    self.gateway = DenialGateway()
+                    self.fault(scheme, "GET", "/info.json", status)
+                    result: RunResult = self.execute()
+                    owner: str = runner.UNAUTHENTICATED if scheme == "none" else runner.INVALID
+                    self.assertEqual((result.exit_code, result.outcomes[owner]), (1, "FAIL"))
+                    self.assertEqual(result.outcomes[runner.FINAL], "PASS")
+                    self.assertEqual(self.gateway.config_bodies, [])
+                    self.assertFalse(any(call.method == "POST" and call.path != "/auth"
+                                         for call in self.gateway.calls))
+                    self.assertIn(f'"observed_status": {status}', self.log)
+
+    def test_info_lan_dispatch_404_requires_authorized_cookie_or_valid_bearer(self) -> None:
+        self.assertEqual(self.execute().exit_code, 0)
+        session: BoundarySession = self.gateway.session()
+        session.trust_env = False
+        session.cookies.set("RUUVISESSION", self.gateway.sessions[0].cookie)
+        request: requests.PreparedRequest = session.prepare_request(
+            requests.Request("GET", f"{CONFIG.base_url}/info.json"),
+        )
+        self.assertEqual(session.send(request, timeout=(5, 15), allow_redirects=False).status_code, 404)
+        session.cookies.clear()
+        self.gateway.ro_key = RO
+        request = session.prepare_request(requests.Request(
+            "GET", f"{CONFIG.base_url}/info.json", headers={"Authorization": f"Bearer {RO}"},
+        ))
+        self.assertEqual(session.send(request, timeout=(5, 15), allow_redirects=False).status_code, 404)
+
     def test_each_wrong_negative_status_fails_its_owner_and_stops(self) -> None:
         cases: tuple[tuple[str, str, str, int, str], ...] = (
             ("none", "GET", "/ruuvi.json", 3, runner.UNAUTHENTICATED),
             ("none", "GET", "/history", 1, runner.UNAUTHENTICATED),
             ("none", "GET", "/status.json", 1, runner.UNAUTHENTICATED),
+            ("none", "GET", "/info.json", 1, runner.UNAUTHENTICATED),
             ("none", "GET", "/auth", 2, runner.UNAUTHENTICATED),
             ("none", "DELETE", "/auth", 1, runner.UNAUTHENTICATED),
             ("none", "POST", "/auth", 2, runner.INVALID),
@@ -447,9 +495,12 @@ class DenialRunnerTests(unittest.TestCase):
             ("Basic", "GET", "/ruuvi.json", 1, runner.INVALID),
             ("Basic", "GET", "/status.json", 1, runner.INVALID),
             ("Basic", "GET", "/history", 1, runner.INVALID),
+            ("Basic", "GET", "/info.json", 1, runner.INVALID),
             ("Digest", "GET", "/ruuvi.json", 1, runner.INVALID),
             ("Digest", "GET", "/status.json", 1, runner.INVALID),
             ("Digest", "GET", "/history", 1, runner.INVALID),
+            ("Digest", "GET", "/info.json", 1, runner.INVALID),
+            ("Bearer", "GET", "/info.json", 1, runner.INVALID),
             ("none", "POST", "/ruuvi.json", 1, runner.UNAUTHENTICATED),
             ("Basic", "POST", "/ruuvi.json", 1, runner.INVALID),
             ("Digest", "POST", "/ruuvi.json", 1, runner.INVALID),
@@ -487,8 +538,8 @@ class DenialRunnerTests(unittest.TestCase):
             call for call in self.gateway.calls if call.method == "POST" and call.path == "/auth"
         ]
         self.assertEqual([call.body for call in logins], [
-            login_body(1), login_body(7, invalid=True), login_body(8, wrong_password=True),
-            login_body(9),
+            login_body(1), login_body(8, invalid=True), login_body(9, wrong_password=True),
+            login_body(10),
         ])
         self.assertEqual(self.gateway.config_bodies, [])
         self.assertIn('"mechanism": "invalid-credential denial", "result": "FAIL"', self.log)
@@ -500,7 +551,7 @@ class DenialRunnerTests(unittest.TestCase):
                 self.gateway = DenialGateway()
                 self.gateway.rotate_failed_username = username
                 self.assertEqual(self.execute().exit_code, 0)
-                number: int = 7 if username == "invalid" else 8
+                number: int = 8 if username == "invalid" else 9
                 calls: list[RecordedRequest] = [
                     call for call in self.gateway.calls if call.session_number == number
                 ]
@@ -521,7 +572,7 @@ class DenialRunnerTests(unittest.TestCase):
                 result: RunResult = self.execute()
                 self.assertEqual((result.exit_code, result.outcomes[runner.INVALID]), (1, "FAIL"))
                 self.assertEqual(self.gateway.config_bodies, [])
-                number: int = 7 if username == "invalid" else 8
+                number: int = 8 if username == "invalid" else 9
                 calls: list[RecordedRequest] = [
                     call for call in self.gateway.calls if call.session_number == number
                 ]
@@ -540,7 +591,7 @@ class DenialRunnerTests(unittest.TestCase):
     def test_auth_json_requires_default_mode_type_and_value(self) -> None:
         session_number: int
         variant: str
-        for session_number in (1, 5):
+        for session_number in (1, 6):
             for variant in ("equal", "unequal", "missing", "wrong_type"):
                 with self.subTest(session=session_number, variant=variant):
                     self.gateway = DenialGateway()
