@@ -1,0 +1,350 @@
+# Task: Automate ETSI Test Case 5.2-1-2, Unit A
+
+**MAC identity scope:** This public-resource task has no DUT and reads no `.env`. In DUT-facing
+tasks, `.env` `gw_mac` is the nRF52 identity MAC; ESP32 Ethernet, Wi-Fi, and any future Bluetooth
+MACs are separate. See [DUT configuration](../tests/README.md#dut-configuration).
+
+## Current implementation contract
+
+Read the [automation assessment](../Functional_Test_Automation_Assessment.md),
+[test README](../tests/README.md), [CRA test rules](../tests/AGENTS.md), and
+[shared-library API](../tests/lib/README.md) before implementing this task. The assessment
+classifies this unit as AUTO; that is feasibility, not an implemented test or a recorded live
+verdict. The implementation is [`test_5_2_1_2_a.py`](../tests/test_5_2_1_2_a.py), with paired
+offline checks in [`test_test_5_2_1_2_a.py`](../tests/test_test_5_2_1_2_a.py).
+
+- Use Python 3.8 and explicit, accurate annotations for every variable, parameter, return value,
+  constant, attribute, fixture, and local binding. Follow the rules for loop, unpacking, context,
+  exception, and comprehension bindings in the CRA test rules. Use postponed annotations while
+  keeping runtime type expressions compatible with Python 3.8; do not use broad types to evade
+  typing.
+- Use shared protocol/configuration descriptors and immutable dataclasses for stable records;
+  dictionaries belong at real JSON/header/XML mapping boundaries. Use f-strings for dynamic text.
+- Keep imports free of network/hardware access; guard `main()` with `if __name__ == "__main__"`.
+  Inject sessions, randomness, clocks, output, work directories, and applicable hardware/subprocess
+  boundaries.
+- Reuse `EvidenceLog`, `ProgressReporter`, and `RunResult`. Log requests before sending and
+  responses before interpreting. Print `Open log file: <path>` once and mirror each
+  `[Step N out of M]` line into evidence with its UTC timestamp; keep secrets off the console.
+  Preserve per-check outcomes in final evidence, not only the overall verdict.
+- Put direct shared-library tests only in `test_lib.py`; case suites test their runner's sequencing,
+  assertions, recovery, evidence, and exit codes. Import only the matching runner, never another
+  case's runner or implementation tests. Reuse applicable offline fixtures from
+  [`test_support/fake_gateway.py`](../tests/test_support/fake_gateway.py); shared fixture contract
+  tests belong in `test_test_support.py`, and fixtures must stay outside `lib/`.
+- Extend reusable APIs backward-compatibly and update `lib/README.md` for changes. Related
+  `test_lib.py`, shared-fixture tests, and guidance updates are part of the deliverable when needed;
+  preserve unrelated tests, firmware, assessment/IXIT documents, and user changes.
+- Return 0 for PASS, 1 for an observed assertion FAIL, and 2 for setup, transport, protocol, or
+  recovery ERROR. Incomplete required checks cannot yield PASS. Preserve earlier per-check FAIL
+  evidence when a later ERROR prevents completion. Offline tests verify implementation, not ETSI
+  compliance; only execution against the specified real target supplies functional evidence.
+
+## Public-resource scope
+
+This task targets the declared public URL(s), so the live-DUT factory-default, authentication,
+identity, and physical-reset requirements do not apply. Do not load `.env`, create a gateway client,
+or contact a DUT. Keep a fresh unauthenticated HTTP session with `trust_env=False` so host `.netrc`
+credentials or environment proxies cannot change the observation. Retain verified TLS, finite
+timeouts, bounded and logged redirects, and injected transport for offline tests. Reuse the existing
+`lib/webresource.py` helper and keep its direct tests in `test_lib.py`.
+
+## Objective
+
+Create a Python functional test for **ETSI EN 303 645 / ETSI TS 103 701 test case 5.2-1-2, Test Unit
+A: Public accessibility of the vulnerability disclosure policy**.
+
+The test must fetch the manufacturer's published Vulnerability Disclosure Policy (VDP) over the
+public Internet and objectively verify that the declared URL is reachable **without any
+authentication, login, or paywall**. This is a public-document accessibility check, not a device
+test.
+
+Scope boundary: Unit A verifies only that the VDP resource is _publicly accessible_. The adjacent
+Unit B in the same case (presence and semantic completeness of contact address, acknowledgement
+timeline, and status-update timeline) is a **HYBRID** unit and is **out of scope** here. Do not
+scrape or judge policy wording, contact addresses, or timeline text in this task.
+
+## No DUT and no `.env`
+
+This unit tests a public web resource, not the gateway's HTTP interface. Therefore:
+
+- **No physical Ruuvi Gateway (DUT) is required.**
+- **No `.env` file is read.** Do not call `lib.config.load_dut_config`; reuse the shared
+  configuration conventions instead of introducing a second environment/configuration loader.
+- `lib.gateway` is only for HTTP communication with a Ruuvi Gateway DUT and is not used for this
+  external public URL.
+- The only environmental precondition is outbound WAN/Internet access from the test host with
+  functioning DNS and a trusted system CA bundle. If that is unavailable, the run is ERROR.
+
+Do not add gateway configuration merely for consistency with the DUT-facing tests in this suite.
+
+## Deliverables
+
+1. Create `cra/303645/tests/test_5_2_1_2_a.py`, compatible with Python 3.8.
+2. Create `cra/303645/tests/test_test_5_2_1_2_a.py` with deterministic host-side implementation
+   tests that mock HTTP and perform no network I/O. These are implementation tests, not ETSI
+   compliance evidence.
+3. Reuse the shared modules under `cra/303645/tests/lib/`, including the existing
+   `lib/webresource.py` helper described below. Make only backward-compatible shared extensions to
+   `config.py`, `evidence.py`, `models.py`, `errors.py`, or `http_api.py` needed by that helper.
+   Never place case-specific URLs, hosts, or status sets in `lib/`.
+4. Do not change `cra/303645/tests/requirements.txt` unless a new dependency is unavoidable; the
+   standard library plus the existing `requests` dependency are sufficient.
+
+Do not modify firmware behavior, the self-assessment source documents, the IXIT documents, or
+unrelated existing tests.
+
+## Normative source and interpretation
+
+The source is [`Self_Assessment_Test_Group_5_2-1.md`](../Self_Assessment_Test_Group_5_2-1.md), lines
+29-54 (test case 5.2-1-2, functional). The **Public Accessibility** row (line 43) states the
+endpoint "responds directly to unauthenticated HTTP requests" and is "Accessible over standard WAN
+interfaces", with Unit verdict **PASS**.
+
+The authoritative access vector is declared in [`ixit_2-UserInfo.md`](../ixit_2-UserInfo.md),
+section "Publication of Vulnerability Disclosure Policy", lines 164-175, and repeated in the summary
+matrix at line 194.
+
+**Authoritative URL (write it explicitly as a constant in the script; do not discover it at
+runtime):**
+
+```text
+https://ruuvi.com/terms/vulnerability-policy/
+```
+
+## Expected resource / redirect / access behavior
+
+Use the accessibility policy in the procedure below. Record current response status, redirects, TLS
+verification, content type, and body length during the real fetch; historical observations of
+HTTP/2, zero redirects, exact charsets, or page size are not acceptance requirements. Allow the
+bounded HTTPS redirects specified below. Do not assert page wording or semantic completeness.
+
+## Execution and configuration
+
+The script takes **no command-line arguments**:
+
+Live public-resource execution (requires Internet/DNS access and a trusted CA bundle):
+
+```text
+cd cra/303645/tests
+.venv/bin/python test_5_2_1_2_a.py
+```
+
+Define these case-specific constants at the top of the script (not in `lib/`):
+
+```text
+TEST_ID              = "ETSI EN 303 645 / ETSI TS 103 701 test case 5.2-1-2, Test Unit A"
+TARGET_URL           = "https://ruuvi.com/terms/vulnerability-policy/"
+ALLOWED_HOSTS        = {"ruuvi.com", "www.ruuvi.com"}
+ALLOWED_FINAL_STATUS = {200}
+CONNECT_TIMEOUT_SECONDS = 5
+READ_TIMEOUT_SECONDS    = 20
+MAX_REDIRECTS           = 5
+MIN_BODY_BYTES          = 1
+USER_AGENT              = "ruuvi-etsi-test-5.2-1-2-a"
+```
+
+Follow the existing test pattern and shared implementations: `ProgressReporter` and `RunResult` from
+`lib.models`, `EvidenceLog` from `lib.evidence`, and setup/error types from `lib.errors`. Use a
+`FunctionalTest_5_2_1_2_a` with dependency injection for the HTTP session factory and clock, an
+`execute_test_5_2_1_2_a(...) -> RunResult` method returning `RunResult`, `main() -> int`, and
+`sys.exit(main())`. Report progress as `[Step N out of M] <description>`, print
+`Open log file: <path>` once, and finish with `Overall verdict: <PASS|FAIL|ERROR>`.
+
+## Evidence log
+
+Every invocation, including infrastructure failures, must create an exclusive timestamped log using
+`lib.evidence.EvidenceLog.create(Path("logs"), "test_5_2_1_2_a", ...)`:
+
+```text
+logs/test_5_2_1_2_a_<UTC-date-time>.log
+```
+
+The log must contain:
+
+- test case and unit, and UTC start/end timestamps plus duration;
+- the fixed target URL and allowed-host / allowed-status policy in effect;
+- the full request line, request headers, and (empty) body;
+- the complete redirect chain, each hop logged as `(status, from_url, to_url)`;
+- the final response status, final URL, final scheme/host, response headers, cookies, content-type,
+  and body length;
+- whether a `WWW-Authenticate` header was seen anywhere in the chain;
+- TLS verification state (verification is always enabled);
+- each assertion and its result, plus the overall verdict;
+- exception type and traceback on error.
+
+Keep terminal output concise: the log path once, the `[Step N out of M]` lines, and the final
+verdict line. The `logs/` directory must remain ignored by Git.
+
+## Reusable public-resource helper
+
+Reuse `lib.webresource` and its existing tests first. Extend that shared helper backward-compatibly
+only when the required capability is genuinely missing; never reimplement redirect traversal,
+request/response evidence, HTTP exception translation, or public-resource result construction in
+this case test. Keep direct tests of the shared helper in `test_lib.py`.
+
+The helper must integrate with `EvidenceLog`, the common result/progress contracts in `lib.models`,
+the shared `InvalidSetup` hierarchy in `lib.errors`, and the centralized method/status/header
+vocabulary in `lib.http_api`. Add missing repository-wide vocabulary or errors to those modules
+rather than defining parallel constants or exceptions. Keep web-resource-specific result and
+redirect-hop records with `lib.webresource` as typed immutable models (`@dataclass(frozen=True)`);
+dictionaries are permitted only at genuine HTTP/JSON protocol boundaries. The fetch API returns
+observation data and does not decide the ETSI verdict. It must provide the fields needed by the
+evidence and assertions below, always verify TLS, use finite timeouts and bounded redirects, log
+through `EvidenceLog`, and translate DNS/TLS/connection/timeout/redirect infrastructure failures to
+shared typed errors.
+
+`lib.config` remains the primary configuration reference: do not create a new `.env`, CLI, or ad-hoc
+configuration parser for this fixed public URL. `lib.gateway` is deliberately not forced here
+because `GatewayClient` is specifically for Ruuvi Gateway DUT HTTP.
+
+## Procedure
+
+### 1. Open the evidence log
+
+Create the log before any network activity and record the test identity, the fixed target URL, and
+the accessibility policy constants.
+
+### 2. Fetch the published policy
+
+Call `fetch_public_resource` for `TARGET_URL` with the constants above. Capture the structured
+result and full evidence.
+
+### 3. Evaluate accessibility (objective boundaries)
+
+The resource is **publicly accessible (PASS)** only if **all** of the following hold:
+
+- the final status is in `ALLOWED_FINAL_STATUS` (`200`);
+- the final scheme is `https` and no redirect hop downgraded to `http`;
+- the final host is in `ALLOWED_HOSTS`;
+- no `WWW-Authenticate` header appeared anywhere in the chain and the final status is neither `401`
+  nor `403`;
+- the redirect chain did not land on a login/SSO/paywall host outside `ALLOWED_HOSTS`;
+- the final `Content-Type` begins with `text/html`;
+- the body length is at least `MIN_BODY_BYTES` (non-empty).
+
+Classify outcomes as follows:
+
+- **FAIL (compliance)** — the resource is reachable at the network/TLS layer but objectively not
+  publicly accessible as declared: `401`/`403`, any `WWW-Authenticate` challenge, a redirect to a
+  login/SSO/paywall host, `404`/`410` (declared resource gone), a scheme downgrade to `http`, a
+  non-`text/html` final content-type, or an empty body.
+- **ERROR (infrastructure/setup)** — DNS resolution failure, TLS certificate verification failure,
+  connection refused, connect/read timeout, redirect loop/overflow, or a `5xx`/`429` transient
+  server response. These mean no authoritative accessibility observation could be made; never
+  convert them into PASS or FAIL.
+
+Certificate-verification failures are ERROR (infrastructure), not FAIL, per this classification.
+
+An outside-host or non-HTTPS redirect is recorded without being followed. Malformed redirects are
+ERROR. Preserve an earlier observed assertion FAIL in per-check evidence if a later transport,
+protocol, or transient-response error makes the overall verdict ERROR.
+
+### 4. Produce the verdict
+
+Emit a single result for `VulnerabilityDisclosurePolicy-PublicAccessibility` and the overall
+verdict.
+
+| Exit code | Meaning                                                            |
+| :-------- | :----------------------------------------------------------------- |
+| `0`       | PASS — the VDP URL is publicly accessible without authentication   |
+| `1`       | FAIL — the VDP URL is objectively not publicly accessible          |
+| `2`       | ERROR — infrastructure/setup failure; no authoritative observation |
+
+## Host-side implementation tests
+
+Run the deterministic implementation suite from the repository root with:
+
+```bash
+cd cra/303645/tests
+.venv/bin/python -m unittest --verbose test_test_5_2_1_2_a.py
+```
+
+These offline checks use no network or DUT and provide no live compliance verdict.
+
+Use `unittest` with the existing mocked HTTP boundary and no network access. Reuse or extend
+`test_lib.py` for direct `webresource` fetching, redirect, TLS, evidence, and transport-error
+contracts. This case's implementation tests must cover its exact URL/host/status policy, the PASS
+path, and its case-specific mapping of the acceptable and unacceptable statuses, authentication
+challenge, host/scheme redirect, content type, empty content, and transient/infrastructure outcomes
+stated above, including exit aggregation. Verify the case delegates logging/fetching to the shared
+helper and never disables verification.
+
+## Acceptance criteria
+
+- The script runs with no command-line arguments from `cra/303645/tests` and needs no DUT and no
+  `.env`.
+- Every run creates the required timestamped evidence log with the full redirect chain and
+  request/response details.
+- The fixed authoritative URL `https://ruuvi.com/terms/vulnerability-policy/` is used exactly as
+  written here.
+- HTTPS certificate verification is always enabled; redirects are bounded and logged.
+- A publicly accessible policy yields PASS (exit 0); an objectively gated/inaccessible resource
+  yields FAIL (exit 1); DNS/TLS/network problems yield ERROR (exit 2).
+- Semantic policy completeness (contact, timelines) is explicitly out of scope.
+- The implementation and host-side tests run on Python 3.8 without touching the network.
+
+## Implementation references
+
+- [`Self_Assessment_Test_Group_5_2-1.md`](../Self_Assessment_Test_Group_5_2-1.md), lines 29-54
+  (functional case; Public Accessibility row at line 43).
+- [`ixit_2-UserInfo.md`](../ixit_2-UserInfo.md), lines 164-175 ("Publication of Vulnerability
+  Disclosure Policy") and line 194 (summary matrix).
+- [`Functional_Test_Automation_Assessment.md`](../Functional_Test_Automation_Assessment.md),
+  functional feasibility table (5.2-1-2 Unit A classified `AUTO`; Unit B is `HYBRID` and out of
+  scope).
+- `cra/303645/tests/lib/evidence.py` — `EvidenceLog` usage and HTTP evidence helpers.
+- `cra/303645/tests/lib/models.py` — primary home for typed immutable records, plus
+  `ProgressReporter` and `RunResult`.
+- `cra/303645/tests/lib/errors.py` — primary shared ERROR classification hierarchy.
+- `cra/303645/tests/lib/config.py` — primary configuration conventions; no DUT `.env` loading here.
+- `cra/303645/tests/lib/http_api.py` — centralized HTTP vocabulary.
+- `cra/303645/tests/lib/webresource.py` — existing public-resource implementation reference; its
+  direct tests live in `cra/303645/tests/test_lib.py`.
+- `cra/303645/tests/lib/gateway.py` — Ruuvi Gateway DUT HTTP only; not applicable to this URL.
+- `cra/303645/tests/test_5_1_1_2_b.py` — reference for the
+  `FunctionalTest_5_2_1_2_a`/`execute_test_5_2_1_2_a`/`main` pattern.
+
+## Runner naming
+
+Use `FunctionalTest_5_2_1_2_a` and `execute_test_5_2_1_2_a`; retain `main() -> int` as the
+zero-argument executable entry point.
+
+## Required implementation validation
+
+Run Ruff from the repository root before changes and again before handoff, including guidance-only
+changes; fix findings and report the initial count and final result:
+
+```bash
+cra/303645/tests/.venv/bin/ruff check cra/303645/tests
+```
+
+This discovers `tests/pyproject.toml` under the CRA project. For explicit selection from the
+repository root use `(cd cra/303645/tests && .venv/bin/ruff check --config pyproject.toml .)`. Do
+not run `ruff format`, apply unsafe fixes blindly, or weaken rules. Review explicit annotations
+separately; Ruff does not enforce all local-variable annotations.
+
+For implementation changes, use the actual Python 3.8 interpreter and run all offline runner tests:
+
+```bash
+cd cra/303645/tests
+.venv/bin/python --version
+.venv/bin/python -m unittest discover --verbose --start-directory . --pattern "test_test_*.py"
+```
+
+Confirm nonzero discovery and report counts. Never run live scripts or broad `test_*.py` discovery
+as ordinary validation. When changing shared code or `test_lib.py`, also run from that directory:
+
+```bash
+.venv/bin/python -m coverage erase
+.venv/bin/python -m coverage run --branch --source=lib -m unittest test_lib.py
+.venv/bin/python -m coverage report --show-missing --fail-under=95
+```
+
+Coverage must come from `test_lib.py` alone. Inspect each existing file before editing and each
+changed file after its final edit with MCP `get_file_problems`, repository-relative `filePath`, and
+`errorsOnly: false`; for shared changes also inspect affected callers and their tests. Resolve
+actionable findings and recheck; report unavailable or timed-out inspections as unverified. Finish
+with `git diff --check` and a clean whole-subtree Ruff run. Guidance-only changes require Ruff, IDE
+inspection, and path/command checks, not rerunning unchanged Python suites. Keep local `.env`, logs,
+backups, manifests, and coverage output out of commits.
