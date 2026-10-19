@@ -8,8 +8,17 @@ on:
       - 'docs/**'
       - 'integration_tests/**'
       - 'schemas/**'
+      - 'esp_crt_bundle/**'
+      - 'components/**'
+      - 'ruuvi.gwui.html/**'
+      - 'nrf52_sha256/**'
+      - 'partition_table/**'
       - '**.md'
       - 'LICENSE'
+      - 'partitions.csv'
+      - 'ruuvi_gw_flash.py'
+      - 'test_ruuvi_gw_flash.py'
+      - 'build_release.sh'
     branches: [ master ]
   pull_request:
     # Keep tests eligible because they affect the coverage report.
@@ -18,8 +27,17 @@ on:
       - 'docs/**'
       - 'integration_tests/**'
       - 'schemas/**'
+      - 'esp_crt_bundle/**'
+      - 'components/**'
+      - 'ruuvi.gwui.html/**'
+      - 'nrf52_sha256/**'
+      - 'partition_table/**'
       - '**.md'
       - 'LICENSE'
+      - 'partitions.csv'
+      - 'ruuvi_gw_flash.py'
+      - 'test_ruuvi_gw_flash.py'
+      - 'build_release.sh'
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
   # Allows you to run this workflow manually from the Actions tab
