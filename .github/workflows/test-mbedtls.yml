@@ -2,8 +2,14 @@ name: Test mbedtls
 
 on:
   push:
+    paths:
+      - 'components/mbedtls/mbedtls/**'
+      - '.github/workflows/test-mbedtls.yml'
     branches: [ master ]
   pull_request:
+    paths:
+      - 'components/mbedtls/mbedtls/**'
+      - '.github/workflows/test-mbedtls.yml'
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
 

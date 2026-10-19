@@ -2,6 +2,15 @@ name: Build Firmware (prod)
 
 on:
   push:
+    # The workflow YAML and root build configuration remain eligible.
+    paths-ignore:
+      - 'tests/**'
+      - 'cra/**'
+      - 'docs/**'
+      - 'integration_tests/**'
+      - 'schemas/**'
+      - '**.md'
+      - 'LICENSE'
     branches:
       - master
       - 'v[0-9]*.[0-9]*.x'

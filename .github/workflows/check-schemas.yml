@@ -2,9 +2,17 @@ name: Check JSON schemas
 
 on:
   push:
+    paths:
+      - 'schemas/**'
+      - 'gw_cfg_default/gw_cfg_default.json'
+      - '.github/workflows/check-schemas.yml'
     branches: [ master ]
     tags: [ '*' ]
   pull_request:
+    paths:
+      - 'schemas/**'
+      - 'gw_cfg_default/gw_cfg_default.json'
+      - '.github/workflows/check-schemas.yml'
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
   # Allows you to run this workflow manually from the Actions tab
