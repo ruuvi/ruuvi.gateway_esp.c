@@ -3,41 +3,29 @@ name: SonarCloud Analysis
 on:
   push:
     # Keep tests eligible because they affect the coverage report.
-    paths-ignore:
-      - 'cra/**'
-      - 'docs/**'
-      - 'integration_tests/**'
-      - 'schemas/**'
-      - 'esp_crt_bundle/**'
-      - 'components/**'
-      - 'ruuvi.gwui.html/**'
-      - 'nrf52_sha256/**'
-      - 'partition_table/**'
-      - '**.md'
-      - 'LICENSE'
-      - 'partitions.csv'
-      - 'ruuvi_gw_flash.py'
-      - 'test_ruuvi_gw_flash.py'
-      - 'build_release.sh'
+    paths:
+      - 'main/**'
+      - 'tests/**'
+      - 'include/**'
+      - '.gitmodules'
+      - '.github/workflows/sonar-scan.yml'
+      - 'CMakeLists.txt'
+      - 'sdkconfig*'
+      - 'sonar-project.properties'
+      - '!**/*.md'
     branches: [ master ]
   pull_request:
     # Keep tests eligible because they affect the coverage report.
-    paths-ignore:
-      - 'cra/**'
-      - 'docs/**'
-      - 'integration_tests/**'
-      - 'schemas/**'
-      - 'esp_crt_bundle/**'
-      - 'components/**'
-      - 'ruuvi.gwui.html/**'
-      - 'nrf52_sha256/**'
-      - 'partition_table/**'
-      - '**.md'
-      - 'LICENSE'
-      - 'partitions.csv'
-      - 'ruuvi_gw_flash.py'
-      - 'test_ruuvi_gw_flash.py'
-      - 'build_release.sh'
+    paths:
+      - 'main/**'
+      - 'tests/**'
+      - 'include/**'
+      - '.gitmodules'
+      - '.github/workflows/sonar-scan.yml'
+      - 'CMakeLists.txt'
+      - 'sdkconfig*'
+      - 'sonar-project.properties'
+      - '!**/*.md'
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
   # Allows you to run this workflow manually from the Actions tab
