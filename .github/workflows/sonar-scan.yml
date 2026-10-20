@@ -2,24 +2,36 @@ name: SonarCloud Analysis
 
 on:
   push:
-    # Keep tests eligible because they affect the coverage report.
-    paths-ignore:
-      - 'cra/**'
-      - 'docs/**'
-      - 'integration_tests/**'
-      - 'schemas/**'
-      - '**.md'
-      - 'LICENSE'
+    # Track analysis and coverage inputs; firmware packaging is checked separately.
+    paths:
+      - 'main/**'
+      - 'tests/**'
+      - 'include/**'
+      - 'components/**'
+      - 'gw_cfg_default/**'
+      - '.gitmodules'
+      - '.github/workflows/sonar-scan.yml'
+      - 'CMakeLists.txt'
+      - 'partitions.csv'
+      - 'sdkconfig*'
+      - 'sonar-project.properties'
+      - '!**/*.md'
     branches: [ master ]
   pull_request:
-    # Keep tests eligible because they affect the coverage report.
-    paths-ignore:
-      - 'cra/**'
-      - 'docs/**'
-      - 'integration_tests/**'
-      - 'schemas/**'
-      - '**.md'
-      - 'LICENSE'
+    # Track analysis and coverage inputs; firmware packaging is checked separately.
+    paths:
+      - 'main/**'
+      - 'tests/**'
+      - 'include/**'
+      - 'components/**'
+      - 'gw_cfg_default/**'
+      - '.gitmodules'
+      - '.github/workflows/sonar-scan.yml'
+      - 'CMakeLists.txt'
+      - 'partitions.csv'
+      - 'sdkconfig*'
+      - 'sonar-project.properties'
+      - '!**/*.md'
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
   # Allows you to run this workflow manually from the Actions tab
