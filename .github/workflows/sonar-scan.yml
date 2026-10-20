@@ -2,7 +2,7 @@ name: SonarCloud Analysis
 
 on:
   push:
-    # Keep tests eligible because they affect the coverage report.
+    # Track analysis and coverage inputs; firmware packaging is checked separately.
     paths:
       - 'main/**'
       - 'tests/**'
@@ -16,7 +16,7 @@ on:
       - '!**/*.md'
     branches: [ master ]
   pull_request:
-    # Keep tests eligible because they affect the coverage report.
+    # Track analysis and coverage inputs; firmware packaging is checked separately.
     paths:
       - 'main/**'
       - 'tests/**'
