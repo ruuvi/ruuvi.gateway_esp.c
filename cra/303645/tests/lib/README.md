@@ -232,7 +232,11 @@ creating temporary files or launching Nmap. Both scans use an outer subprocess t
 preserve a nonzero Nmap exit diagnostic even when XML is
 absent, and parse completed nmap XML. `ScanResult` is immutable and
 retains the exact command, raw XML, elapsed time, confirmed-open ports, state counts, explicit port
-observations, and typed `ExtraportsGroup` records. Nmap can compress multiple closed, filtered,
+observations, and typed `ExtraportsGroup` records. `PortObservation` additionally retains
+`service_method` and `service_confidence` from Nmap service metadata as strings; absent attributes
+are empty strings. Both fields have defaults, preserving existing five-argument construction.
+A service name alone may come from a port-table guess; callers requiring active identification
+must check `service_method == "probed"` before assigning their own verdict. Nmap can compress multiple closed, filtered,
 `open|filtered`, or `closed|filtered` groups without listing their individual port IDs. In that case, the corresponding
 port sets contain only explicitly listed ports; counts still cover the full requested range.
 The optional `enumerate_ports=True` mode adds Nmap `-d3` so indeterminate port IDs remain available
