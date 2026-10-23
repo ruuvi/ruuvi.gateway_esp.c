@@ -51,7 +51,7 @@ vulnerable to feasible attacks (`d`).
 | **Digital Signature Scheme**       | **RSA-3072** with **RSA-PSS** padding        | **SOGIS v1.1 / NIST SP 800-57:** RSA $\ge 3000$ bits provides 128-bit security strength; recognized for long-term use beyond 2030. |         128-bit          | **Best Practice** |
 | **Cryptographic Hash Function**    | **SHA-256**                                  | **SOGIS v1.1 / ETSI TR 103 621:** Fully approved collision-resistant hash primitive.                                               |         128-bit          | **Best Practice** |
 | **Signature Padding Scheme**       | **RSA-PSS** (Probabilistic Signature Scheme) | **PKCS #1 v2.2 / SOGIS:** Superior provable security strength compared to legacy PKCS#1 v1.5 padding.                              |           High           | **Best Practice** |
-| **Transport Security**             | **TLS 1.2 / TLS 1.3**                        | **ETSI TS 103 645 / SOGIS:** Industry standard for secure authenticated network transport over public networks.                    |           High           | **Best Practice** |
+| **Transport Security**             | **TLS 1.2 / TLS 1.3**                        | **ETSI EN 303 645 / SOGIS:** Industry standard for secure authenticated network transport over public networks.                    |           High           | **Best Practice** |
 
 * **Verdict**: **PASS**
 
