@@ -1,7 +1,7 @@
 breathe
 readthedocs-cli
 sphinx-rtd-theme
-certifi>=2023.7.22
+certifi>=2026.10.19
 requests>=2.31.0
 Pygments>=2.15.0
 urllib3>=2.8.0
