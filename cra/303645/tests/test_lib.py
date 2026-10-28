@@ -1877,6 +1877,22 @@ class NetScanTests(unittest.TestCase):
             netscan.check_nmap((7, 40), runner=lambda c, **k: (_ for _ in ()).throw(OSError("no exec")),
                                find_executable=lambda n: "nmap")
 
+    def test_nmap_service_detection_metadata_and_legacy_observation(self) -> None:
+        method: str
+        confidence: str
+        for method, confidence in (("table", "3"), ("probed", "10")):
+            xml: str = self.xml().replace('name="http"', f'name="http" method="{method}" conf="{confidence}"')
+            result: netscan.ScanResult = netscan.parse_nmap_xml(xml, "tcp", frozenset({80}), 0.0, ())
+            self.assertEqual(("http", method, confidence), (
+                result.observations[0].service, result.observations[0].service_method,
+                result.observations[0].service_confidence,
+            ))
+        missing: netscan.ScanResult = netscan.parse_nmap_xml(self.xml(), "tcp", frozenset({80}), 0.0, ())
+        self.assertEqual(("", ""), (missing.observations[0].service_method,
+                                   missing.observations[0].service_confidence))
+        legacy: netscan.PortObservation = netscan.PortObservation(80, "open", "http", "", "syn-ack")
+        self.assertEqual(("", ""), (legacy.service_method, legacy.service_confidence))
+
     def test_parse_xml_states_totals_and_rejections(self) -> None:
         result: netscan.ScanResult = netscan.parse_nmap_xml(
             self.xml(), "tcp", frozenset({80}), 1.5, ("nmap",),
