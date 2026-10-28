@@ -240,8 +240,12 @@ jobs:
           RELEASE_DIR="$GITHUB_WORKSPACE/release_files"
           ASSETS=(
             "$RELEASE_DIR/ruuvi_gateway_esp.bin"
+            "$RELEASE_DIR/binaries_v1.9.2/bootloader.bin"
+            "$RELEASE_DIR/partition_table/partition-table.bin"
+            "$RELEASE_DIR/ota_data_initial.bin"
             "$RELEASE_DIR/fatfs_gwui.bin"
             "$RELEASE_DIR/fatfs_nrf52.bin"
+            "$RELEASE_DIR/gw_cfg_def.bin"
           )
           for asset in "${ASSETS[@]}"; do
             if [ ! -f "$asset" ]; then
