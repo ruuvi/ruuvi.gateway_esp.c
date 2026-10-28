@@ -7,7 +7,6 @@ on:
       - 'gw_cfg_default/gw_cfg_default.json'
       - '.github/workflows/check-schemas.yml'
     branches: [ master ]
-    tags: [ '*' ]
   pull_request:
     paths:
       - 'schemas/**'
