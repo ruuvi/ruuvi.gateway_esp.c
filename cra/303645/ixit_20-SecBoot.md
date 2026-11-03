@@ -24,7 +24,9 @@ executed within the core application binary to enforce signature validation cons
   `SecParam-FW-Verification-Key`) is compiled directly into the main application binary's text
   segment, which is read-only during normal runtime. A complete ROM-loader reflash can replace that
   application on v1.17.x and is a sustained-physical-access release limitation; it is not prevented
-  until Secure Boot eFuses and flash encryption are enabled in a future released version.
+  until Secure Boot eFuses and flash encryption are enabled in a future released version. A complete ROM-loader reflash can replace that application on
+  v1.17.x and is a sustained-physical-access release limitation; it is not prevented until Secure
+  Boot eFuses and flash encryption are enabled in a future released version.
 * **Protected Components:** The verification engine validates the complete software ecosystem across
   three distinct layers: the main application firmware image itself, the read-only Web-UI asset file
   system partition (`fatfs_gwui`), and the read-only nRF52 co-processor binary partition (

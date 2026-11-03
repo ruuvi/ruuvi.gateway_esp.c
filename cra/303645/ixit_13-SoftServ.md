@@ -130,6 +130,33 @@ Cross-referenced to the privilege parameters managed under `SecComMech-LAN-Beare
 
 ---
 
+### **ID**: SoftServ-Local-mDNS-Discovery
+
+#### Description
+
+The mDNS responder listens on UDP Port 5353 on the connected local network. It publishes the
+configured gateway hostname under `.local` and advertises the local HTTP service as `_http._tcp`
+on TCP Port 80. The service is accessible over the network and is active in the initialized state
+while the gateway is connected.
+
+#### Status
+
+Enabled (started when the network connects and stopped when it disconnects).
+
+#### Justification
+
+Allows local clients to resolve the gateway hostname and discover its HTTP management service.
+
+#### Allows Configuration (Yes/No)
+
+No. Discovery queries do not change gateway settings; configuration uses the HTTP interface.
+
+#### Authentication Mechanism
+
+None. The responder exposes discovery information without authentication.
+
+---
+
 ### **ID**: SoftServ-CoProcessor-Verification-Loop
 
 #### Description
@@ -329,8 +356,11 @@ N/A (Outbound client service loop).
 
 A suite of standard background core network helper utilities acting as clients within the ESP-IDF
 TCP/IP framework, encapsulating a DNS client resolver (UDP Port 53), a DHCP client manager (UDP
-Ports 67/68), and a Simple NTP time client (UDP Port 123). The services are **not** accessible via
-an inbound network interface.
+Ports 67/68), and a Simple NTP time client (server destination UDP Port 123). The SNTP client's
+local UDP source port is dynamically allocated from 49152-65535 using a boot-randomized allocator;
+it may change after reboot or SNTP restart. It receives server replies on that port but does not
+provide an inbound NTP service or configuration interface. The client utilities do not expose
+inbound management services.
 
 #### Status
 
@@ -391,6 +421,7 @@ N/A (Outbound client service loop; downloaded images are verified by RSA-3072-PS
 | `SoftServ-WiFi-WPS-Onboarding`            |    Inbound     |   Transient    | Yes (Wireless Local AP) |           Yes           | None (Out-of-Band Physical Proximity)   |
 | `SoftServ-Local-Management-WebUI`         |    Inbound     |    Enabled     |    Yes (LAN Port 80)    |           Yes           | `SecComMech-WebUI-Session`              |
 | `SoftServ-Local-Programmatic-API`         |    Inbound     |    Enabled     |    Yes (LAN Port 80)    |           Yes           | `SecComMech-LAN-Bearer-Authentication`  |
+| `SoftServ-Local-mDNS-Discovery`           |    Inbound     |    Enabled     |   Yes (LAN UDP 5353)    |           No            | None (Discovery Only)                   |
 | `SoftServ-CoProcessor-Verification-Loop`  | Internal Loop  |    Enabled     |           No            |           No            | None (Hardware Inter-Chip Control Link) |
 | `SoftServ-Centralized-Remote-Config`      |    Outbound    |    Disabled    |           No            | Yes (Remote Manifests)  | N/A                                     |
 | `SoftServ-Telemetry-Relay-RuuviCloud`     |    Outbound    |    Enabled     |           No            |           No            | N/A                                     |
