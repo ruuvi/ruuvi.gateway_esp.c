@@ -2,8 +2,18 @@ name: Test nvs_flash
 
 on:
   push:
+    paths:
+      - 'components/nvs_flash/**'
+      - 'components/mbedtls/mbedtls/**'
+      - 'components/esp_common/**'
+      - '.github/workflows/test-nvs_flash.yml'
     branches: [ master ]
   pull_request:
+    paths:
+      - 'components/nvs_flash/**'
+      - 'components/mbedtls/mbedtls/**'
+      - 'components/esp_common/**'
+      - '.github/workflows/test-nvs_flash.yml'
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
 
