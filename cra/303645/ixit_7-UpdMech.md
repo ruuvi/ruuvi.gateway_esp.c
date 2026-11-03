@@ -30,13 +30,17 @@ indices and signed binary assets from the official production update servers.
      between flash slots `ota_0` and `ota_1`, alongside the alternate `fatfs_gwui_2` and
      `fatfs_nrf52_2` partitions); the active running application space remains untouched during
      transit.
-  6. The DUT executes `esp_image_verify` from the native ESP-IDF `bootloader_support` library over
-     the downloaded main binary array. Upon successful verification against the appended production
-     RSA-3072 signature block, the engine configures the inactive slot as the primary boot target
-     and executes a system restart.
-  7. Post-reboot, the new main firmware initializes, validates its auxiliary file system partitions
-     via `esp_secure_boot_verify_rsa_signature_block` checks, and invokes the co-processor
-     verification track (`nrf52fw_update_fw_step3`). Rather than relying on a loose alphanumeric
+  6. The DUT completes the main-image update through `esp_ota_end_patched`, which verifies the
+     downloaded RSA-3072-PSS signature block. It then verifies that the candidate signer public-key
+     digest matches the currently running Ruuvi Gateway application. A failure invalidates all next
+     partitions; only a passing candidate is selected as the next boot target.
+  7. Post-reboot, the selected new main firmware validates itself and its auxiliary file system
+     partitions via `esp_image_verify` and `esp_secure_boot_verify_rsa_signature_block`. The
+     auxiliary signatures are embedded in the new main firmware, so their verification necessarily
+     occurs after the new main firmware starts but before normal service initialization and before
+     the OTA image is marked valid. A failure retains the rollback state and reboots to the
+     previously working OTA slot. The firmware then invokes the co-processor verification track
+     (`nrf52fw_update_fw_step3`). Rather than relying on a loose alphanumeric
      version string comparison, the ESP32 host halts the nRF52811 chip, injects a specialized
      SHA-256 calculation binary stub into the co-processor's RAM via the hardware Serial Wire
      Debug (SWD) bus (`nrf52swd_calc_sha256_digest_on_nrf52`), and manipulates the execution pointer
@@ -50,10 +54,12 @@ indices and signed binary assets from the official production update servers.
 
 #### Security Guarantees
 
-The mechanism ensures **Integrity** and **Authenticity** of the firmware images. Verification is
-performed directly by the DUT itself at the application tier before the new partition slot is
-committed for permanent execution. This protects the platform against unauthorized binary execution
-and Man-in-the-Middle (MitM) payload manipulation during network transit.
+The mechanism ensures **Integrity** and **Authenticity** of the firmware images. The DUT verifies
+the downloaded main application before selecting it as the boot target. The selected application
+then verifies the complete selected partition set before normal service initialization and only
+marks the OTA image valid after successful initialization. This protects the platform against
+unauthorized binary execution and Man-in-the-Middle (MitM) payload manipulation during network
+transit.
 
 #### Cryptographic Details
 
@@ -62,7 +68,7 @@ signature layout: **RSA-3072 with RSA-PSS padding over a SHA-256 digest**, compi
 manufacturer private key. The public key for verification (`SecParam-FW-Verification-Key`) is
 integrated within the main application text segment. Because production units running v1.17.x
 implement a secondary bootloader block where hardware secure boot eFuses are not burned, signature
-validation is processed programmatically at the application layer post-boot. Automated
+validation is processed programmatically at the application layer. Automated
 rollback-on-failure is driven by the ESP-IDF partition table mapping: if post-reboot asset
 validation fails, the system reverts execution to the prior known-good partition slot. Downgrade
 prevention via hardware secure-version eFuses is not enabled; block verification isolates malicious
@@ -150,25 +156,28 @@ offline maintenance environments.
 
 * **Physical Access Boundary Note:** Operating over the physical USB port bypasses the network stack
   entirely. On production units running v1.17.x firmware (where hardware eFuse Secure Boot and NVS
-  flash encryption are not enabled), an actor with direct physical access to the device casing can
-  read flash sectors or flash custom binaries via `esptool.py`. This threat vector is strictly
-  contained to actors holding physical access to the hardware enclosure (`PhyIntf-USB`).
-  Enabling ESP32 eFuse Secure Boot v2 and NVS Flash Encryption is scheduled for the v1.18.x
-  firmware release.
+  flash encryption are not enabled), an actor with direct physical access can read flash sectors or
+  completely replace the product software via `esptool.py`. Doing so requires sustained physical
+  access and ROM-loader boot-strap entry; the resulting custom software is no longer the Ruuvi
+  Gateway DUT. This is a v1.17.x release limitation, not an authentication control. Secure Boot
+  eFuses and flash encryption are planned for v1.18.x; the technical file must be updated with
+  released-product evidence once those controls are enabled.
 
 #### Security Guarantees
 
 The mechanism requires immediate physical proximity access to the device's Type-C USB interface
-port. The interface operates outside of the network stack, completely isolating the flasher state
-from remote network exploits. For standard signed images, image verification signatures are
-validated at boot by the application layer post-flashing.
+port and ROM-loader boot-strap entry. It operates outside of the network stack, completely isolating
+the flasher state from remote network exploits. When an official Ruuvi Gateway image is flashed, its
+application-layer self-check validates the main image and selected auxiliary partitions during early
+initialization. On v1.17.x this is not a ROM-loader pre-flash authentication control.
 
 #### Cryptographic Details
 
 The development flash tool executes an initial `MD5` validation sweep over the transferred binary
-data array during the write process. Image authenticity and structural block integrity are
-subsequently enforced at boot by the exact same RSA-3072-PSS / SHA-256 signature verification loop
-described under `UpdMech-WebUI`.
+data array during the write process; this is a transport-integrity check, not an authenticity check.
+For an official Ruuvi Gateway image, application-level RSA-3072-PSS / SHA-256 verification then runs
+at boot as described under `UpdMech-WebUI`. A complete custom reflash is a physical recovery/service
+scenario outside the normal Ruuvi Gateway update flow and the ETSI EN 303 645 baseline threat scope.
 
 #### Initiation and Interaction
 
@@ -193,8 +202,8 @@ Not applicable.
 
 ## Summary Matrix for the Technical File
 
-| Interface ID    | Delivery Medium              | Initiation Vector                | Cryptographic Verification Protocol                       | Automated Rollback Active? | Downgrade Blocked by Fuses? | Physical Access Required? |
-|:----------------|:-----------------------------|:---------------------------------|:----------------------------------------------------------|:--------------------------:|:---------------------------:|:-------------------------:|
-| `UpdMech-WebUI` | Network (HTTPS / Port 443)   | User Manual Request (Web-UI)     | RSA-3072-PSS / SHA-256 ESP Scan + SWD nRF RAM Check Block |            Yes             |             No              |            No             |
-| `UpdMech-Auto`  | Network (HTTPS / Port 443)   | Automated Background Scheduler   | RSA-3072-PSS / SHA-256 ESP Scan + SWD nRF RAM Check Block |            Yes             |             No              |            No             |
-| `UpdMech-USB`   | Local Port (USB-UART Bridge) | Physical USB Connection Flashing | Boot RSA-3072-PSS Scan + Flasher Tool MD5 Sweep           |   N/A (Manual Overwrite)   |             No              |          **Yes**          |
+| Interface ID    | Delivery Medium              | Initiation Vector                  | Cryptographic Verification Protocol                                                                               | Automated Rollback Active? | Downgrade Blocked by Fuses? | Physical Access Required? |
+|:----------------|:-----------------------------|:-----------------------------------|:------------------------------------------------------------------------------------------------------------------|:--------------------------:|:---------------------------:|:-------------------------:|
+| `UpdMech-WebUI` | Network (HTTPS / Port 443)   | User Manual Request (Web-UI)       | Main candidate: RSA-3072-PSS / SHA-256 before boot selection; selected partition set: early-init signature checks |            Yes             |             No              |            No             |
+| `UpdMech-Auto`  | Network (HTTPS / Port 443)   | Automated Background Scheduler     | Same as `UpdMech-WebUI`                                                                                           |            Yes             |             No              |            No             |
+| `UpdMech-USB`   | Local Port (USB-UART Bridge) | Physical recovery/service flashing | MD5 transfer check; official Ruuvi Gateway image self-check at boot; no ROM-loader authentication in v1.17.x      |   N/A (manual overwrite)   |             No              |          **Yes**          |
