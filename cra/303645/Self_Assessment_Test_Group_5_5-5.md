@@ -3,6 +3,17 @@
 Provision 5.5-5 — Status: **M F (n)**. Related IXIT: `IXIT 1-AuthMech`, `IXIT 13-SoftServ`,
 `IXIT 28-LogIntf`.
 
+**Evidence status**: Live-DUT tests have been executed, as confirmed by the maintainer. The
+corresponding authorization and interface-discovery scripts are being merged separately in
+[#1683](https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/1683) and
+[#1684](https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/1684). Integration and review of the run
+evidence in these assessments is deferred to a separate documentation task after those PRs and
+[#1685](https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/1685) have merged into `master`.
+The mDNS and dynamic SNTP descriptions below are source-derived expectations; this documentation
+update asserts no new live-DUT PASS. Existing authorization results are retained from the prior
+assessment and are not revalidated here. **PENDING** below means pending evidence integration
+and verdict review, not that live-DUT tests have not been executed.
+
 ---
 
 ## Test case 5.5-5-1 (conceptual)
@@ -66,40 +77,54 @@ through network discovery tools that all active logical network interfaces are f
 
 #### Test Unit B: Completeness of Logical Interface Documentation (Network Interface Scanning)
 
-* **Testing Methodology**: The test laboratory conducted comprehensive port scanning (
-  `nmap -p 1-65535 -sV -sU`) and traffic capture sweeps across active Ethernet and Wi-Fi network
-  interfaces during boot, setup, and operational phases.
-* **Evaluation**: The initialized DUT exposes the HTTP server on TCP Port 80 (Web-UI and REST API)
-  and the mDNS responder on UDP Port 5353 (hostname and HTTP service discovery). Transient setup
-  services are limited to the provisioning state. The outbound SNTP client uses a local UDP source
-  port dynamically assigned from 49152-65535 with a boot-randomized allocator; that port may
-  change after reboot or SNTP restart and can appear `open|filtered` in a UDP scan. It is not an
-  inbound NTP service (UDP/123 is the server destination). No undocumented hidden administrative
-  ports, diagnostic backdoors, or unauthenticated control listeners were discovered. Both
-  initialized responders correspond to declarations in `IXIT 28-LogIntf`.
-* **Verdict**: **PASS**
+* **Assessment Basis**: Firmware source review and the declarations in
+  [IXIT 28-LogIntf](ixit_28-LogIntf.md). Scan and traffic-capture results are pending integration;
+  the following expectations are not recorded observations from those runs.
+* **Source-Derived Expected Behavior**: In the initialized, network-connected state, the DUT is
+  expected to expose the HTTP server on TCP Port 80 (Web-UI and REST API) and the mDNS responder
+  on UDP Port 5353 (hostname and HTTP service discovery). Transient setup services are limited to
+  the provisioning state. The outbound SNTP client uses a local UDP source port dynamically
+  assigned from 49152-65535 with a boot-randomized allocator; that port may change after reboot
+  or SNTP restart and can appear `open|filtered` in a UDP scan. It is not an inbound NTP service
+  (UDP/123 is the server destination). Identifying a scanned UDP port as the SNTP client requires
+  correlation with captured outbound traffic to server UDP/123. Source review alone does not
+  establish that no undocumented listeners are accessible on the DUT.
+* **Verdict**: **PENDING** — integration and review of functional evidence for the revised inventory.
+
+### Follow-Up After Test-Script Merge
+
+After #1683, #1684, and #1685 merge into `master`, the separate documentation task must:
+
+* Update Unit A from the reviewed authorization run evidence associated with #1683.
+* Update Unit B from the reviewed scan and packet-capture evidence associated with #1684,
+  referencing the merged script revision, tested firmware, run date, and evidence artifacts.
+  Record actual Ethernet/Wi-Fi and operating-state coverage, HTTP/mDNS observations, SNTP
+  request/source-port correlation, scan limitations, and configuration restoration results.
+* Replace expectations with observed results only where supported, then update the unit, summary,
+  and group verdicts. Merging scripts alone does not establish a functional PASS.
 
 ---
 
 ## Summary Matrix for Test Case 5.5-5-1 & 5.5-5-2
 
-| Test Case          | Purpose / Focus                            | Assessment Summary                                                                                                                    | Verdict  |
-|:-------------------|:-------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------|:--------:|
-| **5.5-5-1 Unit a** | Conceptual Auth Check for Security Changes | Security-relevant configuration endpoints require mandatory authentication in both factory default and initialized states.            | **PASS** |
-| **5.5-5-2 Unit a** | Functional Authorization Verification      | Functional testing confirms unauthenticated REST requests redirect to `/#auth` (HTTP 401) and read-only token writes return HTTP 403. | **PASS** |
-| **5.5-5-2 Unit b** | Logical Interface Discovery Scanning       | Network port scans confirmed zero undocumented listening interfaces or hidden configuration endpoints.                                | **PASS** |
+| Test Case          | Purpose / Focus                            | Assessment Summary                                                                                                                    |   Verdict   |
+|:-------------------|:-------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------|:-----------:|
+| **5.5-5-1 Unit a** | Conceptual Auth Check for Security Changes | Security-relevant configuration endpoints require mandatory authentication in both factory default and initialized states.            |  **PASS**   |
+| **5.5-5-2 Unit a** | Functional Authorization Verification      | Functional testing confirms unauthenticated REST requests redirect to `/#auth` (HTTP 401) and read-only token writes return HTTP 403. |  **PASS**   |
+| **5.5-5-2 Unit b** | Logical Interface Discovery Scanning       | Source-derived HTTP/mDNS and dynamic SNTP expectations documented; scan/capture evidence integration and verdict review pending.      | **PENDING** |
 
 ---
 
 ## Group Summary
 
-The Ruuvi Gateway complies fully with Mandatory Provision 5.5-5 of `ETSI EN 303 645`. All
+The conceptual assessment and retained authorization results support the authentication and
+authorization requirements of Mandatory Provision 5.5-5 of `ETSI EN 303 645`. The assessed
 network-accessible functionalities that allow security-relevant changes (
 `SoftServ-Local-Management-WebUI`, `SoftServ-Local-Programmatic-API`,
 `SoftServ-Hotspot-Orchestration`) enforce active authentication and authorization in both factory
 default and initialized states. Unauthenticated configuration requests trigger HTTP 302 redirects to
-`/#auth` (HTTP 401), while token-role escalation returns HTTP 403. Functional testing and network
-port scanning confirm that unauthorized configuration changes are prevented and that all logical
-network interfaces are fully documented in `IXIT 28-LogIntf`.
+`/#auth` (HTTP 401), while token-role escalation returns HTTP 403. Completeness of the revised
+logical-interface inventory, including mDNS and the dynamic SNTP client socket, remains pending
+integration and review of the live-DUT scan and capture evidence in the follow-up documentation task.
 
-**Group Verdict**: **PASS**
+**Group Verdict**: **PENDING** — Unit 5.5-5-2 b evidence integration and verdict review outstanding.

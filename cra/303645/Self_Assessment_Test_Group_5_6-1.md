@@ -2,6 +2,17 @@
 
 Provision 5.6-1 — Status: **M F (p)**. Related IXIT: `IXIT 15-PhyIntf`, `IXIT 28-LogIntf`.
 
+**Evidence status**: Live-DUT tests have been executed, as confirmed by the maintainer. The
+logical-interface discovery script is being merged separately in
+[#1685](https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/1685). Integration and review of the run
+evidence in these assessments is deferred to a separate documentation task after that PR and
+[#1683](https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/1683) and
+[#1684](https://github.com/ruuvi/ruuvi.gateway_esp.c/pull/1684) have merged into `master`.
+The mDNS and dynamic SNTP descriptions below are source-derived expectations; this documentation
+update asserts no new live-DUT PASS. Existing physical-interface results are retained from the
+prior assessment and are not revalidated here. **PENDING** below means pending evidence integration
+and verdict review, not that live-DUT tests have not been executed.
+
 ---
 
 ## Test case 5.6-1-1 (conceptual)
@@ -66,38 +77,64 @@ DUT.
 
 ### Test Units Functional Assessment Matrix
 
-| Test Unit / Verification Focus               | Testing Methodology & Tools Executed                                                               | Observed Functional DUT Behavior                                                                                                                                                                                                                                                                                                                                       | Unit Verdict |
-|:---------------------------------------------|:---------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------:|
-| **Unit a: Interface Status Matching**        | Protocol testing and network interface state checks during startup, setup, and operational phases. | Interface statuses match IXIT declarations. ESP32 BLE emits no advertisements; nRF52 SWD pins do not respond to debug probes post-boot.                                                                                                                                                                                                                                |   **PASS**   |
-| **Unit b: Undocumented Physical Interfaces** | Hardware disassembly, PCB trace inspection, and RF spectrum analyzer sweeps (2.4 GHz).             | Physical inspection confirms mainboard trace mapping matches `IXIT 15-PhyIntf`. RF sweeps detect only expected Wi-Fi and passive BLE signals.                                                                                                                                                                                                                          |   **PASS**   |
-| **Unit c: Undocumented Logical Interfaces**  | Comprehensive port scanning (`nmap -p 1-65535 -sV -sU`) across Ethernet and Wi-Fi drops.           | The initialized DUT exposes TCP/80 (`LogIntf-HTTP-Server`) and UDP/5353 (`LogIntf-mDNS-Responder`). An indeterminate, dynamically assigned SNTP source port is an outbound client socket, identified by its request to server UDP/123; it is not a hidden listener. No hidden SSH, Telnet, or diagnostic ports exist. Both responders correspond to `IXIT 28-LogIntf`. |   **PASS**   |
+Unit c is based on firmware source review and the declarations in
+[IXIT 28-LogIntf](ixit_28-LogIntf.md). In the initialized, network-connected state, the source-derived
+expectation is HTTP on TCP/80 and mDNS on UDP/5353. The outbound SNTP client's local UDP source port
+is dynamically allocated from 49152-65535 using a boot-randomized allocator and may change after
+reboot or SNTP restart. A scan may report it as `open|filtered`; identifying it as an SNTP client
+socket requires correlation with captured outbound requests to server UDP/123. It is not an inbound
+NTP service. These expectations are not recorded observations from the live-DUT runs. Source review
+alone does not establish that no undocumented listeners are accessible on the DUT.
 
-**Assessment Justification**: Functional network scanning and physical PCB inspection confirm that
-all disabled or internal interfaces are effectively deactivated, exposed listening sockets match
-`IXIT 28-LogIntf` precisely, and zero undocumented physical or logical network interfaces exist on
-the DUT.
+| Test Unit / Verification Focus               | Assessment Methodology & Evidence Basis                                                            | Retained Observations / Source-Derived Expectations                                                                                                                                                                  | Unit Verdict |
+|:---------------------------------------------|:---------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------:|
+| **Unit a: Interface Status Matching**        | Protocol testing and network interface state checks during startup, setup, and operational phases. | Interface statuses match IXIT declarations. ESP32 BLE emits no advertisements; nRF52 SWD pins do not respond to debug probes post-boot.                                                                              |   **PASS**   |
+| **Unit b: Undocumented Physical Interfaces** | Hardware disassembly, PCB trace inspection, and RF spectrum analyzer sweeps (2.4 GHz).             | Physical inspection confirms mainboard trace mapping matches `IXIT 15-PhyIntf`. RF sweeps detect only expected Wi-Fi and passive BLE signals.                                                                        |   **PASS**   |
+| **Unit c: Undocumented Logical Interfaces**  | Source review; integration and review of full-range TCP/UDP scans and traffic captures pending.    | Expected: documented HTTP/mDNS responders and a dynamic outbound SNTP client socket. Actual listener inventory, SNTP traffic correlation, and absence of undocumented interfaces require review of the run evidence. | **PENDING**  |
 
-**Verdict**: **PASS**
+**Assessment Justification**: The prior results for Units a and b are retained. They do not establish
+functional coverage of the newly documented mDNS responder or dynamic SNTP client socket. Source
+review supports the revised logical-interface expectations, while the completeness conclusion for
+Unit c awaits integration and review of scan and traffic-capture evidence.
+
+**Verdict**: **PENDING** — integration and review of functional evidence for the revised inventory.
+
+### Follow-Up After Test-Script Merge
+
+After #1683, #1684, and #1685 merge into `master`, the separate documentation task must:
+
+* Update Unit c from the reviewed scan and packet-capture evidence associated with #1685,
+  referencing the merged script revision, tested firmware, run date, and evidence artifacts.
+  Record actual Ethernet/Wi-Fi and operating-state coverage, HTTP/mDNS observations, SNTP
+  request/source-port correlation, scan limitations, and configuration restoration results.
+* Update affected interface-status observations in Unit a only where the evidence supports them;
+  do not treat logical-interface scans as new physical-interface evidence.
+* Reconcile the inventory conclusions with Test Unit 5.5-5-2 b (#1684), replace expectations with
+  supported observations, and update the unit, case, summary, group, and ICS entries. Merging
+  scripts alone does not establish a functional PASS.
 
 ---
 
 ## Summary Matrix for Test Case 5.6-1-1 & 5.6-1-2
 
-| Test Case             | Purpose / Focus                      | Assessment Summary                                                                                              | Unit Verdict |
-|:----------------------|:-------------------------------------|:----------------------------------------------------------------------------------------------------------------|:------------:|
-| **5.6-1-1 Unit a**    | Justification of Physical Interfaces | All enabled physical/air interfaces have valid functional justifications; unused macros are disabled.           |   **PASS**   |
-| **5.6-1-1 Unit b**    | Justification of Logical Interfaces  | Inbound listening ports are limited strictly to authenticated Port 80 HTTP server and transient setup hotspot.  |   **PASS**   |
-| **5.6-1-2 Units a-c** | Functional Interface Scanning        | Physical inspection and `nmap` port scans confirm zero undocumented physical ports or hidden listening sockets. |   **PASS**   |
+| Test Case             | Purpose / Focus                        | Assessment Summary                                                                                                               | Unit Verdict |
+|:----------------------|:---------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------|:------------:|
+| **5.6-1-1 Unit a**    | Justification of Physical Interfaces   | All enabled physical/air interfaces have valid functional justifications; unused macros are disabled.                            |   **PASS**   |
+| **5.6-1-1 Unit b**    | Justification of Logical Interfaces    | HTTP management, mDNS discovery, transient setup services, and outbound clients have source-derived operational justifications.  |   **PASS**   |
+| **5.6-1-2 Units a-b** | Interface Status / Physical Inspection | Prior interface-status and physical-inspection results retained; no new mDNS/SNTP functional coverage asserted.                  |   **PASS**   |
+| **5.6-1-2 Unit c**    | Logical Interface Scanning             | Source-derived HTTP/mDNS and dynamic SNTP expectations documented; scan/capture evidence integration and verdict review pending. | **PENDING**  |
 
 ---
 
 ## Group Summary
 
-The Ruuvi Gateway complies fully with Mandatory Provision 5.6-1 of `ETSI EN 303 645`. All enabled
+The conceptual assessment supports the operational justifications required by Mandatory Provision
+5.6-1 of `ETSI EN 303 645`. All enabled
 physical interfaces (`PhyIntf-Ethernet`, `PhyIntf-WiFi`, `PhyIntf-BLE-nRF52`, `PhyIntf-USB`) and
 logical interfaces (`IXIT 28-LogIntf`) have valid functional justifications. Unnecessary
 interfaces—such as the ESP32 BLE radio macro and post-boot SWD debug pads—are completely disabled.
-Full network port scanning (`nmap`) and physical PCB audits verify that no undocumented physical or
-logical network interfaces are accessible on the DUT.
+Prior physical-interface results are retained. Completeness of the revised logical-interface
+inventory, including mDNS and the dynamic SNTP client socket, remains pending integration and
+review of the live-DUT scan and capture evidence in the follow-up documentation task.
 
-**Group Verdict**: **PASS**
+**Group Verdict**: **PENDING** — Unit 5.6-1-2 c evidence integration and verdict review outstanding.
