@@ -21,8 +21,10 @@ executed within the core application binary to enforce signature validation cons
   device target without burning the hardware eFuses for Secure Boot or Flash Encryption.
   Consequently, cryptographic signature enforcement is handled programmatically by the Ruuvi
   Gateway application runtime engine. The static public cryptographic root of trust (
-  `SecParam-FW-Verification-Key`) is compiled directly into the immutable text segment of the main
-  application binary image file. A complete ROM-loader reflash can replace that application on
+  `SecParam-FW-Verification-Key`) is compiled directly into the main application binary's text
+  segment, which is read-only during normal runtime. A complete ROM-loader reflash can replace that
+  application on v1.17.x and is a sustained-physical-access release limitation; it is not prevented
+  until Secure Boot eFuses and flash encryption are enabled in a future released version. A complete ROM-loader reflash can replace that application on
   v1.17.x and is a sustained-physical-access release limitation; it is not prevented until Secure
   Boot eFuses and flash encryption are enabled in a future released version.
 * **Protected Components:** The verification engine validates the complete software ecosystem across

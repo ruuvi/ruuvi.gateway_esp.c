@@ -46,6 +46,7 @@ class FakeResponse(requests.Response):
         self._malformed_json: bool = malformed_json
         text: str = "{broken" if malformed_json else json.dumps(payload) if payload is not None else ""
         self._content: bytes = text.encode("utf-8")
+        self._content_consumed: bool = True
         self.encoding: str = "utf-8"
 
     def json(self, **kwargs: Any) -> Any:

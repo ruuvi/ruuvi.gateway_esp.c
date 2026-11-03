@@ -2,11 +2,29 @@ name: Build Firmware (dev)
 
 on:
   push:
+    # The workflow YAML and root build configuration remain eligible.
+    paths-ignore:
+      - 'tests/**'
+      - 'cra/**'
+      - 'docs/**'
+      - 'integration_tests/**'
+      - 'schemas/**'
+      - '**.md'
+      - 'LICENSE'
     branches:
       - master
       - 'v[0-9]*.[0-9]*.x'
     tags: [ '*' ]
   pull_request:
+    # The workflow YAML and root build configuration remain eligible.
+    paths-ignore:
+      - 'tests/**'
+      - 'cra/**'
+      - 'docs/**'
+      - 'integration_tests/**'
+      - 'schemas/**'
+      - '**.md'
+      - 'LICENSE'
     branches: [ '*' ]
     types: [opened, synchronize, reopened]
   # Allows you to run this workflow manually from the Actions tab

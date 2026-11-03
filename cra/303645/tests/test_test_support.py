@@ -29,6 +29,16 @@ def login_body(config: DutConfig, challenge: str) -> dict[str, str]:
 
 
 class ResponseTestCase(unittest.TestCase):
+    def test_cached_body_supports_streamed_reads_and_repeated_close(self) -> None:
+        payload: dict[str, str] = {"message": "public page"}
+        response: FakeResponse = FakeResponse(payload=payload)
+        expected: bytes = b'{"message": "public page"}'
+        self.assertEqual(expected, b"".join(response.iter_content(chunk_size=3)))
+        response.close()
+        self.assertEqual(expected, b"".join(response.iter_content(chunk_size=5)))
+        self.assertEqual(payload, response.json())
+        response.close()
+
     def test_falsey_payloads_headers_and_cookies_are_preserved(self) -> None:
         payload: Any
         for payload in (None, False, 0, "", [], {}):
