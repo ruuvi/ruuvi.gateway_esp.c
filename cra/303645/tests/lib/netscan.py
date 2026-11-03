@@ -69,6 +69,8 @@ class PortObservation:
     service: str
     product: str
     reason: str
+    service_method: str = ""
+    service_confidence: str = ""
 
 
 @dataclass(frozen=True)
@@ -250,6 +252,8 @@ def parse_nmap_xml(xml_text: str, protocol: str, requested: frozenset[int],
                 port, state, service.get("name", "") if service is not None else "",
                 service.get("product", "") if service is not None else "",
                 state_element.get("reason", ""),
+                service.get("method", "") if service is not None else "",
+                service.get("conf", "") if service is not None else "",
             ))
         if sum(state_counts.values()) + sum(item.state == "open" for item in observations) != len(requested):
             raise ScanError("nmap XML port totals do not cover the requested range")
