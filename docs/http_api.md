@@ -169,6 +169,15 @@ A recognized bearer key returns an auth JSON with `200` (allowed) or `401`
 (prohibited: e.g. RO key on a RW route) via
 [`http_server_handle_req_auth_bearer()`](../components/esp32-wifi-manager/src/http_server_handle_req_get_auth.c#L257).
 
+Explicit bearer authorization on ordinary LAN routes is evaluated **before** the
+configured interactive scheme, including `DENY`. A valid RW key can therefore
+read `GET /ruuvi.json` and write `POST /ruuvi.json` while interactive access is
+disabled; a valid RO key can read the configuration but cannot authorize the POST.
+Invalid explicit keys return `401`. This ordering does not apply to GET or POST
+`/auth`, which bypass bearer authorization. See
+[`http_server_handle_req_get_or_check_auth()`](../components/esp32-wifi-manager/src/http_server_handle_req_get_auth.c#L278)
+and the [POST RW check](../components/esp32-wifi-manager/src/http_server_handle_req.c#L537).
+
 ### Interactive schemes
 
 - **`BASIC`** — HTTP Basic; missing/invalid -> `401` with `WWW-Authenticate: Basic`
@@ -179,7 +188,7 @@ A recognized bearer key returns an auth JSON with `200` (allowed) or `401`
   cookie; `POST /auth` performs a SHA-256 challenge-response login; `DELETE /auth`
   logs out. Unauthenticated -> `401` (with a fresh session id / challenge).
 - **`ALLOW`** — always authorized (still issues a session id for RUUVI cookie flow).
-- **`DENY`** — always `403`
+- **`DENY`** — interactive requests without an explicit bearer token return `403`
   ([`http_server_resp_403_auth_deny`](../components/esp32-wifi-manager/src/http_server_handle_req_get_auth.c#L252)).
 
 The auth JSON payload (returned by `/auth` and inline auth failures) is produced by

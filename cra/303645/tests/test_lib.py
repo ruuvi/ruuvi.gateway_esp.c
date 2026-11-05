@@ -1135,6 +1135,58 @@ class GatewayClientTestCase(unittest.TestCase):
                 body[:] = b"changed"
                 self.assertEqual(b"\x00\xffpayload", captured.body)
 
+    def test_transport_timing_excludes_preparation_and_evidence_and_survives_timeout(self) -> None:
+        elapsed: list[int] = [0]
+
+        class SlowEvidence(RecordingEvidence):
+            def write_http_request(self, request: requests.PreparedRequest) -> None:
+                elapsed[0] += 5_000
+
+            def write_http_response(self, response: requests.Response) -> None:
+                elapsed[0] += 7_000
+
+        class TimedSession(FakeSession):
+            def prepare_request(self, request: requests.Request) -> requests.PreparedRequest:
+                elapsed[0] += 3_000
+                return super().prepare_request(request)
+
+            def send(self, request: requests.PreparedRequest, **kwargs: Any) -> requests.Response:
+                elapsed[0] += 100
+                return super().send(request, **kwargs)
+
+        client: GatewayClient = GatewayClient(CONFIG, SlowEvidence(), transport_clock=lambda: elapsed[0])
+        client.request(TimedSession(response=FakeResponse(200)), HttpMethod.GET, GatewayApi.STATUS)
+        self.assertIsNotNone(client.last_transport_timing)
+        if client.last_transport_timing is None:
+            self.fail("missing completed transport timing")
+        self.assertEqual((8_000, 8_100), (client.last_transport_timing.start_ns, client.last_transport_timing.end_ns))
+        with self.assertRaises(GatewayConnectionError):
+            client.request(TimedSession(error=requests.Timeout("lost reply")), HttpMethod.GET, GatewayApi.STATUS)
+        self.assertIsNotNone(client.last_transport_timing)
+        if client.last_transport_timing is None:
+            self.fail("missing failed transport timing")
+        self.assertEqual(100, client.last_transport_timing.end_ns - client.last_transport_timing.start_ns)
+        with self.assertRaises(ValueError):
+            client.request(TimedSession(), HttpMethod.POST, GatewayApi.CONFIG, json_body={}, data="invalid")
+        self.assertIsNone(client.last_transport_timing)
+
+    def test_received_response_survives_reporting_failure_and_is_never_stale(self) -> None:
+        response: requests.Response = FakeResponse(200)
+        with mock.patch.object(self.evidence, "write_http_response", side_effect=OSError("disk full")), self.assertRaises(OSError):
+            self.client.request(FakeSession(response=response), HttpMethod.GET, GatewayApi.STATUS)
+        self.assertIs(response, self.client.last_response)
+        with self.assertRaises(GatewayConnectionError):
+            self.client.request(FakeSession(error=requests.Timeout("lost")), HttpMethod.GET, GatewayApi.STATUS)
+        self.assertIsNone(self.client.last_response)
+        self.client.request(FakeSession(response=response), HttpMethod.GET, GatewayApi.STATUS)
+        with self.assertRaises(ValueError):
+            self.client.request(FakeSession(), HttpMethod.POST, GatewayApi.CONFIG, json_body={}, data="invalid")
+        self.assertIsNone(self.client.last_response)
+        self.client.request(FakeSession(response=response), HttpMethod.GET, GatewayApi.STATUS)
+        with mock.patch.object(self.evidence, "write_http_request", side_effect=OSError("before send")), self.assertRaises(OSError):
+            self.client.request(FakeSession(), HttpMethod.GET, GatewayApi.STATUS)
+        self.assertIsNone(self.client.last_response)
+
     def test_request_prepares_logs_and_sends_expected_http_request(self) -> None:
         response: requests.Response = requests.Response()
         session: FakeSession = FakeSession(response=response)

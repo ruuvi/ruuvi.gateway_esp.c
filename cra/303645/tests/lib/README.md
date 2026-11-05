@@ -509,3 +509,20 @@ Keep additions reusable across more than one functional test. Preserve backward 
 existing scripts, use dependency injection for network, randomness, clocks, or subprocesses, and
 add direct library tests only to `test_lib.py`. Scenario-specific orchestration and compliance
 assertions belong in the corresponding `test_<id>.py` and `test_test_<id>.py` pair.
+
+### HTTP transport timing
+
+`GatewayClient(..., transport_clock=time.monotonic_ns)` accepts an injectable nanosecond clock.
+`last_transport_timing` is `None` at request entry and becomes an immutable `TransportTiming`
+with `start_ns` and `end_ns` immediately around `session.send()`, including when it raises.
+Preparation and synchronous request/response evidence writes are excluded. Callers may select
+`transport_clock` before a request; read the timing after that request, before another request
+replaces it. This observation does not decide test verdicts or include Digest challenge requests
+in the subsequent authenticated request's elapsed time. Existing request return values and
+transport exception behavior are unchanged.
+
+`last_response` is cleared on every request entry, including invalid arguments or preparation
+failures. It retains the actual received response before response evidence is written, so callers
+can preserve security observations if reporting raises. It is `None` when no response was
+received. Reporting exceptions still propagate; callers must abort and recover rather than
+continue a campaign after an evidence failure. Read it before another request replaces it.
